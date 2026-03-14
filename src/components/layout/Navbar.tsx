@@ -14,13 +14,13 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex-shrink-0">
           <Image
             src="/images/bizzy-logo.png"
             alt="Bizzy"
-            width={80}
-            height={36}
-            className="h-9 w-auto"
+            width={100}
+            height={40}
+            className="h-8 w-auto object-contain"
             priority
           />
         </Link>
@@ -34,7 +34,7 @@ export default function Navbar() {
               className={`text-sm font-medium transition-colors ${
                 pathname === link.href
                   ? "text-primary"
-                  : "text-gray hover:text-dark"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {link.label}
@@ -59,17 +59,17 @@ export default function Navbar() {
           aria-label="Toggle menu"
         >
           <span
-            className={`w-6 h-0.5 bg-dark transition-all duration-300 ${
+            className={`w-6 h-0.5 bg-ink transition-all duration-300 ${
               mobileOpen ? "rotate-45 translate-y-2" : ""
             }`}
           />
           <span
-            className={`w-6 h-0.5 bg-dark transition-all duration-300 ${
+            className={`w-6 h-0.5 bg-ink transition-all duration-300 ${
               mobileOpen ? "opacity-0" : ""
             }`}
           />
           <span
-            className={`w-6 h-0.5 bg-dark transition-all duration-300 ${
+            className={`w-6 h-0.5 bg-ink transition-all duration-300 ${
               mobileOpen ? "-rotate-45 -translate-y-2" : ""
             }`}
           />
@@ -87,7 +87,7 @@ export default function Navbar() {
               className={`block text-base font-medium py-2 ${
                 pathname === link.href
                   ? "text-primary"
-                  : "text-gray hover:text-dark"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {link.label}

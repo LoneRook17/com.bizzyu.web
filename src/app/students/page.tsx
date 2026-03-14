@@ -2,13 +2,21 @@ import type { Metadata } from "next";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import FeatureCard from "@/components/ui/FeatureCard";
+import DealTypeGrid from "@/components/ui/DealTypeGrid";
+import CampusGrid from "@/components/ui/CampusGrid";
+import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
-import { APP_STORE_URL } from "@/lib/constants";
+import { APP_STORE_URL, STUDENT_FAQ } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "For Students",
   description:
     "Discover exclusive college deals, local events, and save money on food, drinks, and entertainment near your campus with Bizzy.",
+  openGraph: {
+    title: "For Students | Bizzy",
+    description:
+      "Exclusive deals, events, and experiences near your campus. Download Bizzy free.",
+  },
 };
 
 function TagIcon() {
@@ -78,16 +86,16 @@ export default function StudentsPage() {
           <AnimatedSection>
             <div className="max-w-3xl mx-auto text-center">
               <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
-                For Students
+                Free on the App Store
               </div>
-              <h1 className="text-4xl md:text-6xl font-bold text-dark leading-tight mb-6">
+              <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-6">
                 Your campus.
                 <br />
                 Your deals.
                 <br />
                 <span className="text-primary">Your way.</span>
               </h1>
-              <p className="text-lg text-gray mb-8 max-w-xl mx-auto leading-relaxed">
+              <p className="text-lg text-muted mb-8 max-w-xl mx-auto leading-relaxed">
                 Stop paying full price for everything. Bizzy gives you exclusive
                 access to the best deals, events, and spots near your school — all
                 in one free app.
@@ -113,10 +121,10 @@ export default function StudentsPage() {
       <SectionContainer>
         <AnimatedSection>
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-dark mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
               Why students love Bizzy
             </h2>
-            <p className="text-gray text-lg max-w-2xl mx-auto">
+            <p className="text-muted text-lg max-w-2xl mx-auto">
               More than a deal app — it&apos;s your guide to campus life.
             </p>
           </div>
@@ -124,48 +132,81 @@ export default function StudentsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatedSection delay={0}>
-            <FeatureCard
-              icon={<TagIcon />}
-              title="Exclusive Deals"
-              description="Access discounts you won't find anywhere else — BOGO meals, drink specials, free activities, and more from local businesses."
-            />
+            <FeatureCard icon={<TagIcon />} title="Exclusive Deals" description="Access discounts you won't find anywhere else — BOGO meals, drink specials, free activities, and more from local businesses." />
           </AnimatedSection>
-          <AnimatedSection delay={0.1}>
-            <FeatureCard
-              icon={<CalendarIcon />}
-              title="Events Near You"
-              description="See what's happening tonight, this weekend, or anytime. Bar nights, campus activities, live events — all in one feed."
-            />
+          <AnimatedSection delay={0.08}>
+            <FeatureCard icon={<CalendarIcon />} title="Events Near You" description="See what's happening tonight, this weekend, or anytime. Bar nights, campus activities, live events — all in one feed." />
           </AnimatedSection>
-          <AnimatedSection delay={0.2}>
-            <FeatureCard
-              icon={<TrophyIcon />}
-              title="Compete & Rank"
-              description="Track your savings, climb your school's leaderboard, and see who's getting the most out of college life."
-            />
+          <AnimatedSection delay={0.16}>
+            <FeatureCard icon={<TrophyIcon />} title="Compete & Rank" description="Track your savings, climb your school's leaderboard, and see who's getting the most out of college life." />
           </AnimatedSection>
-          <AnimatedSection delay={0.1}>
-            <FeatureCard
-              icon={<MapIcon />}
-              title="Campus-Centered"
-              description="Everything is curated for your specific school. Deals and events from the spots students actually go to."
-            />
+          <AnimatedSection delay={0.08}>
+            <FeatureCard icon={<MapIcon />} title="Campus-Centered" description="Everything is curated for your specific school. Deals and events from the spots students actually go to." />
           </AnimatedSection>
-          <AnimatedSection delay={0.2}>
-            <FeatureCard
-              icon={<HeartIcon />}
-              title="Save Your Favorites"
-              description="Heart the deals you love and build a personal list of go-to spots and offers."
-            />
+          <AnimatedSection delay={0.16}>
+            <FeatureCard icon={<HeartIcon />} title="Save Your Favorites" description="Heart the deals you love and build a personal list of go-to spots and offers." />
           </AnimatedSection>
-          <AnimatedSection delay={0.3}>
-            <FeatureCard
-              icon={<ZapIcon />}
-              title="Instant Claims"
-              description="No coupons, no codes. Just open the deal, show it at checkout, and save. It's that fast."
-            />
+          <AnimatedSection delay={0.24}>
+            <FeatureCard icon={<ZapIcon />} title="Instant Claims" description="No coupons, no codes. Just open the deal, show it at checkout, and save. It's that fast." />
           </AnimatedSection>
         </div>
+      </SectionContainer>
+
+      {/* Deal Types */}
+      <section className="bg-gray-50">
+        <SectionContainer>
+          <AnimatedSection>
+            <div className="text-center mb-14">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+                What kind of deals will you find?
+              </h2>
+              <p className="text-muted text-lg max-w-2xl mx-auto">
+                Real savings on the places you actually go.
+              </p>
+            </div>
+          </AnimatedSection>
+          <DealTypeGrid />
+        </SectionContainer>
+      </section>
+
+      {/* Events Section */}
+      <SectionContainer>
+        <AnimatedSection>
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
+              Events Tab
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+              Never miss what&apos;s happening
+            </h2>
+            <p className="text-muted text-lg max-w-2xl mx-auto">
+              Bizzy isn&apos;t just deals. Discover everything going on around campus — bar nights,
+              live music, themed events, campus activities, and ticketed experiences.
+            </p>
+          </div>
+        </AnimatedSection>
+        <AnimatedSection>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+            {[
+              { icon: "🍻", label: "Bar Nights" },
+              { icon: "🎵", label: "Live Music" },
+              { icon: "🎭", label: "Themed Events" },
+              { icon: "🎟️", label: "Ticketed Shows" },
+              { icon: "🧠", label: "Trivia Nights" },
+              { icon: "🏈", label: "Watch Parties" },
+              { icon: "🎤", label: "Karaoke" },
+              { icon: "🌴", label: "Campus Pop-Ups" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="bg-white border border-gray-100 rounded-2xl p-4 text-center hover:shadow-md hover:border-primary/30 transition-all"
+              >
+                <div className="text-2xl mb-2">{item.icon}</div>
+                <span className="text-sm font-medium text-ink">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </AnimatedSection>
       </SectionContainer>
 
       {/* How It Works */}
@@ -173,7 +214,7 @@ export default function StudentsPage() {
         <SectionContainer>
           <AnimatedSection>
             <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-bold text-dark mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
                 Start saving in 60 seconds
               </h2>
             </div>
@@ -190,12 +231,41 @@ export default function StudentsPage() {
                   <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-5">
                     {item.step}
                   </div>
-                  <h3 className="text-xl font-bold text-dark mb-3">{item.title}</h3>
-                  <p className="text-gray max-w-xs mx-auto">{item.desc}</p>
+                  <h3 className="text-xl font-bold text-ink mb-3">{item.title}</h3>
+                  <p className="text-muted max-w-xs mx-auto">{item.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
           </div>
+        </SectionContainer>
+      </section>
+
+      {/* Campus Presence */}
+      <SectionContainer>
+        <AnimatedSection>
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+              Live on campus now
+            </h2>
+            <p className="text-muted text-lg">
+              Students at these schools are already saving with Bizzy.
+            </p>
+          </div>
+        </AnimatedSection>
+        <CampusGrid />
+      </SectionContainer>
+
+      {/* FAQ */}
+      <section className="bg-gray-50">
+        <SectionContainer>
+          <AnimatedSection>
+            <div className="text-center mb-14">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+                Frequently asked questions
+              </h2>
+            </div>
+          </AnimatedSection>
+          <FAQ items={STUDENT_FAQ} />
         </SectionContainer>
       </section>
 

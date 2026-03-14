@@ -2,6 +2,10 @@ import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import FeatureCard from "@/components/ui/FeatureCard";
 import PhoneMockup from "@/components/ui/PhoneMockup";
+import DealTypeGrid from "@/components/ui/DealTypeGrid";
+import CampusGrid from "@/components/ui/CampusGrid";
+import AnimatedCounter from "@/components/ui/AnimatedCounter";
+import Marquee from "@/components/ui/Marquee";
 import Button from "@/components/ui/Button";
 import { APP_STORE_URL } from "@/lib/constants";
 
@@ -48,18 +52,19 @@ export default function Home() {
             <AnimatedSection>
               <div className="max-w-xl">
                 <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
-                  Now live on campus
+                  Live at FGCU, USF, UGA, ASU + more
                 </div>
-                <h1 className="text-4xl md:text-6xl font-bold text-dark leading-tight mb-6">
-                  Save more.
+                <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-4">
+                  Live College
                   <br />
-                  <span className="text-primary">Do more.</span>
-                  <br />
-                  College made better.
+                  <span className="text-primary">For Less!</span>
                 </h1>
-                <p className="text-lg text-gray mb-8 leading-relaxed max-w-md">
-                  Discover exclusive deals, events, and experiences near your
-                  campus. One app for everything worth doing in college.
+                <p className="text-xl md:text-2xl text-ink/70 font-medium mb-2">
+                  The Best Deals & Events Near Your Campus.
+                </p>
+                <p className="text-lg text-muted mb-8 leading-relaxed max-w-md">
+                  Exclusive discounts on food, drinks, entertainment, and local
+                  events — all in one app. Download Bizzy and start saving today.
                 </p>
                 <a
                   href={APP_STORE_URL}
@@ -83,14 +88,34 @@ export default function Home() {
         </SectionContainer>
       </section>
 
+      {/* Social Proof Marquee */}
+      <section className="py-8 bg-white border-b border-gray-100">
+        <div className="text-center mb-4">
+          <span className="text-sm font-semibold text-muted uppercase tracking-wider">
+            Voted #1 By Students
+          </span>
+        </div>
+        <Marquee
+          items={[
+            "FGCU — Fort Myers",
+            "USF — Tampa",
+            "UGA — Athens",
+            "ASU — Tempe",
+            "500+ Active Deals",
+            "10,000+ Students",
+            "$250K+ Saved",
+          ]}
+        />
+      </section>
+
       {/* Features */}
       <SectionContainer>
         <AnimatedSection>
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-dark mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
               Everything campus life needs
             </h2>
-            <p className="text-gray text-lg max-w-2xl mx-auto">
+            <p className="text-muted text-lg max-w-2xl mx-auto">
               Deals, events, and a community of students all saving together.
             </p>
           </div>
@@ -108,7 +133,7 @@ export default function Home() {
             <FeatureCard
               icon={<EventsIcon />}
               title="Local Events"
-              description="Never miss what's happening. Find parties, bar nights, campus activities, and everything in between."
+              description="Never miss what's happening. Find bar nights, campus activities, ticketed experiences, and everything in between."
             />
           </AnimatedSection>
           <AnimatedSection delay={0.2}>
@@ -121,15 +146,69 @@ export default function Home() {
         </div>
       </SectionContainer>
 
+      {/* Deal Types */}
+      <section className="bg-gray-50">
+        <SectionContainer>
+          <AnimatedSection>
+            <div className="text-center mb-14">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+                Deals worth claiming
+              </h2>
+              <p className="text-muted text-lg max-w-2xl mx-auto">
+                From BOGO to monthly exclusives — real savings on the places you actually go.
+              </p>
+            </div>
+          </AnimatedSection>
+          <DealTypeGrid />
+        </SectionContainer>
+      </section>
+
+      {/* Events Section */}
+      <SectionContainer>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <AnimatedSection>
+            <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
+              New: Events Tab
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+              Never miss what&apos;s happening
+            </h2>
+            <p className="text-muted text-lg leading-relaxed mb-6">
+              Discover everything going on around your campus — bar nights, live music,
+              themed events, campus activities, and ticketed experiences. All in one place.
+            </p>
+            <div className="space-y-3">
+              {[
+                "Bar nights & drink specials",
+                "Campus activities & club events",
+                "Ticketed experiences & concerts",
+                "Weekly recurring events",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                  </div>
+                  <span className="text-ink font-medium">{item}</span>
+                </div>
+              ))}
+            </div>
+          </AnimatedSection>
+
+          <AnimatedSection delay={0.2} className="flex justify-center">
+            <PhoneMockup src="/images/bizzy-logo.png" alt="Bizzy events tab" />
+          </AnimatedSection>
+        </div>
+      </SectionContainer>
+
       {/* How It Works */}
       <section className="bg-secondary/50">
         <SectionContainer>
           <AnimatedSection>
             <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-bold text-dark mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
                 How it works
               </h2>
-              <p className="text-gray text-lg">
+              <p className="text-muted text-lg">
                 Three steps to start saving.
               </p>
             </div>
@@ -138,7 +217,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { step: "1", title: "Download Bizzy", desc: "Get the app free from the App Store and sign up with your school." },
-              { step: "2", title: "Browse Deals", desc: "Explore exclusive offers from restaurants, bars, and local spots near campus." },
+              { step: "2", title: "Browse Deals & Events", desc: "Explore exclusive offers and upcoming events from local spots near campus." },
               { step: "3", title: "Claim & Save", desc: "Show the deal at checkout. It's that simple. Start saving instantly." },
             ].map((item, i) => (
               <AnimatedSection key={item.step} delay={i * 0.1}>
@@ -146,8 +225,8 @@ export default function Home() {
                   <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-5">
                     {item.step}
                   </div>
-                  <h3 className="text-xl font-bold text-dark mb-3">{item.title}</h3>
-                  <p className="text-gray max-w-xs mx-auto">{item.desc}</p>
+                  <h3 className="text-xl font-bold text-ink mb-3">{item.title}</h3>
+                  <p className="text-muted max-w-xs mx-auto">{item.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -159,24 +238,61 @@ export default function Home() {
       <SectionContainer>
         <AnimatedSection>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: "500+", label: "Active Deals" },
-              { value: "10K+", label: "Students" },
-              { value: "$250K+", label: "Saved by Students" },
-              { value: "50+", label: "Campus Partners" },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-gray text-sm font-medium">{stat.label}</div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                <AnimatedCounter end={500} suffix="+" />
               </div>
-            ))}
+              <div className="text-muted text-sm font-medium">Active Deals</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                <AnimatedCounter end={10} suffix="K+" />
+              </div>
+              <div className="text-muted text-sm font-medium">Students</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                <AnimatedCounter prefix="$" end={250} suffix="K+" />
+              </div>
+              <div className="text-muted text-sm font-medium">Saved by Students</div>
+            </div>
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                <AnimatedCounter end={50} suffix="+" />
+              </div>
+              <div className="text-muted text-sm font-medium">Campus Partners</div>
+            </div>
           </div>
         </AnimatedSection>
       </SectionContainer>
 
-      {/* CTA Banner */}
+      {/* Campus Presence */}
+      <section className="bg-gray-50">
+        <SectionContainer>
+          <AnimatedSection>
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+                Live on campus
+              </h2>
+              <p className="text-muted text-lg">
+                Bizzy is growing campus by campus. Are we at your school yet?
+              </p>
+            </div>
+          </AnimatedSection>
+          <CampusGrid />
+          <AnimatedSection>
+            <p className="text-center text-muted mt-8">
+              Don&apos;t see your school?{" "}
+              <a href="/contact" className="text-primary font-semibold hover:underline">
+                Let us know
+              </a>{" "}
+              — we&apos;re expanding fast.
+            </p>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
+
+      {/* Dual CTA */}
       <section className="bg-primary">
         <SectionContainer className="text-center py-16 md:py-20">
           <AnimatedSection>
@@ -187,9 +303,14 @@ export default function Home() {
               Join thousands of students already using Bizzy to make college
               more affordable and more fun.
             </p>
-            <Button href={APP_STORE_URL} variant="white" size="lg">
-              Download Bizzy Free
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button href={APP_STORE_URL} variant="white" size="lg">
+                Download Bizzy Free
+              </Button>
+              <Button href="/businesses" variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">
+                I&apos;m a Business
+              </Button>
+            </div>
           </AnimatedSection>
         </SectionContainer>
       </section>

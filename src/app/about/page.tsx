@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: "About",
   description:
     "Learn about Bizzy's mission to connect college students with the best local deals, events, and experiences while helping businesses grow.",
+  openGraph: {
+    title: "About Bizzy",
+    description:
+      "Building the bridge between campus and community. Deals, events, and experiences for college students.",
+  },
 };
 
 export default function AboutPage() {
@@ -21,11 +26,11 @@ export default function AboutPage() {
               <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
                 Our Story
               </div>
-              <h1 className="text-4xl md:text-6xl font-bold text-dark leading-tight mb-6">
+              <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-6">
                 Building the bridge between{" "}
                 <span className="text-primary">campus and community.</span>
               </h1>
-              <p className="text-lg text-gray max-w-xl mx-auto leading-relaxed">
+              <p className="text-lg text-muted max-w-xl mx-auto leading-relaxed">
                 Bizzy started with a simple idea: college students deserve better
                 access to the local spots around them, and local businesses
                 deserve a direct line to the campus crowd.
@@ -39,10 +44,10 @@ export default function AboutPage() {
       <SectionContainer>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <AnimatedSection>
-            <h2 className="text-3xl md:text-4xl font-bold text-dark mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-6">
               The problem we saw
             </h2>
-            <div className="space-y-4 text-gray leading-relaxed">
+            <div className="space-y-4 text-muted leading-relaxed">
               <p>
                 College students spend money every day on food, drinks,
                 entertainment, and experiences — but most of them don&apos;t know
@@ -63,8 +68,8 @@ export default function AboutPage() {
 
           <AnimatedSection delay={0.2}>
             <div className="bg-primary-light rounded-3xl p-10">
-              <h3 className="text-2xl font-bold text-dark mb-4">Our Mission</h3>
-              <p className="text-dark/80 text-lg leading-relaxed">
+              <h3 className="text-2xl font-bold text-ink mb-4">Our Mission</h3>
+              <p className="text-ink/80 text-lg leading-relaxed">
                 Make college life more affordable, more social, and more
                 connected — while helping the local businesses that shape campus
                 communities grow alongside the students they serve.
@@ -79,7 +84,7 @@ export default function AboutPage() {
         <SectionContainer>
           <AnimatedSection>
             <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-bold text-dark mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
                 What makes Bizzy different
               </h2>
             </div>
@@ -102,10 +107,10 @@ export default function AboutPage() {
             ].map((item, i) => (
               <AnimatedSection key={item.title} delay={i * 0.1}>
                 <div className="bg-white rounded-2xl p-8 shadow-sm h-full">
-                  <h3 className="text-xl font-bold text-dark mb-3">
+                  <h3 className="text-xl font-bold text-ink mb-3">
                     {item.title}
                   </h3>
-                  <p className="text-gray leading-relaxed">{item.desc}</p>
+                  <p className="text-muted leading-relaxed">{item.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -117,10 +122,10 @@ export default function AboutPage() {
       <SectionContainer>
         <AnimatedSection>
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold text-dark mb-6">
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-6">
               Where we&apos;re going
             </h2>
-            <div className="space-y-4 text-gray text-lg leading-relaxed">
+            <div className="space-y-4 text-muted text-lg leading-relaxed">
               <p>
                 Bizzy is built to scale campus by campus, creating localized
                 ecosystems where each school has its own business network,

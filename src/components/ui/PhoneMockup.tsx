@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { motion } from "framer-motion";
 
 interface PhoneMockupProps {
   src: string;
@@ -9,11 +12,15 @@ interface PhoneMockupProps {
 export default function PhoneMockup({ src, alt, className = "" }: PhoneMockupProps) {
   return (
     <div className={`relative ${className}`}>
-      <div className="relative mx-auto w-[280px] md:w-[320px]">
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="relative mx-auto w-[280px] md:w-[320px]"
+      >
         {/* Phone frame */}
-        <div className="relative rounded-[3rem] border-[8px] border-dark bg-dark shadow-2xl overflow-hidden">
+        <div className="relative rounded-[3rem] border-[8px] border-ink bg-ink shadow-2xl overflow-hidden">
           {/* Notch */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[30px] bg-dark rounded-b-2xl z-10" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[30px] bg-ink rounded-b-2xl z-10" />
           {/* Screen */}
           <div className="relative aspect-[9/19.5] bg-white overflow-hidden">
             <Image
@@ -25,7 +32,7 @@ export default function PhoneMockup({ src, alt, className = "" }: PhoneMockupPro
             />
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
