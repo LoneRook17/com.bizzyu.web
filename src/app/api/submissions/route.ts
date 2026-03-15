@@ -18,8 +18,11 @@ export async function POST(request: Request) {
     const submissionId = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const submittedAt = new Date().toLocaleString();
 
+    // Strip base64 images from email — they exceed Resend's payload limit
+    const hasImage = !!media?.dealImageUrl;
+
     // Send notification email
-    await getResend().emails.send({
+    const { error: emailError } = await getResend().emails.send({
       from: "Bizzy <Support@BizzyU.com>",
       to: ["Partnerships@BizzyU.com"],
       subject: `New Deal Submission: ${deal.title} — ${business.businessName}`,
@@ -51,10 +54,9 @@ export async function POST(request: Request) {
               <tr><td style="padding: 6px 0; color: #6b7280;">End Date</td><td style="padding: 6px 0;">${deal.endDate || "Ongoing"}</td></tr>
             </table>
 
-            ${media?.dealImageUrl ? `
+            ${hasImage ? `
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-            <h2 style="color: #111; margin: 0 0 16px;">Deal Image</h2>
-            <img src="${media.dealImageUrl}" alt="Deal image" style="max-width: 100%; border-radius: 8px;" />
+            <p style="color: #6b7280; font-size: 13px; font-style: italic;">Deal image was uploaded with submission.</p>
             ` : ""}
 
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
@@ -66,6 +68,14 @@ export async function POST(request: Request) {
         </div>
       `,
     });
+
+    if (emailError) {
+      console.error("Resend error:", emailError);
+      return NextResponse.json(
+        { error: "Failed to send notification email" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ id: submissionId, status: "submitted" }, { status: 201 });
   } catch (error) {
