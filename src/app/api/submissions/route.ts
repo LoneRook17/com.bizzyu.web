@@ -45,16 +45,16 @@ export async function POST(request: Request) {
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 6px 0; color: #6b7280; width: 140px;">Deal Title</td><td style="padding: 6px 0; font-weight: 600;">${deal.title}</td></tr>
               <tr><td style="padding: 6px 0; color: #6b7280;">Description</td><td style="padding: 6px 0;">${deal.description || "—"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Estimated Savings</td><td style="padding: 6px 0; color: #05EB54; font-weight: 700;">${deal.savings || "—"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Redemption</td><td style="padding: 6px 0;">${deal.frequency || "—"}${deal.limitedCount ? ` (${deal.limitedCount} available)` : ""}</td></tr>
+              <tr><td style="padding: 6px 0; color: #6b7280;">Estimated Savings</td><td style="padding: 6px 0; color: #05EB54; font-weight: 700;">${deal.estimatedSavings || "—"}</td></tr>
+              <tr><td style="padding: 6px 0; color: #6b7280;">Redemption</td><td style="padding: 6px 0;">${deal.redemptionFrequency || "—"}${deal.limitedSupplyCount ? ` (${deal.limitedSupplyCount} available)` : ""}</td></tr>
               <tr><td style="padding: 6px 0; color: #6b7280;">Start Date</td><td style="padding: 6px 0;">${deal.startDate || "Immediately"}</td></tr>
               <tr><td style="padding: 6px 0; color: #6b7280;">End Date</td><td style="padding: 6px 0;">${deal.endDate || "Ongoing"}</td></tr>
             </table>
 
-            ${media?.dealImage ? `
+            ${media?.dealImageUrl ? `
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
             <h2 style="color: #111; margin: 0 0 16px;">Deal Image</h2>
-            <img src="${media.dealImage}" alt="Deal image" style="max-width: 100%; border-radius: 8px;" />
+            <img src="${media.dealImageUrl}" alt="Deal image" style="max-width: 100%; border-radius: 8px;" />
             ` : ""}
 
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
