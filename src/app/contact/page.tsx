@@ -11,6 +11,8 @@ function ContactForm() {
   const searchParams = useSearchParams();
   const typeParam = searchParams.get("type");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const defaultType =
     typeParam === "business"
@@ -18,6 +20,38 @@ function ContactForm() {
       : typeParam === "student"
         ? "student"
         : "";
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    const form = e.currentTarget;
+    const data = {
+      name: (form.elements.namedItem("name") as HTMLInputElement).value,
+      email: (form.elements.namedItem("email") as HTMLInputElement).value,
+      type: (form.elements.namedItem("type") as HTMLSelectElement).value,
+      message: (form.elements.namedItem("message") as HTMLTextAreaElement).value,
+    };
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to send");
+      }
+
+      setSubmitted(true);
+    } catch {
+      setError("Something went wrong. Please try again or email us directly.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="max-w-lg mx-auto">
@@ -37,10 +71,7 @@ function ContactForm() {
         </div>
       ) : (
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSubmitted(true);
-          }}
+          onSubmit={handleSubmit}
           className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 space-y-5"
         >
           <div>
@@ -99,11 +130,16 @@ function ContactForm() {
             />
           </div>
 
+          {error && (
+            <p className="text-red-500 text-sm text-center">{error}</p>
+          )}
+
           <button
             type="submit"
-            className="w-full py-3.5 bg-primary text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer"
+            disabled={submitting}
+            className="w-full py-3.5 bg-primary text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Send Message
+            {submitting ? "Sending..." : "Send Message"}
           </button>
 
           <p className="text-center text-muted text-sm">

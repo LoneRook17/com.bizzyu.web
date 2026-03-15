@@ -18,11 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://bizzyu.com"),
   title: {
-    default: "Bizzy - College Deals, Events & Experiences",
+    default: "Bizzy — Student Deals & Discounts at Your College Campus",
     template: "%s | Bizzy",
   },
   description:
-    "Discover exclusive deals, events, and experiences near your campus. Bizzy connects college students with the best local spots and helps businesses reach the college crowd.",
+    "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
   keywords: [
     "college deals",
     "student discounts",
@@ -41,23 +41,23 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "Bizzy",
-    title: "Bizzy - Live College For Less",
+    title: "Bizzy — Student Deals & Discounts at Your College Campus",
     description:
-      "Exclusive deals, events, and experiences near your campus. One app for everything worth doing in college.",
+      "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
     images: [
       {
         url: "/images/og-default.png",
         width: 1200,
         height: 630,
-        alt: "Bizzy - College Deals, Events & Experiences",
+        alt: "Bizzy — Student Deals & Discounts at Your College Campus",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bizzy - Live College For Less",
+    title: "Bizzy — Student Deals & Discounts at Your College Campus",
     description:
-      "Exclusive deals, events, and experiences near your campus. One app for everything worth doing in college.",
+      "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
     images: ["/images/og-default.png"],
   },
   robots: {
@@ -79,26 +79,33 @@ const organizationJsonLd = {
   name: "Bizzy",
   url: "https://bizzyu.com",
   logo: "https://bizzyu.com/images/bizzy-logo.png",
+  description:
+    "The #1 student deals app for college campuses. Exclusive local discounts at restaurants, bars, and shops.",
   sameAs: [
+    "https://www.instagram.com/bizzy.fgcu/",
     "https://instagram.com/Bizzy.University",
     "https://tiktok.com/@BizzyUniversity",
   ],
-  description:
-    "Bizzy connects college students to the best local deals, events, and spots around campus while helping nearby businesses reach the college crowd.",
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer support",
+    email: "Admin@bizzy.university",
+  },
 };
 
 const appJsonLd = {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "Bizzy: College Deals & Events",
+  "@type": "MobileApplication",
+  name: "Bizzy",
   operatingSystem: "iOS",
   applicationCategory: "LifestyleApplication",
+  description:
+    "Student deals app for college campuses. Exclusive discounts at local restaurants, bars, and shops.",
   offers: {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
   },
-  url: "https://apps.apple.com/us/app/bizzy-college-deals-events/id6683306360",
 };
 
 export default function RootLayout({

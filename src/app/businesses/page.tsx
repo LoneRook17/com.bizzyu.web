@@ -10,13 +10,16 @@ import HowItWorks from "@/components/businesses/HowItWorks";
 import { BUSINESS_FAQ, CONTACT_EMAIL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "For Businesses",
+  title: "Partner With Bizzy — Reach College Students Near You",
   description:
-    "Get college students through your door for free. List exclusive deals and sell event tickets on Bizzy. No fees, no commissions, no contracts.",
+    "Join 100+ local businesses on Bizzy. Reach thousands of college students with exclusive deals. No upfront cost to get started.",
+  alternates: {
+    canonical: "https://bizzyu.com/businesses",
+  },
   openGraph: {
-    title: "For Businesses | Bizzy",
+    title: "Partner With Bizzy — Reach College Students Near You",
     description:
-      "Get college students through your door for free. List deals and sell event tickets on Bizzy.",
+      "Join 100+ local businesses on Bizzy. Reach thousands of college students with exclusive deals. No upfront cost to get started.",
   },
 };
 

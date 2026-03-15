@@ -7,6 +7,44 @@ import { CONTACT_EMAIL } from "@/lib/constants";
 
 export default function EventsContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    const form = e.currentTarget;
+    const data = {
+      venueName: (form.elements.namedItem("venue-name") as HTMLInputElement).value,
+      contactName: (form.elements.namedItem("contact-name") as HTMLInputElement).value,
+      email: (form.elements.namedItem("email") as HTMLInputElement).value,
+      phone: (form.elements.namedItem("phone") as HTMLInputElement).value,
+      venueType: (form.elements.namedItem("venue-type") as HTMLSelectElement).value,
+      eventTypes: (form.elements.namedItem("event-types") as HTMLInputElement).value,
+      frequency: (form.elements.namedItem("frequency") as HTMLSelectElement).value,
+      details: (form.elements.namedItem("details") as HTMLTextAreaElement).value,
+    };
+
+    try {
+      const res = await fetch("/api/events-contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to send");
+      }
+
+      setSubmitted(true);
+    } catch {
+      setError("Something went wrong. Please try again or email us directly.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <>
@@ -47,10 +85,7 @@ export default function EventsContactPage() {
                 </div>
               ) : (
                 <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setSubmitted(true);
-                  }}
+                  onSubmit={handleSubmit}
                   className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 space-y-5"
                 >
                   <div>
@@ -169,11 +204,16 @@ export default function EventsContactPage() {
                     />
                   </div>
 
+                  {error && (
+                    <p className="text-red-500 text-sm text-center">{error}</p>
+                  )}
+
                   <button
                     type="submit"
-                    className="w-full py-3.5 bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer"
+                    disabled={submitting}
+                    className="w-full py-3.5 bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Contact Events Team
+                    {submitting ? "Sending..." : "Contact Events Team"}
                   </button>
 
                   <p className="text-center text-muted text-sm">

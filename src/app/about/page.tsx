@@ -5,13 +5,16 @@ import Button from "@/components/ui/Button";
 import { APP_STORE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "About",
+  title: "About Bizzy — The Student Deals App for Your Campus",
   description:
-    "Learn about Bizzy's mission to connect college students with the best local deals, events, and experiences while helping businesses grow.",
+    "Bizzy connects college students with exclusive local deals at restaurants, bars, and shops near campus. Learn our story and mission.",
+  alternates: {
+    canonical: "https://bizzyu.com/about",
+  },
   openGraph: {
-    title: "About Bizzy",
+    title: "About Bizzy — The Student Deals App for Your Campus",
     description:
-      "Building the bridge between campus and community. Deals, events, and experiences for college students.",
+      "Bizzy connects college students with exclusive local deals at restaurants, bars, and shops near campus. Learn our story and mission.",
   },
 };
 

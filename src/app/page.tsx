@@ -7,6 +7,15 @@ import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
 import { APP_STORE_URL, STUDENT_FAQ } from "@/lib/constants";
 
+export const metadata: Metadata = {
+  title: "Bizzy — Student Deals & Discounts at Your College Campus",
+  description:
+    "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
+  alternates: {
+    canonical: "https://bizzyu.com/",
+  },
+};
+
 export default function Home() {
   return (
     <>
