@@ -24,7 +24,7 @@ export default function Button({
     "inline-flex items-center justify-center font-semibold rounded-full transition-all duration-200 cursor-pointer";
 
   const variants = {
-    primary: "bg-primary text-white hover:brightness-110 shadow-lg shadow-primary/25",
+    primary: "bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white hover:brightness-110 shadow-lg shadow-primary/25",
     outline: "border-2 border-primary text-primary hover:bg-primary hover:text-white",
     white: "bg-white text-ink hover:bg-gray-100 shadow-lg",
   };

@@ -133,7 +133,7 @@ export default function ContactPage() {
               </h1>
               <p className="text-lg text-muted">
                 Whether you&apos;re a student with feedback, a business looking to
-                join, or just curious — we&apos;d love to hear from you.
+                join, or just curious - we&apos;d love to hear from you.
               </p>
             </div>
           </AnimatedSection>
@@ -142,6 +142,26 @@ export default function ContactPage() {
             <Suspense fallback={<div className="max-w-lg mx-auto h-96" />}>
               <ContactForm />
             </Suspense>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
+
+      {/* CTA */}
+      <section className="bg-gradient-to-br from-primary to-emerald-500">
+        <SectionContainer className="text-center py-16 md:py-20">
+          <AnimatedSection>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Looking to list your business?
+            </h2>
+            <p className="text-white/80 text-lg mb-8 max-w-lg mx-auto">
+              Get your deals in front of thousands of college students - completely free.
+            </p>
+            <a
+              href="/signup"
+              className="inline-flex items-center px-8 py-4 bg-white text-primary text-lg font-semibold rounded-full hover:bg-gray-50 transition-all shadow-lg"
+            >
+              Get Started Free
+            </a>
           </AnimatedSection>
         </SectionContainer>
       </section>

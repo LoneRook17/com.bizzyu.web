@@ -50,7 +50,7 @@ export default function AboutPage() {
             <div className="space-y-4 text-muted leading-relaxed">
               <p>
                 College students spend money every day on food, drinks,
-                entertainment, and experiences — but most of them don&apos;t know
+                entertainment, and experiences - but most of them don&apos;t know
                 where the best local deals are. There&apos;s no central place to see
                 what&apos;s actually worth it nearby.
               </p>
@@ -67,11 +67,11 @@ export default function AboutPage() {
           </AnimatedSection>
 
           <AnimatedSection delay={0.2}>
-            <div className="bg-primary-light rounded-3xl p-10">
-              <h3 className="text-2xl font-bold text-ink mb-4">Our Mission</h3>
-              <p className="text-ink/80 text-lg leading-relaxed">
+            <div className="bg-gradient-to-br from-primary to-emerald-500 rounded-3xl p-10 text-white">
+              <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
+              <p className="text-white/90 text-lg leading-relaxed">
                 Make college life more affordable, more social, and more
-                connected — while helping the local businesses that shape campus
+                connected - while helping the local businesses that shape campus
                 communities grow alongside the students they serve.
               </p>
             </div>
@@ -80,7 +80,7 @@ export default function AboutPage() {
       </SectionContainer>
 
       {/* What Makes Us Different */}
-      <section className="bg-secondary/50">
+      <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
             <div className="text-center mb-14">
@@ -102,7 +102,7 @@ export default function AboutPage() {
               },
               {
                 title: "More Than Discounts",
-                desc: "We're a lifestyle platform. Deals, events, rankings, and discovery — making college feel more alive, not just cheaper.",
+                desc: "We're a lifestyle platform. Deals, events, rankings, and discovery - making college feel more alive, not just cheaper.",
               },
             ].map((item, i) => (
               <AnimatedSection key={item.title} delay={i * 0.1}>
@@ -134,7 +134,7 @@ export default function AboutPage() {
               <p>
                 Our vision goes beyond deals. We&apos;re building the platform that
                 strengthens the relationship between every college campus and
-                the local businesses around it — making communities more active,
+                the local businesses around it - making communities more active,
                 helping good businesses grow, and making student life better
                 everywhere.
               </p>
@@ -144,7 +144,7 @@ export default function AboutPage() {
       </SectionContainer>
 
       {/* CTA */}
-      <section className="bg-primary">
+      <section className="bg-gradient-to-br from-primary to-emerald-500">
         <SectionContainer className="text-center py-16 md:py-20">
           <AnimatedSection>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
@@ -157,7 +157,7 @@ export default function AboutPage() {
               <Button href={APP_STORE_URL} variant="white" size="lg">
                 Download the App
               </Button>
-              <Button href="/contact" variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary">
+              <Button href="/signup" variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">
                 List Your Business
               </Button>
             </div>

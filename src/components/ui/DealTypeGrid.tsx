@@ -7,6 +7,11 @@ const DEAL_TYPES = [
     desc: "Buy one, get one free on meals, drinks, and more.",
   },
   {
+    icon: "🎉",
+    title: "Free Items",
+    desc: "Free appetizers, desserts, or drinks with purchase.",
+  },
+  {
     icon: "🍔",
     title: "Meal Deals",
     desc: "Complete meals at unbeatable student prices.",
@@ -16,26 +21,11 @@ const DEAL_TYPES = [
     title: "Flat $ Off",
     desc: "$5, $10, $15 off your favorite local spots.",
   },
-  {
-    icon: "🎉",
-    title: "Free Items",
-    desc: "Free appetizers, desserts, or drinks with purchase.",
-  },
-  {
-    icon: "🏷️",
-    title: "% Off Discounts",
-    desc: "20-30% off food, entertainment, and activities.",
-  },
-  {
-    icon: "⭐",
-    title: "Monthly Exclusives",
-    desc: "Limited-time offers you won't find anywhere else.",
-  },
 ];
 
 export default function DealTypeGrid() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
       {DEAL_TYPES.map((deal, i) => (
         <AnimatedSection key={deal.title} delay={i * 0.08}>
           <div className="bg-white border border-gray-100 rounded-2xl p-6 text-center hover:shadow-lg hover:border-primary/30 transition-all duration-300 group">

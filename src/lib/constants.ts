@@ -21,34 +21,34 @@ export const CAMPUSES = [
 
 export const STUDENT_FAQ = [
   {
-    question: "Is Bizzy really free?",
+    question: "What is Bizzy?",
     answer:
-      "Yes! Bizzy is 100% free to download and use. There are no hidden fees, no subscriptions required to access deals, and no catch.",
+      "Bizzy is a free mobile app that connects college students with exclusive deals and events at local businesses near campus.",
   },
   {
-    question: "What schools is Bizzy available at?",
+    question: "Why should I use Bizzy?",
     answer:
-      "Bizzy is currently live at FGCU, USF, UGA, and ASU, with more campuses launching soon. Sign up to get notified when we come to your school.",
+      "Bizzy helps you save money and explore your college town with exclusive student-only deals at local restaurants, bars, and hangout spots - plus find events happening near you.",
   },
   {
     question: "How do I claim a deal?",
     answer:
-      "Just open the app, find a deal you like, tap to claim it, and show it to the staff at checkout. They'll tap a button to verify it — that's it!",
+      "Go in store, show the full deal to a staff member, and they'll tap the verify button to confirm it's a live deal. That's it - you're all set!",
   },
   {
     question: "What kinds of deals are available?",
     answer:
-      "You'll find BOGO deals, meal deals, flat dollar off, free items with purchase, percentage discounts, and monthly exclusives on food, drinks, entertainment, and more.",
+      "You'll find BOGO deals, meal deals, flat dollar off, free items with purchase, percentage discounts, and monthly exclusives on food, drinks, entertainment, and more. Every deal is exclusive to Bizzy - you can't find them anywhere else.",
   },
   {
-    question: "Are there events on Bizzy too?",
+    question: "What about events?",
     answer:
-      "Yes! Bizzy has a full Events tab where you can discover bar nights, campus activities, ticketed experiences, and weekly specials happening near you.",
+      "Bizzy has a full Events tab where you can discover bar nights, live music, themed events, campus activities, and more. You can RSVP or buy tickets to events directly in the app.",
   },
   {
-    question: "How is Bizzy different from coupon apps?",
+    question: "Can I buy event tickets on Bizzy?",
     answer:
-      "Bizzy deals are exclusive — you can't find them anywhere else. They're curated for your specific campus, not recycled promotions. Plus, Bizzy includes events, rankings, and a social element that coupon apps don't have.",
+      "Yes! Businesses can sell tickets directly through Bizzy. You can browse events, buy tickets or RSVP right in the app - no third-party platforms needed.",
   },
 ];
 
@@ -56,7 +56,12 @@ export const BUSINESS_FAQ = [
   {
     question: "Is it really free for businesses?",
     answer:
-      "Yes, 100% free. No fees, no commissions, no percentage of sales, no contracts. We make money through premium features, not by charging businesses to list.",
+      "Yes, 100% free. No fees, no commissions, no percentage of sales, no contracts. We don't take a cut from your sales or deal redemptions.",
+  },
+  {
+    question: "What's the catch?",
+    answer:
+      "The only requirement is that your deal must be exclusive to Bizzy - meaning the deal you list can't be offered to anyone but Bizzy users.",
   },
   {
     question: "What kinds of deals can I list?",
@@ -64,24 +69,29 @@ export const BUSINESS_FAQ = [
       "BOGO deals, meal deals, flat dollar off, free items with purchase, percentage discounts, and monthly exclusives. We help you choose what works best for your business.",
   },
   {
-    question: "Can I promote events too?",
+    question: "Can I promote events and sell tickets?",
     answer:
-      "Absolutely! You can list bar nights, live music, themed events, trivia nights, ticketed experiences, and any other events. Students see these in the dedicated Events tab.",
+      "Yes! You can list events in the app for students to discover, RSVP, or buy tickets. You can also use Tap to Pay to accept cover charges and payments at the door. You keep 100% of your proceeds - powered by Stripe.",
   },
   {
-    question: "How do students find my business?",
+    question: "Does Bizzy take a percentage of sales or redemptions?",
     answer:
-      "Your deals and events appear in the campus feed, search results, and category filters. Students at nearby campuses see your offers front and center.",
+      "No. Bizzy does not take a cut from your sales, deal redemptions, or ticket sales. It's completely free.",
   },
   {
-    question: "Do I need any special equipment or POS integration?",
+    question: "Is there any technical setup required?",
     answer:
-      "No technical setup required. When a student shows a deal, your staff simply taps a button on their phone to verify it. That's it.",
+      "No special equipment or POS integration needed. Students show the Bizzy deal at checkout, and a staff member taps the verify button. That's it.",
   },
   {
-    question: "How do I track performance?",
+    question: "Can I change or remove my deals after I list?",
     answer:
-      "You'll receive regular email updates on how your deals are performing. We're also building a business dashboard with real-time analytics.",
+      "Yes! Just contact us via email and we'll update or remove your deals right away.",
+  },
+  {
+    question: "How will I know if my deal is working?",
+    answer:
+      "We send you performance updates via email so you can see how your deals are doing. A full business dashboard with real-time analytics is coming soon.",
   },
   {
     question: "How do I get started?",

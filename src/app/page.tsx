@@ -3,7 +3,7 @@ import AnimatedSection from "@/components/ui/AnimatedSection";
 import FeatureCard from "@/components/ui/FeatureCard";
 import PhoneMockup from "@/components/ui/PhoneMockup";
 import DealTypeGrid from "@/components/ui/DealTypeGrid";
-import CampusGrid from "@/components/ui/CampusGrid";
+
 import AnimatedCounter from "@/components/ui/AnimatedCounter";
 import Marquee from "@/components/ui/Marquee";
 import Button from "@/components/ui/Button";
@@ -51,9 +51,6 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <AnimatedSection>
               <div className="max-w-xl">
-                <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
-                  Live at FGCU, USF, UGA, ASU + more
-                </div>
                 <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-4">
                   Live College
                   <br />
@@ -64,7 +61,7 @@ export default function Home() {
                 </p>
                 <p className="text-lg text-muted mb-8 leading-relaxed max-w-md">
                   Exclusive discounts on food, drinks, entertainment, and local
-                  events — all in one app. Download Bizzy and start saving today.
+                  events - all in one app. Download Bizzy and start saving today.
                 </p>
                 <a
                   href={APP_STORE_URL}
@@ -74,8 +71,11 @@ export default function Home() {
                 >
                   <svg width="160" height="54" viewBox="0 0 160 54" className="hover:opacity-80 transition-opacity">
                     <rect width="160" height="54" rx="10" fill="#000" />
-                    <text x="80" y="22" fill="#fff" fontSize="10" fontFamily="system-ui" textAnchor="middle">Download on the</text>
-                    <text x="80" y="38" fill="#fff" fontSize="16" fontWeight="600" fontFamily="system-ui" textAnchor="middle">App Store</text>
+                    <g transform="translate(18, 10) scale(0.065)">
+                      <path fill="#fff" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-62.1 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                    </g>
+                    <text x="92" y="22" fill="#fff" fontSize="10" fontFamily="system-ui" textAnchor="middle">Download on the</text>
+                    <text x="92" y="38" fill="#fff" fontSize="16" fontWeight="600" fontFamily="system-ui" textAnchor="middle">App Store</text>
                   </svg>
                 </a>
               </div>
@@ -97,10 +97,10 @@ export default function Home() {
         </div>
         <Marquee
           items={[
-            "FGCU — Fort Myers",
-            "USF — Tampa",
-            "UGA — Athens",
-            "ASU — Tempe",
+            "FGCU - Fort Myers",
+            "USF - Tampa",
+            "UGA - Athens",
+            "ASU - Tempe",
             "500+ Active Deals",
             "10,000+ Students",
             "$250K+ Saved",
@@ -155,7 +155,7 @@ export default function Home() {
                 Deals worth claiming
               </h2>
               <p className="text-muted text-lg max-w-2xl mx-auto">
-                From BOGO to monthly exclusives — real savings on the places you actually go.
+                From BOGO to free items - real savings on the places you actually go.
               </p>
             </div>
           </AnimatedSection>
@@ -174,7 +174,7 @@ export default function Home() {
               Never miss what&apos;s happening
             </h2>
             <p className="text-muted text-lg leading-relaxed mb-6">
-              Discover everything going on around your campus — bar nights, live music,
+              Discover everything going on around your campus - bar nights, live music,
               themed events, campus activities, and ticketed experiences. All in one place.
             </p>
             <div className="space-y-3">
@@ -201,7 +201,7 @@ export default function Home() {
       </SectionContainer>
 
       {/* How It Works */}
-      <section className="bg-secondary/50">
+      <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
             <div className="text-center mb-14">
@@ -266,34 +266,8 @@ export default function Home() {
         </AnimatedSection>
       </SectionContainer>
 
-      {/* Campus Presence */}
-      <section className="bg-gray-50">
-        <SectionContainer>
-          <AnimatedSection>
-            <div className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
-                Live on campus
-              </h2>
-              <p className="text-muted text-lg">
-                Bizzy is growing campus by campus. Are we at your school yet?
-              </p>
-            </div>
-          </AnimatedSection>
-          <CampusGrid />
-          <AnimatedSection>
-            <p className="text-center text-muted mt-8">
-              Don&apos;t see your school?{" "}
-              <a href="/contact" className="text-primary font-semibold hover:underline">
-                Let us know
-              </a>{" "}
-              — we&apos;re expanding fast.
-            </p>
-          </AnimatedSection>
-        </SectionContainer>
-      </section>
-
       {/* Dual CTA */}
-      <section className="bg-primary">
+      <section className="bg-gradient-to-br from-primary to-emerald-500">
         <SectionContainer className="text-center py-16 md:py-20">
           <AnimatedSection>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">

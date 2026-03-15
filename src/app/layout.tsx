@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://bizzyu.com"),
   title: {
-    default: "Bizzy — College Deals, Events & Experiences",
+    default: "Bizzy - College Deals, Events & Experiences",
     template: "%s | Bizzy",
   },
   description:
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "Bizzy",
-    title: "Bizzy — Live College For Less",
+    title: "Bizzy - Live College For Less",
     description:
       "Exclusive deals, events, and experiences near your campus. One app for everything worth doing in college.",
     images: [
@@ -49,13 +49,13 @@ export const metadata: Metadata = {
         url: "/images/og-default.png",
         width: 1200,
         height: 630,
-        alt: "Bizzy — College Deals, Events & Experiences",
+        alt: "Bizzy - College Deals, Events & Experiences",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bizzy — Live College For Less",
+    title: "Bizzy - Live College For Less",
     description:
       "Exclusive deals, events, and experiences near your campus. One app for everything worth doing in college.",
     images: ["/images/og-default.png"],
