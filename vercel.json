@@ -19,6 +19,11 @@
       "source": "/contact-us",
       "destination": "/contact",
       "permanent": true
+    },
+    {
+      "source": "/terms-of-service",
+      "destination": "/terms",
+      "permanent": true
     }
   ],
   "headers": [
