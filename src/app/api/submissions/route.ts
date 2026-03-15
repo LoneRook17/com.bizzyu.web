@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createSubmission, getAllSubmissions } from "@/lib/submissions";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const getResend = () => new Resend(process.env.RESEND_API_KEY!);
 
 export async function POST(request: Request) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     // Send notification email
     try {
-      await resend.emails.send({
+      await getResend().emails.send({
         from: "Bizzy <Support@BizzyU.com>",
         to: ["Partnerships@BizzyU.com"],
         subject: `New Deal Submission: ${deal.title} — ${business.businessName}`,
