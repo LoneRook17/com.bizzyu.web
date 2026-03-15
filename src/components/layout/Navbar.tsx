@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { NAV_LINKS, APP_STORE_URL } from "@/lib/constants";
 
 const MOBILE_LINKS = [
-  { label: "Students", href: "/students" },
+  { label: "Students", href: "/" },
   { label: "Businesses", href: "/businesses" },
   { label: "Contact", href: "/contact" },
 ];
@@ -15,10 +15,10 @@ export default function Navbar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center">
         {/* Logo */}
-        <Link href="/" className="flex-shrink-0">
+        <Link href="/" className="flex-shrink-0 mr-8">
           <Image
             src="/images/bizzy-logo.png"
             alt="Bizzy"
@@ -29,15 +29,15 @@ export default function Navbar() {
           />
         </Link>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-8">
+        {/* Desktop nav - left aligned after logo like Stripe */}
+        <div className="hidden md:flex items-center gap-7 flex-1">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`text-base font-semibold transition-colors ${
+              className={`text-[15px] font-medium transition-colors ${
                 pathname === link.href
-                  ? "text-primary"
+                  ? "text-ink"
                   : "text-muted hover:text-ink"
               }`}
             >
@@ -47,14 +47,14 @@ export default function Navbar() {
         </div>
 
         {/* Mobile nav - inline links */}
-        <div className="flex md:hidden items-center gap-4">
+        <div className="flex md:hidden items-center gap-4 flex-1 justify-end mr-0">
           {MOBILE_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`text-xs font-semibold transition-colors ${
+              className={`text-xs font-medium transition-colors ${
                 pathname === link.href
-                  ? "text-primary"
+                  ? "text-ink"
                   : "text-muted hover:text-ink"
               }`}
             >
@@ -68,7 +68,7 @@ export default function Navbar() {
           href={APP_STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:inline-flex items-center px-5 py-2.5 bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25"
+          className="hidden md:inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
         >
           Download App
         </a>

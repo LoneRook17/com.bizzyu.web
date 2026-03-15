@@ -29,8 +29,7 @@ export default function StepSuccess({ onReset }: StepSuccessProps) {
       </h2>
 
       <p className="text-muted text-lg leading-relaxed max-w-md mx-auto mb-8">
-        The Bizzy team will review your deal and follow up within 1-2 business
-        days. Once approved, your deal will go live for students to discover.
+        The Bizzy team will review your deal and follow up soon. Once approved, your deal will go live for students to discover.
       </p>
 
       <div className="bg-primary-light rounded-2xl p-6 max-w-sm mx-auto mb-8">

@@ -80,10 +80,10 @@ export default function DealCardPreview({ data }: DealCardPreviewProps) {
               <span className="text-xs mt-2">Deal Image</span>
             </div>
           )}
-          {/* Save badge */}
-          {deal.category && (
-            <div className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-2.5 py-1 rounded-full">
-              {deal.category}
+          {/* Savings badge */}
+          {deal.estimatedSavings && (
+            <div className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
+              Save {deal.estimatedSavings}
             </div>
           )}
         </div>

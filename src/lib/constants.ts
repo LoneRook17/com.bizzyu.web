@@ -6,7 +6,7 @@ export const TIKTOK_URL = "https://tiktok.com/@BizzyUniversity";
 export const CONTACT_EMAIL = "Contact@BizzyU.com";
 
 export const NAV_LINKS = [
-  { label: "For Students", href: "/students" },
+  { label: "For Students", href: "/" },
   { label: "For Businesses", href: "/businesses" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },

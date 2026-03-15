@@ -97,7 +97,7 @@ export default function StepDeal({
             value={data.estimatedSavings}
             onChange={(e) => update("estimatedSavings", e.target.value)}
             className={inputClass}
-            placeholder="e.g. $8, 50%"
+            placeholder="e.g. $8"
           />
         </div>
         <div>
