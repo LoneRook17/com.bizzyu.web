@@ -31,6 +31,7 @@ export default function StepReview({
   const [exclusive, setExclusive] = useState(false);
   const [honor, setHonor] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const selectedOption = REDEMPTION_OPTIONS.find(
     (o) => o.value === data.deal.redemptionFrequency
@@ -43,9 +44,11 @@ export default function StepReview({
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setError("");
     try {
       await onSubmit();
-    } finally {
+    } catch {
+      setError("Something went wrong. Please try again or email us at Partnerships@BizzyU.com.");
       setSubmitting(false);
     }
   };
@@ -123,6 +126,12 @@ export default function StepReview({
           </span>
         </label>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex flex-col gap-3">
