@@ -84,7 +84,7 @@ const organizationJsonLd = {
   sameAs: [
     "https://www.instagram.com/bizzy.fgcu/",
     "https://instagram.com/Bizzy.University",
-    "https://tiktok.com/@BizzyUniversity",
+    "https://tiktok.com/@bizzapp",
   ],
   contactPoint: {
     "@type": "ContactPoint",

@@ -43,44 +43,166 @@ export default function AboutPage() {
         </SectionContainer>
       </section>
 
-      {/* Mission */}
+      {/* Our Story */}
       <SectionContainer>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-          <AnimatedSection>
-            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-6">
-              The problem we saw
-            </h2>
-            <div className="space-y-4 text-muted leading-relaxed">
-              <p>
-                College students spend money every day on food, drinks,
-                entertainment, and experiences - but most of them don&apos;t know
-                where the best local deals are. There&apos;s no central place to see
-                what&apos;s actually worth it nearby.
+        <AnimatedSection>
+          <div className="max-w-3xl mx-auto">
+            <div className="space-y-6 text-muted text-lg leading-relaxed">
+              <p className="text-xl text-ink font-medium">
+                The internet connects us to the whole world. We think it should
+                connect you to what is right outside your door.
               </p>
+              <p>That belief is what led to Bizzy.</p>
               <p>
-                At the same time, local businesses near campuses struggle to
-                reach the student audience. They know students are their core
-                customers, but there&apos;s no easy way to get in front of them with
-                relevant offers.
+                College students are more connected online than any generation
+                before them, yet many are deeply disconnected from the place they
+                actually live. They can access almost anything from a screen, but
+                still miss the restaurants, events, and experiences happening
+                right around them. Local businesses struggle to reach nearby
+                students. Students struggle to discover what is worth showing up
+                for. And the campus community loses something because of it.
               </p>
-              <p>
-                We built Bizzy to fix both sides of that equation.
-              </p>
+              <p>We saw that gap clearly and kept asking a simple question:</p>
+              <blockquote className="border-l-4 border-primary pl-6 py-2 text-ink font-medium italic text-xl">
+                Why can the internet connect us globally, but fail to connect us
+                locally?
+              </blockquote>
+              <p>That question became Bizzy.</p>
             </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.2}>
-            <div className="bg-gradient-to-br from-primary to-emerald-500 rounded-3xl p-10 text-white">
-              <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
-              <p className="text-white/90 text-lg leading-relaxed">
-                Make college life more affordable, more social, and more
-                connected - while helping the local businesses that shape campus
-                communities grow alongside the students they serve.
-              </p>
-            </div>
-          </AnimatedSection>
-        </div>
+          </div>
+        </AnimatedSection>
       </SectionContainer>
+
+      {/* Founder Story */}
+      <section className="bg-gray-50">
+        <SectionContainer>
+          <AnimatedSection>
+            <div className="max-w-3xl mx-auto">
+              <div className="space-y-6 text-muted text-lg leading-relaxed">
+                <p>
+                  My name is Cooper Aiello, and when I came to Florida Gulf Coast
+                  University, I found myself in the same position a lot of
+                  students do: in a new place, surrounded by opportunity, but not
+                  truly connected to it. I was trying to figure out where to go,
+                  what was worth doing, and how to actually feel part of the
+                  community around me. What became obvious pretty quickly was
+                  that the problem was not a lack of great places or experiences.
+                  The problem was that students had no real way to discover them.
+                </p>
+                <p className="text-ink font-medium">
+                  So I decided to build one.
+                </p>
+                <p>
+                  When I first started, I hired a freelance developer because I
+                  thought it would be the fastest way to get the first version of
+                  Bizzy built. It ended up being a disaster. I got scammed for
+                  $4,000, the last $4,000 I had saved from working college jobs
+                  serving at restaurants.
+                </p>
+                <p>
+                  That moment could have ended Bizzy before it ever began.
+                </p>
+                <p>
+                  Instead, it changed the way I approached building. I started
+                  learning the basics of app development myself. I stopped
+                  waiting for someone else to bring the vision to life and made
+                  the decision to become part of building it.
+                </p>
+                <p>
+                  A few months later, we started to see real traction, and I
+                  reached out to my close friend and mentor, Evangelos Milionis.
+                  He believed in the vision early and invested $20,000 into
+                  Bizzy, helping give the company real momentum in its early
+                  stages. He also brought valuable experience in the college bar
+                  and events market. Together, we saw the opportunity clearly: if
+                  Bizzy could work at one campus, it could work across the
+                  country.
+                </p>
+              </div>
+            </div>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
+
+      {/* Growth & Product */}
+      <SectionContainer>
+        <AnimatedSection>
+          <div className="max-w-3xl mx-auto">
+            <div className="space-y-6 text-muted text-lg leading-relaxed">
+              <p>
+                Bizzy started with exclusive local deals built specifically for
+                college students. Not generic coupons. Not public specials
+                recycled from social media. Real offers from local restaurants,
+                bars, and businesses that students could only access through
+                Bizzy.
+              </p>
+              <p>
+                From there, we expanded into events. Because saving money
+                matters, but college life is also about knowing what is happening
+                tonight. Bizzy brings local deals, events, bar nights, and
+                campus experiences into one feed built for each school.
+              </p>
+
+              <div className="bg-primary-light rounded-2xl p-8 text-center my-8">
+                <p className="text-4xl font-bold text-primary mb-2">55%</p>
+                <p className="text-ink font-medium">
+                  monthly usage across the FGCU student body within our first
+                  year
+                </p>
+              </div>
+
+              <p className="text-ink font-medium text-xl">
+                That is what makes Bizzy different.
+              </p>
+              <p>
+                We are not building a generic coupon app, and we are not building
+                just another event platform. Bizzy is built specifically for
+                college campuses, connecting students to the businesses, events,
+                and experiences that make each school feel alive.
+              </p>
+              <p>
+                Our vision is to become the pulse of every college campus in the
+                country by helping students show up more, discover more, and
+                connect more deeply with the places around them.
+              </p>
+            </div>
+
+            <div className="mt-12 text-center">
+              <p className="text-xl text-ink font-semibold mb-1">
+                We are not anti-internet.
+              </p>
+              <p className="text-xl text-primary font-bold mb-1">
+                We are pro-real life.
+              </p>
+              <p className="text-muted text-lg">
+                And we are building Bizzy to prove those two things belong
+                together.
+              </p>
+              <p className="mt-8 text-ink font-medium">
+                — Cooper Aiello, Founder
+              </p>
+            </div>
+          </div>
+        </AnimatedSection>
+      </SectionContainer>
+
+      {/* Mission Card */}
+      <section className="bg-gray-50">
+        <SectionContainer>
+          <AnimatedSection>
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-gradient-to-br from-primary to-emerald-500 rounded-3xl p-10 text-white text-center">
+                <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
+                <p className="text-white/90 text-lg leading-relaxed">
+                  Make college life more affordable, more social, and more
+                  connected — while helping the local businesses that shape
+                  campus communities grow alongside the students they serve.
+                </p>
+              </div>
+            </div>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
 
       {/* What Makes Us Different */}
       <section className="bg-gray-50">

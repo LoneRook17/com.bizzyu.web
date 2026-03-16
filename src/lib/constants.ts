@@ -2,7 +2,7 @@ export const APP_STORE_URL =
   "https://apps.apple.com/us/app/bizzy-college-deals-events/id6683306360";
 
 export const INSTAGRAM_URL = "https://instagram.com/Bizzy.University";
-export const TIKTOK_URL = "https://tiktok.com/@BizzyUniversity";
+export const TIKTOK_URL = "https://tiktok.com/@bizzapp";
 export const CONTACT_EMAIL = "Contact@BizzyU.com";
 
 export const NAV_LINKS = [
