@@ -1,0 +1,11 @@
+{
+  "name": "Bizzy",
+  "short_name": "Bizzy",
+  "icons": [
+    { "src": "/android-chrome-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/android-chrome-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#00e676",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}
