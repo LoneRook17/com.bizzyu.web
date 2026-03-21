@@ -84,17 +84,20 @@ export async function POST(request: Request) {
       console.error("Resend error:", emailError);
     }
 
-    // Forward submission to the live admin panel backend
+    // Forward submission to the live admin panel backend (without base64 images to keep payload small)
     const adminApiUrl = process.env.ADMIN_API_URL;
-    console.log("ADMIN_API_URL:", adminApiUrl ? "set" : "NOT SET");
     if (adminApiUrl) {
       try {
+        const lightMedia = {
+          logoUrl: media?.logoUrl && !media.logoUrl.startsWith("data:") ? media.logoUrl : "",
+          dealImageUrl: media?.dealImageUrl && !media.dealImageUrl.startsWith("data:") ? media.dealImageUrl : "",
+        };
         const forwardRes = await fetch(`${adminApiUrl}/api/deal-submissions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business, deal, media }),
+          body: JSON.stringify({ business, deal, media: lightMedia }),
         });
-        console.log("Forward response:", forwardRes.status, await forwardRes.text());
+        console.log("Forward status:", forwardRes.status);
       } catch (forwardError) {
         console.error("Failed to forward to admin API:", forwardError);
       }
