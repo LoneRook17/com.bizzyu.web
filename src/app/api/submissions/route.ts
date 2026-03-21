@@ -86,13 +86,15 @@ export async function POST(request: Request) {
 
     // Forward submission to the live admin panel backend
     const adminApiUrl = process.env.ADMIN_API_URL;
+    console.log("ADMIN_API_URL:", adminApiUrl ? "set" : "NOT SET");
     if (adminApiUrl) {
       try {
-        await fetch(`${adminApiUrl}/api/deal-submissions`, {
+        const forwardRes = await fetch(`${adminApiUrl}/api/deal-submissions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ business, deal, media }),
         });
+        console.log("Forward response:", forwardRes.status, await forwardRes.text());
       } catch (forwardError) {
         console.error("Failed to forward to admin API:", forwardError);
       }
