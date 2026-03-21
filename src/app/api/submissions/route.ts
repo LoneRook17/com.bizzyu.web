@@ -1,7 +1,35 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
+
+const s3 = new S3Client({
+  region: process.env.AWS_REGION || "us-east-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+
+async function uploadBase64ToS3(base64: string, folder: string): Promise<string> {
+  const match = base64.match(/^data:image\/(\w+);base64,(.+)$/);
+  if (!match) return "";
+  const ext = match[1] === "jpeg" ? "jpg" : match[1];
+  const buffer = Buffer.from(match[2], "base64");
+  const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const bucket = process.env.AWS_BUCKET || "bizzy-dev";
+
+  await s3.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: buffer,
+    ContentType: `image/${match[1]}`,
+    ACL: "public-read",
+  }));
+
+  return `https://${bucket}.s3.amazonaws.com/${key}`;
+}
 
 export async function POST(request: Request) {
   try {
@@ -84,18 +112,29 @@ export async function POST(request: Request) {
       console.error("Resend error:", emailError);
     }
 
-    // Forward submission to the live admin panel backend (without base64 images to keep payload small)
+    // Upload images to S3 and forward submission to admin backend
     const adminApiUrl = process.env.ADMIN_API_URL;
     if (adminApiUrl) {
       try {
-        const lightMedia = {
-          logoUrl: media?.logoUrl && !media.logoUrl.startsWith("data:") ? media.logoUrl : "",
-          dealImageUrl: media?.dealImageUrl && !media.dealImageUrl.startsWith("data:") ? media.dealImageUrl : "",
-        };
+        let dealImageUrl = "";
+        let logoUrl = "";
+
+        if (media?.dealImageUrl?.startsWith("data:")) {
+          dealImageUrl = await uploadBase64ToS3(media.dealImageUrl, "deal-submissions/images");
+        } else if (media?.dealImageUrl) {
+          dealImageUrl = media.dealImageUrl;
+        }
+
+        if (media?.logoUrl?.startsWith("data:")) {
+          logoUrl = await uploadBase64ToS3(media.logoUrl, "deal-submissions/logos");
+        } else if (media?.logoUrl) {
+          logoUrl = media.logoUrl;
+        }
+
         const forwardRes = await fetch(`${adminApiUrl}/api/deal-submissions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business, deal, media: lightMedia }),
+          body: JSON.stringify({ business, deal, media: { dealImageUrl, logoUrl } }),
         });
         console.log("Forward status:", forwardRes.status);
       } catch (forwardError) {
