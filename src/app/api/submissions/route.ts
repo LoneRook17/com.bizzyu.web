@@ -112,25 +112,35 @@ export async function POST(request: Request) {
       console.error("Resend error:", emailError);
     }
 
-    // Upload images to S3 and forward submission to admin backend
+    // Upload images to S3, then forward submission to admin backend
     const adminApiUrl = process.env.ADMIN_API_URL;
     if (adminApiUrl) {
-      try {
-        let dealImageUrl = "";
-        let logoUrl = "";
+      let dealImageUrl = "";
+      let logoUrl = "";
 
+      // Try S3 upload, but don't let it block the forward
+      try {
         if (media?.dealImageUrl?.startsWith("data:")) {
           dealImageUrl = await uploadBase64ToS3(media.dealImageUrl, "deal-submissions/images");
         } else if (media?.dealImageUrl) {
           dealImageUrl = media.dealImageUrl;
         }
+      } catch (s3Error) {
+        console.error("S3 image upload failed:", s3Error);
+      }
 
+      try {
         if (media?.logoUrl?.startsWith("data:")) {
           logoUrl = await uploadBase64ToS3(media.logoUrl, "deal-submissions/logos");
         } else if (media?.logoUrl) {
           logoUrl = media.logoUrl;
         }
+      } catch (s3Error) {
+        console.error("S3 logo upload failed:", s3Error);
+      }
 
+      // Always forward to admin, even without images
+      try {
         const forwardRes = await fetch(`${adminApiUrl}/api/deal-submissions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
