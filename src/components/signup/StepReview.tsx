@@ -86,7 +86,6 @@ export default function StepReview({
         <InfoRow label="Est. Savings" value={data.deal.estimatedSavings} />
         <InfoRow label="Redemption" value={freqLabel} />
         <InfoRow label="Start Date" value={data.deal.startDate} />
-        <InfoRow label="End Date" value={data.deal.endDate} />
       </div>
 
       {/* Exclusivity reminder */}

@@ -164,29 +164,16 @@ export default function StepDeal({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium text-muted mb-1">
-            Start Date
-          </label>
-          <input
-            type="date"
-            value={data.startDate}
-            onChange={(e) => update("startDate", e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-muted mb-1">
-            End Date
-          </label>
-          <input
-            type="date"
-            value={data.endDate}
-            onChange={(e) => update("endDate", e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-          />
-        </div>
+      <div>
+        <label className="block text-xs font-medium text-muted mb-1">
+          Start Date
+        </label>
+        <input
+          type="date"
+          value={data.startDate}
+          onChange={(e) => update("startDate", e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+        />
       </div>
 
       {/* Deal Image (optional) */}

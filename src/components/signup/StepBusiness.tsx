@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { BusinessInfo } from "@/lib/types";
+
+const UNIVERSITIES = ["FGCU", "USF", "OSU", "ASU", "UGA"];
 
 interface StepBusinessProps {
   data: BusinessInfo;
@@ -38,6 +41,9 @@ export default function StepBusiness({
   onNext,
   onBack,
 }: StepBusinessProps) {
+  const isOther = data.campus !== "" && !UNIVERSITIES.includes(data.campus);
+  const [showOtherInput, setShowOtherInput] = useState(isOther);
+
   const update = (field: keyof BusinessInfo, value: string) =>
     onChange({ ...data, [field]: value });
 
@@ -113,14 +119,38 @@ export default function StepBusiness({
       </Field>
 
       <Field label="Campus / School">
-        <input
-          type="text"
-          value={data.campus}
-          onChange={(e) => update("campus", e.target.value)}
+        <select
+          value={showOtherInput ? "other" : data.campus}
+          onChange={(e) => {
+            if (e.target.value === "other") {
+              setShowOtherInput(true);
+              update("campus", "");
+            } else {
+              setShowOtherInput(false);
+              update("campus", e.target.value);
+            }
+          }}
           className={inputClass}
-          placeholder="e.g. University of Georgia"
-        />
+        >
+          <option value="">Select a university...</option>
+          {UNIVERSITIES.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+          <option value="other">My university isn&apos;t listed</option>
+        </select>
       </Field>
+
+      {showOtherInput && (
+        <Field label="Your University">
+          <input
+            type="text"
+            value={data.campus}
+            onChange={(e) => update("campus", e.target.value)}
+            className={inputClass}
+            placeholder="Enter your university name"
+          />
+        </Field>
+      )}
 
       <div className="flex gap-3 mt-2">
         {onBack && (
