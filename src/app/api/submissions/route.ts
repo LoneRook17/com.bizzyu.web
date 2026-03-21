@@ -82,10 +82,20 @@ export async function POST(request: Request) {
 
     if (emailError) {
       console.error("Resend error:", emailError);
-      return NextResponse.json(
-        { error: "Failed to send notification email" },
-        { status: 500 }
-      );
+    }
+
+    // Forward submission to the live admin panel backend
+    const adminApiUrl = process.env.ADMIN_API_URL;
+    if (adminApiUrl) {
+      try {
+        await fetch(`${adminApiUrl}/api/deal-submissions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ business, deal, media }),
+        });
+      } catch (forwardError) {
+        console.error("Failed to forward to admin API:", forwardError);
+      }
     }
 
     return NextResponse.json({ id: submissionId, status: "submitted" }, { status: 201 });
