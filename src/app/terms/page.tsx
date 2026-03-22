@@ -91,7 +91,12 @@ export default function TermsPage() {
           A ticketing service where event organizers, venues, and promoters (&quot;Event Organizers&quot;) list events and sell tickets, passes, or reservations (&quot;Tickets&quot;) to Users through the Platform. Bizzy Ticketing LLC facilitates ticket distribution, admission verification (including QR-code-based entry), and event-related communications. Event Organizers are solely responsible for the events themselves, including event execution, venue safety, and the accuracy of event details.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.3 Additional Services</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.3 Leaderboard &amp; Engagement Features</h3>
+        <p className="text-muted leading-relaxed">
+          The Platform may include gamification features such as leaderboards, rankings, achievement badges, and activity-based rewards that track and display User engagement with deals and events. Leaderboard rankings are calculated based on your Platform activity (such as deal claims and event participation) and may be visible to other Users. By using the Platform, you consent to your username and ranking being displayed on public or semi-public leaderboards within the app.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.4 Additional Services</h3>
         <p className="text-muted leading-relaxed">
           From time to time, Bizzy may introduce additional features, tools, or services. Such additions will be governed by these Terms unless separate terms are presented at the time of access, in which case those supplemental terms will also apply and will control in the event of a conflict with these Terms.
         </p>
@@ -134,6 +139,10 @@ export default function TermsPage() {
           <li>Immediately notify Bizzy at <strong>{CONTACT_EMAIL}</strong> if you suspect unauthorized access to or use of your account</li>
           <li>Log out of your account at the end of each session when using a shared device</li>
         </ul>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">5.1 Account Verification &amp; Recovery</h3>
+        <p className="text-muted leading-relaxed">
+          Bizzy may use SMS-based one-time passcodes (OTP) to verify your identity during account registration, login, or account recovery. By providing your phone number, you consent to receiving these verification messages. Standard message and data rates may apply. OTP codes are time-sensitive and should not be shared with anyone. Bizzy will never ask you for your OTP code outside of the in-app verification flow.
+        </p>
         <p className="text-muted leading-relaxed mt-3">
           Bizzy is not liable for any loss or damage arising from your failure to comply with this section. You are responsible for all activities that occur under your account, whether or not you authorized such activities.
         </p>
@@ -161,7 +170,12 @@ export default function TermsPage() {
           To redeem a Deal, follow the instructions displayed on the Platform, which may include presenting a digital voucher, QR code, or confirmation screen to the Merchant at the point of sale. Each Deal may have specific terms, conditions, or restrictions imposed by the Merchant, which you must comply with at the time of redemption.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">6.5 Deal Disputes</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">6.5 Deal Claim Limits</h3>
+        <p className="text-muted leading-relaxed">
+          Deals may be subject to claim limits, including but not limited to a maximum number of redemptions per User per week, per Deal, or per Merchant. These limits are displayed on the Deal listing or within your account. Bizzy tracks your claim history and weekly claim counts to enforce these limits. Attempting to circumvent claim limits — including by creating multiple accounts, using automated tools, or other means — is a violation of these Terms and may result in account suspension or termination.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">6.6 Deal Disputes</h3>
         <p className="text-muted leading-relaxed">
           If a Merchant refuses to honor a listed Deal, modifies its terms at the point of sale, or otherwise fails to fulfill a Deal, you must resolve the issue directly with the Merchant. Bizzy will make commercially reasonable efforts to assist where possible, but assumes no liability for Merchant non-compliance.
         </p>
@@ -209,7 +223,12 @@ export default function TermsPage() {
           Event Organizers are solely responsible for the event itself, including but not limited to the accuracy of event descriptions, the safety and condition of the venue, compliance with local laws and regulations, provision of advertised entertainment or services, and the overall attendee experience. Bizzy does not inspect, endorse, or guarantee any event, venue, or Event Organizer.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.8 Liability for Events</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.8 Event Organizer Payouts</h3>
+        <p className="text-muted leading-relaxed">
+          Bizzy facilitates payouts to Event Organizers through third-party payment platforms that provide connected account functionality. Event Organizers must establish and maintain a connected account with Bizzy&#39;s designated payment processor in order to receive payouts from Ticket sales. Payout timing, fees, and terms are governed by the agreement between the Event Organizer, Bizzy, and the applicable payment processor. Bizzy is not liable for delays, holds, or issues arising from the payment processor&#39;s policies or the Event Organizer&#39;s account status.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.9 Liability for Events</h3>
         <p className="text-muted leading-relaxed">
           Bizzy is not liable for any injury, loss, damage, or claim arising from your attendance at any event, including but not limited to personal injury, property damage, theft, illness, or exposure to communicable diseases. By attending an event, you assume all risks associated with attendance.
         </p>
@@ -242,7 +261,7 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">9.2 Subscriptions</h3>
         <p className="text-muted leading-relaxed">
-          Certain Platform features may require a paid subscription. If you purchase a subscription, you agree to pay all fees associated with the subscription plan you select. Subscriptions may renew automatically at the end of each billing period unless you cancel prior to the renewal date. You may cancel your subscription through the Platform settings or by contacting us at {CONTACT_EMAIL}.
+          Certain Platform features may require a paid subscription. If you purchase a subscription, you agree to pay all fees associated with the subscription plan you select. Subscriptions are managed through third-party subscription management platforms and may renew automatically at the end of each billing period unless you cancel prior to the renewal date. You may cancel your subscription at any time through the Platform settings, through your device&#39;s app store subscription management (for subscriptions purchased via the App Store or Google Play), or by contacting us at {CONTACT_EMAIL}. Subscription entitlements, billing cycles, and renewal status are tracked through our third-party subscription management service, and cancellation must be completed in the system through which the subscription was originally purchased to be effective.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">9.3 Pricing</h3>
@@ -314,6 +333,8 @@ export default function TermsPage() {
           <li>Sharing, selling, or transferring your account or account credentials</li>
           <li>Redeeming Deals or Tickets through fraudulent means, including the use of stolen payment methods</li>
           <li>Attempting to redeem a Deal or Ticket more than the number of times permitted</li>
+          <li>Circumventing or attempting to circumvent deal claim limits, weekly redemption caps, or other usage restrictions</li>
+          <li>Manipulating leaderboard rankings, engagement metrics, or gamification features through automated means, fake activity, or coordinated abuse</li>
           <li>Manipulating, abusing, or exploiting referral programs, promotional offers, or loyalty incentives</li>
           <li>Harassing, threatening, or abusing Merchants, Event Organizers, other Users, or Bizzy staff</li>
           <li>Uploading or transmitting malicious code, viruses, or other harmful technology</li>
@@ -324,7 +345,7 @@ export default function TermsPage() {
           <li>Impersonating any person, entity, or affiliation, or misrepresenting your identity or student status</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
-          Violation of this section may result in immediate account suspension or termination, forfeiture of unused Deals or Tickets, and potential legal action.
+          Violation of this section may result in immediate account suspension or termination, forfeiture of unused Deals or Tickets, reset of leaderboard rankings, and potential legal action.
         </p>
 
         {/* ── 14. Intellectual Property ── */}
@@ -379,14 +400,15 @@ export default function TermsPage() {
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li>New Deals and promotions in your area</li>
           <li>Event announcements and Ticket confirmations</li>
-          <li>Account-related notices (security alerts, password resets, etc.)</li>
-          <li>Marketing and promotional messages</li>
+          <li>Account-related notices (security alerts, password resets, OTP verification codes, etc.)</li>
+          <li>Welcome sequences for new users</li>
+          <li>Marketing and promotional campaign messages</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
-          You may opt out of promotional communications at any time by adjusting your notification settings in the app, clicking &quot;unsubscribe&quot; in any marketing email, or contacting us at {CONTACT_EMAIL}. Note that opting out of promotional communications does not affect transactional or account-related messages, which are necessary for the operation of your account.
+          You may opt out of promotional communications at any time by adjusting your notification settings in the app, clicking &quot;unsubscribe&quot; in any marketing email, or contacting us at {CONTACT_EMAIL}. Note that opting out of promotional communications does not affect transactional, security, or account-related messages (including OTP verification codes), which are necessary for the operation and security of your account.
         </p>
         <p className="text-muted leading-relaxed">
-          By providing your phone number, you consent to receive SMS or text messages from Bizzy. Standard message and data rates may apply. Message frequency varies.
+          By providing your phone number, you consent to receive SMS or text messages from Bizzy, including one-time passcodes for account verification and recovery. Standard message and data rates may apply. Message frequency varies.
         </p>
 
         {/* ── 18. Disclaimer of Warranties ── */}
@@ -398,7 +420,7 @@ export default function TermsPage() {
           BIZZY SPECIFICALLY DISCLAIMS ALL IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT, AND ALL WARRANTIES ARISING FROM COURSE OF DEALING, USAGE, OR TRADE PRACTICE.
         </p>
         <p className="text-muted leading-relaxed uppercase text-sm">
-          WITHOUT LIMITING THE FOREGOING, BIZZY MAKES NO WARRANTY OR REPRESENTATION THAT: (A) THE PLATFORM WILL MEET YOUR REQUIREMENTS; (B) THE PLATFORM WILL BE UNINTERRUPTED, TIMELY, SECURE, OR ERROR-FREE; (C) THE RESULTS OBTAINED FROM USE OF THE PLATFORM WILL BE ACCURATE OR RELIABLE; (D) ANY DEALS OR TICKETS WILL BE HONORED BY MERCHANTS OR EVENT ORGANIZERS; OR (E) ANY ERRORS IN THE PLATFORM WILL BE CORRECTED.
+          WITHOUT LIMITING THE FOREGOING, BIZZY MAKES NO WARRANTY OR REPRESENTATION THAT: (A) THE PLATFORM WILL MEET YOUR REQUIREMENTS; (B) THE PLATFORM WILL BE UNINTERRUPTED, TIMELY, SECURE, OR ERROR-FREE; (C) THE RESULTS OBTAINED FROM USE OF THE PLATFORM WILL BE ACCURATE OR RELIABLE; (D) ANY DEALS OR TICKETS WILL BE HONORED BY MERCHANTS OR EVENT ORGANIZERS; (E) ANY ERRORS IN THE PLATFORM WILL BE CORRECTED; (F) LOCATION DATA, DISTANCE CALCULATIONS, OR PLACE INFORMATION WILL BE ACCURATE; OR (G) LEADERBOARD RANKINGS OR ENGAGEMENT METRICS WILL BE FREE FROM ERROR.
         </p>
 
         {/* ── 19. Limitation of Liability ── */}
@@ -412,6 +434,9 @@ export default function TermsPage() {
           <li>Unauthorized access to or alteration of your account or data</li>
           <li>Statements, conduct, or content of any third party on the Platform</li>
           <li>Personal injury, property damage, or any other harm arising from your attendance at an event or redemption of a Deal</li>
+          <li>Inaccuracies in location data, distance calculations, or place information displayed on the Platform</li>
+          <li>Errors in leaderboard rankings or engagement metrics</li>
+          <li>Delays or failures in payment processing or payout disbursement</li>
           <li>Any other matter relating to the Platform</li>
         </ul>
         <p className="text-muted leading-relaxed uppercase text-sm mt-3">
@@ -487,7 +512,7 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">24.1 Termination by You</h3>
         <p className="text-muted leading-relaxed">
-          You may terminate your account at any time by contacting us at {CONTACT_EMAIL} or through the account settings in the app. Upon termination, your right to access the Platform will cease immediately. Any unused Deals or Tickets in your account at the time of termination will be forfeited and are non-refundable, except as required by applicable law.
+          You may terminate your account at any time by contacting us at {CONTACT_EMAIL} or through the account settings in the app. Upon termination, your right to access the Platform will cease immediately. Any unused Deals or Tickets in your account at the time of termination will be forfeited and are non-refundable, except as required by applicable law. Your leaderboard rankings and claim history will be removed.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">24.2 Termination or Suspension by Bizzy</h3>
@@ -497,6 +522,7 @@ export default function TermsPage() {
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li>Violation of these Terms</li>
           <li>Suspected fraudulent, abusive, or illegal activity</li>
+          <li>Circumvention of deal claim limits or manipulation of leaderboard rankings</li>
           <li>Failure to pay applicable fees</li>
           <li>Extended periods of inactivity</li>
           <li>A request by law enforcement or a government agency</li>
