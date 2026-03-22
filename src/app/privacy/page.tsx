@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Privacy Policy</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> March 15, 2026 | <strong>Last Updated:</strong> March 15, 2026
+          <strong>Effective Date:</strong> March 15, 2026 | <strong>Last Updated:</strong> March 22, 2026
         </p>
 
         <p className="text-muted leading-relaxed">
@@ -545,12 +545,18 @@ export default function PrivacyPage() {
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">14.1 Types of Location Data</h3>
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li><strong>Approximate location:</strong> Derived from your IP address and collected automatically when you use the Platform. This helps us display relevant deals and events in your general area.</li>
-          <li><strong>Precise location:</strong> Collected through GPS, Wi-Fi, or Bluetooth signals on your mobile device only when you explicitly grant location permission. This enables features like nearby deal discovery and location-based notifications.</li>
+          <li><strong>Precise location:</strong> Collected through GPS, Wi-Fi, or Bluetooth signals on your mobile device only when you explicitly grant location permission. This enables features like nearby deal discovery, distance calculations to participating merchants and venues, and location-based notifications.</li>
+          <li><strong>Place and venue data:</strong> We use third-party location and place lookup services to resolve venue names, addresses, business details, and geographic coordinates associated with deals and events listed on the Platform. This data is used to display accurate merchant and event information and to calculate distances between you and nearby offers.</li>
         </ul>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">14.2 Your Control Over Location Data</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">14.2 Distance Calculations</h3>
         <p className="text-muted leading-relaxed">
-          You can control precise location access at any time through your device&#39;s system settings. Denying or revoking location permission may limit certain features of the Platform (e.g., nearby deals may not be displayed accurately). Approximate (IP-based) location is collected as part of standard internet communication and cannot be separately opted out of.
+          When you grant location permission, the Platform may calculate and display the distance between your current location and merchants, venues, or events. These calculations are performed using your device&#39;s GPS coordinates and the geographic coordinates of listed locations. Distance data is used to sort and recommend nearby deals and events and is not shared with third parties except as aggregated, de-identified analytics.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">14.3 Your Control Over Location Data</h3>
+        <p className="text-muted leading-relaxed">
+          You can control precise location access at any time through your device&#39;s system settings. Denying or revoking location permission may limit certain features of the Platform (e.g., nearby deals may not be displayed accurately, and distance-based sorting will be unavailable). Approximate (IP-based) location is collected as part of standard internet communication and cannot be separately opted out of.
         </p>
 
         {/* ── 15. Push Notifications & Marketing ── */}
@@ -558,7 +564,7 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.1 Push Notifications</h3>
         <p className="text-muted leading-relaxed">
-          With your permission, we send push notifications to your mobile device about new deals, upcoming events, and account-related information. You can manage push notification preferences in the app settings or through your device&#39;s notification settings at any time.
+          With your permission, we send push notifications to your mobile device. These may include notifications about new deals, upcoming events, account-related information, welcome sequences for new users, and promotional campaigns. You can manage push notification preferences in the app settings or through your device&#39;s notification settings at any time.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.2 Email Marketing</h3>

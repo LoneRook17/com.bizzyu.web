@@ -18,7 +18,7 @@ export default function TermsPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Terms of Service</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> March 15, 2026 | <strong>Last Updated:</strong> March 15, 2026
+          <strong>Effective Date:</strong> March 15, 2026 | <strong>Last Updated:</strong> March 22, 2026
         </p>
 
         {/* ── 1. Acceptance of Terms ── */}
