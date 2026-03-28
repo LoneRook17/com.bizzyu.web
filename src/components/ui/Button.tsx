@@ -9,6 +9,7 @@ interface ButtonProps {
   className?: string;
   type?: "button" | "submit";
   onClick?: () => void;
+  external?: boolean;
 }
 
 export default function Button({
@@ -19,6 +20,7 @@ export default function Button({
   className = "",
   type = "button",
   onClick,
+  external = false,
 }: ButtonProps) {
   const base =
     "inline-flex items-center justify-center font-semibold rounded-full transition-all duration-200 cursor-pointer";
@@ -36,6 +38,14 @@ export default function Button({
   };
 
   const classes = `${base} ${variants[variant]} ${sizes[size]} ${className}`;
+
+  if (href && external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
+        {children}
+      </a>
+    );
+  }
 
   if (href) {
     return (

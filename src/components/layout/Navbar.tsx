@@ -65,12 +65,12 @@ export default function Navbar() {
 
         {/* Desktop CTA */}
         <a
-          href={APP_STORE_URL}
+          href="https://calendly.com/partnerships-bizzyu/bizzy-bar-intro"
           target="_blank"
           rel="noopener noreferrer"
           className="hidden md:inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
         >
-          Download App
+          Book a Call
         </a>
       </div>
     </nav>

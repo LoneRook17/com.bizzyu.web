@@ -29,11 +29,8 @@ export default function Home() {
                   Free on the App Store
                 </div>
                 <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-6">
-                  Your campus.
-                  <br />
-                  Your deals.
-                  <br />
-                  <span className="text-primary">Your way.</span>
+                  Your Campus.{" "}
+                  <span className="text-primary">Your Way.</span>
                 </h1>
                 <p className="text-lg text-muted mb-8 max-w-md leading-relaxed">
                   Stop paying full price for everything. Bizzy gives you exclusive

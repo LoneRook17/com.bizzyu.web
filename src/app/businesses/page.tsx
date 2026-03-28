@@ -47,7 +47,7 @@ export default function BusinessesPage() {
             <AnimatedSection>
               <div className="max-w-xl">
                 <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
-                  Free forever. No commissions. No contracts.
+                  Simple to Use. Reliable. Free
                 </div>
                 <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-6">
                   Get college students through your door{" "}
@@ -57,8 +57,8 @@ export default function BusinessesPage() {
                 </h1>
                 <p className="text-lg text-muted mb-8 max-w-md leading-relaxed">
                   Bizzy brings students to your business and inside your door
-                  so you can sell them more. List exclusive deals and sell event
-                  tickets. No fees, ever.
+                  so you can sell them more. List student deals and sell event
+                  tickets. No fees, no percent taken.
                 </p>
                 <Button href="/signup" size="lg">
                   List Your Deal. It&apos;s Free
