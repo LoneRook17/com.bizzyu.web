@@ -9,7 +9,7 @@ export default function HeroDealCard() {
       {/* Students photo - enlarged */}
       <div className="relative w-full max-w-[600px] lg:max-w-[680px]">
         <Image
-          src="/images/bizzy-girls.jpeg"
+          src="/images/BizzyGirls.png"
           alt="College students holding Bizzy on their phones"
           width={680}
           height={510}
