@@ -5,7 +5,7 @@ interface MarqueeProps {
   speed?: number;
 }
 
-export default function Marquee({ items, speed = 30 }: MarqueeProps) {
+export default function Marquee({ items, speed = 18 }: MarqueeProps) {
   const doubled = [...items, ...items];
 
   return (

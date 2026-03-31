@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import JsonLd from "@/components/seo/JsonLd";
+import { APP_STORE_URL } from "@/lib/constants";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -100,6 +101,11 @@ const organizationJsonLd = {
     contactType: "customer support",
     email: "Admin@bizzy.university",
   },
+  founder: {
+    "@type": "Person",
+    name: "Cooper Aiello",
+  },
+  foundingDate: "2024",
 };
 
 const appJsonLd = {
@@ -114,6 +120,21 @@ const appJsonLd = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
+  },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.9",
+    ratingCount: "350",
+    bestRating: "5",
+  },
+  downloadUrl: APP_STORE_URL,
+  screenshot: [
+    "https://bizzyu.com/images/screens/1.png",
+    "https://bizzyu.com/images/screens/2.png",
+  ],
+  author: {
+    "@type": "Organization",
+    name: "Bizzy Deals LLC",
   },
 };
 

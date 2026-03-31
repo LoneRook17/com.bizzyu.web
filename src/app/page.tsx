@@ -5,7 +5,21 @@ import AnimatedSection from "@/components/ui/AnimatedSection";
 import TrendingDeals from "@/components/students/TrendingDeals";
 import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
+import JsonLd from "@/components/seo/JsonLd";
 import { APP_STORE_URL, STUDENT_FAQ } from "@/lib/constants";
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: STUDENT_FAQ.map((item) => ({
+    "@type": "Question",
+    name: item.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.answer,
+    },
+  })),
+};
 
 export const metadata: Metadata = {
   title: "Bizzy — Student Deals & Discounts at Your College Campus",
@@ -19,6 +33,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
+      <JsonLd data={faqJsonLd} />
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-white via-white to-primary-light">
         <SectionContainer className="!py-12 md:!py-20">

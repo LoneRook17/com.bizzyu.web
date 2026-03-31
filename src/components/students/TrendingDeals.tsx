@@ -50,7 +50,7 @@ export default function TrendingDeals() {
     <div className="overflow-hidden">
       <div
         className="flex gap-5 animate-marquee-half"
-        style={{ animationDuration: "20s" }}
+        style={{ animationDuration: "12s" }}
       >
         {doubled.map((deal, i) => (
           <div
