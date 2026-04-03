@@ -78,6 +78,25 @@ const FEATURES = [
         strokeLinecap="round"
         strokeLinejoin="round"
       >
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+    ),
+    title: "Skip the Line",
+    description:
+      "Let students pay for express entry — a brand-new revenue stream for your bar. Powered by Stripe with 0% Bizzy fees.",
+  },
+  {
+    icon: (
+      <svg
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#05EB54"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <line x1="12" y1="1" x2="12" y2="23" />
         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
       </svg>
@@ -156,7 +175,7 @@ export default function EventsPage() {
           </div>
         </AnimatedSection>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
           {FEATURES.map((feature, i) => (
             <AnimatedSection key={feature.title} delay={i * 0.1}>
               <div className="bg-white rounded-2xl p-8 border border-gray-100 h-full hover:-translate-y-1 transition-transform duration-300 text-center">
@@ -172,6 +191,81 @@ export default function EventsPage() {
           ))}
         </div>
       </SectionContainer>
+
+      {/* Skip the Line Explainer */}
+      <section className="bg-gray-50">
+        <SectionContainer className="py-16 md:py-24">
+          <div className="max-w-3xl mx-auto">
+            <AnimatedSection>
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+                  A new revenue stream — built into every event
+                </h2>
+                <p className="text-muted text-lg">
+                  Skip the Line lets students pay for express entry. You keep
+                  every dollar.
+                </p>
+              </div>
+            </AnimatedSection>
+
+            <div className="space-y-8">
+              <AnimatedSection delay={0.1}>
+                <div className="flex gap-5 items-start">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+                    1
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-ink mb-1">
+                      You set a Skip the Line price
+                    </h3>
+                    <p className="text-muted text-base">
+                      Add an express entry tier to any event in seconds. You
+                      choose the price — $5, $10, $20, whatever works for your
+                      venue.
+                    </p>
+                  </div>
+                </div>
+              </AnimatedSection>
+
+              <AnimatedSection delay={0.2}>
+                <div className="flex gap-5 items-start">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+                    2
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-ink mb-1">
+                      Students pay in-app
+                    </h3>
+                    <p className="text-muted text-base">
+                      They buy priority entry before they arrive. No cash, no
+                      awkward upsells at the door — just a seamless checkout in
+                      the Bizzy app.
+                    </p>
+                  </div>
+                </div>
+              </AnimatedSection>
+
+              <AnimatedSection delay={0.3}>
+                <div className="flex gap-5 items-start">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg">
+                    3
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-ink mb-1">
+                      Money hits your Stripe account each night
+                    </h3>
+                    <p className="text-muted text-base">
+                      Every dollar goes directly to you. Bizzy takes 0% — zero
+                      fees, ever. All revenue flows straight into your Stripe
+                      account.
+                    </p>
+                  </div>
+                </div>
+              </AnimatedSection>
+            </div>
+          </div>
+        </SectionContainer>
+      </section>
 
       {/* Final CTA */}
       <section className="bg-gradient-to-br from-primary to-emerald-500">
