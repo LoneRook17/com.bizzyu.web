@@ -120,9 +120,9 @@ export default function EventsPage() {
                   0% Fees. 100% Yours.
                 </div>
                 <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-6">
-                  Pack your bar with{" "}
+                  Turn every college student nearby into a{" "}
                   <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-                    college students.
+                    paying customer.
                   </span>
                 </h1>
                 <p className="text-lg text-muted mb-8 max-w-md leading-relaxed">
