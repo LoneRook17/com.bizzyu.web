@@ -60,9 +60,14 @@ export default function BusinessesPage() {
                   so you can sell them more. List student deals and sell event
                   tickets. No fees, no percent taken.
                 </p>
-                <Button href="/signup" size="lg">
-                  List Your Deal. It&apos;s Free
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button href="/business/signup" size="lg">
+                    Get Started Free
+                  </Button>
+                  <Button href="/signup" variant="outline" size="lg">
+                    Submit a Deal
+                  </Button>
+                </div>
               </div>
             </AnimatedSection>
 
@@ -334,9 +339,14 @@ export default function BusinessesPage() {
               500+ local business owners are already reaching students through
               Bizzy. No fees, no commissions, no contracts.
             </p>
-            <Button href="/signup" variant="white" size="lg">
-              List Your Deal. It&apos;s Free
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button href="/business/signup" variant="white" size="lg">
+                Sign Up for Free
+              </Button>
+              <Button href="/signup" variant="white" size="lg" className="!bg-white/20 !text-white hover:!bg-white/30">
+                Submit a Deal Instead
+              </Button>
+            </div>
             <p className="mt-6 text-white/60 text-sm">
               Questions?{" "}
               <a

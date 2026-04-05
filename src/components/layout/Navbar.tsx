@@ -8,6 +8,7 @@ import { NAV_LINKS, APP_STORE_URL } from "@/lib/constants";
 const MOBILE_LINKS = [
   { label: "Students", href: "/" },
   { label: "Businesses", href: "/businesses" },
+  { label: "Portal", href: "/business/login" },
   { label: "Contact", href: "/contact" },
 ];
 
@@ -63,15 +64,23 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Desktop CTA */}
-        <a
-          href="https://calendly.com/partnerships-bizzyu/bizzy-bar-intro"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden md:inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
-        >
-          Book a Call
-        </a>
+        {/* Desktop right side */}
+        <div className="hidden md:flex items-center gap-5">
+          <Link
+            href="/business/login"
+            className="text-[13px] font-medium text-muted hover:text-ink transition-colors"
+          >
+            For Businesses
+          </Link>
+          <a
+            href="https://calendly.com/partnerships-bizzyu/bizzy-bar-intro"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
+          >
+            Book a Call
+          </a>
+        </div>
       </div>
     </nav>
   );

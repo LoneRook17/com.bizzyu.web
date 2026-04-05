@@ -280,6 +280,26 @@ export default function Home() {
         </SectionContainer>
       </section>
 
+      {/* Business CTA */}
+      <SectionContainer>
+        <AnimatedSection>
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Are you a business?</p>
+              <h3 className="text-xl md:text-2xl font-bold text-ink mb-2">Get college students through your door</h3>
+              <p className="text-muted text-base max-w-lg">
+                List deals, sell event tickets, and reach thousands of students on campus. No fees, no commissions.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <Button href="/business/signup" variant="outline" size="md">
+                Get Started Free
+              </Button>
+            </div>
+          </div>
+        </AnimatedSection>
+      </SectionContainer>
+
       {/* CTA */}
       <section className="bg-gradient-to-br from-primary to-emerald-500">
         <SectionContainer className="text-center py-16 md:py-20">
