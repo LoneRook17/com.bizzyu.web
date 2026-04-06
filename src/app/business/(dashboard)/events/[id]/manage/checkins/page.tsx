@@ -96,9 +96,6 @@ export default function CheckinsPage({ params }: { params: Promise<{ id: string 
                       <p className="text-sm font-medium text-ink truncate">{c.attendee_name || "Guest"}</p>
                       <p className="text-xs text-gray-500">
                         {c.ticket_name}
-                        {c.ticket_type === "line_skip" && (
-                          <span className="ml-1 text-orange-600">(Line Skip)</span>
-                        )}
                       </p>
                     </div>
                     <div className="text-right shrink-0 ml-4">
@@ -126,9 +123,6 @@ export default function CheckinsPage({ params }: { params: Promise<{ id: string 
                       <p className="text-sm font-medium text-ink truncate">{c.attendee_name || "Guest"}</p>
                       <p className="text-xs text-gray-500">
                         {c.ticket_name}
-                        {c.ticket_type === "line_skip" && (
-                          <span className="ml-1 text-orange-600">(Line Skip)</span>
-                        )}
                       </p>
                     </div>
                     <div className="text-right shrink-0 ml-4">

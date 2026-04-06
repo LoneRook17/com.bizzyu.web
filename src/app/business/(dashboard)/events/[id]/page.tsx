@@ -166,20 +166,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-ink">{ticket.name}</p>
-                        {ticket.ticket_type === "line_skip" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500" />
-                            Line Skip
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs text-gray-500">
                         {ticket.ticket_type === "free" ? "Free" : formatCurrency(ticket.price_usd)}
                         {ticket.max_per_person ? ` · Max ${ticket.max_per_person}/person` : ""}
                       </p>
-                      {ticket.ticket_type === "line_skip" && (
-                        <p className="text-xs text-orange-600">Does not include event entry</p>
-                      )}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-ink">
