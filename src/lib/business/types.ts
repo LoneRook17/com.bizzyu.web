@@ -137,6 +137,8 @@ export interface EventFormData {
   description: string
   venue_name: string
   venue_address: string
+  latitude: number | null
+  longitude: number | null
   start_date_time: string
   end_date_time: string
   type: 'Ticketed' | 'Free' | 'RSVP'
@@ -166,21 +168,15 @@ export interface DealListItem {
   moderation_status?: string | null
   moderation_reason?: string | null
   claim_count?: number
-  click_count?: number
 }
 
 export interface DealFormData {
   deal_title: string
   description: string
-  deal_category: string
-  deal_type: string
-  deal_image_path: string
-  start_date: string
-  expired_date: string
-  uses: string
   total_saving: string
-  location: string
-  supply_limit: string
+  redemption_frequency: string
+  start_date: string
+  deal_image_path: string
 }
 
 // Team types
@@ -208,7 +204,49 @@ export interface DealAnalytics {
   total_claims: number
   claims_by_period: { period: string; count: number }[]
   supply_usage: { used: number; total: number | null }
-  click_through_rate: { clicks: number; claims: number; rate: number }
+}
+
+// Overview types (analytics dashboard)
+export interface DealOverviewItem {
+  deal_id: number
+  deal_title: string
+  deal_image_path: string | null
+  is_active: boolean
+  total_claims: number
+  claims_this_week: number
+  supply_limit: number | null
+  supply_used: number
+}
+
+export interface DealsOverview {
+  total_active_deals: number
+  total_claims: number
+  claims_this_week: number
+  average_claims_per_deal: number
+  deals: DealOverviewItem[]
+}
+
+export interface EventOverviewItem {
+  event_id: number
+  name: string
+  start_date_time: string
+  venue_name: string
+  status: string
+  flyer_image_url: string | null
+  tickets_sold: number
+  tickets_total: number
+  revenue: number
+  checkin_rate: number
+  door_sales_count: number
+}
+
+export interface EventsOverview {
+  total_events: number
+  total_tickets_sold: number
+  total_revenue: number
+  total_checked_in: number
+  average_checkin_rate: number
+  events: EventOverviewItem[]
 }
 
 export interface PromoterLink {

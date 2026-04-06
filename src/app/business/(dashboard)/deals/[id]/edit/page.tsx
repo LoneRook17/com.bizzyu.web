@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import DealForm from "@/components/business/dashboard/DealForm"
+import { DEAL_TYPE_TO_FREQUENCY } from "@/lib/business/constants"
 import type { DealListItem, DealFormData } from "@/lib/business/types"
 
 function toDateInput(dateStr: string) {
@@ -24,15 +25,10 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
         setInitialData({
           deal_title: deal.deal_title,
           description: deal.description,
-          deal_category: deal.deal_category,
-          deal_type: deal.deal_type,
-          deal_image_path: deal.deal_image_path || "",
+          total_saving: String(deal.total_saving || ""),
+          redemption_frequency: DEAL_TYPE_TO_FREQUENCY[deal.deal_type] || "",
           start_date: toDateInput(deal.start_date),
-          expired_date: toDateInput(deal.expired_date),
-          uses: deal.uses || "0",
-          total_saving: String(deal.total_saving || 0),
-          location: deal.location || "",
-          supply_limit: String(deal.supply_limit || 0),
+          deal_image_path: deal.deal_image_path || "",
         })
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load deal")

@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import StatusBadge from "./StatusBadge"
+import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
 
 interface EventCardProps {
@@ -29,6 +30,9 @@ function formatCurrency(val: number) {
 }
 
 export default function EventCard({ event, showActions = true }: EventCardProps) {
+  const { user } = useAuth()
+  const canScan = user?.business_role !== "promoter"
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition-shadow">
       <div className="flex gap-4">
@@ -97,15 +101,17 @@ export default function EventCard({ event, showActions = true }: EventCardProps)
           >
             Manage
           </Link>
-          <Link
-            href="/business/scanner"
-            className="text-xs font-medium text-gray-600 hover:text-ink hover:underline flex items-center gap-1"
-          >
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-            </svg>
-            Scan
-          </Link>
+          {canScan && (
+            <Link
+              href={`/business/scanner?eventId=${event.event_id}`}
+              className="text-xs font-medium text-gray-600 hover:text-ink hover:underline flex items-center gap-1"
+            >
+              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+              </svg>
+              Scan
+            </Link>
+          )}
         </div>
       )}
     </div>

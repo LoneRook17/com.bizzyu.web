@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient } from "@/lib/business/api-client"
-import type { DashboardSummary, QuickStats, ActivityFeedItem } from "@/lib/business/types"
+import type { DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem } from "@/lib/business/types"
+import EventPreviewCard from "@/components/business/dashboard/EventPreviewCard"
+import DealPreviewCard from "@/components/business/dashboard/DealPreviewCard"
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -48,19 +51,25 @@ export default function DashboardHomePage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null)
   const [activity, setActivity] = useState<ActivityFeedItem[]>([])
+  const [upcomingEvents, setUpcomingEvents] = useState<EventListItem[]>([])
+  const [liveDeals, setLiveDeals] = useState<DealListItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [summaryData, statsData, activityData] = await Promise.all([
+        const [summaryData, statsData, activityData, eventsData, dealsData] = await Promise.all([
           apiClient.get<DashboardSummary>("/business/dashboard/summary"),
           apiClient.get<QuickStats>("/business/dashboard/quick-stats"),
           apiClient.get<ActivityFeedItem[]>("/business/dashboard/activity?limit=10"),
+          apiClient.get<{ events: EventListItem[]; total: number }>("/business/events?tab=upcoming&limit=3"),
+          apiClient.get<{ deals: DealListItem[]; total: number }>("/business/deals?tab=live&limit=3"),
         ])
         setSummary(summaryData)
         setQuickStats(statsData)
         setActivity(activityData)
+        setUpcomingEvents(eventsData.events)
+        setLiveDeals(dealsData.deals)
       } catch {
         // Dashboard data may be empty for new/pending businesses
       } finally {
@@ -118,6 +127,60 @@ export default function DashboardHomePage() {
                   : "—"
               }
             />
+          </div>
+
+          {/* Your events preview */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-ink">Your events</h2>
+              <Link href="/business/events" className="text-xs font-medium text-primary hover:underline">
+                View all
+              </Link>
+            </div>
+            {upcomingEvents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {upcomingEvents.map((event) => (
+                  <EventPreviewCard key={event.event_id} event={event} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
+                <p className="text-sm text-gray-400 mb-2">No upcoming events</p>
+                <Link
+                  href="/business/events/new"
+                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all"
+                >
+                  Create event
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Your deals preview */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-ink">Your deals</h2>
+              <Link href="/business/deals" className="text-xs font-medium text-primary hover:underline">
+                View all
+              </Link>
+            </div>
+            {liveDeals.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {liveDeals.map((deal) => (
+                  <DealPreviewCard key={deal.id} deal={deal} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
+                <p className="text-sm text-gray-400 mb-2">No deals yet</p>
+                <Link
+                  href="/business/deals/new"
+                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all"
+                >
+                  Create deal
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Activity feed */}

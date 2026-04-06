@@ -11,17 +11,10 @@ export default function DealAnalyticsView({ data }: { data: DealAnalytics }) {
   return (
     <div className="space-y-6">
       {/* Top stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs text-gray-500">Total Claims</p>
           <p className="text-2xl font-bold text-ink">{data.total_claims}</p>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs text-gray-500">Click-Through Rate</p>
-          <p className="text-2xl font-bold text-ink">{data.click_through_rate.rate.toFixed(1)}%</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {data.click_through_rate.claims} claims / {data.click_through_rate.clicks} clicks
-          </p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs text-gray-500">Supply Usage</p>

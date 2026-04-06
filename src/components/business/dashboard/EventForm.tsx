@@ -25,6 +25,8 @@ interface EventFormProps {
   initialData?: Partial<EventFormData>
   eventId?: number
   stripeOnboarded?: boolean
+  businessName?: string
+  businessAddress?: string
 }
 
 const EMPTY_TICKET: TicketTier = {
@@ -35,15 +37,17 @@ const EMPTY_TICKET: TicketTier = {
   ticket_type: "paid",
 }
 
-export default function EventForm({ initialData, eventId, stripeOnboarded = true }: EventFormProps) {
+export default function EventForm({ initialData, eventId, stripeOnboarded = true, businessName, businessAddress }: EventFormProps) {
   const router = useRouter()
   const isEditing = !!eventId
 
   const [form, setForm] = useState<EventFormData>({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    venue_name: initialData?.venue_name || "",
-    venue_address: initialData?.venue_address || "",
+    venue_name: initialData?.venue_name || (!isEditing && businessName ? businessName : ""),
+    venue_address: initialData?.venue_address || (!isEditing && businessAddress ? businessAddress : ""),
+    latitude: initialData?.latitude ?? null,
+    longitude: initialData?.longitude ?? null,
     start_date_time: initialData?.start_date_time || "",
     end_date_time: initialData?.end_date_time || "",
     type: initialData?.type || "Ticketed",
@@ -118,7 +122,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
     const errs: Record<string, string> = {}
     if (!form.name.trim()) errs.name = "Event name is required"
     else if (form.name.length > 100) errs.name = "Event name must be 100 characters or less"
-    if (!form.venue_name.trim()) errs.venue_name = "Venue name is required"
+    if (!form.venue_name.trim()) errs.venue_name = "Location name is required"
     if (!form.is_recurring) {
       if (!form.start_date_time) errs.start_date_time = "Start date is required"
       else if (!isEditing && new Date(form.start_date_time) < new Date()) {
@@ -161,6 +165,8 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         description: form.description,
         venue_name: form.venue_name,
         venue_address: form.venue_address,
+        latitude: form.latitude,
+        longitude: form.longitude,
         start_date_time: form.start_date_time,
         end_date_time: form.end_date_time,
         type: form.type,
@@ -325,7 +331,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
             {/* Nights list */}
             {(form.recurring_event.nights ?? []).length > 0 && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Your venue nights</label>
+                <label className="block text-sm font-medium text-gray-700">Your event nights</label>
                 {[...(form.recurring_event.nights ?? [])]
                   .sort((a, b) => a.day_of_week - b.day_of_week)
                   .map((night, idx) => {
@@ -537,11 +543,11 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         </div>
       )}
 
-      {/* Venue */}
+      {/* Event Location */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-semibold text-ink mb-4">Venue</h2>
+        <h2 className="text-sm font-semibold text-ink mb-4">Event Location</h2>
         <FormInput
-          label="Venue Name"
+          label="Location Name"
           name="venue_name"
           value={form.venue_name}
           onChange={handleChange}
@@ -551,7 +557,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         />
         <div className="mb-4 relative" ref={addressWrapperRef}>
           <label htmlFor="venue_address" className="block text-sm font-medium text-gray-700 mb-1">
-            Venue Address
+            Location Address
           </label>
           <input
             id="venue_address"
@@ -574,6 +580,14 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
                     setForm((prev) => ({ ...prev, venue_address: p.description }))
                     setAddressPredictions([])
                     setShowPredictions(false)
+                    fetch(`/api/place-details?place_id=${encodeURIComponent(p.place_id)}`)
+                      .then((res) => res.json())
+                      .then((data: { lat: number | null; lng: number | null }) => {
+                        if (data.lat != null && data.lng != null) {
+                          setForm((prev) => ({ ...prev, latitude: data.lat, longitude: data.lng }))
+                        }
+                      })
+                      .catch(() => {})
                   }}
                 >
                   <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

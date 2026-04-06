@@ -110,7 +110,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </Link>
           )}
           <Link
-            href="/business/scanner"
+            href={`/business/scanner?eventId=${event.event_id}`}
             className="rounded-lg border border-gray-300 px-3 py-2 text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
             title="Scan QR Code"
           >

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { apiClient } from "@/lib/business/api-client"
 import type { EventListItem } from "@/lib/business/types"
 
@@ -33,6 +35,9 @@ interface CheckinStats {
 }
 
 export default function ScannerClient() {
+  const searchParams = useSearchParams()
+  const urlEventId = searchParams.get("eventId")
+
   const [events, setEvents] = useState<EventListItem[]>([])
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
   const [scanning, setScanning] = useState(false)
@@ -53,7 +58,16 @@ export default function ScannerClient() {
     async function loadEvents() {
       try {
         const data = await apiClient.get<{ events: EventListItem[] }>("/business/events?tab=upcoming&limit=100")
-        setEvents(data.events || [])
+        const loadedEvents = data.events || []
+        setEvents(loadedEvents)
+
+        // Auto-select event from URL param
+        if (urlEventId) {
+          const id = Number(urlEventId)
+          if (loadedEvents.some((e) => e.event_id === id)) {
+            setSelectedEventId(id)
+          }
+        }
       } catch (err: any) {
         setError("Failed to load events")
       } finally {
@@ -61,7 +75,7 @@ export default function ScannerClient() {
       }
     }
     loadEvents()
-  }, [])
+  }, [urlEventId])
 
   // Fetch stats when event changes
   useEffect(() => {
@@ -273,6 +287,11 @@ export default function ScannerClient() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          {urlEventId && (
+            <Link href={`/business/events/${urlEventId}`} className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
+              &larr; Back to event
+            </Link>
+          )}
           <h1 className="text-2xl font-bold text-ink">Scanner</h1>
           <p className="text-sm text-gray-500">Scan ticket QR codes to check in attendees</p>
         </div>

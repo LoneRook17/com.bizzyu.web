@@ -1,15 +1,16 @@
 "use client"
 
 import Link from "next/link"
-import StatusBadge from "./StatusBadge"
-import { MODERATION_STATUS_COLORS } from "@/lib/business/constants"
 import type { DealListItem } from "@/lib/business/types"
 
 interface DealCardProps {
   deal: DealListItem
+  tab?: string
+  onReactivate?: (dealId: number) => void
 }
 
 function timeRemaining(expDate: string): string {
+  if (!expDate || expDate === "2099-12-31") return ""
   const diff = new Date(expDate).getTime() - Date.now()
   if (diff <= 0) return "Expired"
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -18,11 +19,12 @@ function timeRemaining(expDate: string): string {
   return `${hours}h left`
 }
 
-export default function DealCard({ deal }: DealCardProps) {
-  const moderationColors = deal.moderation_status
-    ? MODERATION_STATUS_COLORS[deal.moderation_status]
-    : null
+function formatDate(dateStr: string): string {
+  if (!dateStr) return ""
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+}
 
+export default function DealCard({ deal, tab, onReactivate }: DealCardProps) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition-shadow">
       <div className="flex gap-4">
@@ -51,23 +53,34 @@ export default function DealCard({ deal }: DealCardProps) {
               </Link>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-gray-500">{deal.deal_category}</span>
-                <span className="text-xs text-gray-400">·</span>
+                <span className="text-xs text-gray-400">&middot;</span>
                 <span className="text-xs text-gray-500">{deal.deal_type}</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              {deal.moderation_status === "pending_review" && moderationColors && (
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${moderationColors.bg} ${moderationColors.text}`}>
-                  Under Review
+              {tab === "pending" ? (
+                deal.moderation_reason ? (
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700">
+                    Under Review
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700">
+                    Pending Approval
+                  </span>
+                )
+              ) : tab === "expired" ? (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
+                  Expired
                 </span>
-              )}
-              {deal.is_active ? (
+              ) : tab === "deactivated" ? (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
+                  Deactivated
+                </span>
+              ) : (
                 <span className="inline-flex items-center gap-1 text-xs text-green-600">
                   <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
                   Active
                 </span>
-              ) : (
-                <StatusBadge status="draft" />
               )}
             </div>
           </div>
@@ -78,7 +91,11 @@ export default function DealCard({ deal }: DealCardProps) {
             {deal.supply_limit ? (
               <span>{deal.claim_count ?? 0}/{deal.supply_limit} used</span>
             ) : null}
-            <span>{timeRemaining(deal.expired_date)}</span>
+            {tab === "expired" && deal.expired_date ? (
+              <span>Expired {formatDate(deal.expired_date)}</span>
+            ) : tab === "live" ? (
+              <span>{timeRemaining(deal.expired_date)}</span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -91,12 +108,22 @@ export default function DealCard({ deal }: DealCardProps) {
         >
           View
         </Link>
-        <Link
-          href={`/business/deals/${deal.id}/edit`}
-          className="text-xs font-medium text-gray-600 hover:text-ink hover:underline"
-        >
-          Edit
-        </Link>
+        {tab !== "pending" && (
+          <Link
+            href={`/business/deals/${deal.id}/edit`}
+            className="text-xs font-medium text-gray-600 hover:text-ink hover:underline"
+          >
+            Edit
+          </Link>
+        )}
+        {tab === "deactivated" && onReactivate && (
+          <button
+            onClick={() => onReactivate(deal.id)}
+            className="text-xs font-medium text-green-600 hover:underline cursor-pointer"
+          >
+            Reactivate
+          </button>
+        )}
       </div>
     </div>
   )

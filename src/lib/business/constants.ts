@@ -1,7 +1,6 @@
 export const NAV_LINKS = [
   { label: 'Home', href: '/business', icon: 'home' },
   { label: 'Events', href: '/business/events', icon: 'calendar' },
-  { label: 'Scanner', href: '/business/scanner', icon: 'scanner' },
   { label: 'Deals', href: '/business/deals', icon: 'tag' },
   { label: 'Analytics', href: '/business/analytics', icon: 'chart' },
   { label: 'Team', href: '/business/team', icon: 'users' },
@@ -36,14 +35,12 @@ export const CAMPUSES = [
 export const APPROVED_ONLY_ROUTES = [
   '/business/events',
   '/business/deals',
-  '/business/scanner',
 ]
 
 // Routes restricted by role — if role is listed, the link is hidden for that role
 export const ROLE_HIDDEN_ROUTES: Record<string, string[]> = {
   '/business/analytics': ['staff'],
   '/business/settings': ['promoter'],
-  '/business/scanner': ['promoter'],
 }
 
 export const EVENT_TABS = [
@@ -55,7 +52,9 @@ export const EVENT_TABS = [
 
 export const DEAL_TABS = [
   { value: 'live', label: 'Live' },
+  { value: 'pending', label: 'Pending' },
   { value: 'expired', label: 'Expired' },
+  { value: 'deactivated', label: 'Deactivated' },
 ] as const
 
 export const EVENT_TYPES = ['Ticketed', 'Free', 'RSVP'] as const
@@ -68,6 +67,25 @@ export const DEAL_CATEGORIES = [
 export const DEAL_TYPES = [
   'Daily', 'Weekly', 'Monthly', 'One-Time', 'Limited', 'Anytime',
 ] as const
+
+export const REDEMPTION_OPTIONS = [
+  { value: 'once_per_day', label: 'Once Per Day', dealType: 'Daily', info: 'After a student claims this deal, it locks for 24 hours before they can claim again.' },
+  { value: 'once_per_week', label: 'Once Per Week', dealType: 'Weekly', info: 'After a student claims this deal, it locks for 7 days before they can claim again.' },
+  { value: 'once_per_month', label: 'Once Per Month', dealType: 'Monthly', info: 'After a student claims this deal, it locks for 30 days before they can claim again.' },
+  { value: 'unlimited', label: 'Unlimited', dealType: 'Anytime', info: 'Students can claim this deal as many times as they want with no cooldown.' },
+  { value: 'one_time', label: 'One Time Only', dealType: 'One-Time', info: 'Each student can only claim this deal once, ever.' },
+] as const
+
+// Map deal_type DB values back to redemption frequency values
+export const DEAL_TYPE_TO_FREQUENCY: Record<string, string> = {
+  'Daily': 'once_per_day',
+  'Weekly': 'once_per_week',
+  'Monthly': 'once_per_month',
+  'Anytime': 'unlimited',
+  'One-Time': 'one_time',
+  'Limited': 'one_time',
+  'One-Time Only': 'one_time',
+}
 
 export const EVENT_STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   published: { bg: 'bg-green-100', text: 'text-green-700' },

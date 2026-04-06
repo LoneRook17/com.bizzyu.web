@@ -191,10 +191,6 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
                 <span className="text-sm text-gray-600">Claims</span>
                 <span className="text-sm font-medium text-ink">{deal.claim_count ?? 0}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Clicks</span>
-                <span className="text-sm font-medium text-ink">{deal.click_count ?? 0}</span>
-              </div>
               {deal.supply_limit ? (
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Supply</span>
