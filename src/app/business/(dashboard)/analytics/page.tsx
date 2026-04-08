@@ -5,8 +5,9 @@ import { useAuth } from "@/lib/business/auth-context"
 import { apiClient } from "@/lib/business/api-client"
 import DealsOverview from "@/components/business/dashboard/DealsOverview"
 import EventsOverview from "@/components/business/dashboard/EventsOverview"
+import LineSkipsOverview from "@/components/business/dashboard/LineSkipsOverview"
 import PromoterStatsView from "@/components/business/dashboard/PromoterStatsView"
-import type { DealsOverview as DealsOverviewType, EventsOverview as EventsOverviewType, PromoterLink } from "@/lib/business/types"
+import type { DealsOverview as DealsOverviewType, EventsOverview as EventsOverviewType, PromoterLink, LineSkipAnalyticsOverview } from "@/lib/business/types"
 
 export default function AnalyticsPage() {
   const { user } = useAuth()
@@ -63,11 +64,13 @@ function StaffView() {
 }
 
 function OwnerManagerView() {
-  const [tab, setTab] = useState<"deals" | "events">("deals")
+  const [tab, setTab] = useState<"deals" | "events" | "line-skips">("deals")
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [events, setEvents] = useState<EventsOverviewType | null>(null)
+  const [lineSkips, setLineSkips] = useState<LineSkipAnalyticsOverview | null>(null)
   const [dealsLoading, setDealsLoading] = useState(true)
   const [eventsLoading, setEventsLoading] = useState(true)
+  const [lineSkipsLoading, setLineSkipsLoading] = useState(true)
 
   useEffect(() => {
     apiClient
@@ -81,6 +84,12 @@ function OwnerManagerView() {
       .then(setEvents)
       .catch(() => setEvents(null))
       .finally(() => setEventsLoading(false))
+
+    apiClient
+      .get<LineSkipAnalyticsOverview>("/business/line-skips/analytics/overview")
+      .then(setLineSkips)
+      .catch(() => setLineSkips(null))
+      .finally(() => setLineSkipsLoading(false))
   }, [])
 
   return (
@@ -95,6 +104,9 @@ function OwnerManagerView() {
         <TabButton active={tab === "events"} onClick={() => setTab("events")}>
           Events
         </TabButton>
+        <TabButton active={tab === "line-skips"} onClick={() => setTab("line-skips")}>
+          Line Skips
+        </TabButton>
       </div>
 
       {/* Tab content */}
@@ -103,6 +115,9 @@ function OwnerManagerView() {
       )}
       {tab === "events" && (
         eventsLoading ? <SkeletonCards /> : events ? <EventsOverview data={events} /> : <ErrorState />
+      )}
+      {tab === "line-skips" && (
+        lineSkipsLoading ? <SkeletonCards /> : lineSkips ? <LineSkipsOverview data={lineSkips} /> : <ErrorState />
       )}
     </div>
   )

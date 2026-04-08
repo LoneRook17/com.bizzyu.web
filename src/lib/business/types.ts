@@ -308,6 +308,130 @@ export interface TrackingLink {
   created_at: string
 }
 
+// Line Skip types
+export interface LineSkip {
+  id: number
+  business_id: number
+  name: string
+  description: string | null
+  days_of_week: number[] // 0=Sun, 1=Mon, ..., 6=Sat
+  default_start_time: string // HH:MM
+  default_end_time: string // HH:MM
+  default_price_cents: number
+  default_capacity: number | null
+  date_range_start: string // YYYY-MM-DD
+  date_range_end: string // YYYY-MM-DD
+  is_active: boolean
+  created_by: number
+  created_at: string
+  updated_at: string
+  instance_count?: number
+  upcoming_count?: number
+}
+
+export interface LineSkipInstance {
+  id: number
+  line_skip_id: number
+  business_id: number
+  date: string // YYYY-MM-DD
+  start_time: string // HH:MM
+  end_time: string // HH:MM
+  price_cents: number
+  capacity: number | null
+  status: 'active' | 'cancelled' | 'sold_out'
+  cancellation_reason: string | null
+  tickets_sold: number
+  revenue?: number
+  checkin_rate?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface LineSkipDetail extends LineSkip {
+  instances: LineSkipInstance[]
+}
+
+export interface LineSkipFormData {
+  name: string
+  description: string
+  days_of_week: number[]
+  date_range_start: string
+  date_range_end: string
+  default_start_time: string
+  default_end_time: string
+  default_price_cents: number
+  default_capacity: string // string for form input, empty = unlimited
+}
+
+// Line Skip Analytics types
+export interface LineSkipInstanceAnalytics {
+  tickets_sold: number
+  total_revenue_cents: number
+  capacity: number | null
+  capacity_utilization: number | null
+  check_in_rate: number
+  checked_in: number
+  promo_usage: { tickets_with_promo: number; total_discount_cents: number }
+  channel_split: { app: number; web: number }
+  purchase_by_hour: Array<{ hour: number; count: number }>
+  promo_breakdown: Array<{
+    promo_code_id: number
+    code: string
+    discount_type: 'percentage' | 'flat'
+    discount_value: number
+    times_used: number
+    total_discount_cents: number
+  }>
+  tickets: Array<{
+    id: number
+    uuid: string
+    user_id: number | null
+    attendee_name: string
+    phone_number: string
+    price_paid_cents: number
+    is_redeemed: boolean
+    redeemed_at: string | null
+    promo_code_id: number | null
+    promo_code: string | null
+    created_at: string
+  }>
+}
+
+export interface LineSkipAggregateAnalytics {
+  total_revenue_cents: number
+  total_tickets_sold: number
+  total_instances: number
+  avg_tickets_per_night: number
+  avg_revenue_per_night_cents: number
+  busiest_day: { day_of_week: number; avg_tickets: number } | null
+  revenue_trend: Array<{ date: string; instance_id: number; revenue_cents: number; tickets_sold: number }>
+  avg_check_in_rate: number
+  total_promo_discount_cents: number
+}
+
+export interface LineSkipOverviewInstance {
+  instance_id: number
+  line_skip_id: number
+  line_skip_name: string
+  date: string
+  start_time: string
+  end_time: string
+  price_cents: number
+  capacity: number | null
+  status: string
+  tickets_sold: number
+  revenue_cents: number
+  check_in_rate: number
+}
+
+export interface LineSkipAnalyticsOverview {
+  total_active_schedules: number
+  total_upcoming_instances: number
+  total_tickets_this_week: number
+  total_revenue_this_week_cents: number
+  instances: LineSkipOverviewInstance[]
+}
+
 // Settings/Profile types
 export interface BusinessProfile {
   business_id: number

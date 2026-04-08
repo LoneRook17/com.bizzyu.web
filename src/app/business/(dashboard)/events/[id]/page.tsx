@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, useCallback, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import StatusBadge from "@/components/business/dashboard/StatusBadge"
-import type { EventDetail } from "@/lib/business/types"
+import type { EventDetail, TicketTier } from "@/lib/business/types"
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -36,21 +36,61 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  // Ticket price edit state
+  const [editingTicketId, setEditingTicketId] = useState<number | null>(null)
+  const [editPriceCents, setEditPriceCents] = useState(0)
+  const [priceLoading, setPriceLoading] = useState(false)
+  const [priceError, setPriceError] = useState("")
+
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
+  const canEditPrice = canEdit || user?.business_role === "staff"
+
+  const fetchEvent = useCallback(async () => {
+    try {
+      const data = await apiClient.get<EventDetail>(`/business/events/${id}`)
+      setEvent(data)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to load event")
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
 
   useEffect(() => {
-    async function fetchEvent() {
-      try {
-        const data = await apiClient.get<EventDetail>(`/business/events/${id}`)
-        setEvent(data)
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Failed to load event")
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchEvent()
-  }, [id])
+  }, [fetchEvent])
+
+  const openPriceEdit = (ticket: TicketTier) => {
+    setEditingTicketId(ticket.ticket_id ?? null)
+    setEditPriceCents(Math.round(ticket.price_usd * 100))
+    setPriceError("")
+  }
+
+  const closePriceEdit = () => {
+    setEditingTicketId(null)
+    setPriceError("")
+  }
+
+  const handlePriceUpdate = async () => {
+    if (!editingTicketId) return
+    if (editPriceCents < 0) {
+      setPriceError("Price must be $0 or more")
+      return
+    }
+    setPriceLoading(true)
+    setPriceError("")
+    try {
+      await apiClient.patch(`/business/events/${id}/tickets/${editingTicketId}/price`, {
+        price_cents: editPriceCents,
+      })
+      closePriceEdit()
+      fetchEvent()
+    } catch (err) {
+      setPriceError(err instanceof ApiError ? err.message : "Failed to update price")
+    } finally {
+      setPriceLoading(false)
+    }
+  }
 
   const handleDuplicate = async () => {
     try {
@@ -167,9 +207,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-ink">{ticket.name}</p>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-500 inline-flex items-center gap-1">
                         {ticket.ticket_type === "free" ? "Free" : formatCurrency(ticket.price_usd)}
-                        {ticket.max_per_person ? ` · Max ${ticket.max_per_person}/person` : ""}
+                        {ticket.ticket_type !== "free" && canEditPrice && (
+                          <button
+                            onClick={() => openPriceEdit(ticket)}
+                            className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                            title="Edit price"
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                            </svg>
+                          </button>
+                        )}
+                        {ticket.max_per_person ? <span> · Max {ticket.max_per_person}/person</span> : null}
                       </p>
                     </div>
                     <div className="text-right">
@@ -226,6 +277,65 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
+      {/* Ticket Price Edit Modal */}
+      {editingTicketId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40" onClick={closePriceEdit} />
+          <div className="relative rounded-xl bg-white p-6 shadow-xl max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-ink mb-1">Edit Ticket Price</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              {event?.tickets.find((t) => t.ticket_id === editingTicketId)?.name}
+            </p>
+
+            {priceError && (
+              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700">
+                {priceError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">New Price</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={(editPriceCents / 100).toFixed(2)}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value)
+                      setEditPriceCents(!isNaN(v) ? Math.round(v * 100) : 0)
+                    }}
+                    className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-2.5 text-xs text-yellow-800">
+                Applies to new purchases only. Existing orders are not affected.
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={closePriceEdit}
+                  disabled={priceLoading}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePriceUpdate}
+                  disabled={priceLoading}
+                  className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  {priceLoading ? "Saving..." : "Update Price"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

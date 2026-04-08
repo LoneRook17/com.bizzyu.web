@@ -1,6 +1,7 @@
 export const NAV_LINKS = [
   { label: 'Home', href: '/business', icon: 'home' },
   { label: 'Events', href: '/business/events', icon: 'calendar' },
+  { label: 'Line Skips', href: '/business/line-skips', icon: 'bolt' },
   { label: 'Deals', href: '/business/deals', icon: 'tag' },
   { label: 'Analytics', href: '/business/analytics', icon: 'chart' },
   { label: 'Team', href: '/business/team', icon: 'users' },
@@ -34,12 +35,14 @@ export const CAMPUSES = [
 // Content-creation routes that require approved status
 export const APPROVED_ONLY_ROUTES = [
   '/business/events',
+  '/business/line-skips',
   '/business/deals',
 ]
 
 // Routes restricted by role — if role is listed, the link is hidden for that role
 export const ROLE_HIDDEN_ROUTES: Record<string, string[]> = {
   '/business/analytics': ['staff'],
+  '/business/line-skips': ['promoter'],
   '/business/settings': ['promoter'],
 }
 
