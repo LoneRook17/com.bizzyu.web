@@ -164,21 +164,54 @@ export default function ScannerClient() {
       const scanner = new Html5Qrcode(scannerContainerId)
       scannerRef.current = scanner
 
-      await scanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
-        },
-        (decodedText: string) => {
-          handleScan(decodedText)
-        },
-        () => {}
-      )
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1,
+      }
+
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText: string) => {
+            handleScan(decodedText)
+          },
+          () => {}
+        )
+      } catch (primaryErr: any) {
+        // If facingMode constraint fails, retry with any camera
+        const errName = primaryErr?.name || ""
+        if (errName === "OverconstrainedError" || errName === "ConstraintNotSatisfiedError") {
+          console.warn("Rear camera not available, falling back to any camera:", primaryErr)
+          await scanner.start(
+            { facingMode: "user" },
+            config,
+            (decodedText: string) => {
+              handleScan(decodedText)
+            },
+            () => {}
+          )
+        } else {
+          throw primaryErr
+        }
+      }
+
       setScanning(true)
     } catch (err: any) {
-      setCameraError(err?.message || "Camera access denied. Please allow camera permissions.")
+      console.error("Camera error:", err?.name, err?.message)
+      const errName = err?.name || ""
+      if (errName === "NotAllowedError" || errName === "PermissionDeniedError") {
+        setCameraError("Camera access denied. Please allow camera permissions in your browser settings.")
+      } else if (errName === "NotReadableError" || errName === "TrackStartError") {
+        setCameraError("Camera is in use by another app or tab. Please close other camera apps and try again.")
+      } else if (errName === "NotFoundError" || errName === "DevicesNotFoundError") {
+        setCameraError("No camera found on this device.")
+      } else if (errName === "AbortError") {
+        setCameraError("Camera initialization was interrupted. Please try again.")
+      } else {
+        setCameraError(err?.message || "Failed to start camera. Please try again.")
+      }
     }
   }, [handleScan])
 
