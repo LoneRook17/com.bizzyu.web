@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 
 export class ApiError extends Error {
   status: number
@@ -14,7 +14,7 @@ class BusinessApiClient {
   private refreshPromise: Promise<boolean> | null = null
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const url = `${BASE_URL}${path}`
+    const url = `${BASE_URL}/api${path}`
     const config: RequestInit = {
       ...options,
       credentials: 'include',
@@ -56,7 +56,7 @@ class BusinessApiClient {
     this.isRefreshing = true
     this.refreshPromise = (async () => {
       try {
-        const res = await fetch(`${BASE_URL}/business/auth/refresh`, {
+        const res = await fetch(`${BASE_URL}/api/business/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         })
@@ -103,7 +103,7 @@ class BusinessApiClient {
 
   // Auth-specific methods (don't trigger silent refresh redirect)
   async authPost<T>(path: string, body?: unknown): Promise<T> {
-    const url = `${BASE_URL}${path}`
+    const url = `${BASE_URL}/api${path}`
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'include',
