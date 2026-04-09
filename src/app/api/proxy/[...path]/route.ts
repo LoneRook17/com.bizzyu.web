@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+const BACKEND_URL = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
 async function proxyRequest(request: NextRequest) {
   const path = request.nextUrl.pathname.replace('/api/proxy/', '/')
