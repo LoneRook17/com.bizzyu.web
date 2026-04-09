@@ -1,6 +1,4 @@
-// In the browser, route through the Next.js API proxy to avoid mixed-content
-// (HTTPS page → HTTP ALB). Server-side calls go direct.
-const BASE_URL = typeof window !== 'undefined' ? '/api/proxy' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000')
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
 export class ApiError extends Error {
   status: number
