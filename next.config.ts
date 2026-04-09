@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
       static: 0,
     },
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/proxy/:path*",
+        destination: "https://bizzy-deals.com/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
