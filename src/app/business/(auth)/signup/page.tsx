@@ -47,6 +47,15 @@ export default function SignupPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const addressWrapperRef = useRef<HTMLDivElement>(null)
 
+  // Phone verification state
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [codeSent, setCodeSent] = useState(false)
+  const [verifyCode, setVerifyCode] = useState("")
+  const [phoneError, setPhoneError] = useState("")
+  const [sendingCode, setSendingCode] = useState(false)
+  const [verifyingCode, setVerifyingCode] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (addressWrapperRef.current && !addressWrapperRef.current.contains(e.target as Node)) {
@@ -56,6 +65,13 @@ export default function SignupPage() {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  // Cooldown timer for resend
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [cooldown])
 
   const onAddressChange = (value: string) => {
     setForm((prev) => ({ ...prev, address: value }))
@@ -86,6 +102,60 @@ export default function SignupPage() {
     setServerError("")
   }
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setForm((prev) => ({ ...prev, phone: value }))
+    setPhoneError("")
+    // If phone changes after verification, reset verification
+    if (phoneVerified) {
+      setPhoneVerified(false)
+      setCodeSent(false)
+      setVerifyCode("")
+    }
+  }
+
+  const sendCode = async () => {
+    const digits = form.phone.replace(/\D/g, "")
+    if (digits.length < 10) {
+      setPhoneError("Enter a valid phone number")
+      return
+    }
+
+    setSendingCode(true)
+    setPhoneError("")
+    try {
+      await apiClient.authPost("/business/auth/send-phone-code", { phone: form.phone })
+      setCodeSent(true)
+      setCooldown(60)
+    } catch (err) {
+      setPhoneError(err instanceof ApiError ? err.message : "Failed to send code")
+    } finally {
+      setSendingCode(false)
+    }
+  }
+
+  const verifyPhone = async () => {
+    if (verifyCode.length !== 6) {
+      setPhoneError("Enter the 6-digit code")
+      return
+    }
+
+    setVerifyingCode(true)
+    setPhoneError("")
+    try {
+      await apiClient.authPost("/business/auth/verify-phone-code", {
+        phone: form.phone,
+        code: verifyCode,
+      })
+      setPhoneVerified(true)
+      setCodeSent(false)
+    } catch (err) {
+      setPhoneError(err instanceof ApiError ? err.message : "Verification failed")
+    } finally {
+      setVerifyingCode(false)
+    }
+  }
+
   const validate = (): boolean => {
     const errs: Partial<Record<keyof FormState, string>> = {}
 
@@ -93,6 +163,11 @@ export default function SignupPage() {
     if (!form.contact_name.trim()) errs.contact_name = "Contact name is required"
     if (!form.email.trim()) errs.email = "Email is required"
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Invalid email format"
+    if (!form.phone.trim()) {
+      errs.phone = "Phone number is required"
+    } else if (!phoneVerified) {
+      errs.phone = "Phone number must be verified"
+    }
     if (!form.address.trim()) errs.address = "Business address is required"
     if (!form.description.trim()) errs.description = "Business description is required"
     if (!form.campus_id) errs.campus_id = "Please select a campus"
@@ -171,15 +246,91 @@ export default function SignupPage() {
           autoComplete="email"
           error={errors.email}
         />
-        <FormInput
-          label="Phone"
-          name="phone"
-          type="tel"
-          value={form.phone}
-          onChange={handleChange}
-          placeholder="(555) 123-4567"
-          autoComplete="tel"
-        />
+
+        {/* Phone with verification */}
+        <div className="mb-4">
+          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+            Phone<span className="text-red-500 ml-0.5">*</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              value={form.phone}
+              onChange={handlePhoneChange}
+              placeholder="(555) 123-4567"
+              autoComplete="tel"
+              disabled={phoneVerified}
+              className={`flex-1 rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none
+                ${errors.phone || phoneError ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"}
+                ${phoneVerified ? "bg-gray-50 text-gray-500 cursor-not-allowed" : "bg-white text-ink"}`}
+            />
+            {!phoneVerified && !codeSent && (
+              <button
+                type="button"
+                onClick={sendCode}
+                disabled={sendingCode || form.phone.replace(/\D/g, "").length < 10}
+                className="px-4 py-2.5 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+              >
+                {sendingCode ? "Sending..." : "Verify"}
+              </button>
+            )}
+            {phoneVerified && (
+              <div className="flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Verified
+              </div>
+            )}
+          </div>
+
+          {/* Code input */}
+          {codeSent && !phoneVerified && (
+            <div className="mt-2">
+              <p className="text-xs text-gray-500 mb-2">
+                Enter the 6-digit code sent to {form.phone}
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={verifyCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 6)
+                    setVerifyCode(val)
+                    setPhoneError("")
+                  }}
+                  placeholder="000000"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-center tracking-widest font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
+                />
+                <button
+                  type="button"
+                  onClick={verifyPhone}
+                  disabled={verifyingCode || verifyCode.length !== 6}
+                  className="px-4 py-2.5 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+                >
+                  {verifyingCode ? "Checking..." : "Submit"}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={sendCode}
+                disabled={cooldown > 0 || sendingCode}
+                className="mt-2 text-xs text-primary hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed"
+              >
+                {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+              </button>
+            </div>
+          )}
+
+          {(errors.phone || phoneError) && (
+            <p className="mt-1 text-xs text-red-500">{errors.phone || phoneError}</p>
+          )}
+        </div>
+
         <div className="mb-4 relative" ref={addressWrapperRef}>
           <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
             Business Address<span className="text-red-500 ml-0.5">*</span>
