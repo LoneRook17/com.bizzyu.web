@@ -36,10 +36,17 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
       setUser(data.user)
       setBusiness(data.business)
     } catch {
-      setUser(null)
-      setBusiness(null)
-      // Clear session cookie if /me fails (token invalid)
-      document.cookie = "biz_session=; path=/business; max-age=0; SameSite=Lax"
+      // Access token may be expired — try refreshing before giving up
+      try {
+        await apiClient.authPost("/business/auth/refresh")
+        const data = await apiClient.get<MeResponse>("/business/auth/me")
+        setUser(data.user)
+        setBusiness(data.business)
+      } catch {
+        setUser(null)
+        setBusiness(null)
+        document.cookie = "biz_session=; path=/business; max-age=0; SameSite=Lax"
+      }
     }
   }, [])
 
