@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/business/auth-context"
+import { useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import DealsOverview from "@/components/business/dashboard/DealsOverview"
 import EventsOverview from "@/components/business/dashboard/EventsOverview"
@@ -24,16 +25,18 @@ export default function AnalyticsPage() {
 }
 
 function PromoterView() {
+  const venueParam = useVenueParam()
   const [links, setLinks] = useState<PromoterLink[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     apiClient
-      .get<PromoterLink[]>("/business/analytics/promoter-stats")
+      .get<PromoterLink[]>(`/business/analytics/promoter-stats?_=1${venueParam}`)
       .then(setLinks)
       .catch(() => setLinks([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [venueParam])
 
   return (
     <div>
@@ -44,16 +47,18 @@ function PromoterView() {
 }
 
 function StaffView() {
+  const venueParam = useVenueParam()
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     apiClient
-      .get<DealsOverviewType>("/business/analytics/deals/overview")
+      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch(() => setDeals(null))
       .finally(() => setLoading(false))
-  }, [])
+  }, [venueParam])
 
   return (
     <div>
@@ -64,6 +69,7 @@ function StaffView() {
 }
 
 function OwnerManagerView() {
+  const venueParam = useVenueParam()
   const [tab, setTab] = useState<"deals" | "events" | "line-skips">("deals")
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [events, setEvents] = useState<EventsOverviewType | null>(null)
@@ -73,24 +79,28 @@ function OwnerManagerView() {
   const [lineSkipsLoading, setLineSkipsLoading] = useState(true)
 
   useEffect(() => {
+    setDealsLoading(true)
+    setEventsLoading(true)
+    setLineSkipsLoading(true)
+
     apiClient
-      .get<DealsOverviewType>("/business/analytics/deals/overview")
+      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch(() => setDeals(null))
       .finally(() => setDealsLoading(false))
 
     apiClient
-      .get<EventsOverviewType>("/business/analytics/events/overview")
+      .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
       .then(setEvents)
       .catch(() => setEvents(null))
       .finally(() => setEventsLoading(false))
 
     apiClient
-      .get<LineSkipAnalyticsOverview>("/business/line-skips/analytics/overview")
+      .get<LineSkipAnalyticsOverview>(`/business/line-skips/analytics/overview?_=1${venueParam}`)
       .then(setLineSkips)
       .catch(() => setLineSkips(null))
       .finally(() => setLineSkipsLoading(false))
-  }, [])
+  }, [venueParam])
 
   return (
     <div>

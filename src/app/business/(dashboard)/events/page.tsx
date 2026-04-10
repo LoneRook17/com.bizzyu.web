@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/business/auth-context"
+import { useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import { EVENT_TABS } from "@/lib/business/constants"
 import EventCard from "@/components/business/dashboard/EventCard"
@@ -12,6 +13,7 @@ import type { EventListItem, BusinessProfile } from "@/lib/business/types"
 
 export default function EventsPage() {
   const { user } = useAuth()
+  const venueParam = useVenueParam()
   const [tab, setTab] = useState("upcoming")
   const [events, setEvents] = useState<EventListItem[]>([])
   const [total, setTotal] = useState(0)
@@ -36,7 +38,7 @@ export default function EventsPage() {
     setLoading(true)
     try {
       const data = await apiClient.get<{ events: EventListItem[]; total: number }>(
-        `/business/events?tab=${tab}&page=${page}&limit=${limit}`
+        `/business/events?tab=${tab}&page=${page}&limit=${limit}${venueParam}`
       )
       setEvents(data.events)
       setTotal(data.total)
@@ -46,7 +48,7 @@ export default function EventsPage() {
     } finally {
       setLoading(false)
     }
-  }, [tab, page])
+  }, [tab, page, venueParam])
 
   useEffect(() => {
     fetchEvents()

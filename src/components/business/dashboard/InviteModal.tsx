@@ -3,12 +3,14 @@
 import { useState } from "react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import UserSearchInput from "./UserSearchInput"
+import type { Venue } from "@/lib/business/types"
 
 interface InviteModalProps {
   open: boolean
   onClose: () => void
   onInvited: () => void
   canInviteManager: boolean
+  venues: Venue[]
 }
 
 const INVITABLE_ROLES = [
@@ -17,9 +19,10 @@ const INVITABLE_ROLES = [
   { value: "promoter", label: "Promoter" },
 ] as const
 
-export default function InviteModal({ open, onClose, onInvited, canInviteManager }: InviteModalProps) {
+export default function InviteModal({ open, onClose, onInvited, canInviteManager, venues }: InviteModalProps) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("staff")
+  const [venueId, setVenueId] = useState<string>("") // "" = global (null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
@@ -36,7 +39,11 @@ export default function InviteModal({ open, onClose, onInvited, canInviteManager
     setError("")
 
     try {
-      await apiClient.post("/business/team/invite", { email, role })
+      await apiClient.post("/business/team/invite", {
+        email,
+        role,
+        venue_id: venueId ? Number(venueId) : null,
+      })
       setSuccess(true)
       setTimeout(() => {
         onInvited()
@@ -56,6 +63,7 @@ export default function InviteModal({ open, onClose, onInvited, canInviteManager
   const handleClose = () => {
     setEmail("")
     setRole("staff")
+    setVenueId("")
     setError("")
     setSuccess(false)
     onClose()
@@ -101,6 +109,26 @@ export default function InviteModal({ open, onClose, onInvited, canInviteManager
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="mb-4">
+              <label htmlFor="invite-venue" className="block text-sm font-medium text-gray-700 mb-1">
+                Venue Assignment
+              </label>
+              <select
+                id="invite-venue"
+                value={venueId}
+                onChange={(e) => setVenueId(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
+              >
+                <option value="">All Venues (Global)</option>
+                {venues.map((v) => (
+                  <option key={v.id} value={String(v.id)}>{v.name}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                Global members can access all venues. Venue-specific members only see their assigned venue.
+              </p>
             </div>
 
             {error && (

@@ -24,6 +24,7 @@ export default function LineSkipSuccessClient({
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying")
   const [tickets, setTickets] = useState<TicketInfo[]>([])
   const [businessName, setBusinessName] = useState("")
+  const [venueName, setVenueName] = useState("")
   const [instanceDate, setInstanceDate] = useState("")
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
@@ -44,6 +45,7 @@ export default function LineSkipSuccessClient({
       }
       setTickets(data.tickets || [])
       setBusinessName(data.business_name || "")
+      setVenueName(data.venue_name || "")
       setInstanceDate(data.instance_date || "")
       setStartTime(data.start_time || "")
       setEndTime(data.end_time || "")
@@ -109,14 +111,11 @@ export default function LineSkipSuccessClient({
     )
   }
 
+  const displayName = venueName || businessName
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a] p-6">
       <div className="w-full max-w-md">
-        {/* Bizzy branding */}
-        <div className="mb-6 text-center">
-          <img src="/images/bizzy-logo.png" alt="Bizzy" className="mx-auto h-8 opacity-80" />
-        </div>
-
         {/* Success animation */}
         <div className="mb-6 text-center">
           <div
@@ -143,14 +142,14 @@ export default function LineSkipSuccessClient({
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-black/80">LINE SKIP</span>
               <span className="rounded-full bg-black/10 px-3 py-0.5 text-xs font-bold text-black/70">
-                GUARANTEED ENTRY
+                INCLUDES COVER
               </span>
             </div>
           </div>
 
           {/* Body */}
           <div className="p-6">
-            <h2 className="mb-4 text-lg font-bold text-white">{businessName}</h2>
+            <h2 className="mb-4 text-lg font-bold text-white">{displayName}</h2>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -173,7 +172,7 @@ export default function LineSkipSuccessClient({
             <div className="my-4 border-t border-dashed border-white/20" />
 
             <p className="text-center text-xs text-white/40">
-              Show your QR code at the door for guaranteed entry.
+              Show your QR code at the door. Cover included.
               <br />
               Check your email for ticket details.
             </p>
@@ -181,16 +180,27 @@ export default function LineSkipSuccessClient({
         </div>
 
         {/* Download app CTA */}
-        <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-          <p className="mb-2 text-sm text-white/70">
-            Download the Bizzy app to access your tickets
-          </p>
+        <div className="rounded-xl bg-white/5 border border-white/10 p-5">
+          <div className="flex items-center gap-4">
+            <img
+              src="/images/appicon.png"
+              alt="Bizzy"
+              className="h-14 w-14 rounded-xl"
+            />
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-white">Get the Bizzy App</h3>
+              <p className="mt-0.5 text-xs text-white/50">Manage your tickets anytime, anywhere</p>
+            </div>
+          </div>
           <a
             href="https://apps.apple.com/app/id6683306360"
-            className="inline-block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold text-black transition-colors"
             style={{ backgroundColor: GOLD }}
           >
-            Get the App
+            <svg className="h-4 w-4" viewBox="0 0 384 512" fill="currentColor">
+              <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
+            </svg>
+            Download on App Store
           </a>
         </div>
 

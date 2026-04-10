@@ -9,6 +9,7 @@ import type { EventListItem } from "@/lib/business/types"
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
 
 interface ScanResult {
+  type?: 'event_ticket' | 'line_skip'
   status: string
   ticket_type: string | null
   ticket: {
@@ -25,6 +26,7 @@ interface ScanLogEntry {
   name: string
   ticket_name: string
   ticket_type: string | null
+  type?: 'event_ticket' | 'line_skip'
   status: string
   time: string
 }
@@ -130,6 +132,7 @@ export default function ScannerClient() {
           name: data.ticket?.owner_name || "Unknown",
           ticket_name: data.ticket?.ticket_name || "Ticket",
           ticket_type: data.ticket_type,
+          type: data.type,
           status: data.status,
           time: new Date().toLocaleTimeString(),
         },
@@ -247,10 +250,14 @@ export default function ScannerClient() {
   }, [stopScanner])
 
   // Result overlay colors
+  const isLineSkip = result?.type === "line_skip"
+
   const getResultColor = () => {
     if (!result) return ""
     if (result.status === "redeemed_now") {
-      return "from-[#0d7a3e] to-[#05EB54]"
+      return isLineSkip
+        ? "from-[#c2410c] to-[#ea580c]"   // Orange for line skip
+        : "from-[#0d7a3e] to-[#05EB54]"   // Green for event ticket
     }
     return "from-[#8B1A2B] to-[#c41e3a]"
   }
@@ -258,7 +265,7 @@ export default function ScannerClient() {
   const getResultLabel = () => {
     if (!result) return ""
     if (result.status === "redeemed_now") {
-      return "ENTRY"
+      return isLineSkip ? "LINE SKIP" : "ENTRY"
     }
     const labels: Record<string, string> = {
       already_redeemed: "ALREADY SCANNED",
@@ -267,12 +274,14 @@ export default function ScannerClient() {
       event_cancelled: "EVENT CANCELLED",
       ticket_belongs_to_another_event: "WRONG EVENT",
       event_not_active: "EVENT NOT ACTIVE",
+      not_active: "NOT ACTIVE YET",
+      cancelled: "CANCELLED",
     }
     return labels[result.status] || "ERROR"
   }
 
-  const getLogStatusColor = (status: string) => {
-    if (status === "redeemed_now") return "text-green-400"
+  const getLogStatusColor = (status: string, type?: string) => {
+    if (status === "redeemed_now") return type === "line_skip" ? "text-orange-400" : "text-green-400"
     if (status === "already_redeemed") return "text-yellow-400"
     return "text-red-400"
   }
@@ -311,6 +320,9 @@ export default function ScannerClient() {
               </svg>
             )}
             <h1 className="mb-2 text-5xl font-black text-white tracking-tight">{getResultLabel()}</h1>
+            {isLineSkip && result.status === "redeemed_now" && (
+              <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-white/60">Guaranteed Entry</p>
+            )}
             <p className="text-2xl font-semibold text-white/90">{result.ticket.owner_name}</p>
             <p className="mt-1 text-lg text-white/70">{result.ticket.ticket_name}</p>
           </div>
@@ -451,9 +463,9 @@ export default function ScannerClient() {
                             </p>
                           </div>
                           <div className="ml-3 text-right shrink-0">
-                            <p className={`text-xs font-semibold ${getLogStatusColor(entry.status)}`}>
+                            <p className={`text-xs font-semibold ${getLogStatusColor(entry.status, entry.type)}`}>
                               {entry.status === "redeemed_now"
-                                ? "ENTRY"
+                                ? entry.type === "line_skip" ? "LINE SKIP" : "ENTRY"
                                 : entry.status === "already_redeemed"
                                   ? "ALREADY IN"
                                   : "ERROR"}

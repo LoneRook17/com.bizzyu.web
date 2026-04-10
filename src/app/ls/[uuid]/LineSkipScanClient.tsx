@@ -9,6 +9,7 @@ interface TicketInfo {
   uuid: string
   attendee_name: string
   business_name: string
+  venue_name: string | null
   line_skip_name: string
   instance_date: string
   instance_start_time: string
@@ -146,7 +147,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
           <button
             onClick={handleRedeem}
             disabled={redeeming}
-            className="mb-4 w-full rounded-2xl bg-[#1DB954] py-5 text-xl font-bold text-white active:bg-[#19a349] disabled:opacity-50 transition-colors"
+            className="mb-4 w-full rounded-2xl bg-[#D4AF37] py-5 text-xl font-bold text-white active:bg-[#b8962f] disabled:opacity-50 transition-colors"
           >
             {redeeming ? "Redeeming..." : "Yes, Redeem"}
           </button>
@@ -163,16 +164,16 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
 
   if (overlay === "redeemed_now") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#1DB954] p-6">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#D4AF37] p-6">
         <div className="w-full max-w-md text-center">
           <svg className="mx-auto mb-6 h-28 w-28 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h1 className="mb-3 text-4xl font-black text-white tracking-tight">ENTRY GRANTED</h1>
           <p className="mb-2 text-2xl font-bold text-white/90">{redeemResult?.ticket_info?.attendee_name}</p>
-          <p className="text-lg text-white/80">{redeemResult?.business_name}</p>
+          <p className="text-lg text-white/80">{redeemResult?.ticket_info?.venue_name || redeemResult?.business_name}</p>
           <div className="mt-8 inline-block rounded-full bg-white/20 px-5 py-2">
-            <span className="text-sm font-semibold text-white">Guaranteed Entry</span>
+            <span className="text-sm font-semibold text-white">Includes Cover</span>
           </div>
         </div>
       </div>
@@ -297,7 +298,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
               <h1 className="mb-1 text-2xl font-black text-white">{ticket.attendee_name}</h1>
 
               {/* Business name - prominent */}
-              <p className="mb-4 text-lg font-semibold text-[#D4AF37]">{ticket.business_name}</p>
+              <p className="mb-4 text-lg font-semibold text-[#D4AF37]">{ticket.venue_name || ticket.business_name}</p>
 
               {/* Details */}
               <div className="mb-4 space-y-2.5">
@@ -315,7 +316,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
 
               {/* Guaranteed Entry badge */}
               <div className="inline-block rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 px-3.5 py-1">
-                <span className="text-xs font-bold text-[#D4AF37] tracking-wide">GUARANTEED ENTRY</span>
+                <span className="text-xs font-bold text-[#D4AF37] tracking-wide">INCLUDES COVER</span>
               </div>
             </div>
 
@@ -368,10 +369,10 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
             {status === "valid" && (
               <button
                 onClick={() => setOverlay("confirming")}
-                className="w-full rounded-2xl bg-[#1DB954] py-[18px] text-[22px] font-bold text-white shadow-lg shadow-[#1DB954]/25 active:bg-[#19a349] active:scale-[0.98] transition-all"
+                className="w-full rounded-2xl bg-[#D4AF37] py-[18px] text-[22px] font-bold text-white shadow-lg shadow-[#D4AF37]/25 active:bg-[#b8962f] active:scale-[0.98] transition-all"
                 style={{ minHeight: "70px" }}
               >
-                Redeem for: {ticket.business_name}
+                Redeem for: {ticket.venue_name || ticket.business_name}
               </button>
             )}
           </>

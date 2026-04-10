@@ -9,6 +9,7 @@ import ImageUpload from "./ImageUpload"
 import TicketTierForm from "./TicketTierForm"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { EVENT_TYPES } from "@/lib/business/constants"
+import { useVenue } from "@/lib/business/venue-context"
 import type { EventFormData, RecurringEventConfig, RecurringNight, TicketTier } from "@/lib/business/types"
 
 const DAYS_OF_WEEK = [
@@ -40,12 +41,13 @@ const EMPTY_TICKET: TicketTier = {
 export default function EventForm({ initialData, eventId, stripeOnboarded = true, businessName, businessAddress }: EventFormProps) {
   const router = useRouter()
   const isEditing = !!eventId
+  const { selectedVenue, isAllVenues } = useVenue()
 
   const [form, setForm] = useState<EventFormData>({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    venue_name: initialData?.venue_name || (!isEditing && businessName ? businessName : ""),
-    venue_address: initialData?.venue_address || (!isEditing && businessAddress ? businessAddress : ""),
+    venue_name: initialData?.venue_name || "",
+    venue_address: initialData?.venue_address || "",
     latitude: initialData?.latitude ?? null,
     longitude: initialData?.longitude ?? null,
     start_date_time: initialData?.start_date_time || "",
@@ -81,6 +83,17 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
+
+  // Sync venue name/address from selected venue (not editable when venue is selected)
+  useEffect(() => {
+    if (!isEditing && selectedVenue) {
+      setForm((prev) => ({
+        ...prev,
+        venue_name: selectedVenue.name,
+        venue_address: selectedVenue.address || "",
+      }))
+    }
+  }, [selectedVenue, isEditing])
 
   const onVenueAddressChange = (value: string) => {
     setForm((prev) => ({ ...prev, venue_address: value }))
@@ -122,7 +135,8 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
     const errs: Record<string, string> = {}
     if (!form.name.trim()) errs.name = "Event name is required"
     else if (form.name.length > 100) errs.name = "Event name must be 100 characters or less"
-    if (!form.venue_name.trim()) errs.venue_name = "Location name is required"
+    if (!isEditing && !selectedVenue) errs.venue_name = "Please select a venue before creating an event"
+    else if (!form.venue_name.trim()) errs.venue_name = "Location name is required"
     if (!form.is_recurring) {
       if (!form.start_date_time) errs.start_date_time = "Start date is required"
       else if (!isEditing && new Date(form.start_date_time) < new Date()) {
@@ -163,6 +177,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
       const payload: Record<string, unknown> = {
         name: form.name,
         description: form.description,
+        venue_id: selectedVenue?.id,
         venue_name: form.venue_name,
         venue_address: form.venue_address,
         latitude: form.latitude,
@@ -546,6 +561,11 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
       {/* Event Location */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
         <h2 className="text-sm font-semibold text-ink mb-4">Event Location</h2>
+        {!isEditing && isAllVenues && (
+          <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            Please select a specific venue from the sidebar to create an event.
+          </div>
+        )}
         <FormInput
           label="Location Name"
           name="venue_name"
@@ -553,6 +573,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           onChange={handleChange}
           placeholder="e.g. The Main Stage"
           required
+          disabled={!isEditing && !!selectedVenue}
           error={errors.venue_name}
         />
         <div className="mb-4 relative" ref={addressWrapperRef}>
@@ -565,10 +586,15 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
             type="text"
             value={form.venue_address}
             onChange={(e) => onVenueAddressChange(e.target.value)}
-            onFocus={() => addressPredictions.length > 0 && setShowPredictions(true)}
+            onFocus={() => !selectedVenue && addressPredictions.length > 0 && setShowPredictions(true)}
             placeholder="Start typing an address..."
             autoComplete="off"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-colors outline-none bg-white text-ink focus:border-primary focus:ring-1 focus:ring-primary"
+            disabled={!isEditing && !!selectedVenue}
+            className={`w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm transition-colors outline-none ${
+              !isEditing && selectedVenue
+                ? "bg-gray-50 text-gray-400 cursor-not-allowed"
+                : "bg-white text-ink focus:border-primary focus:ring-1 focus:ring-primary"
+            }`}
           />
           {showPredictions && addressPredictions.length > 0 && (
             <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">

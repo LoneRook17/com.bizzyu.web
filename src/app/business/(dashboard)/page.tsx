@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/business/auth-context"
+import { useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import type { DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem } from "@/lib/business/types"
 import EventPreviewCard from "@/components/business/dashboard/EventPreviewCard"
@@ -48,6 +49,7 @@ function ActivityItem({ item }: { item: ActivityFeedItem }) {
 
 export default function DashboardHomePage() {
   const { user, isPending } = useAuth()
+  const venueParam = useVenueParam()
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null)
   const [activity, setActivity] = useState<ActivityFeedItem[]>([])
@@ -57,13 +59,14 @@ export default function DashboardHomePage() {
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true)
       try {
         const [summaryData, statsData, activityData, eventsData, dealsData] = await Promise.all([
-          apiClient.get<DashboardSummary>("/business/dashboard/summary"),
-          apiClient.get<QuickStats>("/business/dashboard/quick-stats"),
-          apiClient.get<ActivityFeedItem[]>("/business/dashboard/activity?limit=10"),
-          apiClient.get<{ events: EventListItem[]; total: number }>("/business/events?tab=upcoming&limit=3"),
-          apiClient.get<{ deals: DealListItem[]; total: number }>("/business/deals?tab=live&limit=3"),
+          apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1${venueParam}`),
+          apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1${venueParam}`),
+          apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10${venueParam}`),
+          apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?tab=upcoming&limit=3${venueParam}`),
+          apiClient.get<{ deals: DealListItem[]; total: number }>(`/business/deals?tab=live&limit=3${venueParam}`),
         ])
         setSummary(summaryData)
         setQuickStats(statsData)
@@ -77,7 +80,7 @@ export default function DashboardHomePage() {
       }
     }
     fetchData()
-  }, [])
+  }, [venueParam])
 
   const formatCurrency = (val: number | null | undefined) => {
     if (val == null) return "—"

@@ -51,7 +51,7 @@ interface PageData {
   tickets: TicketTier[]
 }
 
-type CheckoutStep = "idle" | "phone" | "verify" | "processing"
+type CheckoutStep = "idle" | "phone" | "name" | "verify" | "processing"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -245,13 +245,27 @@ export default function EventCheckoutClient({
         setCheckoutError(data.message || "Failed to send code")
         return
       }
-      if (data.user_name) setUserName(data.user_name)
-      setCheckoutStep("verify")
+      if (data.has_account && data.user_name) {
+        setUserName(data.user_name)
+        setAttendeeName(data.user_name)
+        setCheckoutStep("verify")
+      } else {
+        setCheckoutStep("name")
+      }
     } catch {
       setCheckoutError("Failed to send verification code")
     } finally {
       setCheckoutLoading(false)
     }
+  }
+
+  const submitName = () => {
+    if (!attendeeName.trim()) {
+      setCheckoutError("Please enter your name")
+      return
+    }
+    setCheckoutError("")
+    setCheckoutStep("verify")
   }
 
   const verifyAndPurchase = async () => {
@@ -659,6 +673,7 @@ export default function EventCheckoutClient({
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">
                 {checkoutStep === "phone" && "Enter your phone"}
+                {checkoutStep === "name" && "Your name"}
                 {checkoutStep === "verify" && "Verify your number"}
                 {checkoutStep === "processing" && "Processing..."}
               </h2>
@@ -690,7 +705,7 @@ export default function EventCheckoutClient({
               </div>
             )}
 
-            {/* Phone step */}
+            {/* Phone step — phone number only */}
             {checkoutStep === "phone" && (
               <div>
                 <label className="mb-2 block text-sm text-white/60">Phone Number</label>
@@ -706,17 +721,6 @@ export default function EventCheckoutClient({
                   />
                 </div>
 
-                <div className="mt-3">
-                  <label className="mb-2 block text-sm text-white/60">Your Name</label>
-                  <input
-                    type="text"
-                    placeholder="Full name"
-                    value={attendeeName}
-                    onChange={(e) => setAttendeeName(e.target.value)}
-                    className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
-                  />
-                </div>
-
                 {checkoutError && (
                   <p className="mt-3 text-xs text-red-400">{checkoutError}</p>
                 )}
@@ -728,6 +732,47 @@ export default function EventCheckoutClient({
                   style={{ backgroundColor: GOLD }}
                 >
                   {checkoutLoading ? "Sending..." : "Continue"}
+                </button>
+              </div>
+            )}
+
+            {/* Name step — shown only for unregistered users */}
+            {checkoutStep === "name" && (
+              <div>
+                <p className="mb-3 text-sm text-white/60">
+                  We don&apos;t have an account for this number yet. Enter your name to continue.
+                </p>
+                <label className="mb-2 block text-sm text-white/60">Your Name</label>
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={attendeeName}
+                  onChange={(e) => setAttendeeName(e.target.value)}
+                  className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                  autoFocus
+                />
+
+                {checkoutError && (
+                  <p className="mt-3 text-xs text-red-400">{checkoutError}</p>
+                )}
+
+                <button
+                  onClick={submitName}
+                  disabled={!attendeeName.trim()}
+                  className="mt-4 w-full rounded-lg py-3 text-sm font-bold text-black disabled:opacity-50 transition-opacity"
+                  style={{ backgroundColor: GOLD }}
+                >
+                  Continue
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCheckoutStep("phone")
+                    setCheckoutError("")
+                  }}
+                  className="mt-2 w-full py-2 text-xs text-white/40 hover:text-white/60 transition-colors"
+                >
+                  Change phone number
                 </button>
               </div>
             )}

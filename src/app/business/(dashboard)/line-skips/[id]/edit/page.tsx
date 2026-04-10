@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { useVenue } from "@/lib/business/venue-context"
 import type { LineSkipDetail, LineSkipFormData } from "@/lib/business/types"
 
 const DAYS = [
@@ -43,6 +44,7 @@ function getMatchingDates(daysOfWeek: number[], start: string, end: string): str
 export default function EditLineSkipPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { selectedVenue } = useVenue()
   const [pageLoading, setPageLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -152,6 +154,7 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
         default_price_cents: form.default_price_cents,
         default_capacity: form.default_capacity ? parseInt(form.default_capacity) : null,
         regenerate_instances: regenerate,
+        venue_id: selectedVenue?.id,
       }
 
       await apiClient.put(`/business/line-skips/${id}`, payload)
@@ -318,7 +321,7 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
           </div>
           <div>
             <label className="block text-sm font-medium text-ink mb-1">
-              Default Capacity <span className="text-gray-400 font-normal">(optional)</span>
+              Line Skip Quantity <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <input
               type="number"

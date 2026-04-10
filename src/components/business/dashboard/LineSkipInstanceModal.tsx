@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { LineSkipInstance } from "@/lib/business/types"
 
-type ModalMode = "edit_price" | "edit_details" | "cancel"
+type ModalMode = "edit_price" | "edit_quantity" | "edit_details" | "cancel"
 
 interface LineSkipInstanceModalProps {
   open: boolean
@@ -36,6 +36,9 @@ export default function LineSkipInstanceModal({
   // Edit price state
   const [newPriceCents, setNewPriceCents] = useState(0)
 
+  // Edit quantity state
+  const [newCapacity, setNewCapacity] = useState("")
+
   // Edit details state
   const [detailsForm, setDetailsForm] = useState({
     price_cents: 0,
@@ -50,6 +53,7 @@ export default function LineSkipInstanceModal({
   useEffect(() => {
     if (instance) {
       setNewPriceCents(instance.price_cents)
+      setNewCapacity(instance.capacity?.toString() ?? "")
       setDetailsForm({
         price_cents: instance.price_cents,
         capacity: instance.capacity?.toString() ?? "",
@@ -78,6 +82,26 @@ export default function LineSkipInstanceModal({
       onClose()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to update price")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEditQuantity = async () => {
+    if (newCapacity && parseInt(newCapacity) < instance.tickets_sold) {
+      setError(`Quantity cannot be less than ${instance.tickets_sold} (tickets already sold)`)
+      return
+    }
+    setLoading(true)
+    setError("")
+    try {
+      await apiClient.patch(`/business/line-skips/instances/${instance.id}`, {
+        capacity: newCapacity ? parseInt(newCapacity) : null,
+      })
+      onUpdated()
+      onClose()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to update quantity")
     } finally {
       setLoading(false)
     }
@@ -132,6 +156,7 @@ export default function LineSkipInstanceModal({
 
   const titles: Record<ModalMode, string> = {
     edit_price: "Edit Price",
+    edit_quantity: "Edit Quantity",
     edit_details: "Edit Details",
     cancel: "Cancel Night",
   }
@@ -186,6 +211,37 @@ export default function LineSkipInstanceModal({
           </div>
         )}
 
+        {/* Edit Quantity Mode */}
+        {mode === "edit_quantity" && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">
+                Current: {instance.capacity ? `${instance.tickets_sold} / ${instance.capacity}` : `${instance.tickets_sold} sold (unlimited)`}
+              </p>
+              <label className="block text-sm font-medium text-ink mb-1">New Quantity</label>
+              <input
+                type="number"
+                min="1"
+                value={newCapacity}
+                onChange={(e) => setNewCapacity(e.target.value)}
+                placeholder="Leave blank for unlimited"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              {instance.tickets_sold > 0 && (
+                <p className="mt-1 text-xs text-gray-400">Minimum: {instance.tickets_sold} (already sold)</p>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <button type="button" onClick={onClose} disabled={loading} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+                Cancel
+              </button>
+              <button type="button" onClick={handleEditQuantity} disabled={loading} className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all disabled:opacity-60 cursor-pointer">
+                {loading ? "Saving..." : "Update Quantity"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Edit Details Mode */}
         {mode === "edit_details" && (
           <div className="space-y-4">
@@ -207,7 +263,7 @@ export default function LineSkipInstanceModal({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-ink mb-1">Capacity</label>
+              <label className="block text-sm font-medium text-ink mb-1">Line Skip Quantity</label>
               <input
                 type="number"
                 min="1"

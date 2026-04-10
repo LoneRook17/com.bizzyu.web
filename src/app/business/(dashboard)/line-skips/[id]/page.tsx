@@ -52,7 +52,7 @@ function isUpcoming(dateStr: string): boolean {
   return date >= today
 }
 
-type ModalMode = "edit_price" | "edit_details" | "cancel"
+type ModalMode = "edit_price" | "edit_quantity" | "edit_details" | "cancel"
 
 export default function LineSkipDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -226,7 +226,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
               <p className="text-lg font-semibold text-ink">{formatPrice(lineSkip.default_price_cents)}</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-xs text-gray-500">Capacity</p>
+              <p className="text-xs text-gray-500">Line Skip Quantity</p>
               <p className="text-lg font-semibold text-ink">{lineSkip.default_capacity ?? "Unlimited"}</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -339,10 +339,21 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                             </button>
                           )}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 inline-flex items-center gap-1">
                           {instance.capacity
                             ? `${instance.tickets_sold} / ${instance.capacity} sold`
                             : `${instance.tickets_sold} sold (unlimited)`}
+                          {tab === "upcoming" && instance.status !== "cancelled" && canEditPrice && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openModal(instance, "edit_quantity") }}
+                              className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                              title="Quick edit quantity"
+                            >
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                              </svg>
+                            </button>
+                          )}
                         </span>
                         {instance.tickets_sold > 0 && revenueCents > 0 && (
                           <span className="text-xs text-gray-400">{formatPrice(revenueCents)} revenue</span>
@@ -382,12 +393,20 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                     {tab === "upcoming" && instance.status !== "cancelled" && (
                       <div className="flex items-center gap-1 ml-1">
                         {canEditPrice && (
-                          <button
-                            onClick={() => openModal(instance, "edit_price")}
-                            className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-                          >
-                            Edit Price
-                          </button>
+                          <>
+                            <button
+                              onClick={() => openModal(instance, "edit_price")}
+                              className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                              Edit Price
+                            </button>
+                            <button
+                              onClick={() => openModal(instance, "edit_quantity")}
+                              className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                              Edit Qty
+                            </button>
+                          </>
                         )}
                         {canEdit && (
                           <>

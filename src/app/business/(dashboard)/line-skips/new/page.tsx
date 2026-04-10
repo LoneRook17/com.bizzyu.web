@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { useVenue } from "@/lib/business/venue-context"
 import type { BusinessProfile, LineSkipFormData } from "@/lib/business/types"
 
 const DAYS = [
@@ -16,15 +17,14 @@ const DAYS = [
   { value: 0, label: "Sun" },
 ]
 
-function getMatchingDates(daysOfWeek: number[], start: string, end: string): string[] {
-  if (!start || !end || daysOfWeek.length === 0) return []
+function getUpcomingDates(daysOfWeek: number[], count: number = 7): string[] {
+  if (daysOfWeek.length === 0) return []
   const dates: string[] = []
-  const startDate = new Date(start + "T00:00:00")
-  const endDate = new Date(end + "T00:00:00")
-  if (startDate > endDate) return []
+  const current = new Date()
+  current.setDate(current.getDate() + 1) // start from tomorrow
 
-  const current = new Date(startDate)
-  while (current <= endDate) {
+  let daysChecked = 0
+  while (dates.length < count && daysChecked < 60) {
     if (daysOfWeek.includes(current.getDay())) {
       dates.push(
         current.toLocaleDateString("en-US", {
@@ -36,12 +36,14 @@ function getMatchingDates(daysOfWeek: number[], start: string, end: string): str
       )
     }
     current.setDate(current.getDate() + 1)
+    daysChecked++
   }
   return dates
 }
 
 export default function CreateLineSkipPage() {
   const router = useRouter()
+  const { selectedVenue } = useVenue()
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [loading, setLoading] = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
@@ -67,16 +69,25 @@ export default function CreateLineSkipPage() {
         setProfile(p)
         setForm((prev) => ({
           ...prev,
-          name: `Skip the Line at ${p.name}`,
+          name: `Skip the Line at ${selectedVenue?.name || p.name}`,
         }))
       })
       .catch(() => {})
       .finally(() => setProfileLoading(false))
   }, [])
 
-  const matchingDates = useMemo(
-    () => getMatchingDates(form.days_of_week, form.date_range_start, form.date_range_end),
-    [form.days_of_week, form.date_range_start, form.date_range_end]
+  useEffect(() => {
+    if (selectedVenue?.name) {
+      setForm((prev) => ({
+        ...prev,
+        name: `Skip the Line at ${selectedVenue.name}`,
+      }))
+    }
+  }, [selectedVenue])
+
+  const upcomingDates = useMemo(
+    () => getUpcomingDates(form.days_of_week),
+    [form.days_of_week]
   )
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -109,19 +120,15 @@ export default function CreateLineSkipPage() {
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
+    if (!selectedVenue) errs.name = "Please select a venue first"
     if (!form.name.trim()) errs.name = "Name is required"
     if (form.days_of_week.length === 0) errs.days_of_week = "Select at least one day"
     if (!form.date_range_start) errs.date_range_start = "Start date is required"
-    if (!form.date_range_end) errs.date_range_end = "End date is required"
-    if (form.date_range_start && form.date_range_end && form.date_range_start > form.date_range_end)
-      errs.date_range_end = "End date must be after start date"
     if (!form.default_start_time) errs.default_start_time = "Start time is required"
     if (!form.default_end_time) errs.default_end_time = "End time is required"
     if (form.default_price_cents <= 0) errs.default_price_cents = "Price must be greater than $0"
     if (form.default_capacity && parseInt(form.default_capacity) <= 0)
       errs.default_capacity = "Capacity must be a positive number"
-    if (matchingDates.length === 0 && form.days_of_week.length > 0 && form.date_range_start && form.date_range_end)
-      errs.date_range_end = "No matching dates in this range for selected days"
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -139,11 +146,12 @@ export default function CreateLineSkipPage() {
         description: form.description.trim() || null,
         days_of_week: form.days_of_week,
         date_range_start: form.date_range_start,
-        date_range_end: form.date_range_end,
+        date_range_end: "2099-12-31",
         default_start_time: form.default_start_time,
         default_end_time: form.default_end_time,
         default_price_cents: form.default_price_cents,
         default_capacity: form.default_capacity ? parseInt(form.default_capacity) : null,
+        venue_id: selectedVenue?.id,
       }
 
       const data = await apiClient.post<{ line_skip: { id: number } }>("/business/line-skips", payload)
@@ -164,12 +172,51 @@ export default function CreateLineSkipPage() {
     )
   }
 
+  // Stripe Connect gate
+  if (profile && !profile.stripe_connect_onboarded) {
+    return (
+      <div className="max-w-2xl">
+        <Link href="/business/line-skips" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
+          &larr; Back to Line Skips
+        </Link>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 mt-4">
+          <div className="flex items-start gap-3">
+            <svg className="h-6 w-6 text-amber-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+            <div>
+              <h2 className="text-lg font-semibold text-ink mb-1">Connect Your Stripe Account</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Line Skips are paid products. You need to connect your Stripe account before you can start selling them.
+              </p>
+              <Link
+                href="/business/settings"
+                className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all"
+              >
+                Go to Settings
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-2xl">
       <Link href="/business/line-skips" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
         &larr; Back to Line Skips
       </Link>
       <h1 className="text-xl font-bold text-ink mb-6">Create Line Skip</h1>
+
+      <div className="mb-5 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 space-y-2">
+        <p className="text-sm text-blue-700">
+          Line skips include cover. Customers who purchase a line skip will skip the line and have their cover included in the price.
+        </p>
+        <p className="text-sm text-blue-700">
+          Line skip tickets are scanned using the universal scanner — customers simply show their QR code and staff scan it with any phone camera. No app or special equipment needed.
+        </p>
+      </div>
 
       {serverError && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
@@ -186,7 +233,7 @@ export default function CreateLineSkipPage() {
             name="name"
             value={form.name}
             onChange={handleChange}
-            placeholder={`Skip the Line at ${profile?.name || "Your Venue"}`}
+            placeholder={`Skip the Line at ${selectedVenue?.name || "Your Venue"}`}
             className={`w-full rounded-lg border px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary ${
               errors.name ? "border-red-400" : "border-gray-300"
             }`}
@@ -204,7 +251,7 @@ export default function CreateLineSkipPage() {
             value={form.description}
             onChange={handleChange}
             rows={3}
-            placeholder="Skip the line and get guaranteed entry..."
+            placeholder="Skip the line with cover included. VIP entry, no wait..."
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary resize-none"
           />
         </div>
@@ -231,34 +278,19 @@ export default function CreateLineSkipPage() {
           {errors.days_of_week && <p className="mt-1 text-xs text-red-500">{errors.days_of_week}</p>}
         </div>
 
-        {/* Date range */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1">Start Date</label>
-            <input
-              type="date"
-              name="date_range_start"
-              value={form.date_range_start}
-              onChange={handleChange}
-              className={`w-full rounded-lg border px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary ${
-                errors.date_range_start ? "border-red-400" : "border-gray-300"
-              }`}
-            />
-            {errors.date_range_start && <p className="mt-1 text-xs text-red-500">{errors.date_range_start}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1">End Date</label>
-            <input
-              type="date"
-              name="date_range_end"
-              value={form.date_range_end}
-              onChange={handleChange}
-              className={`w-full rounded-lg border px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary ${
-                errors.date_range_end ? "border-red-400" : "border-gray-300"
-              }`}
-            />
-            {errors.date_range_end && <p className="mt-1 text-xs text-red-500">{errors.date_range_end}</p>}
-          </div>
+        {/* Start Date (no end date) */}
+        <div>
+          <label className="block text-sm font-medium text-ink mb-1">Start Date</label>
+          <input
+            type="date"
+            name="date_range_start"
+            value={form.date_range_start}
+            onChange={handleChange}
+            className={`w-full rounded-lg border px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary ${
+              errors.date_range_start ? "border-red-400" : "border-gray-300"
+            }`}
+          />
+          {errors.date_range_start && <p className="mt-1 text-xs text-red-500">{errors.date_range_start}</p>}
         </div>
 
         {/* Time range */}
@@ -312,7 +344,7 @@ export default function CreateLineSkipPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-ink mb-1">
-              Default Capacity <span className="text-gray-400 font-normal">(optional)</span>
+              Line Skip Quantity <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <input
               type="number"
@@ -330,18 +362,25 @@ export default function CreateLineSkipPage() {
         </div>
 
         {/* Preview */}
-        {matchingDates.length > 0 && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <p className="text-sm font-medium text-ink mb-2">
-              This will create Line Skips for {matchingDates.length} night{matchingDates.length !== 1 ? "s" : ""}
-            </p>
-            <div className="max-h-40 overflow-y-auto space-y-1">
-              {matchingDates.map((date, i) => (
-                <p key={i} className="text-xs text-gray-600">{date}</p>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          {form.days_of_week.length === 0 ? (
+            <p className="text-sm text-gray-500">Select days of the week to see upcoming nights</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-ink mb-1">
+                Line Skips will be created on a rolling basis. Upcoming nights:
+              </p>
+              <div className="max-h-40 overflow-y-auto space-y-1 mb-2">
+                {upcomingDates.map((date, i) => (
+                  <p key={i} className="text-xs text-gray-600">{date}</p>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400">
+                New nights are added automatically each week. You can stop this line skip at any time.
+              </p>
+            </>
+          )}
+        </div>
 
         {/* Submit */}
         <div className="flex gap-3 pt-2">

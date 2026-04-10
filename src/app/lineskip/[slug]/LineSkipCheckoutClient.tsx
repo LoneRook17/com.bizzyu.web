@@ -16,6 +16,14 @@ interface Business {
   website: string | null
 }
 
+interface VenueInfo {
+  venue_id: number
+  name: string
+  address: string | null
+  description: string | null
+  photo_url: string | null
+}
+
 interface LineSkipInstance {
   id: number
   line_skip_id: number
@@ -53,14 +61,21 @@ interface PromoInfo {
   instance_date: string
 }
 
+interface FeeConfig {
+  flat_cents: number
+  percentage: number
+}
+
 interface PageData {
   business: Business
+  venue: VenueInfo | null
   instances: LineSkipInstance[]
   events: EventItem[]
+  fee_config: FeeConfig
 }
 
 type Tab = "lineskips" | "events"
-type CheckoutStep = "idle" | "phone" | "verify" | "processing"
+type CheckoutStep = "idle" | "phone" | "name" | "verify" | "processing"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -104,14 +119,17 @@ export default function LineSkipCheckoutClient({
 }) {
   // Page data
   const [business, setBusiness] = useState<Business | null>(initialData?.business ?? null)
+  const [venue, setVenue] = useState<VenueInfo | null>(initialData?.venue ?? null)
   const [instances, setInstances] = useState<LineSkipInstance[]>(initialData?.instances ?? [])
   const [events, setEvents] = useState<EventItem[]>(initialData?.events ?? [])
+  const [feeConfig, setFeeConfig] = useState<FeeConfig | null>(initialData?.fee_config ?? null)
   const [loading, setLoading] = useState(!initialData)
   const [error, setError] = useState("")
 
   // UI state
   const [activeTab, setActiveTab] = useState<Tab>("lineskips")
-  const [quantities, setQuantities] = useState<Record<number, number>>({})
+  const [selectedInstanceId, setSelectedInstanceId] = useState<number | null>(null)
+  const [quantity, setQuantity] = useState(1)
 
   // Promo state
   const [promoInput, setPromoInput] = useState("")
@@ -121,11 +139,11 @@ export default function LineSkipCheckoutClient({
 
   // Checkout modal state
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>("idle")
-  const [selectedInstance, setSelectedInstance] = useState<LineSkipInstance | null>(null)
   const [phone, setPhone] = useState("")
   const [otpCode, setOtpCode] = useState("")
   const [attendeeName, setAttendeeName] = useState("")
   const [userName, setUserName] = useState<string | null>(null)
+  const [hasAccount, setHasAccount] = useState(false)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
 
@@ -136,8 +154,10 @@ export default function LineSkipCheckoutClient({
       if (!res.ok) throw new Error("Business not found")
       const data = await res.json()
       setBusiness(data.business)
+      setVenue(data.venue || null)
       setInstances(data.instances || [])
       setEvents(data.events || [])
+      setFeeConfig(data.fee_config || null)
     } catch {
       setError("Could not load business information")
     } finally {
@@ -149,10 +169,28 @@ export default function LineSkipCheckoutClient({
     if (!initialData) fetchData()
   }, [initialData, fetchData])
 
+  // Selected instance
+  const selectedInstance = instances.find((i) => i.id === selectedInstanceId) || null
+
   // Quantity helpers
-  const getQty = (id: number) => quantities[id] || 1
-  const setQty = (id: number, val: number) => {
-    setQuantities((prev) => ({ ...prev, [id]: Math.max(1, Math.min(10, val)) }))
+  const adjustQty = (val: number) => {
+    const remaining = selectedInstance?.capacity !== null && selectedInstance
+      ? selectedInstance.capacity! - selectedInstance.tickets_sold
+      : 10
+    setQuantity(Math.max(1, Math.min(10, Math.min(remaining, val))))
+  }
+
+  const selectInstance = (id: number) => {
+    if (selectedInstanceId === id) {
+      setSelectedInstanceId(null)
+      return
+    }
+    setSelectedInstanceId(id)
+    setQuantity(1)
+    // Clear promo when switching instances — promo may not apply to new instance
+    if (promoApplied) {
+      removePromo()
+    }
   }
 
   // Get applicable promo for an instance
@@ -160,6 +198,34 @@ export default function LineSkipCheckoutClient({
     if (!promoApplied) return null
     return promoApplied.find((p) => p.line_skip_instance_id === instanceId) || null
   }
+
+  // ─── Fee Calculation (client-side) ────────────────────────────────────────
+
+  const calcFees = () => {
+    if (!selectedInstance || !feeConfig) return null
+    const promo = getPromoForInstance(selectedInstance.id)
+    const discountedUnitPrice = getDiscountedPrice(selectedInstance.price_cents, promo)
+    const discountPerUnit = selectedInstance.price_cents - discountedUnitPrice
+    const subtotal = discountedUnitPrice * quantity
+    const discountTotal = discountPerUnit * quantity
+
+    if (subtotal === 0) {
+      return { subtotal: 0, discount: discountTotal, service_fee: 0, total: 0 }
+    }
+
+    const flatFee = feeConfig.flat_cents * quantity
+    const percentageFee = Math.round(subtotal * (feeConfig.percentage / 100))
+    const serviceFee = flatFee + percentageFee
+
+    return {
+      subtotal: selectedInstance.price_cents * quantity,
+      discount: discountTotal,
+      service_fee: serviceFee,
+      total: subtotal + serviceFee,
+    }
+  }
+
+  const fees = selectedInstanceId ? calcFees() : null
 
   // ─── Promo Code ──────────────────────────────────────────────────────────
 
@@ -203,19 +269,19 @@ export default function LineSkipCheckoutClient({
 
   // ─── Checkout Flow ───────────────────────────────────────────────────────
 
-  const startCheckout = (instance: LineSkipInstance) => {
-    setSelectedInstance(instance)
+  const startCheckout = () => {
+    if (!selectedInstance) return
     setCheckoutStep("phone")
     setCheckoutError("")
     setPhone("")
     setOtpCode("")
     setAttendeeName("")
     setUserName(null)
+    setHasAccount(false)
   }
 
   const closeCheckout = () => {
     setCheckoutStep("idle")
-    setSelectedInstance(null)
     setCheckoutError("")
   }
 
@@ -227,24 +293,83 @@ export default function LineSkipCheckoutClient({
     setCheckoutLoading(true)
     setCheckoutError("")
     try {
-      const fullPhone = phone.startsWith("1") ? phone : `1${phone}`
+      const digits = phone.replace(/\D/g, "")
+      const fullPhone = digits.startsWith("1") ? `+${digits}` : `+1${digits}`
+
+      // Check promo eligibility BEFORE sending verification code
+      const promo = selectedInstance ? getPromoForInstance(selectedInstance.id) : null
+      if (promo) {
+        try {
+          const eligRes = await fetch(`${API_URL}/line-skips/checkout/verify-promo-eligibility`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              promo_code_id: promo.id,
+              phone_number: fullPhone,
+              quantity,
+            }),
+          })
+          const eligData = await eligRes.json()
+          if (!eligRes.ok) {
+            // API validation error (missing fields etc.) — frontend bug, don't show raw error
+            console.error("Promo eligibility check failed:", eligData)
+            setCheckoutError("Something went wrong. Please try again.")
+            setCheckoutLoading(false)
+            return
+          }
+          if (!eligData.eligible) {
+            setCheckoutError(eligData.message || "You've already used this promo code")
+            setCheckoutLoading(false)
+            return
+          }
+          if (eligData.outcome === "partial") {
+            setCheckoutError(eligData.message || `This promo code can only be applied to ${eligData.remaining} more ticket(s)`)
+            setCheckoutLoading(false)
+            return
+          }
+        } catch (e) {
+          console.error("Promo eligibility check error:", e)
+          setCheckoutError("Something went wrong. Please try again.")
+          setCheckoutLoading(false)
+          return
+        }
+      }
+
       const res = await fetch(`${API_URL}/line-skips/checkout/send-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: `+${fullPhone.replace(/\D/g, "")}` }),
+        body: JSON.stringify({ phone_number: fullPhone }),
       })
       const data = await res.json()
       if (!res.ok) {
         setCheckoutError(data.message || "Failed to send code")
         return
       }
-      if (data.user_name) setUserName(data.user_name)
-      setCheckoutStep("verify")
+      if (data.has_account && data.user_name) {
+        // Registered user — skip name step
+        setUserName(data.user_name)
+        setAttendeeName(data.user_name)
+        setHasAccount(true)
+        setCheckoutStep("verify")
+      } else {
+        // New user — ask for name
+        setHasAccount(false)
+        setCheckoutStep("name")
+      }
     } catch {
       setCheckoutError("Failed to send verification code")
     } finally {
       setCheckoutLoading(false)
     }
+  }
+
+  const submitName = () => {
+    if (!attendeeName.trim()) {
+      setCheckoutError("Please enter your name")
+      return
+    }
+    setCheckoutError("")
+    setCheckoutStep("verify")
   }
 
   const verifyCode = async () => {
@@ -269,7 +394,7 @@ export default function LineSkipCheckoutClient({
       }
       if (data.user_name) {
         setUserName(data.user_name)
-        setAttendeeName(data.user_name)
+        if (!attendeeName) setAttendeeName(data.user_name)
       }
 
       // Proceed to payment
@@ -293,37 +418,13 @@ export default function LineSkipCheckoutClient({
 
     const digits = phone.replace(/\D/g, "")
     const fullPhone = digits.startsWith("1") ? `+${digits}` : `+1${digits}`
-    const qty = getQty(selectedInstance.id)
+    const qty = quantity
     const promo = promoInput.trim() ? getPromoForInstance(selectedInstance.id) : null
     const finalName = attendeeName || verifiedName || "Guest"
     const discountedPrice = getDiscountedPrice(selectedInstance.price_cents, promo)
     const totalCents = discountedPrice * qty
 
     try {
-      // Check promo eligibility if promo applied
-      if (promo) {
-        const eligRes = await fetch(`${API_URL}/line-skips/checkout/verify-promo-eligibility`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            promo_code_id: promo.id,
-            phone_number: fullPhone,
-            quantity: qty,
-          }),
-        })
-        const eligData = await eligRes.json()
-        if (!eligRes.ok || !eligData.eligible) {
-          setCheckoutError("You have reached the promo code limit")
-          setCheckoutStep("phone")
-          return
-        }
-        if (eligData.outcome === "partial") {
-          setCheckoutError(`Promo is limited to ${eligData.remaining} more use(s) for your account`)
-          setCheckoutStep("phone")
-          return
-        }
-      }
-
       if (totalCents <= 0) {
         // Free checkout
         const res = await fetch(`${API_URL}/line-skips/checkout/complete-free`, {
@@ -343,8 +444,7 @@ export default function LineSkipCheckoutClient({
           setCheckoutStep("phone")
           return
         }
-        // Redirect to a simple success view
-        window.location.href = `/lineskip/${businessId}?free_success=1&business_name=${encodeURIComponent(data.business_name || "")}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}`
+        window.location.href = `/lineskip/${businessId}?free_success=1&business_name=${encodeURIComponent(data.venue_name || data.business_name || "")}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}`
         return
       }
 
@@ -367,7 +467,6 @@ export default function LineSkipCheckoutClient({
         return
       }
 
-      // Redirect to Stripe
       if (data.url) {
         window.location.href = data.url
       }
@@ -439,9 +538,6 @@ export default function LineSkipCheckoutClient({
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a] p-6">
         <div className="w-full max-w-md">
           <div className="mb-6 text-center">
-            <img src="/images/bizzy-logo.png" alt="Bizzy" className="mx-auto h-8 opacity-80" />
-          </div>
-          <div className="mb-6 text-center">
             <div
               className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full"
               style={{ backgroundColor: `${GOLD}20` }}
@@ -463,7 +559,7 @@ export default function LineSkipCheckoutClient({
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-black/80">LINE SKIP</span>
                 <span className="rounded-full bg-black/10 px-3 py-0.5 text-xs font-bold text-black/70">
-                  GUARANTEED ENTRY
+                  INCLUDES COVER
                 </span>
               </div>
             </div>
@@ -487,20 +583,33 @@ export default function LineSkipCheckoutClient({
               </div>
               <div className="my-4 border-t border-dashed border-white/20" />
               <p className="text-center text-xs text-white/40">
-                Show your QR code at the door for guaranteed entry.
+                Show your QR code at the door. Cover included.
                 <br />
                 Check your email for ticket details.
               </p>
             </div>
           </div>
-          <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-            <p className="mb-2 text-sm text-white/70">Download the Bizzy app to access your tickets</p>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-5">
+            <div className="flex items-center gap-4">
+              <img
+                src="/images/appicon.png"
+                alt="Bizzy"
+                className="h-14 w-14 rounded-xl"
+              />
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-white">Get the Bizzy App</h3>
+                <p className="mt-0.5 text-xs text-white/50">Manage your tickets anytime, anywhere</p>
+              </div>
+            </div>
             <a
               href="https://apps.apple.com/app/id6683306360"
-              className="inline-block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold text-black transition-colors"
               style={{ backgroundColor: GOLD }}
             >
-              Get the App
+              <svg className="h-4 w-4" viewBox="0 0 384 512" fill="currentColor">
+                <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
+              </svg>
+              Download on App Store
             </a>
           </div>
         </div>
@@ -508,26 +617,34 @@ export default function LineSkipCheckoutClient({
     )
   }
 
+  // ─── Derived display values ─────────────────────────────────────────────
+
+  const displayName = venue?.name || business.name
+  const displayAddress = venue?.address || business.address
+  const heroImage = venue?.photo_url || business.logo_image_url
+
   // ─── Render: Main Page ───────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Business Banner */}
+      {/* Hero Banner — venue photo, name, address (no Bizzy logo) */}
       <div className="relative h-48 w-full overflow-hidden bg-gradient-to-b from-white/10 to-transparent">
-        {business.logo_image_url && (
+        {heroImage && (
           <img
-            src={business.logo_image_url}
-            alt={business.name}
+            src={heroImage}
+            alt={displayName}
             className="h-full w-full object-cover opacity-40"
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <div className="mx-auto max-w-lg">
-            <img src="/images/bizzy-logo.png" alt="Bizzy" className="mb-3 h-6 opacity-60" />
-            <h1 className="text-2xl font-bold text-white">{business.name}</h1>
-            {business.address && (
-              <p className="mt-1 text-sm text-white/50">{business.address}</p>
+            <h1 className="text-2xl font-bold text-white">{displayName}</h1>
+            {venue && business.name !== venue.name && (
+              <p className="mt-0.5 text-sm text-white/40">{business.name}</p>
+            )}
+            {displayAddress && (
+              <p className="mt-1 text-sm text-white/50">{displayAddress}</p>
             )}
           </div>
         </div>
@@ -563,7 +680,7 @@ export default function LineSkipCheckoutClient({
         {/* LINE SKIPS TAB */}
         {activeTab === "lineskips" && (
           <div className="mt-6">
-            {/* Guaranteed Entry Banner */}
+            {/* Includes Cover Banner */}
             <div
               className="mb-6 flex items-center gap-3 rounded-xl px-4 py-3"
               style={{ backgroundColor: `${GOLD}15`, border: `1px solid ${GOLD}40` }}
@@ -578,42 +695,72 @@ export default function LineSkipCheckoutClient({
               </div>
               <div>
                 <p className="text-sm font-bold" style={{ color: GOLD }}>
-                  Guaranteed Entry
+                  Includes Cover
                 </p>
                 <p className="text-xs text-white/50">
-                  Skip the line with your digital pass
+                  Skip the line with cover included
                 </p>
               </div>
             </div>
 
-            {/* Night Cards */}
+            {/* Select a Night */}
+            <h2 className="mb-4 text-lg font-bold text-white">Select a Night</h2>
+
             {instances.length === 0 ? (
               <div className="rounded-xl bg-white/5 border border-white/10 p-8 text-center">
                 <p className="text-white/50">No Line Skips available in the next 3 days</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {instances.map((inst) => {
+                  const isSelected = selectedInstanceId === inst.id
                   const promo = getPromoForInstance(inst.id)
                   const discountedPrice = getDiscountedPrice(inst.price_cents, promo)
                   const remaining = inst.capacity !== null ? inst.capacity - inst.tickets_sold : null
                   const isSoldOut = inst.capacity !== null && inst.tickets_sold >= inst.capacity
-                  const qty = getQty(inst.id)
 
                   return (
                     <div
                       key={inst.id}
-                      className="overflow-hidden rounded-xl bg-white/5 border border-white/10"
+                      className={`overflow-hidden rounded-xl border transition-colors ${
+                        isSoldOut
+                          ? "border-white/5 bg-white/[0.02] opacity-50"
+                          : isSelected
+                            ? "bg-white/5"
+                            : "border-white/10 bg-white/5 cursor-pointer hover:bg-white/[0.07]"
+                      }`}
+                      style={isSelected ? { borderColor: `${GOLD}60` } : {}}
+                      onClick={() => !isSoldOut && selectInstance(inst.id)}
                     >
                       <div className="p-5">
-                        <div className="mb-3 flex items-start justify-between">
-                          <div>
-                            <h3 className="text-base font-bold text-white">
-                              {formatDate(typeof inst.date === "string" ? inst.date.substring(0, 10) : inst.date)}
-                            </h3>
-                            <p className="mt-0.5 text-sm text-white/50">
-                              {formatTime(inst.start_time)} - {formatTime(inst.end_time)}
-                            </p>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            {/* Radio indicator */}
+                            <div
+                              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                isSelected ? "border-transparent" : "border-white/20"
+                              }`}
+                              style={isSelected ? { backgroundColor: GOLD } : {}}
+                            >
+                              {isSelected && (
+                                <svg className="h-3 w-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="text-base font-bold text-white">
+                                {formatDate(typeof inst.date === "string" ? inst.date.substring(0, 10) : inst.date)}
+                              </h3>
+                              <p className="mt-0.5 text-sm text-white/50">
+                                {formatTime(inst.start_time)} - {formatTime(inst.end_time)}
+                              </p>
+                              {isSoldOut ? (
+                                <span className="mt-1 inline-block text-xs font-semibold text-red-400">Sold Out</span>
+                              ) : (
+                                <span className="mt-1 inline-block text-xs text-white/40">Available</span>
+                              )}
+                            </div>
                           </div>
                           <div className="text-right">
                             {promo ? (
@@ -633,50 +780,29 @@ export default function LineSkipCheckoutClient({
                           </div>
                         </div>
 
-                        {/* Capacity */}
-                        <div className="mb-4">
-                          {isSoldOut ? (
-                            <span className="text-xs font-semibold text-red-400">Sold Out</span>
-                          ) : remaining !== null ? (
-                            <span className="text-xs text-white/40">
-                              {remaining} remaining
-                            </span>
-                          ) : (
-                            <span className="text-xs text-white/40">Available</span>
-                          )}
-                        </div>
-
-                        {!isSoldOut && (
-                          <div className="flex items-center gap-3">
-                            {/* Quantity selector */}
+                        {/* Quantity selector (shown when selected) */}
+                        {isSelected && !isSoldOut && (
+                          <div className="mt-4 flex items-center gap-3">
+                            <span className="text-sm text-white/60">Qty</span>
                             <div className="flex items-center rounded-lg bg-white/5 border border-white/10">
                               <button
-                                onClick={() => setQty(inst.id, qty - 1)}
+                                onClick={(e) => { e.stopPropagation(); adjustQty(quantity - 1) }}
                                 className="px-3 py-2 text-white/60 hover:text-white transition-colors"
-                                disabled={qty <= 1}
+                                disabled={quantity <= 1}
                               >
                                 -
                               </button>
                               <span className="w-8 text-center text-sm font-medium text-white">
-                                {qty}
+                                {quantity}
                               </span>
                               <button
-                                onClick={() => setQty(inst.id, qty + 1)}
+                                onClick={(e) => { e.stopPropagation(); adjustQty(quantity + 1) }}
                                 className="px-3 py-2 text-white/60 hover:text-white transition-colors"
-                                disabled={remaining !== null && qty >= remaining}
+                                disabled={remaining !== null && quantity >= remaining}
                               >
                                 +
                               </button>
                             </div>
-
-                            {/* Get Line Skip button */}
-                            <button
-                              onClick={() => startCheckout(inst)}
-                              className="flex-1 rounded-lg py-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
-                              style={{ backgroundColor: GOLD }}
-                            >
-                              Get Line Skip
-                            </button>
                           </div>
                         )}
                       </div>
@@ -687,52 +813,108 @@ export default function LineSkipCheckoutClient({
             )}
 
             {/* Promo Code Input */}
-            <div className="mt-6">
-              {promoApplied ? (
-                <div
-                  className="flex items-center justify-between rounded-xl px-4 py-3"
-                  style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}30` }}
-                >
-                  <div>
-                    <span className="text-sm font-semibold" style={{ color: GOLD }}>
-                      {promoApplied[0].code}
-                    </span>
-                    <span className="ml-2 text-xs text-white/50">
-                      {promoApplied[0].discount_type === "percentage"
-                        ? `${promoApplied[0].discount_value}% off`
-                        : `$${promoApplied[0].discount_value} off`}
-                    </span>
+            {selectedInstanceId && (
+              <div className="mt-6">
+                {promoApplied ? (
+                  <div
+                    className="flex items-center justify-between rounded-xl px-4 py-3"
+                    style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}30` }}
+                  >
+                    <div>
+                      <span className="text-sm font-semibold" style={{ color: GOLD }}>
+                        {promoApplied[0].code}
+                      </span>
+                      <span className="ml-2 text-xs text-white/50">
+                        {promoApplied[0].discount_type === "percentage"
+                          ? `${promoApplied[0].discount_value}% off`
+                          : `$${promoApplied[0].discount_value} off`}
+                      </span>
+                    </div>
+                    <button
+                      onClick={removePromo}
+                      className="text-xs text-white/40 hover:text-white/60 transition-colors"
+                    >
+                      Remove
+                    </button>
                   </div>
-                  <button
-                    onClick={removePromo}
-                    className="text-xs text-white/40 hover:text-white/60 transition-colors"
-                  >
-                    Remove
-                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Promo code"
+                      value={promoInput}
+                      onChange={(e) => handlePromoInputChange(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && applyPromo()}
+                      className="flex-1 rounded-lg bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                    />
+                    <button
+                      onClick={applyPromo}
+                      disabled={promoLoading || !promoInput.trim()}
+                      className="rounded-lg bg-white/10 px-5 py-2.5 text-sm font-medium text-white hover:bg-white/15 disabled:opacity-50 transition-colors"
+                    >
+                      {promoLoading ? "..." : "Apply"}
+                    </button>
+                  </div>
+                )}
+                {promoError && (
+                  <p className="mt-2 text-xs text-red-400">{promoError}</p>
+                )}
+              </div>
+            )}
+
+            {/* Price Breakdown */}
+            {selectedInstanceId && fees && (
+              <div className="mt-6 rounded-xl bg-white/5 border border-white/10 p-5">
+                <h3 className="mb-3 text-sm font-semibold text-white">Order Summary</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between text-white/70">
+                    <span>
+                      Line Skip {quantity > 1 ? `x ${quantity}` : ""}
+                    </span>
+                    <span>{formatPrice(fees.subtotal)}</span>
+                  </div>
+
+                  {fees.discount > 0 && (
+                    <div className="flex justify-between text-green-400">
+                      <span>Promo Discount</span>
+                      <span>-{formatPrice(fees.discount)}</span>
+                    </div>
+                  )}
+
+                  <div className="border-t border-white/10 my-1" />
+
+                  <div className="flex justify-between text-white/70">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(fees.subtotal - fees.discount)}</span>
+                  </div>
+
+                  <div className="flex justify-between text-white/70">
+                    <span>Service Fee</span>
+                    <span>{fees.service_fee === 0 ? "Free" : formatPrice(fees.service_fee)}</span>
+                  </div>
+
+                  <div className="border-t border-white/10 my-1" />
+
+                  <div className="flex justify-between text-white font-bold text-base">
+                    <span>Total</span>
+                    <span>{fees.total === 0 ? "Free" : formatPrice(fees.total)}</span>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Promo code"
-                    value={promoInput}
-                    onChange={(e) => handlePromoInputChange(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && applyPromo()}
-                    className="flex-1 rounded-lg bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
-                  />
-                  <button
-                    onClick={applyPromo}
-                    disabled={promoLoading || !promoInput.trim()}
-                    className="rounded-lg bg-white/10 px-5 py-2.5 text-sm font-medium text-white hover:bg-white/15 disabled:opacity-50 transition-colors"
-                  >
-                    {promoLoading ? "..." : "Apply"}
-                  </button>
-                </div>
-              )}
-              {promoError && (
-                <p className="mt-2 text-xs text-red-400">{promoError}</p>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Get Line Skip CTA */}
+            {selectedInstanceId && (
+              <button
+                onClick={startCheckout}
+                className="mt-6 w-full rounded-xl py-3.5 text-base font-bold text-black transition-opacity hover:opacity-90"
+                style={{ backgroundColor: GOLD }}
+              >
+                {fees && fees.total > 0
+                  ? `Get Line Skip — ${formatPrice(fees.total)}`
+                  : "Get Line Skip — Free"}
+              </button>
+            )}
           </div>
         )}
 
@@ -803,6 +985,7 @@ export default function LineSkipCheckoutClient({
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">
                 {checkoutStep === "phone" && "Enter your phone"}
+                {checkoutStep === "name" && "Your name"}
                 {checkoutStep === "verify" && "Verify your number"}
                 {checkoutStep === "processing" && "Processing..."}
               </h2>
@@ -832,19 +1015,16 @@ export default function LineSkipCheckoutClient({
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold" style={{ color: GOLD }}>
-                    {formatPrice(
-                      getDiscountedPrice(selectedInstance.price_cents, getPromoForInstance(selectedInstance.id)) *
-                        getQty(selectedInstance.id)
-                    )}
+                    {fees ? formatPrice(fees.total) : formatPrice(selectedInstance.price_cents * quantity)}
                   </p>
                   <p className="text-xs text-white/40">
-                    {getQty(selectedInstance.id)} ticket{getQty(selectedInstance.id) > 1 ? "s" : ""}
+                    {quantity} ticket{quantity > 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Phone step */}
+            {/* Phone step — phone number only */}
             {checkoutStep === "phone" && (
               <div>
                 <label className="mb-2 block text-sm text-white/60">Phone Number</label>
@@ -860,18 +1040,6 @@ export default function LineSkipCheckoutClient({
                   />
                 </div>
 
-                {/* Name field (shown if no account detected) */}
-                <div className="mt-3">
-                  <label className="mb-2 block text-sm text-white/60">Your Name</label>
-                  <input
-                    type="text"
-                    placeholder="Full name"
-                    value={attendeeName}
-                    onChange={(e) => setAttendeeName(e.target.value)}
-                    className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
-                  />
-                </div>
-
                 {checkoutError && (
                   <p className="mt-3 text-xs text-red-400">{checkoutError}</p>
                 )}
@@ -883,6 +1051,47 @@ export default function LineSkipCheckoutClient({
                   style={{ backgroundColor: GOLD }}
                 >
                   {checkoutLoading ? "Sending..." : "Continue"}
+                </button>
+              </div>
+            )}
+
+            {/* Name step — shown only for unregistered users */}
+            {checkoutStep === "name" && (
+              <div>
+                <p className="mb-3 text-sm text-white/60">
+                  We don&apos;t have an account for this number yet. Enter your name to continue.
+                </p>
+                <label className="mb-2 block text-sm text-white/60">Your Name</label>
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={attendeeName}
+                  onChange={(e) => setAttendeeName(e.target.value)}
+                  className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                  autoFocus
+                />
+
+                {checkoutError && (
+                  <p className="mt-3 text-xs text-red-400">{checkoutError}</p>
+                )}
+
+                <button
+                  onClick={submitName}
+                  disabled={!attendeeName.trim()}
+                  className="mt-4 w-full rounded-lg py-3 text-sm font-bold text-black disabled:opacity-50 transition-opacity"
+                  style={{ backgroundColor: GOLD }}
+                >
+                  Continue
+                </button>
+
+                <button
+                  onClick={() => {
+                    setCheckoutStep("phone")
+                    setCheckoutError("")
+                  }}
+                  className="mt-2 w-full py-2 text-xs text-white/40 hover:text-white/60 transition-colors"
+                >
+                  Change phone number
                 </button>
               </div>
             )}

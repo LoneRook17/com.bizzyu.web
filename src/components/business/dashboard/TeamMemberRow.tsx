@@ -1,13 +1,15 @@
 "use client"
 
 import { ROLE_LABELS } from "@/lib/business/constants"
-import type { TeamMember } from "@/lib/business/types"
+import type { TeamMember, Venue } from "@/lib/business/types"
 
 interface TeamMemberRowProps {
   member: TeamMember
   currentUserRole: string
+  venues: Venue[]
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
+  onVenueChange: (memberId: number, venueId: number | null) => void
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -19,7 +21,8 @@ const ROLE_COLORS: Record<string, string> = {
 
 const ASSIGNABLE_ROLES = ["manager", "staff", "promoter"]
 
-export default function TeamMemberRow({ member, currentUserRole, onRemove, onRoleChange }: TeamMemberRowProps) {
+export default function TeamMemberRow({ member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange }: TeamMemberRowProps) {
+  const canManage = currentUserRole === "owner" || currentUserRole === "manager"
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const isPending = !member.invite_accepted_at && !isOwnerMember
@@ -40,7 +43,7 @@ export default function TeamMemberRow({ member, currentUserRole, onRemove, onRol
 
         <div className="min-w-0">
           <p className="text-sm font-medium text-ink truncate">{member.email}</p>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[member.role] || "bg-gray-100 text-gray-600"}`}>
               {ROLE_LABELS[member.role] || member.role}
             </span>
@@ -54,24 +57,47 @@ export default function TeamMemberRow({ member, currentUserRole, onRemove, onRol
         </div>
       </div>
 
-      {/* Actions — only owner can change roles and remove */}
-      {isOwnerViewing && !isOwnerMember && (
+      {/* Actions */}
+      {canManage && !isOwnerMember && (
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Venue assignment */}
           <select
-            value={member.role}
-            onChange={(e) => onRoleChange(member.id, e.target.value)}
-            className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer"
+            value={member.venue_id ?? ""}
+            onChange={(e) => {
+              const val = e.target.value
+              onVenueChange(member.id, val === "" ? null : Number(val))
+            }}
+            className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer max-w-[120px]"
+            title="Venue assignment"
           >
-            {ASSIGNABLE_ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+            <option value="">Global</option>
+            {venues.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
             ))}
           </select>
-          <button
-            onClick={() => onRemove(member)}
-            className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-          >
-            Remove
-          </button>
+
+          {/* Role selector — owner only */}
+          {isOwnerViewing && (
+            <select
+              value={member.role}
+              onChange={(e) => onRoleChange(member.id, e.target.value)}
+              className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer"
+            >
+              {ASSIGNABLE_ROLES.map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              ))}
+            </select>
+          )}
+
+          {/* Remove — owner only */}
+          {isOwnerViewing && (
+            <button
+              onClick={() => onRemove(member)}
+              className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+            >
+              Remove
+            </button>
+          )}
         </div>
       )}
     </div>

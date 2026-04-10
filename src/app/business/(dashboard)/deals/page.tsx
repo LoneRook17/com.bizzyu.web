@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/business/auth-context"
+import { useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import { DEAL_TABS } from "@/lib/business/constants"
 import DealCard from "@/components/business/dashboard/DealCard"
@@ -26,6 +27,7 @@ const TAB_EMPTY_MESSAGES: Record<string, { title: string; message: string }> = {
 
 export default function DealsPage() {
   const { user } = useAuth()
+  const venueParam = useVenueParam()
   const [tab, setTab] = useState("live")
   const [deals, setDeals] = useState<DealListItem[]>([])
   const [total, setTotal] = useState(0)
@@ -45,18 +47,18 @@ export default function DealsPage() {
 
   const fetchCounts = useCallback(async () => {
     try {
-      const data = await apiClient.get<DealCounts>("/business/deals/counts")
+      const data = await apiClient.get<DealCounts>(`/business/deals/counts?_=1${venueParam}`)
       setCounts(data)
     } catch {
       // ignore — counts are supplementary
     }
-  }, [])
+  }, [venueParam])
 
   const fetchDeals = useCallback(async () => {
     setLoading(true)
     try {
       const data = await apiClient.get<{ deals: DealListItem[]; total: number }>(
-        `/business/deals?tab=${tab}&page=${page}&limit=${limit}`
+        `/business/deals?tab=${tab}&page=${page}&limit=${limit}${venueParam}`
       )
       setDeals(data.deals)
       setTotal(data.total)
@@ -66,7 +68,7 @@ export default function DealsPage() {
     } finally {
       setLoading(false)
     }
-  }, [tab, page])
+  }, [tab, page, venueParam])
 
   useEffect(() => {
     fetchDeals()

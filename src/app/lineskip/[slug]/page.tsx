@@ -22,15 +22,16 @@ async function getPageData(businessId: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const data = await getPageData(slug)
-  const businessName = data?.business?.name || "Venue"
+  const displayName = data?.venue?.name || data?.business?.name || "Venue"
+  const heroImage = data?.venue?.photo_url || data?.business?.logo_image_url
 
   return {
-    title: `${businessName} - Line Skips | Bizzy`,
-    description: `Skip the line at ${businessName}. Guaranteed entry.`,
+    title: `${displayName} - Line Skips | Bizzy`,
+    description: `Skip the line at ${displayName}. Cover included.`,
     openGraph: {
-      title: `${businessName} - Line Skips | Bizzy`,
-      description: `Skip the line at ${businessName}. Guaranteed entry.`,
-      images: data?.business?.logo_image_url ? [data.business.logo_image_url] : [],
+      title: `${displayName} - Line Skips | Bizzy`,
+      description: `Skip the line at ${displayName}. Cover included.`,
+      images: heroImage ? [heroImage] : [],
     },
   }
 }

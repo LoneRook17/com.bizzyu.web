@@ -3,7 +3,9 @@
 import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { BusinessAuthProvider, useAuth } from "@/lib/business/auth-context"
+import { VenueProvider } from "@/lib/business/venue-context"
 import DashboardShell from "@/components/business/dashboard/DashboardShell"
+import VenueSetupWizard from "@/components/business/dashboard/VenueSetupWizard"
 import { APPROVED_ONLY_ROUTES } from "@/lib/business/constants"
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -35,7 +37,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     )
   }
 
-  return <DashboardShell>{children}</DashboardShell>
+  return (
+    <VenueProvider>
+      <DashboardShell>{children}</DashboardShell>
+      <VenueSetupWizard />
+    </VenueProvider>
+  )
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

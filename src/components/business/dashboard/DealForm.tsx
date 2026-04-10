@@ -9,6 +9,7 @@ import ImageUpload from "./ImageUpload"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { REDEMPTION_OPTIONS } from "@/lib/business/constants"
 import { useAuth } from "@/lib/business/auth-context"
+import { useVenue } from "@/lib/business/venue-context"
 import type { DealFormData } from "@/lib/business/types"
 
 interface DealFormProps {
@@ -19,6 +20,7 @@ interface DealFormProps {
 export default function DealForm({ initialData, dealId }: DealFormProps) {
   const router = useRouter()
   const { business } = useAuth()
+  const { selectedVenue } = useVenue()
   const isEditing = !!dealId
 
   const [form, setForm] = useState<DealFormData>({
@@ -44,6 +46,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
+    if (!selectedVenue) errs.deal_title = "Please select a venue first"
     if (!form.deal_title.trim()) errs.deal_title = "Deal title is required"
     if (!form.description.trim()) errs.description = "Description is required"
     if (!form.total_saving.trim()) errs.total_saving = "Estimated savings is required"
@@ -75,6 +78,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
         deal_image_path: form.deal_image_path || undefined,
         start_date: form.start_date || undefined,
         total_saving: savingsNum,
+        venue_id: selectedVenue?.id,
       }
 
       if (isEditing) {

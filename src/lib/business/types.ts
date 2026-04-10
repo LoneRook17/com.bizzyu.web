@@ -13,6 +13,19 @@ export interface Business {
   logo_url: string | null
 }
 
+export interface Venue {
+  id: number
+  business_id: number
+  name: string
+  address: string | null
+  description: string | null
+  photo_url: string | null
+  campus_id: number | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface AuthState {
   user: BusinessUser | null
   business: Business | null
@@ -188,6 +201,8 @@ export interface TeamMember {
   is_active: boolean
   invite_accepted_at: string | null
   created_at: string
+  venue_id: number | null
+  venue_name: string | null
 }
 
 // Analytics types
