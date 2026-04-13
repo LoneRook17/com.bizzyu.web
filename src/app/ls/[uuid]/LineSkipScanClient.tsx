@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+import { getApiBaseUrl } from "@/lib/api-url"
+
+const API_URL = getApiBaseUrl()
 
 interface TicketInfo {
   id: number
@@ -294,11 +296,11 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
           <>
             {/* Ticket card */}
             <div className="mb-5 rounded-2xl bg-white/5 border border-white/10 p-5">
-              {/* Attendee name - large */}
-              <h1 className="mb-1 text-2xl font-black text-white">{ticket.attendee_name}</h1>
+              {/* Venue name - large */}
+              <h1 className="mb-1 text-2xl font-black text-white">{ticket.venue_name || ticket.business_name}</h1>
 
-              {/* Business name - prominent */}
-              <p className="mb-4 text-lg font-semibold text-[#D4AF37]">{ticket.venue_name || ticket.business_name}</p>
+              {/* Attendee name */}
+              <p className="mb-4 text-lg font-semibold text-[#D4AF37]">{ticket.attendee_name}</p>
 
               {/* Details */}
               <div className="mb-4 space-y-2.5">

@@ -2,18 +2,23 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/business/auth-context"
-import { useVenueParam } from "@/lib/business/venue-context"
+import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import { EVENT_TABS } from "@/lib/business/constants"
 import EventCard from "@/components/business/dashboard/EventCard"
 import EmptyState from "@/components/business/dashboard/EmptyState"
 import Pagination from "@/components/business/dashboard/Pagination"
+import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { EventListItem, BusinessProfile } from "@/lib/business/types"
 
 export default function EventsPage() {
   const { user } = useAuth()
+  const router = useRouter()
+  const { venues, isAllVenues, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
+  const [showVenueModal, setShowVenueModal] = useState(false)
   const [tab, setTab] = useState("upcoming")
   const [events, setEvents] = useState<EventListItem[]>([])
   const [total, setTotal] = useState(0)
@@ -24,6 +29,17 @@ export default function EventsPage() {
   const limit = 20
 
   const canCreate = user?.business_role === "owner" || user?.business_role === "manager"
+
+  const handleCreate = () => {
+    if (isAllVenues && venues.length > 1) {
+      setShowVenueModal(true)
+    } else {
+      if (isAllVenues && venues.length === 1) {
+        setSelectedVenue(venues[0].id)
+      }
+      router.push("/business/events/new")
+    }
+  }
 
   // Check Stripe Connect status
   useEffect(() => {
@@ -65,12 +81,12 @@ export default function EventsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-ink">Events</h1>
         {canCreate && (
-          <Link
-            href="/business/events/new"
-            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all"
+          <button
+            onClick={handleCreate}
+            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer"
           >
             Create Event
-          </Link>
+          </button>
         )}
       </div>
 
@@ -135,7 +151,7 @@ export default function EventsPage() {
           title="No events yet"
           message={tab === "upcoming" ? "Create your first event to get started." : `No ${tab} events found.`}
           actionLabel={canCreate && tab === "upcoming" ? "Create Event" : undefined}
-          actionHref={canCreate && tab === "upcoming" ? "/business/events/new" : undefined}
+          onAction={canCreate && tab === "upcoming" ? handleCreate : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -146,6 +162,18 @@ export default function EventsPage() {
       )}
 
       <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
+
+      {showVenueModal && (
+        <VenueSelectModal
+          venues={venues}
+          onSelect={(venue) => {
+            setSelectedVenue(venue.id)
+            setShowVenueModal(false)
+            router.push("/business/events/new")
+          }}
+          onClose={() => setShowVenueModal(false)}
+        />
+      )}
     </div>
   )
 }

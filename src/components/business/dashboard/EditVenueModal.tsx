@@ -1,36 +1,49 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { apiClient } from "@/lib/business/api-client"
 import { useVenue } from "@/lib/business/venue-context"
 import AddressAutocomplete from "./AddressAutocomplete"
-
 import { getApiBaseUrl } from "@/lib/api-url"
+import type { Venue } from "@/lib/business/types"
 
 const BASE_URL = getApiBaseUrl()
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"]
 
-interface CreateVenueModalProps {
+interface EditVenueModalProps {
   open: boolean
+  venue: Venue
   onClose: () => void
 }
 
-export default function CreateVenueModal({ open, onClose }: CreateVenueModalProps) {
-  const { refreshVenues, setSelectedVenue } = useVenue()
-  const [name, setName] = useState("")
-  const [address, setAddress] = useState("")
-  const [description, setDescription] = useState("")
-  const [website, setWebsite] = useState("")
-  const [instagram, setInstagram] = useState("")
+export default function EditVenueModal({ open, venue, onClose }: EditVenueModalProps) {
+  const { refreshVenues } = useVenue()
+  const [name, setName] = useState(venue.name)
+  const [address, setAddress] = useState(venue.address ?? "")
+  const [description, setDescription] = useState(venue.description ?? "")
+  const [website, setWebsite] = useState(venue.website ?? "")
+  const [instagram, setInstagram] = useState(venue.instagram ?? "")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [photoPreview, setPhotoPreview] = useState("")
+  const [photoPreview, setPhotoPreview] = useState(venue.photo_url ?? "")
   const [photoError, setPhotoError] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [warning, setWarning] = useState("")
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+
+  // Reset form when venue changes
+  useEffect(() => {
+    setName(venue.name)
+    setAddress(venue.address ?? "")
+    setDescription(venue.description ?? "")
+    setWebsite(venue.website ?? "")
+    setInstagram(venue.instagram ?? "")
+    setPhotoFile(null)
+    setPhotoPreview(venue.photo_url ?? "")
+    setPhotoError("")
+    setError("")
+  }, [venue])
 
   if (!open) return null
 
@@ -50,8 +63,7 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
 
   const clearPhoto = () => {
     setPhotoFile(null)
-    if (photoPreview) URL.revokeObjectURL(photoPreview)
-    setPhotoPreview("")
+    setPhotoPreview(venue.photo_url ?? "")
     setPhotoError("")
   }
 
@@ -61,51 +73,38 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
       setError("Venue name is required.")
       return
     }
-    if (!photoFile) {
-      setPhotoError("Venue photo is required.")
-      return
-    }
     setLoading(true)
     setError("")
-    setWarning("")
     try {
-      const created = await apiClient.post<{ venue: { id: number } }>("/business/venues", {
+      await apiClient.patch(`/business/venues/${venue.id}`, {
         name: name.trim(),
-        address: address.trim() || undefined,
-        description: description.trim() || undefined,
-        website: website.trim() || undefined,
-        instagram: instagram.trim() || undefined,
+        address: address.trim() || null,
+        description: description.trim() || null,
+        website: website.trim() || null,
+        instagram: instagram.trim() || null,
       })
-      const venueId = created.venue.id
-      let photoFailed = false
 
+      // Upload new photo if one was selected
       if (photoFile) {
-        try {
-          const formData = new FormData()
-          formData.append("image", photoFile)
-          const res = await fetch(`${BASE_URL}/business/venues/${venueId}/photo`, {
-            method: "POST",
-            credentials: "include",
-            body: formData,
-          })
-          if (!res.ok) throw new Error("Upload failed")
-        } catch {
-          photoFailed = true
-          setWarning("Venue created but photo upload failed. You can add a photo later in settings.")
+        const formData = new FormData()
+        formData.append("image", photoFile)
+        const res = await fetch(`${BASE_URL}/business/venues/${venue.id}/photo`, {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        })
+        if (!res.ok) {
+          setError("Venue updated but photo upload failed.")
+          await refreshVenues()
+          setLoading(false)
+          return
         }
       }
 
       await refreshVenues()
-      setSelectedVenue(venueId)
-      setName("")
-      setAddress("")
-      setDescription("")
-      setWebsite("")
-      setInstagram("")
-      clearPhoto()
-      if (!photoFailed) onClose()
+      onClose()
     } catch {
-      setError("Failed to create venue. Please try again.")
+      setError("Failed to update venue. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -115,14 +114,7 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
       <div className="relative rounded-xl bg-white p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-ink mb-4">Add New Venue</h3>
-
-        {warning && (
-          <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
-            {warning}
-            <button type="button" onClick={onClose} className="ml-2 font-medium underline">Dismiss</button>
-          </div>
-        )}
+        <h3 className="text-lg font-semibold text-ink mb-4">Edit Venue</h3>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -181,7 +173,7 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
 
           {/* Venue Photo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Venue Photo <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Venue Photo</label>
             {photoPreview ? (
               <div className="relative rounded-lg border border-gray-200 overflow-hidden">
                 <img src={photoPreview} alt="Venue photo preview" className="w-full h-40 object-cover" />
@@ -237,7 +229,7 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
               disabled={loading}
               className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer disabled:opacity-60"
             >
-              {loading ? "Creating..." : "Create Venue"}
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

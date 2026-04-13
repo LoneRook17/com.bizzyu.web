@@ -4,6 +4,7 @@ import { useState } from "react"
 import type { DealsOverview, DealOverviewItem, DealAnalytics } from "@/lib/business/types"
 import { apiClient } from "@/lib/business/api-client"
 import DealAnalyticsView from "./DealAnalyticsView"
+import CollapsibleSection from "./CollapsibleSection"
 
 function AggregateStats({ data }: { data: DealsOverview }) {
   const stats = [
@@ -135,8 +136,108 @@ function DealCard({
   )
 }
 
-export default function DealsOverviewComponent({ data }: { data: DealsOverview }) {
+function groupByVenue(deals: DealOverviewItem[]): { venue: string; items: DealOverviewItem[] }[] {
+  const map = new Map<string, DealOverviewItem[]>()
+  for (const d of deals) {
+    const key = d.venue_name || "Unknown Venue"
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(d)
+  }
+  return Array.from(map.entries()).map(([venue, items]) => ({ venue, items }))
+}
+
+function VenueGroup({
+  venue,
+  items,
+  expandedId,
+  onToggle,
+}: {
+  venue: string
+  items: DealOverviewItem[]
+  expandedId: number | null
+  onToggle: (id: number) => void
+}) {
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2 ml-1">
+        <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+        </svg>
+        <span className="text-xs font-semibold text-gray-600">{venue}</span>
+        <span className="text-xs text-gray-400">({items.length})</span>
+      </div>
+      <div className="space-y-2 ml-5">
+        {items.map((deal) => (
+          <DealCard
+            key={deal.deal_id}
+            deal={deal}
+            isExpanded={expandedId === deal.deal_id}
+            onToggle={() => onToggle(deal.deal_id)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DealList({
+  deals,
+  isAllVenues,
+  expandedId,
+  onToggle,
+}: {
+  deals: DealOverviewItem[]
+  isAllVenues: boolean
+  expandedId: number | null
+  onToggle: (id: number) => void
+}) {
+  if (deals.length === 0) return null
+
+  if (isAllVenues) {
+    const groups = groupByVenue(deals)
+    return (
+      <>
+        {groups.map((g) => (
+          <VenueGroup
+            key={g.venue}
+            venue={g.venue}
+            items={g.items}
+            expandedId={expandedId}
+            onToggle={onToggle}
+          />
+        ))}
+      </>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {deals.map((deal) => (
+        <DealCard
+          key={deal.deal_id}
+          deal={deal}
+          isExpanded={expandedId === deal.deal_id}
+          onToggle={() => onToggle(deal.deal_id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+export default function DealsOverviewComponent({
+  data,
+  isAllVenues = false,
+}: {
+  data: DealsOverview
+  isAllVenues?: boolean
+}) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
+
+  const active = data.deals.filter((d) => d.is_active)
+  const inactive = data.deals.filter((d) => !d.is_active)
+
+  const toggleExpand = (id: number) => setExpandedId(expandedId === id ? null : id)
 
   if (data.deals.length === 0) {
     return (
@@ -152,16 +253,28 @@ export default function DealsOverviewComponent({ data }: { data: DealsOverview }
   return (
     <div>
       <AggregateStats data={data} />
-      <div className="space-y-3">
-        {data.deals.map((deal) => (
-          <DealCard
-            key={deal.deal_id}
-            deal={deal}
-            isExpanded={expandedId === deal.deal_id}
-            onToggle={() => setExpandedId(expandedId === deal.deal_id ? null : deal.deal_id)}
+
+      {active.length > 0 && (
+        <CollapsibleSection title="Active Deals" count={active.length} defaultOpen={true}>
+          <DealList
+            deals={active}
+            isAllVenues={isAllVenues}
+            expandedId={expandedId}
+            onToggle={toggleExpand}
           />
-        ))}
-      </div>
+        </CollapsibleSection>
+      )}
+
+      {inactive.length > 0 && (
+        <CollapsibleSection title="Expired / Inactive" count={inactive.length} defaultOpen={false}>
+          <DealList
+            deals={inactive}
+            isAllVenues={isAllVenues}
+            expandedId={expandedId}
+            onToggle={toggleExpand}
+          />
+        </CollapsibleSection>
+      )}
     </div>
   )
 }

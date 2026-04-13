@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/business/api-client"
 import LogoUpload from "@/components/business/dashboard/LogoUpload"
 import ProfileForm from "@/components/business/dashboard/ProfileForm"
 import StripeConnectCard, { StripeReturnBanner } from "@/components/business/dashboard/StripeConnectCard"
+import VenueManagementSection from "@/components/business/dashboard/VenueManagementSection"
 import type { BusinessProfile } from "@/lib/business/types"
 
 export default function SettingsPage() {
@@ -95,8 +96,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-3xl">
       <h1 className="text-xl font-bold text-ink mb-6">Settings</h1>
+
+      {/* Venues */}
+      <VenueManagementSection />
+
+      {/* Divider + Business Settings header */}
+      <div className="border-t border-gray-200 pt-6 mb-4">
+        <h2 className="text-sm font-semibold text-ink">Business Settings</h2>
+        <p className="text-xs text-gray-500 mt-0.5">These settings apply to your entire business across all venues</p>
+      </div>
 
       {/* Business Photo */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 mb-4 flex justify-center">

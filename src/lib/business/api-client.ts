@@ -1,4 +1,6 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+import { getApiBaseUrl } from '@/lib/api-url'
+
+const BASE_URL = getApiBaseUrl()
 
 export class ApiError extends Error {
   status: number

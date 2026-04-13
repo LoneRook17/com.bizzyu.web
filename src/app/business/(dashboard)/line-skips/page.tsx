@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/business/auth-context"
-import { useVenueParam } from "@/lib/business/venue-context"
+import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import EmptyState from "@/components/business/dashboard/EmptyState"
+import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { LineSkip } from "@/lib/business/types"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -24,13 +26,27 @@ function formatPrice(cents: number): string {
 
 export default function LineSkipsPage() {
   const { user } = useAuth()
+  const router = useRouter()
+  const { venues, isAllVenues, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
+  const [showVenueModal, setShowVenueModal] = useState(false)
   const [lineSkips, setLineSkips] = useState<LineSkip[]>([])
   const [loading, setLoading] = useState(true)
   const [deactivating, setDeactivating] = useState<number | null>(null)
 
   const canCreate = user?.business_role === "owner" || user?.business_role === "manager"
   const canManage = canCreate
+
+  const handleCreate = () => {
+    if (isAllVenues && venues.length > 1) {
+      setShowVenueModal(true)
+    } else {
+      if (isAllVenues && venues.length === 1) {
+        setSelectedVenue(venues[0].id)
+      }
+      router.push("/business/line-skips/new")
+    }
+  }
 
   const fetchLineSkips = useCallback(async () => {
     setLoading(true)
@@ -67,12 +83,12 @@ export default function LineSkipsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-ink">Line Skips</h1>
         {canCreate && (
-          <Link
-            href="/business/line-skips/new"
-            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all"
+          <button
+            onClick={handleCreate}
+            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer"
           >
             Create Line Skip
-          </Link>
+          </button>
         )}
       </div>
 
@@ -97,7 +113,7 @@ export default function LineSkipsPage() {
           title="No Line Skips yet"
           message="Set up Line Skips to let customers skip the line at your venue."
           actionLabel={canCreate ? "Create Line Skip" : undefined}
-          actionHref={canCreate ? "/business/line-skips/new" : undefined}
+          onAction={canCreate ? handleCreate : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -151,6 +167,18 @@ export default function LineSkipsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {showVenueModal && (
+        <VenueSelectModal
+          venues={venues}
+          onSelect={(venue) => {
+            setSelectedVenue(venue.id)
+            setShowVenueModal(false)
+            router.push("/business/line-skips/new")
+          }}
+          onClose={() => setShowVenueModal(false)}
+        />
       )}
     </div>
   )

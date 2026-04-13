@@ -1,8 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { QRCodeSVG } from "qrcode.react"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+import { getApiBaseUrl } from "@/lib/api-url"
+
+const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
+const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -74,7 +78,6 @@ interface PageData {
   fee_config: FeeConfig
 }
 
-type Tab = "lineskips" | "events"
 type CheckoutStep = "idle" | "phone" | "name" | "verify" | "processing"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -111,10 +114,10 @@ function getDiscountedPrice(priceCents: number, promo: PromoInfo | null): number
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function LineSkipCheckoutClient({
-  businessId,
+  venueId,
   initialData,
 }: {
-  businessId: string
+  venueId: string
   initialData: PageData | null
 }) {
   // Page data
@@ -127,7 +130,6 @@ export default function LineSkipCheckoutClient({
   const [error, setError] = useState("")
 
   // UI state
-  const [activeTab, setActiveTab] = useState<Tab>("lineskips")
   const [selectedInstanceId, setSelectedInstanceId] = useState<number | null>(null)
   const [quantity, setQuantity] = useState(1)
 
@@ -150,8 +152,8 @@ export default function LineSkipCheckoutClient({
   // Fetch data if not provided by server
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/line-skips/business/${businessId}/page-info`)
-      if (!res.ok) throw new Error("Business not found")
+      const res = await fetch(`${API_URL}/line-skips/venue/${venueId}/page-info`)
+      if (!res.ok) throw new Error("Venue not found")
       const data = await res.json()
       setBusiness(data.business)
       setVenue(data.venue || null)
@@ -159,11 +161,11 @@ export default function LineSkipCheckoutClient({
       setEvents(data.events || [])
       setFeeConfig(data.fee_config || null)
     } catch {
-      setError("Could not load business information")
+      setError("Could not load venue information")
     } finally {
       setLoading(false)
     }
-  }, [businessId])
+  }, [venueId])
 
   useEffect(() => {
     if (!initialData) fetchData()
@@ -202,7 +204,7 @@ export default function LineSkipCheckoutClient({
   // ─── Fee Calculation (client-side) ────────────────────────────────────────
 
   const calcFees = () => {
-    if (!selectedInstance || !feeConfig) return null
+    if (!selectedInstance) return null
     const promo = getPromoForInstance(selectedInstance.id)
     const discountedUnitPrice = getDiscountedPrice(selectedInstance.price_cents, promo)
     const discountPerUnit = selectedInstance.price_cents - discountedUnitPrice
@@ -213,8 +215,9 @@ export default function LineSkipCheckoutClient({
       return { subtotal: 0, discount: discountTotal, service_fee: 0, total: 0 }
     }
 
-    const flatFee = feeConfig.flat_cents * quantity
-    const percentageFee = Math.round(subtotal * (feeConfig.percentage / 100))
+    // If feeConfig hasn't loaded yet, show subtotal without service fee
+    const flatFee = feeConfig ? feeConfig.flat_cents * quantity : 0
+    const percentageFee = feeConfig ? Math.round(subtotal * (feeConfig.percentage / 100)) : 0
     const serviceFee = flatFee + percentageFee
 
     return {
@@ -237,7 +240,7 @@ export default function LineSkipCheckoutClient({
       const res = await fetch(`${API_URL}/line-skips/checkout/apply-promo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: promoInput.trim(), business_id: Number(businessId) }),
+        body: JSON.stringify({ code: promoInput.trim(), business_id: business?.business_id }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -312,7 +315,6 @@ export default function LineSkipCheckoutClient({
           const eligData = await eligRes.json()
           if (!eligRes.ok) {
             // API validation error (missing fields etc.) — frontend bug, don't show raw error
-            console.error("Promo eligibility check failed:", eligData)
             setCheckoutError("Something went wrong. Please try again.")
             setCheckoutLoading(false)
             return
@@ -328,7 +330,6 @@ export default function LineSkipCheckoutClient({
             return
           }
         } catch (e) {
-          console.error("Promo eligibility check error:", e)
           setCheckoutError("Something went wrong. Please try again.")
           setCheckoutLoading(false)
           return
@@ -444,7 +445,8 @@ export default function LineSkipCheckoutClient({
           setCheckoutStep("phone")
           return
         }
-        window.location.href = `/lineskip/${businessId}?free_success=1&business_name=${encodeURIComponent(data.venue_name || data.business_name || "")}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}`
+        const ticketUuids = (data.tickets || []).map((t: any) => t.uuid).join(",")
+        window.location.href = `/lineskip/${venueId}?free_success=1&venue_name=${encodeURIComponent(data.venue_name || "")}&business_name=${encodeURIComponent(data.business_name || "")}&venue_id=${data.venue_id || venueId}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}&tickets=${encodeURIComponent(ticketUuids)}`
         return
       }
 
@@ -480,11 +482,14 @@ export default function LineSkipCheckoutClient({
 
   const [freeSuccess, setFreeSuccess] = useState(false)
   const [freeSuccessData, setFreeSuccessData] = useState<{
+    venue_name: string
     business_name: string
+    venue_id: string
     date: string
     start: string
     end: string
     count: number
+    tickets: string[]
   } | null>(null)
 
   useEffect(() => {
@@ -492,12 +497,16 @@ export default function LineSkipCheckoutClient({
     const params = new URLSearchParams(window.location.search)
     if (params.get("free_success") === "1") {
       setFreeSuccess(true)
+      const ticketParam = params.get("tickets") || ""
       setFreeSuccessData({
+        venue_name: params.get("venue_name") || "",
         business_name: params.get("business_name") || "",
+        venue_id: params.get("venue_id") || venueId,
         date: params.get("date") || "",
         start: params.get("start") || "",
         end: params.get("end") || "",
         count: Number(params.get("count") || 1),
+        tickets: ticketParam ? ticketParam.split(",") : [],
       })
     }
   }, [])
@@ -564,7 +573,30 @@ export default function LineSkipCheckoutClient({
               </div>
             </div>
             <div className="p-6">
-              <h2 className="mb-4 text-lg font-bold text-white">{freeSuccessData.business_name}</h2>
+              {/* QR codes */}
+              {freeSuccessData.tickets.length > 0 && (
+                <div className={`mb-5 ${freeSuccessData.tickets.length > 1 ? "space-y-6" : ""}`}>
+                  {freeSuccessData.tickets.map((uuid, idx) => (
+                    <div key={uuid} className="flex flex-col items-center">
+                      {freeSuccessData.tickets.length > 1 && (
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: GOLD }}>
+                          Line Skip #{idx + 1}
+                        </p>
+                      )}
+                      <div className="rounded-xl bg-white p-3">
+                        <QRCodeSVG
+                          value={`${WEB_BASE_URL}/ls/${uuid}`}
+                          size={180}
+                          level="M"
+                        />
+                      </div>
+                      <p className="mt-2 font-mono text-xs text-white/30">{uuid}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <h2 className="mb-4 text-center text-lg font-bold text-white">{freeSuccessData.venue_name || freeSuccessData.business_name}</h2>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-white/50">Date</span>
@@ -612,6 +644,15 @@ export default function LineSkipCheckoutClient({
               Download on App Store
             </a>
           </div>
+
+          <div className="mt-6 text-center">
+            <a
+              href={`/lineskip/${freeSuccessData.venue_id}`}
+              className="text-sm text-white/40 hover:text-white/60 transition-colors"
+            >
+              Buy more Line Skips
+            </a>
+          </div>
         </div>
       </div>
     )
@@ -652,33 +693,7 @@ export default function LineSkipCheckoutClient({
 
       {/* Content */}
       <div className="mx-auto max-w-lg px-4 pb-12">
-        {/* Tabs */}
-        <div className="mt-6 flex rounded-xl bg-white/5 p-1">
-          <button
-            onClick={() => setActiveTab("lineskips")}
-            className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-              activeTab === "lineskips"
-                ? "text-black"
-                : "text-white/60 hover:text-white/80"
-            }`}
-            style={activeTab === "lineskips" ? { backgroundColor: GOLD } : {}}
-          >
-            Line Skips
-          </button>
-          <button
-            onClick={() => setActiveTab("events")}
-            className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition-colors ${
-              activeTab === "events"
-                ? "bg-white text-black"
-                : "text-white/60 hover:text-white/80"
-            }`}
-          >
-            Events
-          </button>
-        </div>
-
-        {/* LINE SKIPS TAB */}
-        {activeTab === "lineskips" && (
+        {/* LINE SKIPS */}
           <div className="mt-6">
             {/* Includes Cover Banner */}
             <div
@@ -905,71 +920,23 @@ export default function LineSkipCheckoutClient({
 
             {/* Get Line Skip CTA */}
             {selectedInstanceId && (
-              <button
-                onClick={startCheckout}
-                className="mt-6 w-full rounded-xl py-3.5 text-base font-bold text-black transition-opacity hover:opacity-90"
-                style={{ backgroundColor: GOLD }}
-              >
-                {fees && fees.total > 0
-                  ? `Get Line Skip — ${formatPrice(fees.total)}`
-                  : "Get Line Skip — Free"}
-              </button>
+              <>
+                <button
+                  onClick={startCheckout}
+                  className="mt-6 w-full rounded-xl py-3.5 text-base font-bold text-black transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: GOLD }}
+                >
+                  {fees && fees.total > 0
+                    ? `Get Line Skip — ${formatPrice(fees.total)}`
+                    : "Get Line Skip — Free"}
+                </button>
+                <p className="mt-3 text-center text-[10px] text-white/30 leading-relaxed">
+                  By purchasing, you agree that all sales are final. No refunds or exchanges.
+                  If the night is cancelled by the venue, you will receive a full refund.
+                </p>
+              </>
             )}
           </div>
-        )}
-
-        {/* EVENTS TAB */}
-        {activeTab === "events" && (
-          <div className="mt-6">
-            {events.length === 0 ? (
-              <div className="rounded-xl bg-white/5 border border-white/10 p-8 text-center">
-                <p className="text-white/50">No upcoming events</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {events.map((evt) => {
-                  const eventDate = new Date(evt.start_date_time)
-                  return (
-                    <a
-                      key={evt.event_id}
-                      href={`/checkout/${evt.event_id}`}
-                      className="flex gap-4 rounded-xl bg-white/5 border border-white/10 p-4 transition-colors hover:bg-white/[0.07]"
-                    >
-                      {evt.flyer_image_url && (
-                        <img
-                          src={evt.flyer_image_url}
-                          alt={evt.name}
-                          className="h-20 w-16 shrink-0 rounded-lg object-cover"
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-bold text-white">{evt.name}</h3>
-                        <p className="mt-1 text-xs text-white/50">
-                          {eventDate.toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
-                        <p className="text-xs text-white/40">
-                          {eventDate.toLocaleTimeString("en-US", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                      <div className="flex items-center">
-                        <svg className="h-4 w-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </a>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Powered by Bizzy */}
         <div className="mt-8 text-center">

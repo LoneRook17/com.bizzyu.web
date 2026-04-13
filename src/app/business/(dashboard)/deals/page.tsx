@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/business/auth-context"
-import { useVenueParam } from "@/lib/business/venue-context"
+import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import { DEAL_TABS } from "@/lib/business/constants"
 import DealCard from "@/components/business/dashboard/DealCard"
 import EmptyState from "@/components/business/dashboard/EmptyState"
 import Pagination from "@/components/business/dashboard/Pagination"
+import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { DealListItem } from "@/lib/business/types"
 
 interface DealCounts {
@@ -27,7 +29,10 @@ const TAB_EMPTY_MESSAGES: Record<string, { title: string; message: string }> = {
 
 export default function DealsPage() {
   const { user } = useAuth()
+  const router = useRouter()
+  const { venues, isAllVenues, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
+  const [showVenueModal, setShowVenueModal] = useState(false)
   const [tab, setTab] = useState("live")
   const [deals, setDeals] = useState<DealListItem[]>([])
   const [total, setTotal] = useState(0)
@@ -44,6 +49,17 @@ export default function DealsPage() {
   const canManage =
     user?.business_role === "owner" ||
     user?.business_role === "manager"
+
+  const handleCreate = () => {
+    if (isAllVenues && venues.length > 1) {
+      setShowVenueModal(true)
+    } else {
+      if (isAllVenues && venues.length === 1) {
+        setSelectedVenue(venues[0].id)
+      }
+      router.push("/business/deals/new")
+    }
+  }
 
   const fetchCounts = useCallback(async () => {
     try {
@@ -98,12 +114,12 @@ export default function DealsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-ink">Deals</h1>
         {canCreate && (
-          <Link
-            href="/business/deals/new"
-            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all"
+          <button
+            onClick={handleCreate}
+            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer"
           >
             Create Deal
-          </Link>
+          </button>
         )}
       </div>
 
@@ -161,7 +177,7 @@ export default function DealsPage() {
           title={emptyConfig.title}
           message={emptyConfig.message}
           actionLabel={canCreate && tab === "live" ? "Create Deal" : undefined}
-          actionHref={canCreate && tab === "live" ? "/business/deals/new" : undefined}
+          onAction={canCreate && tab === "live" ? handleCreate : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -170,6 +186,7 @@ export default function DealsPage() {
               key={deal.id}
               deal={deal}
               tab={tab}
+              showVenue={isAllVenues}
               onReactivate={canManage ? handleReactivate : undefined}
             />
           ))}
@@ -177,6 +194,18 @@ export default function DealsPage() {
       )}
 
       <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
+
+      {showVenueModal && (
+        <VenueSelectModal
+          venues={venues}
+          onSelect={(venue) => {
+            setSelectedVenue(venue.id)
+            setShowVenueModal(false)
+            router.push("/business/deals/new")
+          }}
+          onClose={() => setShowVenueModal(false)}
+        />
+      )}
     </div>
   )
 }

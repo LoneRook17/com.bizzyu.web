@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import type { LineSkipAnalyticsOverview, LineSkipOverviewInstance } from "@/lib/business/types"
+import CollapsibleSection from "./CollapsibleSection"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
@@ -127,7 +128,85 @@ function InstanceCard({ instance }: { instance: LineSkipOverviewInstance }) {
   )
 }
 
-export default function LineSkipsOverview({ data }: { data: LineSkipAnalyticsOverview }) {
+function groupByVenue(instances: LineSkipOverviewInstance[]): { venue: string; items: LineSkipOverviewInstance[] }[] {
+  const map = new Map<string, LineSkipOverviewInstance[]>()
+  for (const inst of instances) {
+    const key = inst.venue_name || "Unknown Venue"
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(inst)
+  }
+  return Array.from(map.entries()).map(([venue, items]) => ({ venue, items }))
+}
+
+function VenueGroup({
+  venue,
+  items,
+}: {
+  venue: string
+  items: LineSkipOverviewInstance[]
+}) {
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-2 mb-2 ml-1">
+        <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+        </svg>
+        <span className="text-xs font-semibold text-gray-600">{venue}</span>
+        <span className="text-xs text-gray-400">({items.length})</span>
+      </div>
+      <div className="space-y-2 ml-5">
+        {items.map((instance) => (
+          <InstanceCard key={instance.instance_id} instance={instance} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InstanceList({
+  instances,
+  isAllVenues,
+}: {
+  instances: LineSkipOverviewInstance[]
+  isAllVenues: boolean
+}) {
+  if (instances.length === 0) return null
+
+  if (isAllVenues) {
+    const groups = groupByVenue(instances)
+    return (
+      <>
+        {groups.map((g) => (
+          <VenueGroup key={g.venue} venue={g.venue} items={g.items} />
+        ))}
+      </>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {instances.map((instance) => (
+        <InstanceCard key={instance.instance_id} instance={instance} />
+      ))}
+    </div>
+  )
+}
+
+export default function LineSkipsOverviewComponent({
+  data,
+  isAllVenues = false,
+}: {
+  data: LineSkipAnalyticsOverview
+  isAllVenues?: boolean
+}) {
+  const activeInstances = data.instances.filter(
+    (inst) => inst.status === "active" && isUpcoming(inst.date)
+  )
+  const pastInstances = data.instances.filter(
+    (inst) => inst.status !== "active" || !isUpcoming(inst.date)
+  )
+
   if (data.instances.length === 0) {
     return (
       <div>
@@ -142,11 +221,18 @@ export default function LineSkipsOverview({ data }: { data: LineSkipAnalyticsOve
   return (
     <div>
       <AggregateStats data={data} />
-      <div className="space-y-3">
-        {data.instances.map((instance) => (
-          <InstanceCard key={instance.instance_id} instance={instance} />
-        ))}
-      </div>
+
+      {activeInstances.length > 0 && (
+        <CollapsibleSection title="Active Line Skips" count={activeInstances.length} defaultOpen={true}>
+          <InstanceList instances={activeInstances} isAllVenues={isAllVenues} />
+        </CollapsibleSection>
+      )}
+
+      {pastInstances.length > 0 && (
+        <CollapsibleSection title="Past Line Skips" count={pastInstances.length} defaultOpen={false}>
+          <InstanceList instances={pastInstances} isAllVenues={isAllVenues} />
+        </CollapsibleSection>
+      )}
     </div>
   )
 }

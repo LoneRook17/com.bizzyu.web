@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/business/auth-context"
-import { useVenueParam } from "@/lib/business/venue-context"
+import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import type { DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem } from "@/lib/business/types"
 import EventPreviewCard from "@/components/business/dashboard/EventPreviewCard"
 import DealPreviewCard from "@/components/business/dashboard/DealPreviewCard"
+import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
@@ -49,13 +51,29 @@ function ActivityItem({ item }: { item: ActivityFeedItem }) {
 
 export default function DashboardHomePage() {
   const { user, isPending } = useAuth()
+  const router = useRouter()
+  const { venues, isAllVenues, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
+  const [showVenueModal, setShowVenueModal] = useState(false)
+  const [venueModalTarget, setVenueModalTarget] = useState("")
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [quickStats, setQuickStats] = useState<QuickStats | null>(null)
   const [activity, setActivity] = useState<ActivityFeedItem[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<EventListItem[]>([])
   const [liveDeals, setLiveDeals] = useState<DealListItem[]>([])
   const [loading, setLoading] = useState(true)
+
+  const handleCreate = (path: string) => {
+    if (isAllVenues && venues.length > 1) {
+      setVenueModalTarget(path)
+      setShowVenueModal(true)
+    } else {
+      if (isAllVenues && venues.length === 1) {
+        setSelectedVenue(venues[0].id)
+      }
+      router.push(path)
+    }
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -149,12 +167,12 @@ export default function DashboardHomePage() {
             ) : (
               <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
                 <p className="text-sm text-gray-400 mb-2">No upcoming events</p>
-                <Link
-                  href="/business/events/new"
-                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all"
+                <button
+                  onClick={() => handleCreate("/business/events/new")}
+                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
                 >
                   Create event
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -170,18 +188,18 @@ export default function DashboardHomePage() {
             {liveDeals.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {liveDeals.map((deal) => (
-                  <DealPreviewCard key={deal.id} deal={deal} />
+                  <DealPreviewCard key={deal.id} deal={deal} showVenue={isAllVenues} />
                 ))}
               </div>
             ) : (
               <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
                 <p className="text-sm text-gray-400 mb-2">No deals yet</p>
-                <Link
-                  href="/business/deals/new"
-                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all"
+                <button
+                  onClick={() => handleCreate("/business/deals/new")}
+                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
                 >
                   Create deal
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -202,6 +220,18 @@ export default function DashboardHomePage() {
             )}
           </div>
         </>
+      )}
+
+      {showVenueModal && (
+        <VenueSelectModal
+          venues={venues}
+          onSelect={(venue) => {
+            setSelectedVenue(venue.id)
+            setShowVenueModal(false)
+            router.push(venueModalTarget)
+          }}
+          onClose={() => setShowVenueModal(false)}
+        />
       )}
     </div>
   )

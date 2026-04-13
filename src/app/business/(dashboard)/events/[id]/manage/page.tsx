@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import ConfirmModal from "@/components/business/dashboard/ConfirmModal"
+import CancelEventModal from "@/components/business/dashboard/CancelEventModal"
 import { useRouter } from "next/navigation"
 import type { EventDetail } from "@/lib/business/types"
 import RolePermissionsModal from "@/components/business/dashboard/RolePermissionsModal"
@@ -66,10 +66,7 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [showDelete, setShowDelete] = useState(false)
   const [showCancel, setShowCancel] = useState(false)
-  const [deleteLoading, setDeleteLoading] = useState(false)
-  const [cancelLoading, setCancelLoading] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
 
@@ -81,31 +78,8 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
       .finally(() => setLoading(false))
   }, [id])
 
-  const handleDelete = async () => {
-    setDeleteLoading(true)
-    try {
-      await apiClient.delete(`/business/events/${id}`)
-      router.push("/business/events")
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Delete failed")
-    } finally {
-      setDeleteLoading(false)
-      setShowDelete(false)
-    }
-  }
-
-  const handleCancel = async () => {
-    setCancelLoading(true)
-    try {
-      await apiClient.patch(`/business/events/${id}/cancel`)
-      router.push("/business/events")
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Cancel failed")
-    } finally {
-      setCancelLoading(false)
-      setShowCancel(false)
-    }
-  }
+  const isPastEvent = event ? new Date(event.end_date_time) < new Date() : false
+  const cancellationStatus = event?.cancellation_status || "none"
 
   if (loading) {
     return (
@@ -245,12 +219,39 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
         />
       </div>
 
+      {/* Cancellation status banner */}
+      {cancellationStatus === "pending" && (
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">
+              Cancellation Pending
+            </span>
+            <span className="text-sm text-orange-700">Awaiting admin review</span>
+          </div>
+          {event.cancellation_reason && (
+            <p className="mt-2 text-xs text-orange-600">Reason: {event.cancellation_reason}</p>
+          )}
+        </div>
+      )}
+      {cancellationStatus === "denied" && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+              Cancellation Denied
+            </span>
+          </div>
+          {event.cancellation_denial_reason && (
+            <p className="mt-2 text-xs text-red-600">Reason: {event.cancellation_denial_reason}</p>
+          )}
+        </div>
+      )}
+
       {/* Danger Zone */}
       {canEdit && (
         <div className="rounded-xl border border-red-200 bg-red-50/30 p-5">
           <h2 className="text-sm font-semibold text-red-700 mb-2">Danger Zone</h2>
           <div className="flex gap-3">
-            {event.status !== "cancelled" && (
+            {event.status !== "cancelled" && cancellationStatus === "none" && !isPastEvent && (
               <button
                 onClick={() => setShowCancel(true)}
                 className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
@@ -258,35 +259,19 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
                 Cancel Event
               </button>
             )}
-            <button
-              onClick={() => setShowDelete(true)}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors cursor-pointer"
-            >
-              Delete Event
-            </button>
+            {isPastEvent && event.status !== "cancelled" && (
+              <p className="text-xs text-gray-400 py-2">Cannot cancel — event has already ended</p>
+            )}
           </div>
         </div>
       )}
 
-      <ConfirmModal
+      <CancelEventModal
         open={showCancel}
         onClose={() => setShowCancel(false)}
-        onConfirm={handleCancel}
-        title="Cancel Event"
-        message="Are you sure you want to cancel this event? Attendees will be notified. This cannot be undone."
-        confirmLabel="Cancel Event"
-        variant="warning"
-        loading={cancelLoading}
-      />
-      <ConfirmModal
-        open={showDelete}
-        onClose={() => setShowDelete(false)}
-        onConfirm={handleDelete}
-        title="Delete Event"
-        message="Are you sure you want to delete this event? This action cannot be undone."
-        confirmLabel="Delete Event"
-        variant="danger"
-        loading={deleteLoading}
+        eventId={Number(id)}
+        eventName={event.name}
+        onCancelled={() => router.push("/business/events")}
       />
     </div>
   )

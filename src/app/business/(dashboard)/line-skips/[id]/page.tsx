@@ -29,7 +29,9 @@ function formatDate(dateStr: string): string {
 
 function formatDateRange(start: string, end: string): string {
   const s = new Date(start + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-  const e = new Date(end + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  const endDate = new Date(end + "T00:00:00")
+  if (endDate.getFullYear() >= 2099) return `${s} – Ongoing`
+  const e = endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   return `${s} – ${e}`
 }
 
@@ -79,8 +81,8 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
 
   const fetchLineSkip = useCallback(async () => {
     try {
-      const data = await apiClient.get<{ line_skip: LineSkipDetail }>(`/business/line-skips/${id}`)
-      setLineSkip(data.line_skip)
+      const data = await apiClient.get<{ line_skip: LineSkipDetail; instances: LineSkipInstance[] }>(`/business/line-skips/${id}`)
+      setLineSkip({ ...data.line_skip, instances: data.instances ?? data.line_skip.instances ?? [] })
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load Line Skip")
     } finally {
@@ -270,6 +272,15 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
         </div>
       )}
 
+      {/* Rolling window info */}
+      {lineSkip.is_active && (
+        <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5 mb-4">
+          <p className="text-xs text-blue-600">
+            Upcoming nights are generated automatically on a rolling 2-week basis. New nights appear as earlier ones pass.
+          </p>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
         {(["upcoming", "past"] as const).map((t) => (
@@ -325,35 +336,13 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                         {formatTime(instance.start_time)} – {formatTime(instance.end_time)}
                       </p>
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                        <span className="text-xs text-gray-600 font-medium inline-flex items-center gap-1">
+                        <span className="text-xs text-gray-600 font-medium">
                           {formatPrice(instance.price_cents)}
-                          {tab === "upcoming" && instance.status !== "cancelled" && canEditPrice && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openModal(instance, "edit_price") }}
-                              className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                              title="Quick edit price"
-                            >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                              </svg>
-                            </button>
-                          )}
                         </span>
-                        <span className="text-xs text-gray-500 inline-flex items-center gap-1">
+                        <span className="text-xs text-gray-500">
                           {instance.capacity
                             ? `${instance.tickets_sold} / ${instance.capacity} sold`
                             : `${instance.tickets_sold} sold (unlimited)`}
-                          {tab === "upcoming" && instance.status !== "cancelled" && canEditPrice && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); openModal(instance, "edit_quantity") }}
-                              className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                              title="Quick edit quantity"
-                            >
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                              </svg>
-                            </button>
-                          )}
                         </span>
                         {instance.tickets_sold > 0 && revenueCents > 0 && (
                           <span className="text-xs text-gray-400">{formatPrice(revenueCents)} revenue</span>
@@ -378,53 +367,40 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                     >
                       {instance.status === "sold_out" ? "Sold Out" : instance.status.charAt(0).toUpperCase() + instance.status.slice(1)}
                     </span>
+                    {instance.cancellation_status === "pending" && (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-medium">
+                        Pending Cancellation
+                      </span>
+                    )}
 
-                    {/* Analytics link */}
-                    {instance.tickets_sold > 0 && (
+                    {/* Manage button */}
+                    {instance.status !== "cancelled" && (canEditPrice || canEdit) && (
                       <Link
                         href={`/business/line-skips/instances/${instance.id}`}
-                        className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary/90 transition-colors"
                       >
-                        Details
+                        Manage
                       </Link>
                     )}
 
-                    {/* Actions (upcoming only) */}
-                    {tab === "upcoming" && instance.status !== "cancelled" && (
-                      <div className="flex items-center gap-1 ml-1">
-                        {canEditPrice && (
-                          <>
-                            <button
-                              onClick={() => openModal(instance, "edit_price")}
-                              className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-                            >
-                              Edit Price
-                            </button>
-                            <button
-                              onClick={() => openModal(instance, "edit_quantity")}
-                              className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-                            >
-                              Edit Qty
-                            </button>
-                          </>
-                        )}
-                        {canEdit && (
-                          <>
-                            <button
-                              onClick={() => openModal(instance, "edit_details")}
-                              className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-                            >
-                              Edit Details
-                            </button>
-                            <button
-                              onClick={() => openModal(instance, "cancel")}
-                              className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                      </div>
+                    {/* Analytics button */}
+                    {instance.tickets_sold > 0 && (
+                      <Link
+                        href={`/business/line-skips/instances/${instance.id}?tab=analytics`}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                        Analytics
+                      </Link>
+                    )}
+
+                    {/* Cancel button (upcoming only, hide if already pending) */}
+                    {tab === "upcoming" && instance.status !== "cancelled" && instance.cancellation_status !== "pending" && canEdit && (
+                      <button
+                        onClick={() => openModal(instance, "cancel")}
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
                     )}
                   </div>
                 </div>

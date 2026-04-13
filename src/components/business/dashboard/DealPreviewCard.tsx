@@ -3,7 +3,7 @@
 import Link from "next/link"
 import type { DealListItem } from "@/lib/business/types"
 
-export default function DealPreviewCard({ deal }: { deal: DealListItem }) {
+export default function DealPreviewCard({ deal, showVenue }: { deal: DealListItem; showVenue?: boolean }) {
   const isPending = deal.moderation_status === "pending_review" || deal.moderation_status === "pending_approval"
   const isRejected = deal.moderation_status === "rejected"
   const isActive = !isPending && !isRejected && deal.is_active
@@ -32,6 +32,9 @@ export default function DealPreviewCard({ deal }: { deal: DealListItem }) {
       {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-ink truncate">{deal.deal_title}</p>
+        {showVenue && (deal.venue_name || deal.business_name) && (
+          <p className="text-xs text-gray-400 truncate">{deal.venue_name || deal.business_name}</p>
+        )}
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className={`h-1.5 w-1.5 rounded-full ${dotColor}`} />
           <span className="text-xs text-gray-400">{statusText}</span>

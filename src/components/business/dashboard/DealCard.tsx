@@ -6,6 +6,7 @@ import type { DealListItem } from "@/lib/business/types"
 interface DealCardProps {
   deal: DealListItem
   tab?: string
+  showVenue?: boolean
   onReactivate?: (dealId: number) => void
 }
 
@@ -24,7 +25,7 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
-export default function DealCard({ deal, tab, onReactivate }: DealCardProps) {
+export default function DealCard({ deal, tab, showVenue, onReactivate }: DealCardProps) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition-shadow">
       <div className="flex gap-4">
@@ -51,6 +52,9 @@ export default function DealCard({ deal, tab, onReactivate }: DealCardProps) {
               >
                 {deal.deal_title}
               </Link>
+              {showVenue && deal.venue_name && (
+                <p className="text-xs text-gray-400 truncate mt-0.5">{deal.venue_name}</p>
+              )}
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-gray-500">{deal.deal_category}</span>
                 <span className="text-xs text-gray-400">&middot;</span>

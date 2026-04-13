@@ -1,8 +1,13 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { QRCodeSVG } from "qrcode.react"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+import { getApiBaseUrl } from "@/lib/api-url"
+
+const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
+
+const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
 
 interface TicketInfo {
@@ -15,16 +20,17 @@ interface TicketInfo {
 }
 
 export default function LineSkipSuccessClient({
-  businessId,
+  slugId,
   sessionId,
 }: {
-  businessId: string
+  slugId: string
   sessionId: string
 }) {
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying")
   const [tickets, setTickets] = useState<TicketInfo[]>([])
   const [businessName, setBusinessName] = useState("")
   const [venueName, setVenueName] = useState("")
+  const [venueId, setVenueId] = useState<string>(slugId)
   const [instanceDate, setInstanceDate] = useState("")
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
@@ -46,6 +52,7 @@ export default function LineSkipSuccessClient({
       setTickets(data.tickets || [])
       setBusinessName(data.business_name || "")
       setVenueName(data.venue_name || "")
+      if (data.venue_id) setVenueId(String(data.venue_id))
       setInstanceDate(data.instance_date || "")
       setStartTime(data.start_time || "")
       setEndTime(data.end_time || "")
@@ -101,7 +108,7 @@ export default function LineSkipSuccessClient({
           </div>
           <h2 className="mb-2 text-xl font-bold text-white">{error}</h2>
           <a
-            href={`/lineskip/${businessId}`}
+            href={`/lineskip/${slugId}`}
             className="mt-4 inline-block rounded-lg bg-white/10 px-6 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"
           >
             Back to Line Skips
@@ -149,7 +156,28 @@ export default function LineSkipSuccessClient({
 
           {/* Body */}
           <div className="p-6">
-            <h2 className="mb-4 text-lg font-bold text-white">{displayName}</h2>
+            {/* QR codes */}
+            <div className={`mb-5 ${tickets.length > 1 ? "space-y-6" : ""}`}>
+              {tickets.map((ticket, idx) => (
+                <div key={ticket.uuid} className="flex flex-col items-center">
+                  {tickets.length > 1 && (
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: GOLD }}>
+                      Line Skip #{idx + 1}
+                    </p>
+                  )}
+                  <div className="rounded-xl bg-white p-3">
+                    <QRCodeSVG
+                      value={`${WEB_BASE_URL}/ls/${ticket.uuid}`}
+                      size={180}
+                      level="M"
+                    />
+                  </div>
+                  <p className="mt-2 font-mono text-xs text-white/30">{ticket.uuid}</p>
+                </div>
+              ))}
+            </div>
+
+            <h2 className="mb-4 text-center text-lg font-bold text-white">{displayName}</h2>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -206,7 +234,7 @@ export default function LineSkipSuccessClient({
 
         <div className="mt-6 text-center">
           <a
-            href={`/lineskip/${businessId}`}
+            href={`/lineskip/${venueId}`}
             className="text-sm text-white/40 hover:text-white/60 transition-colors"
           >
             Buy more Line Skips

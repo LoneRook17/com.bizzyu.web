@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import LineSkipScanClient from "./LineSkipScanClient"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
 interface LineSkipScanPageProps {
   params: Promise<{ uuid: string }>

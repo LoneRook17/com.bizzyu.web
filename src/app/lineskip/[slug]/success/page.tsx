@@ -17,5 +17,5 @@ export default async function LineSkipSuccessPage({ params, searchParams }: Page
     )
   }
 
-  return <LineSkipSuccessClient businessId={slug} sessionId={session_id} />
+  return <LineSkipSuccessClient slugId={slug} sessionId={session_id} />
 }

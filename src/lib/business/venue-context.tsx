@@ -49,31 +49,43 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
       const active = data.venues.filter((v) => v.is_active)
       setVenues(active)
 
-      // Restore persisted selection
-      const stored = localStorage.getItem(VENUE_STORAGE_KEY)
-      if (stored === "all") {
+      // Restore persisted selection: URL param > localStorage > first venue
+      const urlParams = new URLSearchParams(window.location.search)
+      const urlVenueId = urlParams.get("venue_id")
+
+      if (urlVenueId === "all") {
         setSelectedVenueId("all")
-      } else if (stored) {
-        const id = parseInt(stored, 10)
-        if (active.some((v) => v.id === id)) {
-          setSelectedVenueId(id)
+        localStorage.setItem(VENUE_STORAGE_KEY, "all")
+      } else if (urlVenueId && active.some((v) => v.id === Number(urlVenueId))) {
+        const id = Number(urlVenueId)
+        setSelectedVenueId(id)
+        localStorage.setItem(VENUE_STORAGE_KEY, String(id))
+      } else {
+        const stored = localStorage.getItem(VENUE_STORAGE_KEY)
+        if (stored === "all") {
+          setSelectedVenueId("all")
+        } else if (stored) {
+          const id = parseInt(stored, 10)
+          if (active.some((v) => v.id === id)) {
+            setSelectedVenueId(id)
+          } else {
+            setSelectedVenueId(active[0]?.id ?? null)
+          }
         } else {
           setSelectedVenueId(active[0]?.id ?? null)
         }
-      } else {
-        setSelectedVenueId(active[0]?.id ?? null)
       }
 
       // Check if first-time wizard should show:
-      // - Zero venues (business registered after migration, venue creation failed or missing)
-      // - Exactly 1 venue whose name matches the business name (auto-created default)
+      // - Zero venues: always show (even if previously dismissed — user needs at least one)
+      // - Exactly 1 venue whose name matches the business name (auto-created default): show unless dismissed
       const wizardDismissed = localStorage.getItem(WIZARD_DISMISSED_KEY)
       if (
-        !wizardDismissed &&
         business &&
         business.status === "approved" &&
         (active.length === 0 ||
-          (active.length === 1 &&
+          (!wizardDismissed &&
+            active.length === 1 &&
             active[0].name.trim().toLowerCase() === business.name.trim().toLowerCase()))
       ) {
         setShowWizard(true)
@@ -96,6 +108,16 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
   const setSelectedVenue = useCallback((id: number | "all") => {
     setSelectedVenueId(id)
     localStorage.setItem(VENUE_STORAGE_KEY, String(id))
+    // Sync venue selection to URL for shareability
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      if (id === "all") {
+        url.searchParams.delete("venue_id")
+      } else {
+        url.searchParams.set("venue_id", String(id))
+      }
+      window.history.replaceState({}, "", url.toString())
+    }
   }, [])
 
   const dismissWizard = useCallback(() => {

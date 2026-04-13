@@ -17,14 +17,18 @@ const DAYS = [
   { value: 0, label: "Sun" },
 ]
 
-function getUpcomingDates(daysOfWeek: number[], count: number = 7): string[] {
+function getUpcomingDates(daysOfWeek: number[]): string[] {
   if (daysOfWeek.length === 0) return []
   const dates: string[] = []
   const current = new Date()
+  current.setHours(0, 0, 0, 0)
   current.setDate(current.getDate() + 1) // start from tomorrow
 
-  let daysChecked = 0
-  while (dates.length < count && daysChecked < 60) {
+  const cutoff = new Date()
+  cutoff.setHours(0, 0, 0, 0)
+  cutoff.setDate(cutoff.getDate() + 14) // 2-week window
+
+  while (current <= cutoff) {
     if (daysOfWeek.includes(current.getDay())) {
       dates.push(
         current.toLocaleDateString("en-US", {
@@ -36,14 +40,13 @@ function getUpcomingDates(daysOfWeek: number[], count: number = 7): string[] {
       )
     }
     current.setDate(current.getDate() + 1)
-    daysChecked++
   }
   return dates
 }
 
 export default function CreateLineSkipPage() {
   const router = useRouter()
-  const { selectedVenue } = useVenue()
+  const { venues, selectedVenue, setSelectedVenue } = useVenue()
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [loading, setLoading] = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
@@ -120,7 +123,7 @@ export default function CreateLineSkipPage() {
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
-    if (!selectedVenue) errs.name = "Please select a venue first"
+    if (!selectedVenue) errs.venue = "Please select a venue"
     if (!form.name.trim()) errs.name = "Name is required"
     if (form.days_of_week.length === 0) errs.days_of_week = "Select at least one day"
     if (!form.date_range_start) errs.date_range_start = "Start date is required"
@@ -225,6 +228,31 @@ export default function CreateLineSkipPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Venue Selection */}
+        {venues.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">Venue</label>
+            <select
+              value={selectedVenue?.id ?? ""}
+              onChange={(e) => {
+                const venueId = Number(e.target.value)
+                if (venueId) {
+                  setSelectedVenue(venueId)
+                }
+              }}
+              className={`w-full rounded-lg border px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary bg-white ${
+                errors.venue ? "border-red-400" : "border-gray-300"
+              }`}
+            >
+              <option value="" disabled>Select a venue</option>
+              {venues.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+            {errors.venue && <p className="mt-1 text-xs text-red-500">{errors.venue}</p>}
+          </div>
+        )}
+
         {/* Name */}
         <div>
           <label className="block text-sm font-medium text-ink mb-1">Name</label>
@@ -368,7 +396,7 @@ export default function CreateLineSkipPage() {
           ) : (
             <>
               <p className="text-sm font-medium text-ink mb-1">
-                Line Skips will be created on a rolling basis. Upcoming nights:
+                Upcoming nights (next 2 weeks):
               </p>
               <div className="max-h-40 overflow-y-auto space-y-1 mb-2">
                 {upcomingDates.map((date, i) => (
@@ -376,7 +404,7 @@ export default function CreateLineSkipPage() {
                 ))}
               </div>
               <p className="text-xs text-gray-400">
-                New nights are added automatically each week. You can stop this line skip at any time.
+                Nights are generated on a rolling 2-week basis and added automatically as time passes. You can stop this line skip at any time.
               </p>
             </>
           )}

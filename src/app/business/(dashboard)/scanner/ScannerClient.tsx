@@ -6,7 +6,9 @@ import Link from "next/link"
 import { apiClient } from "@/lib/business/api-client"
 import type { EventListItem } from "@/lib/business/types"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+import { getApiBaseUrl } from "@/lib/api-url"
+
+const API_URL = getApiBaseUrl()
 
 interface ScanResult {
   type?: 'event_ticket' | 'line_skip'
@@ -186,7 +188,7 @@ export default function ScannerClient() {
         // If facingMode constraint fails, retry with any camera
         const errName = primaryErr?.name || ""
         if (errName === "OverconstrainedError" || errName === "ConstraintNotSatisfiedError") {
-          console.warn("Rear camera not available, falling back to any camera:", primaryErr)
+          // Rear camera not available, falling back to any camera
           await scanner.start(
             { facingMode: "user" },
             config,
@@ -202,7 +204,6 @@ export default function ScannerClient() {
 
       setScanning(true)
     } catch (err: any) {
-      console.error("Camera error:", err?.name, err?.message)
       const errName = err?.name || ""
       if (errName === "NotAllowedError" || errName === "PermissionDeniedError") {
         setCameraError("Camera access denied. Please allow camera permissions in your browser settings.")
@@ -280,6 +281,22 @@ export default function ScannerClient() {
     return labels[result.status] || "ERROR"
   }
 
+  const getResultDescription = () => {
+    if (!result) return ""
+    if (result.status === "redeemed_now") return "Checked in successfully"
+    const descriptions: Record<string, string> = {
+      ticket_belongs_to_another_event: "This ticket belongs to a different event",
+      already_redeemed: "This ticket has already been checked in",
+      invalid: "Ticket not found",
+      refunded: "This ticket has been refunded",
+      event_cancelled: "This event has been cancelled",
+      event_not_active: "Scanning is not open for this event yet",
+      not_active: "This ticket is not active yet",
+      cancelled: "This ticket has been cancelled",
+    }
+    return descriptions[result.status] || "An error occurred"
+  }
+
   const getLogStatusColor = (status: string, type?: string) => {
     if (status === "redeemed_now") return type === "line_skip" ? "text-orange-400" : "text-green-400"
     if (status === "already_redeemed") return "text-yellow-400"
@@ -320,6 +337,7 @@ export default function ScannerClient() {
               </svg>
             )}
             <h1 className="mb-2 text-5xl font-black text-white tracking-tight">{getResultLabel()}</h1>
+            <p className="mb-3 text-lg font-medium text-white/70">{getResultDescription()}</p>
             {isLineSkip && result.status === "redeemed_now" && (
               <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-white/60">Guaranteed Entry</p>
             )}

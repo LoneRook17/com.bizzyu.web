@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import EventCheckoutClient from "./EventCheckoutClient"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
 interface PageProps {
   params: Promise<{ id: string }>

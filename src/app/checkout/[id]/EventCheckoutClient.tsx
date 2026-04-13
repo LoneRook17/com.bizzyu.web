@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+import { getApiBaseUrl } from "@/lib/api-url"
+
+const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -196,7 +198,7 @@ export default function EventCheckoutClient({
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
-        console.error("Fee preview error:", err)
+        // Fee preview failed silently — non-critical, user can still proceed
       }
     } finally {
       setFeeLoading(false)
@@ -650,6 +652,14 @@ export default function EventCheckoutClient({
               ? `Get Tickets - ${formatPrice(feePreview.total)}`
               : "Get Tickets - Free"}
           </button>
+        )}
+
+        {/* Refund policy */}
+        {totalQty > 0 && (
+          <p className="mt-3 text-center text-[10px] text-white/30 leading-relaxed">
+            By purchasing, you agree that all sales are final. No refunds or exchanges.
+            If the event is cancelled by the host, you will receive a full refund.
+          </p>
         )}
 
         {/* 21+ notice */}

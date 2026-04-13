@@ -6,7 +6,9 @@ import { useVenue } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import AddressAutocomplete from "./AddressAutocomplete"
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+import { getApiBaseUrl } from "@/lib/api-url"
+
+const BASE_URL = getApiBaseUrl()
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"]
 

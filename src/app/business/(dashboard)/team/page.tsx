@@ -98,11 +98,11 @@ export default function TeamPage() {
         : sorted
 
     // Build groups
-    const globalMembers = filtered.filter((m) => m.venue_id === null)
+    const globalMembers = filtered.filter((m) => m.venue_id == null)
     const byVenue = new Map<number, TeamMember[]>()
 
     for (const m of filtered) {
-      if (m.venue_id !== null) {
+      if (m.venue_id != null) {
         const list = byVenue.get(m.venue_id) || []
         list.push(m)
         byVenue.set(m.venue_id, list)
@@ -189,6 +189,9 @@ export default function TeamPage() {
                   <h2 className="text-sm font-semibold text-ink">{group.venueName}</h2>
                   <span className="text-xs text-gray-400">{group.members.length}</span>
                 </div>
+                {group.venueId === null && (
+                  <p className="text-xs text-gray-400 mt-0.5">These members have access to all venues</p>
+                )}
               </div>
               <div className="px-4">
                 {group.members.map((member) => (

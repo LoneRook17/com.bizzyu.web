@@ -41,7 +41,7 @@ const EMPTY_TICKET: TicketTier = {
 export default function EventForm({ initialData, eventId, stripeOnboarded = true, businessName, businessAddress }: EventFormProps) {
   const router = useRouter()
   const isEditing = !!eventId
-  const { selectedVenue, isAllVenues } = useVenue()
+  const { venues, selectedVenue, isAllVenues, setSelectedVenue } = useVenue()
 
   const [form, setForm] = useState<EventFormData>({
     name: initialData?.name || "",
@@ -147,9 +147,11 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         errs.end_date_time = "End date must be after start date"
       }
     }
+    /* DISABLED: Recurring events temporarily removed to avoid confusion with line skips
     if (form.is_recurring && (!form.recurring_event?.nights || form.recurring_event.nights.length === 0)) {
       errs.recurring_nights = "Add at least one night for your recurring event"
     }
+    */
     if (form.type === "Ticketed" && form.tickets.length === 0) {
       errs.tickets = "At least one ticket tier is required"
     }
@@ -186,10 +188,11 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         end_date_time: form.end_date_time,
         type: form.type,
         is_21_plus: form.is_21_plus,
-        is_recurring: form.is_recurring,
+        is_recurring: false,
         flyer_image_url: form.flyer_image_url || undefined,
       }
 
+      /* DISABLED: Recurring events temporarily removed to avoid confusion with line skips
       if (form.is_recurring && form.recurring_event?.nights?.length) {
         payload.recurringNights = form.recurring_event.nights.map((night) => ({
           frequency: "Weekly",
@@ -200,6 +203,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           end_time: night.end_time,
         }))
       }
+      */
 
       if (form.type === "Ticketed") {
         payload.tickets = form.tickets.map((t) => ({
@@ -320,250 +324,60 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         </div>
       </div>
 
-      {/* Recurring Event */}
+      {/* DISABLED: Recurring events temporarily removed to avoid confusion with line skips */}
+
+      {/* Date & Time */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-semibold text-ink mb-4">Recurring Event</h2>
-        <label className="flex items-center gap-2 cursor-pointer mb-4">
-          <input
-            type="checkbox"
-            name="is_recurring"
-            checked={form.is_recurring}
-            onChange={(e) => {
-              const checked = e.target.checked
-              setForm((prev) => ({
-                ...prev,
-                is_recurring: checked,
-                recurring_event: checked ? { frequency: "Weekly", nights: [] } : undefined,
-              }))
-              if (!checked) setShowAddNight(false)
-            }}
-            className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+        <h2 className="text-sm font-semibold text-ink mb-4">Date & Time</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <FormInput
+            label="Start"
+            name="start_date_time"
+            type="datetime-local"
+            value={form.start_date_time}
+            onChange={handleChange}
+            required
+            error={errors.start_date_time}
           />
-          <span className="text-sm text-gray-700">This is a recurring event</span>
-        </label>
-        {form.is_recurring && form.recurring_event && (
-          <div className="space-y-4">
-            {/* Nights list */}
-            {(form.recurring_event.nights ?? []).length > 0 && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Your event nights</label>
-                {[...(form.recurring_event.nights ?? [])]
-                  .sort((a, b) => a.day_of_week - b.day_of_week)
-                  .map((night, idx) => {
-                    const dayLabel = DAYS_OF_WEEK.find((d) => d.value === night.day_of_week)?.label ?? ""
-                    const formatTime = (t: string) => {
-                      const [h, m] = t.split(":").map(Number)
-                      const ampm = h >= 12 ? "PM" : "AM"
-                      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-                      return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`
-                    }
-                    return (
-                      <div
-                        key={`${night.day_of_week}-${idx}`}
-                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3"
-                      >
-                        <div>
-                          <span className="text-sm font-medium text-ink">{dayLabel}</span>
-                          <span className="text-sm text-gray-500 ml-3">
-                            {formatTime(night.start_time)} – {formatTime(night.end_time)}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setForm((prev) => ({
-                              ...prev,
-                              recurring_event: {
-                                ...prev.recurring_event!,
-                                nights: (prev.recurring_event!.nights ?? []).filter(
-                                  (n) => n.day_of_week !== night.day_of_week
-                                ),
-                              },
-                            }))
-                          }}
-                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                          aria-label={`Remove ${dayLabel}`}
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    )
-                  })}
-              </div>
-            )}
-
-            {/* Add night inline form */}
-            {showAddNight ? (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
-                    <select
-                      value={newNight.day_of_week}
-                      onChange={(e) => setNewNight((prev) => ({ ...prev, day_of_week: parseInt(e.target.value) }))}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
-                    >
-                      {DAYS_OF_WEEK.filter(
-                        (d) => !(form.recurring_event?.nights ?? []).some((n) => n.day_of_week === d.value)
-                      ).map((d) => (
-                        <option key={d.value} value={d.value}>{d.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start time</label>
-                    <input
-                      type="time"
-                      value={newNight.start_time}
-                      onChange={(e) => setNewNight((prev) => ({ ...prev, start_time: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">End time</label>
-                    <input
-                      type="time"
-                      value={newNight.end_time}
-                      onChange={(e) => setNewNight((prev) => ({ ...prev, end_time: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nights = [...(form.recurring_event?.nights ?? []), { ...newNight }]
-                      setForm((prev) => ({
-                        ...prev,
-                        recurring_event: { ...prev.recurring_event!, nights },
-                      }))
-                      setShowAddNight(false)
-                      // Reset to next available day
-                      const usedDays = new Set(nights.map((n) => n.day_of_week))
-                      const nextDay = DAYS_OF_WEEK.find((d) => !usedDays.has(d.value))
-                      setNewNight({ day_of_week: nextDay?.value ?? 0, start_time: "21:00", end_time: "02:00" })
-                    }}
-                    className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddNight(false)}
-                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              (form.recurring_event.nights ?? []).length < 7 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const usedDays = new Set((form.recurring_event?.nights ?? []).map((n) => n.day_of_week))
-                    const nextDay = DAYS_OF_WEEK.find((d) => !usedDays.has(d.value))
-                    if (nextDay) setNewNight((prev) => ({ ...prev, day_of_week: nextDay.value }))
-                    setShowAddNight(true)
-                  }}
-                  className="w-full rounded-lg border-2 border-dashed border-gray-300 py-3 text-sm font-medium text-gray-500 hover:border-primary hover:text-primary transition-colors"
-                >
-                  + Add another night
-                </button>
-              )
-            )}
-
-            {errors.recurring_nights && (
-              <p className="text-xs text-red-500">{errors.recurring_nights}</p>
-            )}
-
-            {/* End date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">End date</label>
-              <div className="flex gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEndDateMode("never")
-                    setForm((prev) => ({
-                      ...prev,
-                      recurring_event: { ...prev.recurring_event!, end_date: undefined },
-                    }))
-                  }}
-                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                    endDateMode === "never"
-                      ? "bg-primary text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  Never
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEndDateMode("on_date")}
-                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                    endDateMode === "on_date"
-                      ? "bg-primary text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  On date
-                </button>
-              </div>
-              {endDateMode === "on_date" && (
-                <input
-                  type="date"
-                  value={form.recurring_event.end_date || ""}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      recurring_event: { ...prev.recurring_event!, end_date: e.target.value || undefined },
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
-                />
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Date & Time — hidden when recurring is enabled (times are per-night) */}
-      {!form.is_recurring && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-          <h2 className="text-sm font-semibold text-ink mb-4">Date & Time</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <FormInput
-              label="Start"
-              name="start_date_time"
-              type="datetime-local"
-              value={form.start_date_time}
-              onChange={handleChange}
-              required
-              error={errors.start_date_time}
-            />
-            <FormInput
-              label="End"
-              name="end_date_time"
-              type="datetime-local"
-              value={form.end_date_time}
-              onChange={handleChange}
-              required
-              error={errors.end_date_time}
-            />
-          </div>
+          <FormInput
+            label="End"
+            name="end_date_time"
+            type="datetime-local"
+            value={form.end_date_time}
+            onChange={handleChange}
+            required
+            error={errors.end_date_time}
+          />
         </div>
-      )}
+      </div>
 
       {/* Event Location */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
         <h2 className="text-sm font-semibold text-ink mb-4">Event Location</h2>
-        {!isEditing && isAllVenues && (
-          <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
-            Please select a specific venue from the sidebar to create an event.
+        {!isEditing && venues.length > 0 && (
+          <div className="mb-4">
+            <label htmlFor="venue_select" className="block text-sm font-medium text-gray-700 mb-1">
+              Venue<span className="text-red-500 ml-0.5">*</span>
+            </label>
+            <select
+              id="venue_select"
+              value={selectedVenue?.id ?? ""}
+              onChange={(e) => {
+                const venueId = Number(e.target.value)
+                if (venueId) {
+                  setSelectedVenue(venueId)
+                }
+              }}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
+            >
+              <option value="" disabled>Select a venue</option>
+              {venues.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+            {errors.venue_name && !selectedVenue && (
+              <p className="mt-1 text-xs text-red-500">{errors.venue_name}</p>
+            )}
           </div>
         )}
         <FormInput
@@ -574,7 +388,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           placeholder="e.g. The Main Stage"
           required
           disabled={!isEditing && !!selectedVenue}
-          error={errors.venue_name}
+          error={selectedVenue ? undefined : errors.venue_name}
         />
         <div className="mb-4 relative" ref={addressWrapperRef}>
           <label htmlFor="venue_address" className="block text-sm font-medium text-gray-700 mb-1">

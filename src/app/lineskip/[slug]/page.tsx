@@ -1,15 +1,15 @@
 import { Metadata } from "next"
 import LineSkipCheckoutClient from "./LineSkipCheckoutClient"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
 interface PageProps {
   params: Promise<{ slug: string }>
 }
 
-async function getPageData(businessId: string) {
+async function getPageData(venueId: string) {
   try {
-    const res = await fetch(`${API_URL}/line-skips/business/${businessId}/page-info`, {
+    const res = await fetch(`${API_URL}/line-skips/venue/${venueId}/page-info`, {
       cache: "no-store",
     })
     if (!res.ok) return null
@@ -42,7 +42,7 @@ export default async function LineSkipPage({ params }: PageProps) {
 
   return (
     <LineSkipCheckoutClient
-      businessId={slug}
+      venueId={slug}
       initialData={data}
     />
   )

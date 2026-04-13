@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/business/auth-context"
-import { useVenueParam } from "@/lib/business/venue-context"
+import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import DealsOverview from "@/components/business/dashboard/DealsOverview"
 import EventsOverview from "@/components/business/dashboard/EventsOverview"
@@ -47,6 +47,7 @@ function PromoterView() {
 }
 
 function StaffView() {
+  const { isAllVenues } = useVenue()
   const venueParam = useVenueParam()
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [loading, setLoading] = useState(true)
@@ -63,12 +64,13 @@ function StaffView() {
   return (
     <div>
       <h1 className="text-xl font-bold text-ink mb-6">Deal Analytics</h1>
-      {loading ? <SkeletonCards /> : deals ? <DealsOverview data={deals} /> : <ErrorState />}
+      {loading ? <SkeletonCards /> : deals ? <DealsOverview data={deals} isAllVenues={isAllVenues} /> : <ErrorState />}
     </div>
   )
 }
 
 function OwnerManagerView() {
+  const { isAllVenues } = useVenue()
   const venueParam = useVenueParam()
   const [tab, setTab] = useState<"deals" | "events" | "line-skips">("deals")
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
@@ -121,13 +123,13 @@ function OwnerManagerView() {
 
       {/* Tab content */}
       {tab === "deals" && (
-        dealsLoading ? <SkeletonCards /> : deals ? <DealsOverview data={deals} /> : <ErrorState />
+        dealsLoading ? <SkeletonCards /> : deals ? <DealsOverview data={deals} isAllVenues={isAllVenues} /> : <ErrorState />
       )}
       {tab === "events" && (
-        eventsLoading ? <SkeletonCards /> : events ? <EventsOverview data={events} /> : <ErrorState />
+        eventsLoading ? <SkeletonCards /> : events ? <EventsOverview data={events} isAllVenues={isAllVenues} /> : <ErrorState />
       )}
       {tab === "line-skips" && (
-        lineSkipsLoading ? <SkeletonCards /> : lineSkips ? <LineSkipsOverview data={lineSkips} /> : <ErrorState />
+        lineSkipsLoading ? <SkeletonCards /> : lineSkips ? <LineSkipsOverview data={lineSkips} isAllVenues={isAllVenues} /> : <ErrorState />
       )}
     </div>
   )

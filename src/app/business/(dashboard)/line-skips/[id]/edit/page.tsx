@@ -20,12 +20,21 @@ const DAYS = [
 function getMatchingDates(daysOfWeek: number[], start: string, end: string): string[] {
   if (!start || !end || daysOfWeek.length === 0) return []
   const dates: string[] = []
+  // Use today as the earliest start (no past dates in preview)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const startDate = new Date(start + "T00:00:00")
-  const endDate = new Date(end + "T00:00:00")
-  if (startDate > endDate) return []
+  const current = startDate > today ? new Date(startDate) : new Date(today)
 
-  const current = new Date(startDate)
-  while (current <= endDate) {
+  // Cap preview to 2 weeks from now (matches backend rolling window)
+  const twoWeeksOut = new Date()
+  twoWeeksOut.setDate(twoWeeksOut.getDate() + 14)
+  const endDate = new Date(end + "T00:00:00")
+  const effectiveEnd = endDate < twoWeeksOut ? endDate : twoWeeksOut
+
+  if (current > effectiveEnd) return []
+
+  while (current <= effectiveEnd) {
     if (daysOfWeek.includes(current.getDay())) {
       dates.push(
         current.toLocaleDateString("en-US", {
@@ -350,7 +359,7 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
             <div>
               <p className="text-sm font-medium text-ink">Regenerate future instances with new defaults</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                This will update all future nights that haven&apos;t been individually overridden. Past nights and nights with sold tickets will not be affected.
+                This will regenerate the next 2 weeks of nights using your new defaults. Past nights and nights with sold tickets will not be affected. Future nights beyond 2 weeks are added automatically on a rolling basis.
               </p>
             </div>
           </label>
@@ -360,13 +369,16 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
         {regenerate && matchingDates.length > 0 && (
           <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
             <p className="text-sm font-medium text-yellow-800 mb-2">
-              Schedule covers {matchingDates.length} night{matchingDates.length !== 1 ? "s" : ""}
+              Upcoming nights to regenerate (next 2 weeks):
             </p>
             <div className="max-h-32 overflow-y-auto space-y-1">
               {matchingDates.map((date, i) => (
                 <p key={i} className="text-xs text-yellow-700">{date}</p>
               ))}
             </div>
+            <p className="text-xs text-yellow-600 mt-2">
+              Only unsold future nights will be regenerated. Additional nights are added automatically on a rolling basis.
+            </p>
           </div>
         )}
 

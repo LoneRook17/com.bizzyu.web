@@ -214,6 +214,18 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           })}
         </nav>
 
+        {/* Help link — always visible */}
+        <div className="px-3 pb-1">
+          <div onClick={onClose}>
+            <SidebarLink
+              href="/business/help"
+              label="Help & Tutorials"
+              icon="help"
+              active={pathname === "/business/help"}
+            />
+          </div>
+        </div>
+
         {/* User section */}
         <div className="border-t border-gray-100 px-4 py-4">
           {user && (

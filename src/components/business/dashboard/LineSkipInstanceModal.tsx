@@ -6,6 +6,17 @@ import type { LineSkipInstance } from "@/lib/business/types"
 
 type ModalMode = "edit_price" | "edit_quantity" | "edit_details" | "cancel"
 
+interface LineSkipRefundPreview {
+  ticketCount: number
+  totalRefundCents: number
+  totalCustomerRefundCents: number
+  transferReversalCents: number
+  estimatedStripeFeesCents: number
+  totalBusinessCostCents: number
+  redeemedCount: number
+  freeTicketCount: number
+}
+
 interface LineSkipInstanceModalProps {
   open: boolean
   mode: ModalMode
@@ -49,6 +60,9 @@ export default function LineSkipInstanceModal({
 
   // Cancel state
   const [cancellationReason, setCancellationReason] = useState("")
+  const [cancelResult, setCancelResult] = useState("")
+  const [refundPreview, setRefundPreview] = useState<LineSkipRefundPreview | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   useEffect(() => {
     if (instance) {
@@ -61,9 +75,22 @@ export default function LineSkipInstanceModal({
         end_time: instance.end_time,
       })
       setCancellationReason("")
+      setCancelResult("")
+      setRefundPreview(null)
       setError("")
     }
   }, [instance, mode])
+
+  // Fetch refund preview when cancel modal opens
+  useEffect(() => {
+    if (!open || mode !== "cancel" || !instance) return
+    setPreviewLoading(true)
+    apiClient
+      .get<LineSkipRefundPreview>(`/business/line-skips/instances/${instance.id}/refund-preview`)
+      .then(setRefundPreview)
+      .catch(() => setRefundPreview(null))
+      .finally(() => setPreviewLoading(false))
+  }, [open, mode, instance])
 
   if (!open || !instance) return null
 
@@ -142,11 +169,18 @@ export default function LineSkipInstanceModal({
     setLoading(true)
     setError("")
     try {
-      await apiClient.post(`/business/line-skips/instances/${instance.id}/cancel`, {
-        reason: cancellationReason.trim(),
-      })
-      onUpdated()
-      onClose()
+      const result = await apiClient.post<{ status: string; message: string }>(
+        `/business/line-skips/instances/${instance.id}/request-cancellation`,
+        { reason: cancellationReason.trim() },
+      )
+      const msg = result.status === 'pending_approval'
+        ? 'Cancellation request submitted for admin approval. You will be notified when approved.'
+        : result.message
+      setCancelResult(msg)
+      setTimeout(() => {
+        onUpdated()
+        onClose()
+      }, 2000)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to cancel night")
     } finally {
@@ -158,7 +192,7 @@ export default function LineSkipInstanceModal({
     edit_price: "Edit Price",
     edit_quantity: "Edit Quantity",
     edit_details: "Edit Details",
-    cancel: "Cancel Night",
+    cancel: "Cancel This Night?",
   }
 
   return (
@@ -310,31 +344,75 @@ export default function LineSkipInstanceModal({
         {/* Cancel Mode */}
         {mode === "cancel" && (
           <div className="space-y-4">
-            {instance.tickets_sold > 0 && (
-              <div className="rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700">
-                This will cancel {instance.tickets_sold} sold ticket{instance.tickets_sold !== 1 ? "s" : ""} and issue refunds.
+            {cancelResult ? (
+              <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">
+                {cancelResult}
               </div>
+            ) : (
+              <>
+                {previewLoading ? (
+                  <div className="animate-pulse space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    <div className="h-20 bg-gray-200 rounded" />
+                  </div>
+                ) : refundPreview && refundPreview.ticketCount > 0 ? (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm">
+                    <p className="font-semibold text-amber-800 mb-2">
+                      This night has {refundPreview.ticketCount} paid ticket{refundPreview.ticketCount !== 1 ? "s" : ""}.
+                    </p>
+                    <p className="text-xs text-amber-700 mb-2">
+                      Your business is responsible for reimbursing customers for the ticket price plus fees.
+                    </p>
+                    <div className="flex justify-between text-sm font-bold text-amber-900 mb-2">
+                      <span>Total refund cost:</span>
+                      <span>${(refundPreview.totalCustomerRefundCents / 100).toFixed(2)}</span>
+                    </div>
+                    {refundPreview.freeTicketCount > 0 && (
+                      <p className="text-xs text-amber-600 mb-2">
+                        Plus {refundPreview.freeTicketCount} free ticket{refundPreview.freeTicketCount !== 1 ? "s" : ""} that will be cancelled (no refund needed).
+                      </p>
+                    )}
+                    <p className="text-xs text-amber-600">
+                      Cancellation request will be submitted for admin approval.
+                    </p>
+                  </div>
+                ) : refundPreview && refundPreview.freeTicketCount > 0 ? (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm">
+                    <p className="font-semibold text-amber-800 mb-1">
+                      This night has {refundPreview.freeTicketCount} ticket{refundPreview.freeTicketCount !== 1 ? "s" : ""}.
+                    </p>
+                    <p className="text-xs text-amber-700">No paid tickets to refund. Tickets will be cancelled immediately.</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">
+                    This night has no tickets sold. It will be cancelled immediately.
+                  </p>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-1">Reason for cancellation</label>
+                  <textarea
+                    value={cancellationReason}
+                    onChange={(e) => setCancellationReason(e.target.value)}
+                    rows={3}
+                    placeholder="Reason for cancellation"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+                  />
+                </div>
+                <div className="flex gap-3 justify-end pt-2">
+                  <button type="button" onClick={onClose} disabled={loading} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+                    Keep
+                  </button>
+                  <button type="button" onClick={handleCancel} disabled={loading || !cancellationReason.trim()} className="rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-60 cursor-pointer">
+                    {loading ? "Submitting..." : refundPreview && refundPreview.ticketCount > 0 ? "Submit Cancellation Request" : "Cancel Night"}
+                  </button>
+                </div>
+              </>
             )}
-            <div>
-              <label className="block text-sm font-medium text-ink mb-1">Reason for cancellation</label>
-              <textarea
-                value={cancellationReason}
-                onChange={(e) => setCancellationReason(e.target.value)}
-                rows={3}
-                placeholder="Why is this night being cancelled?"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
-              />
-            </div>
-            <div className="flex gap-3 justify-end pt-2">
-              <button type="button" onClick={onClose} disabled={loading} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-                Go Back
-              </button>
-              <button type="button" onClick={handleCancel} disabled={loading} className="rounded-lg bg-red-600 hover:bg-red-700 px-4 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-60 cursor-pointer">
-                {loading ? "Cancelling..." : "Cancel Night"}
-              </button>
-            </div>
           </div>
         )}
+
       </div>
     </div>
   )

@@ -71,6 +71,16 @@ export default function EventCard({ event, showActions = true }: EventCardProps)
                   Moderated
                 </span>
               )}
+              {event.cancellation_status === "pending" && (
+                <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                  Cancellation Pending
+                </span>
+              )}
+              {event.cancellation_status === "denied" && (
+                <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700" title={event.cancellation_denial_reason || ""}>
+                  Cancellation Denied
+                </span>
+              )}
             </div>
           </div>
 

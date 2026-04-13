@@ -20,7 +20,7 @@ interface DealFormProps {
 export default function DealForm({ initialData, dealId }: DealFormProps) {
   const router = useRouter()
   const { business } = useAuth()
-  const { selectedVenue } = useVenue()
+  const { venues, selectedVenue, setSelectedVenue } = useVenue()
   const isEditing = !!dealId
 
   const [form, setForm] = useState<DealFormData>({
@@ -46,7 +46,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
-    if (!selectedVenue) errs.deal_title = "Please select a venue first"
+    if (!selectedVenue) errs.venue = "Please select a venue"
     if (!form.deal_title.trim()) errs.deal_title = "Deal title is required"
     if (!form.description.trim()) errs.description = "Description is required"
     if (!form.total_saving.trim()) errs.total_saving = "Estimated savings is required"
@@ -109,7 +109,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     REDEMPTION_OPTIONS.find((o) => o.value === form.redemption_frequency)?.label || "Claim Once Per Day"
   const selectedFreqOption = REDEMPTION_OPTIONS.find((o) => o.value === form.redemption_frequency)
   const hasImage = !!form.deal_image_path
-  const businessName = business?.name || "Business Name"
+  const businessName = selectedVenue?.name || business?.name || "Business Name"
 
   const inputClass =
     "w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-ink placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm"
@@ -244,6 +244,34 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                   public elsewhere.
                 </p>
               </div>
+
+              {/* Venue Selection */}
+              {!isEditing && venues.length > 0 && (
+                <div className="mb-5">
+                  <label htmlFor="venue_select" className="block text-sm font-medium text-ink mb-1.5">
+                    Venue <span className="text-primary">*</span>
+                  </label>
+                  <select
+                    id="venue_select"
+                    value={selectedVenue?.id ?? ""}
+                    onChange={(e) => {
+                      const venueId = Number(e.target.value)
+                      if (venueId) {
+                        setSelectedVenue(venueId)
+                      }
+                    }}
+                    className={selectedVenue ? inputClass : inputErrorClass}
+                  >
+                    <option value="" disabled>Select a venue</option>
+                    {venues.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                  {errors.venue && (
+                    <p className="mt-1 text-xs text-red-500">{errors.venue}</p>
+                  )}
+                </div>
+              )}
 
               {/* Deal Title */}
               <div className="mb-5">

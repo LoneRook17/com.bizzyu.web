@@ -22,6 +22,8 @@ export interface Venue {
   photo_url: string | null
   campus_id: number | null
   is_active: boolean
+  website: string | null
+  instagram: string | null
   created_at: string
   updated_at: string
 }
@@ -108,6 +110,10 @@ export interface EventListItem {
   ticket_sales_count: number
   checkin_rate: number
   moderation_reason?: string | null
+  cancellation_status?: 'none' | 'pending' | 'approved' | 'denied'
+  cancellation_reason?: string | null
+  cancellation_requested_at?: string | null
+  cancellation_denial_reason?: string | null
 }
 
 export interface TicketTier {
@@ -170,6 +176,8 @@ export interface DealListItem {
   deal_category: string
   deal_type: string
   business_name: string
+  venue_name?: string
+  display_name?: string
   location: string
   uses: string
   total_saving: number
@@ -231,6 +239,7 @@ export interface DealOverviewItem {
   claims_this_week: number
   supply_limit: number | null
   supply_used: number
+  venue_name: string
 }
 
 export interface DealsOverview {
@@ -245,6 +254,7 @@ export interface EventOverviewItem {
   event_id: number
   name: string
   start_date_time: string
+  end_date_time: string
   venue_name: string
   status: string
   flyer_image_url: string | null
@@ -354,6 +364,7 @@ export interface LineSkipInstance {
   price_cents: number
   capacity: number | null
   status: 'active' | 'cancelled' | 'sold_out'
+  cancellation_status?: 'none' | 'pending' | 'approved' | 'denied'
   cancellation_reason: string | null
   tickets_sold: number
   revenue?: number
@@ -428,6 +439,7 @@ export interface LineSkipOverviewInstance {
   instance_id: number
   line_skip_id: number
   line_skip_name: string
+  venue_name: string
   date: string
   start_time: string
   end_time: string
