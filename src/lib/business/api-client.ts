@@ -1,7 +1,5 @@
 import { getApiBaseUrl } from '@/lib/api-url'
 
-const BASE_URL = getApiBaseUrl()
-
 export class ApiError extends Error {
   status: number
   constructor(message: string, status: number) {
@@ -16,7 +14,8 @@ class BusinessApiClient {
   private refreshPromise: Promise<boolean> | null = null
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const url = `${BASE_URL}${path}`
+    const base = getApiBaseUrl()
+    const url = `${base}${path}`
     const config: RequestInit = {
       ...options,
       credentials: 'include',
@@ -58,7 +57,7 @@ class BusinessApiClient {
     this.isRefreshing = true
     this.refreshPromise = (async () => {
       try {
-        const res = await fetch(`${BASE_URL}/business/auth/refresh`, {
+        const res = await fetch(`${getApiBaseUrl()}/business/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
         })
@@ -105,7 +104,7 @@ class BusinessApiClient {
 
   // Auth-specific methods (don't trigger silent refresh redirect)
   async authPost<T>(path: string, body?: unknown): Promise<T> {
-    const url = `${BASE_URL}${path}`
+    const url = `${getApiBaseUrl()}${path}`
     const response = await fetch(url, {
       method: 'POST',
       credentials: 'include',
