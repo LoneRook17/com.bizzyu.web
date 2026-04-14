@@ -100,7 +100,7 @@ export interface EventListItem {
   venue_address: string
   start_date_time: string
   end_date_time: string
-  type: 'Ticketed' | 'Free' | 'RSVP'
+  type: 'Ticketed' | 'Free'
   status: string
   flyer_image_url?: string
   is_21_plus: boolean
@@ -160,7 +160,7 @@ export interface EventFormData {
   longitude: number | null
   start_date_time: string
   end_date_time: string
-  type: 'Ticketed' | 'Free' | 'RSVP'
+  type: 'Ticketed' | 'Free'
   is_21_plus: boolean
   is_recurring: boolean
   recurring_event?: RecurringEventConfig

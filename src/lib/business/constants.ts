@@ -60,7 +60,7 @@ export const DEAL_TABS = [
   { value: 'deactivated', label: 'Deactivated' },
 ] as const
 
-export const EVENT_TYPES = ['Ticketed', 'Free', 'RSVP'] as const
+export const EVENT_TYPES = ['Ticketed', 'Free'] as const
 export const TICKET_TYPES = ['paid', 'free', 'guest'] as const
 
 export const DEAL_CATEGORIES = [

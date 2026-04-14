@@ -96,7 +96,7 @@ export default function EventsPage() {
           <div>
             <p className="text-sm font-medium text-yellow-800">Stripe Connect not linked</p>
             <p className="text-xs text-yellow-700 mt-0.5">
-              To create paid events, complete Stripe Connect onboarding. Free and RSVP events can be created without Stripe.
+              To create paid events, complete Stripe Connect onboarding. Free events can be created without Stripe.
             </p>
             <Link href="/business/settings" className="text-xs text-primary font-medium hover:underline mt-1 inline-block">
               Go to Settings &rarr;
