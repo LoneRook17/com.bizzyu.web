@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import AuthCard from "@/components/business/auth/AuthCard"
 import FormInput from "@/components/business/auth/FormInput"
 import FormPasswordInput from "@/components/business/auth/FormPasswordInput"
 import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
+import AddressAutocomplete from "@/components/business/dashboard/AddressAutocomplete"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { CAMPUSES } from "@/lib/business/constants"
 
@@ -42,44 +43,6 @@ export default function SignupPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [addressPredictions, setAddressPredictions] = useState<{ description: string; place_id: string }[]>([])
-  const [showPredictions, setShowPredictions] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const addressWrapperRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (addressWrapperRef.current && !addressWrapperRef.current.contains(e.target as Node)) {
-        setShowPredictions(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  const onAddressChange = (value: string) => {
-    setForm((prev) => ({ ...prev, address: value }))
-    setErrors((prev) => ({ ...prev, address: undefined }))
-    setServerError("")
-
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (value.trim().length < 3) {
-      setAddressPredictions([])
-      setShowPredictions(false)
-      return
-    }
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/places-autocomplete?input=${encodeURIComponent(value)}`)
-        const data = await res.json()
-        setAddressPredictions(data.predictions ?? [])
-        setShowPredictions((data.predictions ?? []).length > 0)
-      } catch {
-        setAddressPredictions([])
-      }
-    }, 400)
-  }
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     setErrors((prev) => ({ ...prev, [e.target.name]: undefined }))
@@ -184,44 +147,21 @@ export default function SignupPage() {
           autoComplete="tel"
           error={errors.phone}
         />
-        <div className="mb-4 relative" ref={addressWrapperRef}>
+        <div className="mb-4">
           <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
             Business Address<span className="text-red-500 ml-0.5">*</span>
           </label>
-          <input
-            id="address"
-            name="address"
-            type="text"
+          <AddressAutocomplete
             value={form.address}
-            onChange={(e) => onAddressChange(e.target.value)}
-            onFocus={() => addressPredictions.length > 0 && setShowPredictions(true)}
+            onChange={(value) => {
+              setForm((prev) => ({ ...prev, address: value }))
+              setErrors((prev) => ({ ...prev, address: undefined }))
+              setServerError("")
+            }}
             placeholder="Start typing an address..."
-            autoComplete="off"
             className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none bg-white text-ink
               ${errors.address ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"}`}
           />
-          {showPredictions && addressPredictions.length > 0 && (
-            <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-              {addressPredictions.map((p) => (
-                <li
-                  key={p.place_id}
-                  className="px-3 py-2.5 text-sm cursor-pointer hover:bg-gray-50 flex items-center gap-2"
-                  onMouseDown={() => {
-                    setForm((prev) => ({ ...prev, address: p.description }))
-                    setAddressPredictions([])
-                    setShowPredictions(false)
-                    setErrors((prev) => ({ ...prev, address: undefined }))
-                  }}
-                >
-                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="truncate">{p.description}</span>
-                </li>
-              ))}
-            </ul>
-          )}
           {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
         </div>
         <FormInput
