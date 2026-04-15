@@ -101,9 +101,9 @@ export default function DashboardHomePage() {
       else console.error('[Dashboard] events failed:', eventsRes.reason)
 
       if (dealsRes.status === 'fulfilled') setLiveDeals(dealsRes.value.deals)
-      else console.error('[Dashboard] deals failed:', dealsRes.reason) finally {
-        setLoading(false)
-      }
+      else console.error('[Dashboard] deals failed:', dealsRes.reason)
+
+      setLoading(false)
     }
     fetchData()
   }, [venueParam])
