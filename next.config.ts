@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "bizzy-deals.com" },
       { protocol: "https", hostname: "zlog.rifat-ahmed.com" },
+      { protocol: "https", hostname: "*.s3.amazonaws.com" },
     ],
   },
   experimental: {

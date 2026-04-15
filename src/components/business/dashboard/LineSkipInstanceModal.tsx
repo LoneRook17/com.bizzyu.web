@@ -46,6 +46,7 @@ export default function LineSkipInstanceModal({
 
   // Edit price state
   const [newPriceCents, setNewPriceCents] = useState(0)
+  const [priceDisplay, setPriceDisplay] = useState("")
 
   // Edit quantity state
   const [newCapacity, setNewCapacity] = useState("")
@@ -57,6 +58,7 @@ export default function LineSkipInstanceModal({
     start_time: "",
     end_time: "",
   })
+  const [detailsPriceDisplay, setDetailsPriceDisplay] = useState("")
 
   // Cancel state
   const [cancellationReason, setCancellationReason] = useState("")
@@ -67,6 +69,7 @@ export default function LineSkipInstanceModal({
   useEffect(() => {
     if (instance) {
       setNewPriceCents(instance.price_cents)
+      setPriceDisplay((instance.price_cents / 100).toFixed(2))
       setNewCapacity(instance.capacity?.toString() ?? "")
       setDetailsForm({
         price_cents: instance.price_cents,
@@ -74,6 +77,7 @@ export default function LineSkipInstanceModal({
         start_time: instance.start_time,
         end_time: instance.end_time,
       })
+      setDetailsPriceDisplay((instance.price_cents / 100).toFixed(2))
       setCancellationReason("")
       setCancelResult("")
       setRefundPreview(null)
@@ -95,7 +99,9 @@ export default function LineSkipInstanceModal({
   if (!open || !instance) return null
 
   const handleEditPrice = async () => {
-    if (newPriceCents <= 0) {
+    const dollars = parseFloat(priceDisplay)
+    const cents = !isNaN(dollars) ? Math.round(dollars * 100) : 0
+    if (cents <= 0) {
       setError("Price must be greater than $0")
       return
     }
@@ -103,7 +109,7 @@ export default function LineSkipInstanceModal({
     setError("")
     try {
       await apiClient.patch(`/business/line-skips/instances/${instance.id}/price`, {
-        price_cents: newPriceCents,
+        price_cents: cents,
       })
       onUpdated()
       onClose()
@@ -135,7 +141,9 @@ export default function LineSkipInstanceModal({
   }
 
   const handleEditDetails = async () => {
-    if (detailsForm.price_cents <= 0) {
+    const dollars = parseFloat(detailsPriceDisplay)
+    const cents = !isNaN(dollars) ? Math.round(dollars * 100) : 0
+    if (cents <= 0) {
       setError("Price must be greater than $0")
       return
     }
@@ -147,7 +155,7 @@ export default function LineSkipInstanceModal({
     setError("")
     try {
       await apiClient.patch(`/business/line-skips/instances/${instance.id}`, {
-        price_cents: detailsForm.price_cents,
+        price_cents: cents,
         capacity: detailsForm.capacity ? parseInt(detailsForm.capacity) : null,
         start_time: detailsForm.start_time,
         end_time: detailsForm.end_time,
@@ -217,14 +225,22 @@ export default function LineSkipInstanceModal({
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={(newPriceCents / 100).toFixed(2)}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value)
-                    setNewPriceCents(!isNaN(v) ? Math.round(v * 100) : 0)
+                  type="text"
+                  inputMode="decimal"
+                  value={priceDisplay}
+                  onChange={(e) => setPriceDisplay(e.target.value)}
+                  onBlur={() => {
+                    const d = parseFloat(priceDisplay)
+                    if (!isNaN(d) && d > 0) {
+                      const c = Math.round(d * 100)
+                      setNewPriceCents(c)
+                      setPriceDisplay((c / 100).toFixed(2))
+                    } else {
+                      setNewPriceCents(0)
+                      setPriceDisplay("")
+                    }
                   }}
+                  placeholder="0.00"
                   className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </div>
@@ -284,14 +300,22 @@ export default function LineSkipInstanceModal({
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={(detailsForm.price_cents / 100).toFixed(2)}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value)
-                    setDetailsForm((prev) => ({ ...prev, price_cents: !isNaN(v) ? Math.round(v * 100) : 0 }))
+                  type="text"
+                  inputMode="decimal"
+                  value={detailsPriceDisplay}
+                  onChange={(e) => setDetailsPriceDisplay(e.target.value)}
+                  onBlur={() => {
+                    const d = parseFloat(detailsPriceDisplay)
+                    if (!isNaN(d) && d > 0) {
+                      const c = Math.round(d * 100)
+                      setDetailsForm((prev) => ({ ...prev, price_cents: c }))
+                      setDetailsPriceDisplay((c / 100).toFixed(2))
+                    } else {
+                      setDetailsForm((prev) => ({ ...prev, price_cents: 0 }))
+                      setDetailsPriceDisplay("")
+                    }
                   }}
+                  placeholder="0.00"
                   className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </div>

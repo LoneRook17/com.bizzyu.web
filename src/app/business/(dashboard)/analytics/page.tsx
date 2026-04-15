@@ -34,7 +34,7 @@ function PromoterView() {
     apiClient
       .get<PromoterLink[]>(`/business/analytics/promoter-stats?_=1${venueParam}`)
       .then(setLinks)
-      .catch(() => setLinks([]))
+      .catch((err) => { console.error("Failed to load promoter stats:", err); setLinks([]) })
       .finally(() => setLoading(false))
   }, [venueParam])
 
@@ -57,7 +57,7 @@ function StaffView() {
     apiClient
       .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
-      .catch(() => setDeals(null))
+      .catch((err) => { console.error("Failed to load deals analytics:", err); setDeals(null) })
       .finally(() => setLoading(false))
   }, [venueParam])
 
@@ -88,19 +88,19 @@ function OwnerManagerView() {
     apiClient
       .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
-      .catch(() => setDeals(null))
+      .catch((err) => { console.error("Failed to load deals analytics:", err); setDeals(null) })
       .finally(() => setDealsLoading(false))
 
     apiClient
       .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
       .then(setEvents)
-      .catch(() => setEvents(null))
+      .catch((err) => { console.error("Failed to load events analytics:", err); setEvents(null) })
       .finally(() => setEventsLoading(false))
 
     apiClient
       .get<LineSkipAnalyticsOverview>(`/business/line-skips/analytics/overview?_=1${venueParam}`)
       .then(setLineSkips)
-      .catch(() => setLineSkips(null))
+      .catch((err) => { console.error("Failed to load line skip analytics:", err); setLineSkips(null) })
       .finally(() => setLineSkipsLoading(false))
   }, [venueParam])
 

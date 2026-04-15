@@ -80,9 +80,9 @@ export default function DashboardHomePage() {
       setLoading(true)
       try {
         const [summaryData, statsData, activityData, eventsData, dealsData] = await Promise.all([
-          apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1${venueParam}`),
-          apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1${venueParam}`),
-          apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10${venueParam}`),
+          apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1`),
+          apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1`),
+          apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10`),
           apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?tab=upcoming&limit=3${venueParam}`),
           apiClient.get<{ deals: DealListItem[]; total: number }>(`/business/deals?tab=live&limit=3${venueParam}`),
         ])
@@ -91,8 +91,8 @@ export default function DashboardHomePage() {
         setActivity(activityData)
         setUpcomingEvents(eventsData.events)
         setLiveDeals(dealsData.deals)
-      } catch {
-        // Dashboard data may be empty for new/pending businesses
+      } catch (err) {
+        console.error('[Dashboard] Failed to load stats:', err)
       } finally {
         setLoading(false)
       }

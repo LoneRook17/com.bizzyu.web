@@ -80,7 +80,13 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
         name: name.trim(),
         address: address.trim() || null,
         description: description.trim() || null,
-        website: website.trim() || null,
+        website: (() => {
+          let w = website.trim()
+          if (w && !w.startsWith("http://") && !w.startsWith("https://")) {
+            w = "https://" + w
+          }
+          return w || null
+        })(),
         instagram: instagram.trim() || null,
       })
 
@@ -152,7 +158,7 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
             <input
-              type="url"
+              type="text"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://www.example.com"

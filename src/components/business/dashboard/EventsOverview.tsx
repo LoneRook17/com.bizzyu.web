@@ -86,7 +86,7 @@ function EventCard({
       apiClient
         .get<EventAnalytics>(`/business/analytics/events/${event.event_id}`)
         .then(setDetail)
-        .catch(() => setDetail(null))
+        .catch((err) => { console.error("Failed to load event detail:", err); setDetail(null) })
         .finally(() => setDetailLoading(false))
     }
     onToggle()

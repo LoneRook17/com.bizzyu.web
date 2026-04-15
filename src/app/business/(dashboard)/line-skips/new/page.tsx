@@ -52,6 +52,7 @@ export default function CreateLineSkipPage() {
   const [profileLoading, setProfileLoading] = useState(true)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
+  const [priceDisplay, setPriceDisplay] = useState("15.00")
 
   const [form, setForm] = useState<LineSkipFormData>({
     name: "",
@@ -101,14 +102,21 @@ export default function CreateLineSkipPage() {
   }
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const dollars = parseFloat(e.target.value)
-    if (!isNaN(dollars)) {
-      setForm((prev) => ({ ...prev, default_price_cents: Math.round(dollars * 100) }))
-    } else if (e.target.value === "") {
-      setForm((prev) => ({ ...prev, default_price_cents: 0 }))
-    }
+    setPriceDisplay(e.target.value)
     setErrors((prev) => ({ ...prev, default_price_cents: "" }))
     setServerError("")
+  }
+
+  const handlePriceBlur = () => {
+    const dollars = parseFloat(priceDisplay)
+    if (!isNaN(dollars) && dollars > 0) {
+      const cents = Math.round(dollars * 100)
+      setForm((prev) => ({ ...prev, default_price_cents: cents }))
+      setPriceDisplay((cents / 100).toFixed(2))
+    } else {
+      setForm((prev) => ({ ...prev, default_price_cents: 0 }))
+      setPriceDisplay("")
+    }
   }
 
   const toggleDay = (day: number) => {
@@ -138,6 +146,10 @@ export default function CreateLineSkipPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const dollars = parseFloat(priceDisplay)
+    const cents = !isNaN(dollars) ? Math.round(dollars * 100) : 0
+    setForm((prev) => ({ ...prev, default_price_cents: cents }))
+    form.default_price_cents = cents
     if (!validate()) return
 
     setLoading(true)
@@ -358,11 +370,12 @@ export default function CreateLineSkipPage() {
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
               <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={(form.default_price_cents / 100).toFixed(2)}
+                type="text"
+                inputMode="decimal"
+                value={priceDisplay}
                 onChange={handlePriceChange}
+                onBlur={handlePriceBlur}
+                placeholder="0.00"
                 className={`w-full rounded-lg border pl-7 pr-3 py-2 text-sm text-ink outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary ${
                   errors.default_price_cents ? "border-red-400" : "border-gray-300"
                 }`}

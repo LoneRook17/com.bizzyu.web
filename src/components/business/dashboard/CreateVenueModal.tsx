@@ -73,7 +73,13 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
         name: name.trim(),
         address: address.trim() || undefined,
         description: description.trim() || undefined,
-        website: website.trim() || undefined,
+        website: (() => {
+          let w = website.trim()
+          if (w && !w.startsWith("http://") && !w.startsWith("https://")) {
+            w = "https://" + w
+          }
+          return w || undefined
+        })(),
         instagram: instagram.trim() || undefined,
       })
       const venueId = created.venue.id
@@ -160,7 +166,7 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
             <input
-              type="url"
+              type="text"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
               placeholder="https://www.example.com"
