@@ -198,7 +198,7 @@ export default function LineSkipCheckoutClient({
   // Get applicable promo for an instance
   const getPromoForInstance = (instanceId: number): PromoInfo | null => {
     if (!promoApplied) return null
-    return promoApplied.find((p) => p.line_skip_instance_id === instanceId) || null
+    return promoApplied.find((p) => Number(p.line_skip_instance_id) === Number(instanceId)) || null
   }
 
   // ─── Fee Calculation (client-side) ────────────────────────────────────────
@@ -208,23 +208,24 @@ export default function LineSkipCheckoutClient({
     const promo = getPromoForInstance(selectedInstance.id)
     const discountedUnitPrice = getDiscountedPrice(selectedInstance.price_cents, promo)
     const discountPerUnit = selectedInstance.price_cents - discountedUnitPrice
-    const subtotal = discountedUnitPrice * quantity
+    const discountedSubtotal = discountedUnitPrice * quantity
     const discountTotal = discountPerUnit * quantity
+    const originalSubtotal = selectedInstance.price_cents * quantity
 
-    if (subtotal === 0) {
-      return { subtotal: 0, discount: discountTotal, service_fee: 0, total: 0 }
+    if (discountedSubtotal === 0) {
+      return { subtotal: originalSubtotal, discount: discountTotal, service_fee: 0, total: 0 }
     }
 
     // If feeConfig hasn't loaded yet, show subtotal without service fee
     const flatFee = feeConfig ? feeConfig.flat_cents * quantity : 0
-    const percentageFee = feeConfig ? Math.round(subtotal * (feeConfig.percentage / 100)) : 0
+    const percentageFee = feeConfig ? Math.round(discountedSubtotal * (feeConfig.percentage / 100)) : 0
     const serviceFee = flatFee + percentageFee
 
     return {
-      subtotal: selectedInstance.price_cents * quantity,
+      subtotal: originalSubtotal,
       discount: discountTotal,
       service_fee: serviceFee,
-      total: subtotal + serviceFee,
+      total: discountedSubtotal + serviceFee,
     }
   }
 
