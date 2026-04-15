@@ -87,7 +87,9 @@ export default function SignupPage() {
         phone: form.phone,
         campus_id: Number(form.campus_id),
         address: form.address,
-        website: form.website || undefined,
+        website: form.website
+          ? (/^https?:\/\//i.test(form.website) ? form.website : `https://${form.website}`)
+          : undefined,
         instagram: form.instagram || undefined,
         description: form.description,
       })
@@ -167,10 +169,9 @@ export default function SignupPage() {
         <FormInput
           label="Website"
           name="website"
-          type="url"
           value={form.website}
           onChange={handleChange}
-          placeholder="https://yourbusiness.com"
+          placeholder="www.yourbusiness.com"
         />
         <FormInput
           label="Instagram"

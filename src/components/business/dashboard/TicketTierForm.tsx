@@ -11,7 +11,7 @@ interface TicketTierFormProps {
 const EMPTY_TIER: TicketTier = {
   name: "",
   price_usd: 0,
-  quantity: 100,
+  quantity: 0,
   max_per_person: 0,
   ticket_type: "paid",
 }
@@ -84,13 +84,14 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Quantity</label>
+                <label className="block text-xs text-gray-500 mb-1">Quantity <span className="text-gray-400 font-normal">(0 = unlimited)</span></label>
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   value={tier.quantity}
                   onChange={(e) => updateTier(i, "quantity", e.target.value === "" ? "" as any : parseInt(e.target.value))}
-                  onBlur={() => { if (tier.quantity === "" as any || isNaN(tier.quantity)) updateTier(i, "quantity", 1) }}
+                  onBlur={() => { if (tier.quantity === "" as any || isNaN(tier.quantity)) updateTier(i, "quantity", 0) }}
+                  placeholder="0 = unlimited"
                   className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </div>

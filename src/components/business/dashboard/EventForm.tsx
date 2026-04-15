@@ -33,7 +33,7 @@ interface EventFormProps {
 const EMPTY_TICKET: TicketTier = {
   name: "General Admission",
   price_usd: 0,
-  quantity: 100,
+  quantity: 0,
   max_per_person: 0,
   ticket_type: "paid",
 }
@@ -211,7 +211,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           name: t.name,
           description: t.description,
           price_usd: t.price_usd,
-          quantity: t.quantity,
+          quantity: t.quantity || null,
           max_per_person: t.max_per_person || undefined,
           ticket_type: t.ticket_type,
         }))

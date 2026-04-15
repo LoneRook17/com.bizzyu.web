@@ -40,7 +40,11 @@ export default function ProfileForm({ profile, onSaved, disabled }: ProfileFormP
     setSuccess(false)
 
     try {
-      await apiClient.put("/business/profile", form)
+      const payload = { ...form }
+      if (payload.website && !/^https?:\/\//i.test(payload.website)) {
+        payload.website = `https://${payload.website}`
+      }
+      await apiClient.put("/business/profile", payload)
       setSuccess(true)
       onSaved()
     } catch (err) {
@@ -100,10 +104,9 @@ export default function ProfileForm({ profile, onSaved, disabled }: ProfileFormP
         <FormInput
           label="Website"
           name="website"
-          type="url"
           value={form.website}
           onChange={handleChange}
-          placeholder="https://..."
+          placeholder="www.yourbusiness.com"
           disabled={disabled}
         />
         <FormInput

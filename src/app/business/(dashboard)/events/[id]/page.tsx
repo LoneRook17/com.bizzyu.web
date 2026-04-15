@@ -225,7 +225,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-ink">
-                        {ticket.sold_count ?? 0} / {ticket.quantity}
+                        {ticket.sold_count ?? 0} / {ticket.quantity || "∞"}
                       </p>
                       <p className="text-xs text-gray-400">sold</p>
                     </div>
