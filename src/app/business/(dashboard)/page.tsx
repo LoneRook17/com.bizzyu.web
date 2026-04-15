@@ -78,22 +78,30 @@ export default function DashboardHomePage() {
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      try {
-        const [summaryData, statsData, activityData, eventsData, dealsData] = await Promise.all([
-          apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1`),
-          apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1`),
-          apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10`),
-          apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?tab=upcoming&limit=3${venueParam}`),
-          apiClient.get<{ deals: DealListItem[]; total: number }>(`/business/deals?tab=live&limit=3${venueParam}`),
-        ])
-        setSummary(summaryData)
-        setQuickStats(statsData)
-        setActivity(activityData)
-        setUpcomingEvents(eventsData.events)
-        setLiveDeals(dealsData.deals)
-      } catch (err) {
-        console.error('[Dashboard] Failed to load stats:', err)
-      } finally {
+      const results = await Promise.allSettled([
+        apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1`),
+        apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1`),
+        apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10`),
+        apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?tab=upcoming&limit=3${venueParam}`),
+        apiClient.get<{ deals: DealListItem[]; total: number }>(`/business/deals?tab=live&limit=3${venueParam}`),
+      ])
+
+      const [summaryRes, statsRes, activityRes, eventsRes, dealsRes] = results
+
+      if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value)
+      else console.error('[Dashboard] summary failed:', summaryRes.reason)
+
+      if (statsRes.status === 'fulfilled') setQuickStats(statsRes.value)
+      else console.error('[Dashboard] quick-stats failed:', statsRes.reason)
+
+      if (activityRes.status === 'fulfilled') setActivity(activityRes.value)
+      else console.error('[Dashboard] activity failed:', activityRes.reason)
+
+      if (eventsRes.status === 'fulfilled') setUpcomingEvents(eventsRes.value.events)
+      else console.error('[Dashboard] events failed:', eventsRes.reason)
+
+      if (dealsRes.status === 'fulfilled') setLiveDeals(dealsRes.value.deals)
+      else console.error('[Dashboard] deals failed:', dealsRes.reason) finally {
         setLoading(false)
       }
     }
