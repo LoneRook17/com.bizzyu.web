@@ -79,9 +79,9 @@ export default function DashboardHomePage() {
     async function fetchData() {
       setLoading(true)
       const results = await Promise.allSettled([
-        apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1`),
-        apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1`),
-        apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10`),
+        apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1${venueParam}`),
+        apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1${venueParam}`),
+        apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10${venueParam}`),
         apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?tab=upcoming&limit=3${venueParam}`),
         apiClient.get<{ deals: DealListItem[]; total: number }>(`/business/deals?tab=live&limit=3${venueParam}`),
       ])

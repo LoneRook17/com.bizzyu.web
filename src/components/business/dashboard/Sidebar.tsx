@@ -18,6 +18,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { user, business, isPending, logout } = useAuth()
   const { venues, selectedVenue, selectedVenueId, isAllVenues, setSelectedVenue } = useVenue()
+  const isVenueRestricted = user?.venue_id != null
   const [venueDropdownOpen, setVenueDropdownOpen] = useState(false)
   const [createVenueOpen, setCreateVenueOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -70,8 +71,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               <>
                 <button
                   type="button"
-                  onClick={() => setVenueDropdownOpen((p) => !p)}
-                  className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-ink hover:bg-gray-100 transition-colors cursor-pointer"
+                  onClick={() => !isVenueRestricted && setVenueDropdownOpen((p) => !p)}
+                  className={`flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-ink transition-colors ${isVenueRestricted ? "" : "hover:bg-gray-100 cursor-pointer"}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <svg className="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -80,15 +81,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                     </svg>
                     <span className="truncate font-medium">{displayName}</span>
                   </div>
-                  <svg
-                    className={`h-4 w-4 text-gray-400 flex-shrink-0 transition-transform ${venueDropdownOpen ? "rotate-180" : ""}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                  </svg>
+                  {!isVenueRestricted && (
+                    <svg
+                      className={`h-4 w-4 text-gray-400 flex-shrink-0 transition-transform ${venueDropdownOpen ? "rotate-180" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={1.5}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  )}
                 </button>
 
                 {venueDropdownOpen && (

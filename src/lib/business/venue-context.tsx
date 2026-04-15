@@ -46,33 +46,46 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated) return
     try {
       const data = await apiClient.get<{ venues: Venue[] }>("/business/venues")
-      const active = data.venues.filter((v) => v.is_active)
+      let active = data.venues.filter((v) => v.is_active)
+
+      // If user is assigned to a specific venue (not Global), restrict to only that venue
+      const userVenueId = user?.venue_id ?? null
+      if (userVenueId !== null) {
+        active = active.filter((v) => v.id === userVenueId)
+      }
+
       setVenues(active)
 
-      // Restore persisted selection: URL param > localStorage > first venue
-      const urlParams = new URLSearchParams(window.location.search)
-      const urlVenueId = urlParams.get("venue_id")
-
-      if (urlVenueId === "all") {
-        setSelectedVenueId("all")
-        localStorage.setItem(VENUE_STORAGE_KEY, "all")
-      } else if (urlVenueId && active.some((v) => v.id === Number(urlVenueId))) {
-        const id = Number(urlVenueId)
-        setSelectedVenueId(id)
-        localStorage.setItem(VENUE_STORAGE_KEY, String(id))
+      // If venue-restricted, always lock to that venue
+      if (userVenueId !== null) {
+        setSelectedVenueId(userVenueId)
+        localStorage.setItem(VENUE_STORAGE_KEY, String(userVenueId))
       } else {
-        const stored = localStorage.getItem(VENUE_STORAGE_KEY)
-        if (stored === "all") {
+        // Restore persisted selection: URL param > localStorage > first venue
+        const urlParams = new URLSearchParams(window.location.search)
+        const urlVenueId = urlParams.get("venue_id")
+
+        if (urlVenueId === "all") {
           setSelectedVenueId("all")
-        } else if (stored) {
-          const id = parseInt(stored, 10)
-          if (active.some((v) => v.id === id)) {
-            setSelectedVenueId(id)
+          localStorage.setItem(VENUE_STORAGE_KEY, "all")
+        } else if (urlVenueId && active.some((v) => v.id === Number(urlVenueId))) {
+          const id = Number(urlVenueId)
+          setSelectedVenueId(id)
+          localStorage.setItem(VENUE_STORAGE_KEY, String(id))
+        } else {
+          const stored = localStorage.getItem(VENUE_STORAGE_KEY)
+          if (stored === "all") {
+            setSelectedVenueId("all")
+          } else if (stored) {
+            const id = parseInt(stored, 10)
+            if (active.some((v) => v.id === id)) {
+              setSelectedVenueId(id)
+            } else {
+              setSelectedVenueId(active[0]?.id ?? null)
+            }
           } else {
             setSelectedVenueId(active[0]?.id ?? null)
           }
-        } else {
-          setSelectedVenueId(active[0]?.id ?? null)
         }
       }
 
@@ -95,7 +108,7 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false)
     }
-  }, [isAuthenticated, business])
+  }, [isAuthenticated, business, user])
 
   useEffect(() => {
     if (isAuthenticated) {

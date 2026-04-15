@@ -3,6 +3,7 @@ export interface BusinessUser {
   email: string
   full_name: string
   business_role: 'owner' | 'manager' | 'staff' | 'promoter'
+  venue_id: number | null
 }
 
 export interface Business {

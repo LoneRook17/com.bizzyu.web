@@ -22,7 +22,6 @@ const ROLE_COLORS: Record<string, string> = {
 const ASSIGNABLE_ROLES = ["manager", "staff", "promoter"]
 
 export default function TeamMemberRow({ member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange }: TeamMemberRowProps) {
-  const canManage = currentUserRole === "owner" || currentUserRole === "manager"
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const isPending = !member.invite_accepted_at && !isOwnerMember
@@ -57,8 +56,8 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
         </div>
       </div>
 
-      {/* Actions */}
-      {canManage && !isOwnerMember && (
+      {/* Actions — owner only */}
+      {isOwnerViewing && !isOwnerMember && (
         <div className="flex items-center gap-2 flex-shrink-0">
           {/* Venue assignment */}
           <select
@@ -76,28 +75,24 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
             ))}
           </select>
 
-          {/* Role selector — owner only */}
-          {isOwnerViewing && (
-            <select
-              value={member.role}
-              onChange={(e) => onRoleChange(member.id, e.target.value)}
-              className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer"
-            >
-              {ASSIGNABLE_ROLES.map((r) => (
-                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-              ))}
-            </select>
-          )}
+          {/* Role selector */}
+          <select
+            value={member.role}
+            onChange={(e) => onRoleChange(member.id, e.target.value)}
+            className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer"
+          >
+            {ASSIGNABLE_ROLES.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+            ))}
+          </select>
 
-          {/* Remove — owner only */}
-          {isOwnerViewing && (
-            <button
-              onClick={() => onRemove(member)}
-              className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-            >
-              Remove
-            </button>
-          )}
+          {/* Remove */}
+          <button
+            onClick={() => onRemove(member)}
+            className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+          >
+            Remove
+          </button>
         </div>
       )}
     </div>
