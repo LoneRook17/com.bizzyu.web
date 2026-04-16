@@ -14,6 +14,16 @@ const nextConfig: NextConfig = {
       static: 30,
     },
   },
+  async headers() {
+    return [
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [
+          { key: "Content-Type", value: "application/json" },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     const apiUrl =
       process.env.INTERNAL_API_URL || "http://localhost:3000";

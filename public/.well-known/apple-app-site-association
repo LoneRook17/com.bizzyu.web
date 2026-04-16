@@ -1,0 +1,22 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "Q8YCT49UJB.com.bizzy.deals",
+        "paths": [
+          "/lineskip/*",
+          "/ls/*",
+          "/checkin/*",
+          "/event/*",
+          "/venue/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "Q8YCT49UJB.com.bizzy.deals"
+    ]
+  }
+}
