@@ -724,7 +724,7 @@ export default function LineSkipCheckoutClient({
 
             {instances.length === 0 ? (
               <div className="rounded-xl bg-white/5 border border-white/10 p-8 text-center">
-                <p className="text-white/50">No Line Skips available in the next 3 days</p>
+                <p className="text-white/50">No Line Skips available in the next 2 weeks</p>
               </div>
             ) : (
               <div className="space-y-3">
