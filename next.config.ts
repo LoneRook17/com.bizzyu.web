@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+const checkoutBase = process.env.CHECKOUT_REDIRECT_BASE_URL || 'http://3.80.143.224';
+const appStoreUrl = 'https://apps.apple.com/us/app/bizzy-college-deals-events/id6683306360';
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -35,6 +38,26 @@ const nextConfig: NextConfig = {
         source: "/events-contact",
         destination: "/events",
         permanent: true,
+      },
+      {
+        source: "/event/:id(\\d+)",
+        destination: `${checkoutBase}/checkout/:id`,
+        permanent: false,
+      },
+      {
+        source: "/venue/:id(\\d+)",
+        destination: appStoreUrl,
+        permanent: false,
+      },
+      {
+        source: "/deal/:id(\\d+)",
+        destination: appStoreUrl,
+        permanent: false,
+      },
+      {
+        source: "/business/:id(\\d+)",
+        destination: appStoreUrl,
+        permanent: false,
       },
     ];
   },

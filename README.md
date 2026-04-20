@@ -38,3 +38,10 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 # rebuild
 # prod api fix
 # rebuild Thu Apr  9 16:00:49 EDT 2026
+
+## Environment: CHECKOUT_REDIRECT_BASE_URL
+
+The `CHECKOUT_REDIRECT_BASE_URL` env var controls where `/event/:id` deep links redirect for ticket checkout. It must be set in the Vercel dashboard for both projects:
+
+- **Dev** project (`com-bizzyu-web-l2gp`): `http://3.80.143.224`
+- **Prod** project (`com-bizzyu-web`): `https://bizzy-deals.com`
