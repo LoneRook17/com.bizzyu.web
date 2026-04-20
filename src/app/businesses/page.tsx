@@ -64,8 +64,8 @@ export default function BusinessesPage() {
                   <Button href="/business/signup" size="lg">
                     Get Started Free
                   </Button>
-                  <Button href="/signup" variant="outline" size="lg">
-                    Submit a Deal
+                  <Button href="/business/signup" variant="outline" size="lg">
+                    List a Deal
                   </Button>
                 </div>
               </div>
@@ -220,7 +220,7 @@ export default function BusinessesPage() {
                 ))}
               </div>
               <div className="mt-6">
-                <Button href="/signup" variant="outline" size="sm">
+                <Button href="/business/signup" variant="outline" size="sm">
                   List a Deal
                 </Button>
               </div>
@@ -286,8 +286,8 @@ export default function BusinessesPage() {
                 ))}
               </div>
               <div className="mt-6">
-                <Button href="/events-contact" variant="outline" size="sm">
-                  Contact Events Team
+                <Button href="/events" variant="outline" size="sm">
+                  List Your Event
                 </Button>
               </div>
             </div>
@@ -302,11 +302,11 @@ export default function BusinessesPage() {
       <SectionContainer className="!pt-4 md:!pt-6">
         <ZeroFrictionBanner />
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
-          <Button href="/signup" size="lg">
+          <Button href="/business/signup" size="lg">
             List a Deal
           </Button>
-          <Button href="/events-contact" variant="outline" size="lg">
-            Contact Events Team
+          <Button href="/events" variant="outline" size="lg">
+            List Your Event
           </Button>
         </div>
       </SectionContainer>
@@ -343,8 +343,8 @@ export default function BusinessesPage() {
               <Button href="/business/signup" variant="white" size="lg">
                 Sign Up for Free
               </Button>
-              <Button href="/signup" variant="white" size="lg" className="!bg-white/20 !text-white hover:!bg-white/30">
-                Submit a Deal Instead
+              <Button href="/business/signup" variant="white" size="lg" className="!bg-white/20 !text-white hover:!bg-white/30">
+                List a Deal Instead
               </Button>
             </div>
             <p className="mt-6 text-white/60 text-sm">

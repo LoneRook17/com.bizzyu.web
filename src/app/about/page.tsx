@@ -282,7 +282,7 @@ export default function AboutPage() {
               <Button href={APP_STORE_URL} variant="white" size="lg">
                 Download the App
               </Button>
-              <Button href="/signup" variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">
+              <Button href="/business/signup" variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">
                 List Your Business
               </Button>
             </div>

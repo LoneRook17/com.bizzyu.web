@@ -29,22 +29,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
-      url: `${baseUrl}/signup`,
-      lastModified: new Date("2026-03-15"),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
       url: `${baseUrl}/events`,
-      lastModified: new Date("2026-03-15"),
+      lastModified: new Date("2026-04-19"),
       changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/events-contact`,
-      lastModified: new Date("2026-03-15"),
-      changeFrequency: "monthly",
-      priority: 0.5,
+      priority: 0.8,
     },
     {
       url: `${baseUrl}/privacy`,

@@ -52,6 +52,34 @@ export const STUDENT_FAQ = [
   },
 ];
 
+export const EVENTS_FAQ = [
+  {
+    question: "How much does it cost to list events on Bizzy?",
+    answer:
+      "It's free. 0% fees — you keep every dollar of ticket face value. No monthly fees, no contracts, no platform cut.",
+  },
+  {
+    question: "When do I receive ticket revenue?",
+    answer:
+      "Ticket revenue is deposited to your connected Stripe account on a rolling basis, typically arriving the next business day after the event. You can track payouts in real time from your Bizzy business dashboard.",
+  },
+  {
+    question: "Can I edit an event after it's published?",
+    answer:
+      "Yes. You can update event details, add or modify ticket tiers, change prices, and upload new flyers from the Events tab in your business dashboard at any time before the event starts.",
+  },
+  {
+    question: "What are Line Skips and how are they different from event tickets?",
+    answer:
+      "Line Skips are cover + guaranteed entry passes for recurring venue nights (weekly Fridays, Saturdays, trivia nights, etc.). Students pay cover in advance and walk up to a guaranteed spot — no waiting in line. Event tickets are for one-off events with ticket tiers (general admission, VIP, etc.). Line Skip QR codes flag gold at check-in so your door staff can tell them apart from event tickets instantly.",
+  },
+  {
+    question: "Do I need any special hardware for door scanning or tap-to-pay?",
+    answer:
+      "No. The Bizzy scanner is a free web-based tool that works on any phone — just open the scanner URL and scan QR codes. Tap-to-pay uses the Stripe Terminal SDK built into Bizzy, so your phone is the only hardware you need.",
+  },
+];
+
 export const BUSINESS_FAQ = [
   {
     question: "Is it really free for businesses?",

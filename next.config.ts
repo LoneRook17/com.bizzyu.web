@@ -24,6 +24,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/signup",
+        destination: "/business/signup",
+        permanent: true,
+      },
+      {
+        source: "/events-contact",
+        destination: "/events",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     const apiUrl =
       process.env.INTERNAL_API_URL || "http://localhost:3000";

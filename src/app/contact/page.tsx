@@ -193,7 +193,7 @@ export default function ContactPage() {
               Get your deals in front of thousands of college students - completely free.
             </p>
             <a
-              href="/signup"
+              href="/business/signup"
               className="inline-flex items-center px-8 py-4 bg-white text-primary text-lg font-semibold rounded-full hover:bg-gray-50 transition-all shadow-lg"
             >
               Get Started Free

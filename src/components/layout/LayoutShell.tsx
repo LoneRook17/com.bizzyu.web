@@ -6,7 +6,7 @@ import Footer from "./Footer"
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isBusinessRoute = pathname.startsWith("/business")
+  const isBusinessRoute = pathname.startsWith("/business/") || pathname === "/business"
   const isCheckoutRoute = pathname.startsWith("/checkout")
 
   if (isBusinessRoute || isCheckoutRoute) {

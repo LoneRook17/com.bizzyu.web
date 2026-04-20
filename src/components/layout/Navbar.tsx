@@ -70,7 +70,7 @@ export default function Navbar() {
             href="/business/login"
             className="text-[13px] font-medium text-muted hover:text-ink transition-colors"
           >
-            For Businesses
+            Business Portal
           </Link>
           <a
             href="https://calendly.com/partnerships-bizzyu/bizzy-bar-intro"
