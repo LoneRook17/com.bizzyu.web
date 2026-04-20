@@ -2,9 +2,7 @@
 
 import { useState, useRef } from "react"
 
-import { getApiBaseUrl } from "@/lib/api-url"
-
-const BASE_URL = getApiBaseUrl()
+import { apiClient } from "@/lib/business/api-client"
 
 interface ImageUploadProps {
   value: string
@@ -35,18 +33,7 @@ export default function ImageUpload({ value, onChange, label = "Image" }: ImageU
       const formData = new FormData()
       formData.append("image", file)
 
-      const res = await fetch(`${BASE_URL}/business/upload/image`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      })
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || "Upload failed")
-      }
-
-      const data = await res.json()
+      const data = await apiClient.upload<{ url: string }>("/business/upload/image", formData)
       onChange(data.url)
     } catch (err: any) {
       setError(err.message || "Upload failed")

@@ -102,6 +102,37 @@ class BusinessApiClient {
     return this.request<T>(path, { method: 'DELETE' })
   }
 
+  async upload<T>(path: string, formData: FormData): Promise<T> {
+    const base = getApiBaseUrl()
+    const url = `${base}${path}`
+    const config: RequestInit = {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    }
+
+    let response = await fetch(url, config)
+
+    if (response.status === 401) {
+      const refreshed = await this.silentRefresh()
+      if (refreshed) {
+        response = await fetch(url, config)
+      } else {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/business/login'
+        }
+        throw new ApiError('Session expired', 401)
+      }
+    }
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new ApiError(body.message || body.error || 'Request failed', response.status)
+    }
+
+    return response.json()
+  }
+
   // Auth-specific methods (don't trigger silent refresh redirect)
   async authPost<T>(path: string, body?: unknown): Promise<T> {
     const url = `${getApiBaseUrl()}${path}`
