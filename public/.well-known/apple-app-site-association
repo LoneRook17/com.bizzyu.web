@@ -1,23 +1,20 @@
 {
   "applinks": {
-    "apps": [],
     "details": [
       {
-        "appID": "Q8YCT49UJB.com.bizzy.deals",
-        "paths": [
-          "/lineskip/*",
-          "/ls/*",
-          "/event/*",
-          "/venue/*",
-          "/deal/*",
-          "/business/*"
+        "appIDs": ["Q8YCT49UJB.com.bizzy.deals"],
+        "components": [
+          { "/": "/lineskip/*" },
+          { "/": "/ls/*" },
+          { "/": "/event/*" },
+          { "/": "/venue/*" },
+          { "/": "/deal/*" },
+          { "/": "/business/*" }
         ]
       }
     ]
   },
   "webcredentials": {
-    "apps": [
-      "Q8YCT49UJB.com.bizzy.deals"
-    ]
+    "apps": ["Q8YCT49UJB.com.bizzy.deals"]
   }
 }
