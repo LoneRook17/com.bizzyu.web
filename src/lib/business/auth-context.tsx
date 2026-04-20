@@ -62,7 +62,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
 
     setUser(data.user)
     setBusiness(data.business)
-    document.cookie = "biz_session=1; path=/business; max-age=604800; SameSite=Lax"
+    // biz_session cookie is now set by the server response
     router.push("/business")
   }
 

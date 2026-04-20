@@ -63,7 +63,7 @@ function AcceptInviteContent() {
         phone: form.phone,
       })
 
-      document.cookie = "biz_session=1; path=/business; max-age=604800; SameSite=Lax"
+      // biz_session cookie is now set by the server response
       router.push("/business")
     } catch (err) {
       if (err instanceof ApiError) {

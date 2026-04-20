@@ -32,9 +32,7 @@ export default function LoginPage() {
         password: form.password,
       })
 
-      // Set session indicator cookie (readable by middleware)
-      document.cookie = "biz_session=1; path=/business; max-age=604800; SameSite=Lax"
-
+      // biz_session cookie is set by the server (httpOnly=false, for Next.js middleware routing)
       router.push("/business")
     } catch (err) {
       if (err instanceof ApiError) {

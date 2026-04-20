@@ -11,6 +11,17 @@ import AddressAutocomplete from "@/components/business/dashboard/AddressAutocomp
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { CAMPUSES } from "@/lib/business/constants"
 
+const BLOCKED_EMAIL_DOMAINS = [
+  'proton.me', 'protonmail.com', 'pm.me',
+  'tutanota.com', 'tuta.io', 'tutamail.com',
+  'mailbox.org', 'posteo.de', 'disroot.org',
+  'simplelogin.io', 'anonaddy.com', '33mail.com', 'duck.com',
+  'tempmail.com', 'guerrillamail.com', '10minutemail.com',
+  'throwawaymail.com', 'mailinator.com', 'yopmail.com',
+  'sharklasers.com', 'guerrillamailblock.com', 'grr.la',
+  'temp-mail.org', 'fakeinbox.com',
+]
+
 interface FormState {
   business_name: string
   contact_name: string
@@ -56,6 +67,7 @@ export default function SignupPage() {
     if (!form.contact_name.trim()) errs.contact_name = "Contact name is required"
     if (!form.email.trim()) errs.email = "Email is required"
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = "Invalid email format"
+    else if (BLOCKED_EMAIL_DOMAINS.includes(form.email.split("@")[1]?.toLowerCase())) errs.email = "Please use a business email address"
     if (!form.phone.trim()) errs.phone = "Phone number is required"
     else if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a valid phone number"
     if (!form.address.trim()) errs.address = "Business address is required"

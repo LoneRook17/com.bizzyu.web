@@ -4,8 +4,9 @@
       {
         "appIDs": ["Q8YCT49UJB.com.bizzy.deals"],
         "components": [
-          { "/": "/lineskip/*" },
-          { "/": "/ls/*" },
+          { "/": "/lineskip/*", "exclude": true },
+          { "/": "/ls/*", "exclude": true },
+          { "/": "/checkin/*", "exclude": true },
           { "/": "/event/*" },
           { "/": "/venue/*" },
           { "/": "/deal/*" },
