@@ -107,26 +107,28 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
   const [quantityError, setQuantityError] = useState("")
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
-  const canEditPrice = canEdit || user?.business_role === "staff"
+  const canViewAnalytics = canEdit
+  const canEditPrice = canEdit
 
   const fetchData = useCallback(async () => {
     try {
-      const [analyticsData, promoData] = await Promise.all([
-        apiClient.get<LineSkipInstanceAnalytics>(
-          `/business/line-skips/instances/${instanceId}/analytics`
-        ),
-        apiClient.get<{ promo_codes: PromoCode[] }>(
-          `/business/line-skips/instances/${instanceId}/promo-codes`
-        ),
-      ])
-      setAnalytics(analyticsData)
+      const promoData = await apiClient.get<{ promo_codes: PromoCode[] }>(
+        `/business/line-skips/instances/${instanceId}/promo-codes`
+      )
       setPromoCodes(promoData.promo_codes)
+
+      if (canViewAnalytics) {
+        const analyticsData = await apiClient.get<LineSkipInstanceAnalytics>(
+          `/business/line-skips/instances/${instanceId}/analytics`
+        )
+        setAnalytics(analyticsData)
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to load data")
     } finally {
       setLoading(false)
     }
-  }, [instanceId])
+  }, [instanceId, canViewAnalytics])
 
   useEffect(() => {
     fetchData()
@@ -256,7 +258,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
     )
   }
 
-  if (error || !analytics) {
+  if (error || (canViewAnalytics && !analytics)) {
     return (
       <div className="text-center py-16">
         <p className="text-sm text-red-500 mb-4">{error || "Analytics not available"}</p>
@@ -267,8 +269,8 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
     )
   }
 
-  const totalTickets = analytics.channel_split.app + analytics.channel_split.web
-  const appPct = totalTickets > 0 ? Math.round((analytics.channel_split.app / totalTickets) * 100) : 0
+  const totalTickets = analytics ? analytics.channel_split.app + analytics.channel_split.web : 0
+  const appPct = analytics && totalTickets > 0 ? Math.round((analytics.channel_split.app / totalTickets) * 100) : 0
   const webPct = totalTickets > 0 ? 100 - appPct : 0
 
   return (
@@ -283,6 +285,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
       </div>
 
       {/* Stats cards — matching Flutter layout */}
+      {analytics && (
       <div ref={analyticsRef} className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs text-gray-500">Revenue</p>
@@ -361,8 +364,10 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
           </p>
         </div>
       </div>
+      )}
 
       {/* Channel split + Purchase time row */}
+      {analytics && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Channel split */}
         <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -431,8 +436,10 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
           )}
         </div>
       </div>
+      )}
 
       {/* Attendees — expandable */}
+      {analytics && (
       <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4">
         <button
           onClick={() => setAttendeesExpanded(!attendeesExpanded)}
@@ -496,6 +503,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
           </div>
         )}
       </div>
+      )}
 
       {/* Promo Codes — expandable with CRUD */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 mb-6">
@@ -782,7 +790,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
       </div>
 
       {/* Promo usage analytics (if any promos were used) */}
-      {analytics.promo_breakdown.length > 0 && (
+      {analytics && analytics.promo_breakdown.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-4 mb-6">
           <h3 className="text-sm font-semibold text-ink mb-3">Promo Code Usage Analytics</h3>
           <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">

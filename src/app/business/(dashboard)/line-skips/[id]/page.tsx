@@ -384,7 +384,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                     )}
 
                     {/* Analytics button */}
-                    {instance.tickets_sold > 0 && (
+                    {canViewAnalytics && instance.tickets_sold > 0 && (
                       <Link
                         href={`/business/line-skips/instances/${instance.id}?tab=analytics`}
                         className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
