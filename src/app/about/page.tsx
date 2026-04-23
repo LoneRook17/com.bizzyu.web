@@ -124,6 +124,46 @@ export default function AboutPage() {
         </SectionContainer>
       </section>
 
+      {/* Cofounder */}
+      <SectionContainer>
+        <AnimatedSection>
+          <div className="max-w-3xl mx-auto">
+            <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
+              Meet the Cofounder
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-6">
+              Evangelos Milionis
+            </h2>
+            <div className="space-y-6 text-muted text-lg leading-relaxed">
+              <p>
+                Evangelos Milionis is a Miami-based entrepreneur and operator
+                whose career has moved from banking to entertainment,
+                hospitality, and technology. A 2022 graduate in Finance from
+                Florida Gulf Coast University, he began his career as an
+                analyst at J.P. Morgan Private Bank before leaving to found
+                DadBod Hospitality Group, a college entertainment company that
+                has booked the NELK Boys, Rob Rausch, and other national
+                headliners into campus venues across the country.
+              </p>
+              <p>
+                He went on to acquire Backroads Brewhouse &amp; Sports in Fort
+                Myers, Florida, a live-music and sports bar catering primarily
+                to the nearby FGCU college crowd, where he serves as
+                owner-operator. He also founded and runs multiple SaaS
+                companies.
+              </p>
+              <p>
+                Bizzy founder Cooper Aiello brought him into the company as his
+                cofounder following its initial launch to lead venue
+                partnerships and scale the platform&apos;s footprint across the
+                bar and nightlife industry through the events &amp; ticketing
+                function.
+              </p>
+            </div>
+          </div>
+        </AnimatedSection>
+      </SectionContainer>
+
       {/* Growth & Product */}
       <SectionContainer>
         <AnimatedSection>
