@@ -78,6 +78,12 @@ export default function AboutPage() {
         <SectionContainer>
           <AnimatedSection>
             <div className="max-w-3xl mx-auto">
+              <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
+                Meet the Founder
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-6">
+                Cooper Aiello
+              </h2>
               <div className="space-y-6 text-muted text-lg leading-relaxed">
                 <p>
                   My name is Cooper Aiello, and when I came to Florida Gulf Coast
