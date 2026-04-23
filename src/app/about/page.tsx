@@ -183,14 +183,6 @@ export default function AboutPage() {
                 campus experiences into one feed built for each school.
               </p>
 
-              <div className="bg-primary-light rounded-2xl p-8 text-center my-8">
-                <p className="text-4xl font-bold text-primary mb-2">55%</p>
-                <p className="text-ink font-medium">
-                  monthly usage across the FGCU student body within our first
-                  year
-                </p>
-              </div>
-
               <p className="text-ink font-medium text-xl">
                 That is what makes Bizzy different.
               </p>
@@ -208,17 +200,7 @@ export default function AboutPage() {
             </div>
 
             <div className="mt-12 text-center">
-              <p className="text-xl text-ink font-semibold mb-1">
-                We are not anti-internet.
-              </p>
-              <p className="text-xl text-primary font-bold mb-1">
-                We are pro-real life.
-              </p>
-              <p className="text-muted text-lg">
-                And we are building Bizzy to prove those two things belong
-                together.
-              </p>
-              <p className="mt-8 text-ink font-medium">
+              <p className="text-ink font-medium">
                 — Cooper Aiello, Founder
               </p>
             </div>
