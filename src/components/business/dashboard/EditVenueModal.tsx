@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { apiClient } from "@/lib/business/api-client"
+import { apiClient, ApiError } from "@/lib/business/api-client"
 import { useVenue } from "@/lib/business/venue-context"
 import AddressAutocomplete from "./AddressAutocomplete"
 import { getApiBaseUrl } from "@/lib/api-url"
@@ -25,8 +25,10 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
   const [website, setWebsite] = useState(venue.website ?? "")
   const [instagram, setInstagram] = useState(venue.instagram ?? "")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [savedPhotoUrl, setSavedPhotoUrl] = useState(venue.photo_url ?? "")
   const [photoPreview, setPhotoPreview] = useState(venue.photo_url ?? "")
   const [photoError, setPhotoError] = useState("")
+  const [photoDeleting, setPhotoDeleting] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const photoInputRef = useRef<HTMLInputElement>(null)
@@ -40,6 +42,7 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
     setWebsite(venue.website ?? "")
     setInstagram(venue.instagram ?? "")
     setPhotoFile(null)
+    setSavedPhotoUrl(venue.photo_url ?? "")
     setPhotoPreview(venue.photo_url ?? "")
     setPhotoError("")
     setError("")
@@ -61,10 +64,31 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
     setPhotoPreview(URL.createObjectURL(file))
   }
 
-  const clearPhoto = () => {
-    setPhotoFile(null)
-    setPhotoPreview(venue.photo_url ?? "")
+  const clearPhoto = async () => {
     setPhotoError("")
+    // If the user had just picked a new file, clearing reverts to the saved photo.
+    if (photoFile) {
+      setPhotoFile(null)
+      setPhotoPreview(savedPhotoUrl)
+      return
+    }
+    // No saved photo either — just clear the preview.
+    if (!savedPhotoUrl) {
+      setPhotoPreview("")
+      return
+    }
+    // Delete the saved photo server-side.
+    setPhotoDeleting(true)
+    try {
+      await apiClient.delete(`/business/venues/${venue.id}/photo`)
+      setSavedPhotoUrl("")
+      setPhotoPreview("")
+      await refreshVenues()
+    } catch (err) {
+      setPhotoError(err instanceof ApiError ? err.message : "Failed to remove photo.")
+    } finally {
+      setPhotoDeleting(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,7 +210,9 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
                 <button
                   type="button"
                   onClick={clearPhoto}
-                  className="absolute top-2 right-2 rounded-full bg-white/90 p-1.5 text-gray-600 hover:bg-white hover:text-red-500 shadow-sm transition-colors cursor-pointer"
+                  disabled={photoDeleting}
+                  className="absolute top-2 right-2 rounded-full bg-white/90 p-1.5 text-gray-600 hover:bg-white hover:text-red-500 shadow-sm transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  aria-label={photoFile ? "Cancel new photo" : "Remove photo"}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
