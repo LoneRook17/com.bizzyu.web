@@ -4,9 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { NAV_LINKS } from "@/lib/constants";
-
-const CALENDLY_URL = "https://calendly.com/partnerships-bizzyu/bizzy-bar-intro";
+import { NAV_LINKS, CALENDLY_DEMO_URL } from "@/lib/constants";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -88,7 +86,7 @@ export default function Navbar() {
               Business Portal
             </Link>
             <a
-              href={CALENDLY_URL}
+              href={CALENDLY_DEMO_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
@@ -159,7 +157,7 @@ export default function Navbar() {
           </Link>
 
           <a
-            href={CALENDLY_URL}
+            href={CALENDLY_DEMO_URL}
             target="_blank"
             rel="noopener noreferrer"
             onClick={closeDrawer}
