@@ -171,17 +171,6 @@ const NIGHTLIFE_REACH = [
   },
 ];
 
-const DASHBOARD_CALLOUTS = [
-  "Create and edit events",
-  "Manage ticket tiers",
-  "View live sales",
-  "Track check-ins",
-  "Add staff members",
-  "Create promo codes",
-  "Review payout status",
-  "Post venue deals",
-];
-
 const COMPARISON = [
   { feature: "Takes a cut of your sales", bizzy: "No", others: "Often" },
   { feature: "Online ticketing", bizzy: "Yes", others: "Yes" },
@@ -673,62 +662,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 10 — Operator dashboard */}
-      <section className="bg-gray-50">
-        <SectionContainer>
-          <AnimatedSection>
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
-                A dashboard built for operators.
-              </h2>
-              <p className="text-lg text-muted">
-                Manage events, ticket tiers, sales, staff, promo codes, and
-                payouts without juggling multiple tools.
-              </p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection>
-            <div className="max-w-5xl mx-auto bg-white rounded-3xl border border-gray-200 overflow-hidden">
-              {/* Placeholder dashboard preview — replace with real screenshot */}
-              <div className="aspect-[16/9] bg-gradient-to-br from-gray-100 via-white to-primary-light/40 flex items-center justify-center relative">
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-2 gap-4 p-8 opacity-60">
-                  {DASHBOARD_CALLOUTS.slice(0, 6).map((c) => (
-                    <div
-                      key={c}
-                      className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col justify-between"
-                    >
-                      <div className="w-8 h-8 bg-primary-light rounded-lg" />
-                      <p className="text-xs font-semibold text-ink">{c}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="relative z-10 bg-white/90 backdrop-blur-sm rounded-2xl px-6 py-4 border border-gray-200 shadow-sm">
-                  <p className="text-sm font-semibold text-ink">
-                    Dashboard preview coming soon
-                  </p>
-                </div>
-              </div>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection>
-            <div className="max-w-5xl mx-auto mt-8 grid grid-cols-2 md:grid-cols-4 gap-3">
-              {DASHBOARD_CALLOUTS.map((c) => (
-                <div
-                  key={c}
-                  className="flex items-center gap-2 bg-white rounded-xl border border-gray-100 px-4 py-3"
-                >
-                  <CheckIcon className="text-primary" />
-                  <span className="text-sm font-medium text-ink">{c}</span>
-                </div>
-              ))}
-            </div>
-          </AnimatedSection>
-        </SectionContainer>
-      </section>
-
-      {/* Section 11 — Comparison */}
+      {/* Section 10 — Comparison */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -795,7 +729,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 12 — Social proof */}
+      {/* Section 11 — Social proof */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -835,7 +769,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 13 — Founding Venue Program */}
+      {/* Section 12 — Founding Venue Program */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -865,7 +799,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 14 — FAQ */}
+      {/* Section 13 — FAQ */}
       <section id="faq" className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -882,7 +816,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 15 — Final CTA */}
+      {/* Section 14 — Final CTA */}
       <section className="bg-gradient-to-br from-primary to-emerald-500">
         <SectionContainer className="text-center py-16 md:py-24">
           <AnimatedSection>
