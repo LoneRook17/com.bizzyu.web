@@ -156,6 +156,21 @@ const MARKETING_BENEFITS = [
   },
 ];
 
+const NIGHTLIFE_REACH = [
+  {
+    title: "Influencer-driven events",
+    desc: "Bring recognizable names and creators into college nightlife markets.",
+  },
+  {
+    title: "Promotion support",
+    desc: "Help top partner venues package events, create buzz, and push student attendance.",
+  },
+  {
+    title: "Venue growth network",
+    desc: "Connect bars with opportunities beyond ticketing, from talent nights to campus campaigns.",
+  },
+];
+
 const DASHBOARD_CALLOUTS = [
   "Create and edit events",
   "Manage ticket tiers",
@@ -590,7 +605,75 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 9 — Operator dashboard */}
+      {/* Section 9 — Nightlife reach (Dadbod Hospitality) */}
+      <section className="bg-gradient-to-br from-primary-light/30 via-white to-white">
+        <SectionContainer>
+          <AnimatedSection>
+            <div className="text-center max-w-3xl mx-auto mb-12">
+              <div className="inline-flex items-center px-4 py-1.5 bg-white border border-primary/20 rounded-full text-primary text-sm font-semibold mb-6">
+                Powered by Dadbod Hospitality
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
+                More than software. Real college nightlife reach.
+              </h2>
+              <p className="text-lg text-muted leading-relaxed">
+                Through Dadbod Hospitality, our team has helped bring talent,
+                influencers, and high-attention events to college venues. For
+                top Bizzy partner bars, this creates another advantage: access
+                to people, promotions, and event concepts that can help drive
+                real student turnout.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-10">
+            {NIGHTLIFE_REACH.map((card, i) => (
+              <AnimatedSection key={card.title} delay={i * 0.08}>
+                <div className="bg-white rounded-2xl p-6 md:p-7 border border-gray-100 h-full">
+                  <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center mb-4">
+                    <CheckIcon className="text-primary w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-ink mb-2">
+                    {card.title}
+                  </h3>
+                  <p className="text-sm text-muted leading-relaxed">
+                    {card.desc}
+                  </p>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+
+          <AnimatedSection>
+            <div className="text-center">
+              <DemoButton>Book a Demo to Learn More</DemoButton>
+              <p className="mt-6 text-sm text-muted">
+                Follow{" "}
+                <a
+                  href="https://instagram.com/dadbodhospitality"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-ink font-semibold hover:text-primary transition-colors"
+                >
+                  @dadbodhospitality
+                </a>{" "}
+                and{" "}
+                <a
+                  href="https://instagram.com/Bizzy.University"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-ink font-semibold hover:text-primary transition-colors"
+                >
+                  @Bizzy.University
+                </a>{" "}
+                on Instagram.
+              </p>
+            </div>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
+
+      {/* Section 10 — Operator dashboard */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -645,7 +728,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 10 — Comparison */}
+      {/* Section 11 — Comparison */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -712,7 +795,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 11 — Social proof */}
+      {/* Section 12 — Social proof */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -752,7 +835,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 12 — Founding Venue Program */}
+      {/* Section 13 — Founding Venue Program */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -782,7 +865,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 13 — FAQ */}
+      {/* Section 14 — FAQ */}
       <section id="faq" className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -799,7 +882,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 14 — Final CTA */}
+      {/* Section 15 — Final CTA */}
       <section className="bg-gradient-to-br from-primary to-emerald-500">
         <SectionContainer className="text-center py-16 md:py-24">
           <AnimatedSection>
