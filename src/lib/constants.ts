@@ -62,10 +62,6 @@ export const EVENTS_FAQ = [
       "No. Venues pay 0% platform fees. Your bar keeps 100% of the ticket, line skip, and cover price you set.",
   },
   {
-    question: "Who pays the service fee?",
-    answer: "The student pays the service fee at checkout.",
-  },
-  {
     question: "What does the bar receive?",
     answer:
       "The bar receives the full ticket, line skip, or cover amount sold through Bizzy. Standard payment processing details are confirmed during setup based on your Stripe configuration.",
