@@ -121,8 +121,12 @@ export default function EventsPage() {
                   your events in front of thousands of students nearby.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <Button href="/business/signup" size="lg">
-                    Get Started Free
+                  <Button
+                    href="https://calendly.com/partnerships-bizzyu/bizzy-bar-intro"
+                    size="lg"
+                    external
+                  >
+                    Book a Demo
                   </Button>
                   <Button href="#how-it-works" variant="outline" size="lg">
                     See How It Works
