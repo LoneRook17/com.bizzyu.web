@@ -119,7 +119,6 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
             >
               <option value="cohost">Co-host</option>
               <option value="crew">Crew</option>
-              <option value="promoter">Promoter</option>
             </select>
           </div>
           {addError && <p className="text-xs text-red-500 mb-3">{addError}</p>}

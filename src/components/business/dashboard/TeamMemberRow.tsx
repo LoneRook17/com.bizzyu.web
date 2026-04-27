@@ -19,7 +19,7 @@ const ROLE_COLORS: Record<string, string> = {
   promoter: "bg-green-100 text-green-700",
 }
 
-const ASSIGNABLE_ROLES = ["manager", "staff", "promoter"]
+const ASSIGNABLE_ROLES = ["manager", "staff"]
 
 export default function TeamMemberRow({ member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"

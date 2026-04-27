@@ -145,6 +145,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="apple-itunes-app" content="app-id=6683306360" />
         <JsonLd data={organizationJsonLd} />
         <JsonLd data={appJsonLd} />
       </head>

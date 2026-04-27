@@ -1,6 +1,5 @@
 import type { NextConfig } from "next";
 
-const checkoutBase = process.env.CHECKOUT_REDIRECT_BASE_URL || 'http://3.80.143.224';
 const appStoreUrl = 'https://apps.apple.com/us/app/bizzy-college-deals-events/id6683306360';
 
 const nextConfig: NextConfig = {
@@ -41,7 +40,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/event/:id(\\d+)",
-        destination: `${checkoutBase}/checkout/:id`,
+        destination: appStoreUrl,
         permanent: false,
       },
       {

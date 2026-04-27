@@ -16,7 +16,6 @@ interface InviteModalProps {
 const INVITABLE_ROLES = [
   { value: "manager", label: "Manager" },
   { value: "staff", label: "Staff" },
-  { value: "promoter", label: "Promoter" },
 ] as const
 
 export default function InviteModal({ open, onClose, onInvited, canInviteManager, venues }: InviteModalProps) {

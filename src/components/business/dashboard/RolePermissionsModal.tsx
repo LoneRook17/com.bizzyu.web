@@ -20,50 +20,49 @@ const EVENT_PERMISSIONS: { label: string; owner: boolean; cohost: boolean; crew:
   { label: "Delete Event",    owner: true,  cohost: false, crew: false },
 ]
 
-/* ── Business-level permissions (Owner / Manager / Staff / Promoter) ── */
-type BizPerm = { label: string; owner: string; manager: string; staff: string; promoter: string }
+/* ── Business-level permissions (Owner / Manager / Staff) ──────────── */
+type BizPerm = { label: string; owner: string; manager: string; staff: string }
 
 const section = (heading: string): BizPerm => ({
-  label: heading, owner: "", manager: "", staff: "", promoter: "",
+  label: heading, owner: "", manager: "", staff: "",
 })
 
 const BUSINESS_PERMISSIONS: BizPerm[] = [
   section("BUSINESS PROFILE"),
-  { label: "View business overview",       owner: "yes", manager: "yes", staff: "yes",  promoter: "no"  },
-  { label: "Edit business info",           owner: "yes", manager: "yes", staff: "no",   promoter: "no"  },
-  { label: "Delete / deactivate business", owner: "yes", manager: "no",  staff: "no",   promoter: "no"  },
+  { label: "View business overview",       owner: "yes", manager: "yes", staff: "yes" },
+  { label: "Edit business info",           owner: "yes", manager: "yes", staff: "no"  },
+  { label: "Delete / deactivate business", owner: "yes", manager: "no",  staff: "no"  },
 
   section("EVENTS"),
-  { label: "View all events",              owner: "yes",  manager: "yes",  staff: "yes",      promoter: "Own only" },
-  { label: "Create events",                owner: "yes",  manager: "yes",  staff: "no",       promoter: "no"  },
-  { label: "Edit / cancel events",         owner: "yes",  manager: "yes",  staff: "no",       promoter: "no"  },
-  { label: "Duplicate past events",        owner: "yes",  manager: "yes",  staff: "no",       promoter: "no"  },
-  { label: "Scan tickets / check in",      owner: "yes",  manager: "yes",  staff: "yes",      promoter: "yes" },
+  { label: "View all events",              owner: "yes", manager: "yes", staff: "yes" },
+  { label: "Create events",                owner: "yes", manager: "yes", staff: "no"  },
+  { label: "Edit / cancel events",         owner: "yes", manager: "yes", staff: "no"  },
+  { label: "Duplicate past events",        owner: "yes", manager: "yes", staff: "no"  },
+  { label: "Scan tickets / check in",      owner: "yes", manager: "yes", staff: "yes" },
 
   section("DEALS"),
-  { label: "View all deals",               owner: "yes", manager: "yes", staff: "yes",  promoter: "no"  },
-  { label: "Create deals",                 owner: "yes", manager: "yes", staff: "yes",  promoter: "no"  },
-  { label: "Edit / deactivate deals",      owner: "yes", manager: "yes", staff: "Own only", promoter: "no" },
-  { label: "Delete deals",                 owner: "yes", manager: "yes", staff: "no",   promoter: "no"  },
+  { label: "View all deals",               owner: "yes", manager: "yes", staff: "yes" },
+  { label: "Create deals",                 owner: "yes", manager: "yes", staff: "yes" },
+  { label: "Edit / deactivate deals",      owner: "yes", manager: "yes", staff: "Own only" },
+  { label: "Delete deals",                 owner: "yes", manager: "yes", staff: "no"  },
 
   section("ANALYTICS"),
-  { label: "View free-tier analytics",     owner: "yes", manager: "yes", staff: "no",   promoter: "no"  },
-  { label: "View paid AI insights",        owner: "yes", manager: "yes", staff: "no",   promoter: "no"  },
-  { label: "Export analytics data",        owner: "yes", manager: "yes", staff: "no",   promoter: "no"  },
-  { label: "View own promoter stats",      owner: "no",  manager: "no",  staff: "no",   promoter: "yes" },
+  { label: "View free-tier analytics",     owner: "yes", manager: "yes", staff: "no"  },
+  { label: "View paid AI insights",        owner: "yes", manager: "yes", staff: "no"  },
+  { label: "Export analytics data",        owner: "yes", manager: "yes", staff: "no"  },
 
   section("TEAM MANAGEMENT"),
-  { label: "View team members",            owner: "yes", manager: "yes",        staff: "yes", promoter: "yes" },
-  { label: "Add team members",             owner: "yes", manager: "yes",        staff: "no",  promoter: "no"  },
-  { label: "Remove team members",          owner: "yes", manager: "Not owner",  staff: "no",  promoter: "no"  },
-  { label: "Change member roles",          owner: "yes", manager: "Staff/promo", staff: "no", promoter: "no"  },
-  { label: "Transfer ownership",           owner: "yes", manager: "no",         staff: "no",  promoter: "no"  },
+  { label: "View team members",            owner: "yes", manager: "yes",        staff: "yes" },
+  { label: "Add team members",             owner: "yes", manager: "yes",        staff: "no"  },
+  { label: "Remove team members",          owner: "yes", manager: "Not owner",  staff: "no"  },
+  { label: "Change member roles",          owner: "yes", manager: "Staff only", staff: "no"  },
+  { label: "Transfer ownership",           owner: "yes", manager: "no",         staff: "no"  },
 
   section("FINANCIAL / BILLING"),
-  { label: "View revenue & payouts",       owner: "yes", manager: "no",  staff: "no",  promoter: "no" },
-  { label: "Manage Stripe Connect",        owner: "yes", manager: "no",  staff: "no",  promoter: "no" },
-  { label: "Manage subscription / billing",owner: "yes", manager: "no",  staff: "no",  promoter: "no" },
-  { label: "Set promo codes & pricing",    owner: "yes", manager: "yes", staff: "no",  promoter: "no" },
+  { label: "View revenue & payouts",       owner: "yes", manager: "no",  staff: "no" },
+  { label: "Manage Stripe Connect",        owner: "yes", manager: "no",  staff: "no" },
+  { label: "Manage subscription / billing",owner: "yes", manager: "no",  staff: "no" },
+  { label: "Set promo codes & pricing",    owner: "yes", manager: "yes", staff: "no" },
 ]
 
 /* ── Shared check / dash icons ──────────────────────────────────────── */
@@ -170,16 +169,15 @@ function BusinessTable() {
           <th className="py-2 text-center font-semibold text-ink">Owner</th>
           <th className="py-2 text-center font-semibold text-ink">Manager</th>
           <th className="py-2 text-center font-semibold text-ink">Staff</th>
-          <th className="py-2 text-center font-semibold text-ink">Promoter</th>
         </tr>
       </thead>
       <tbody>
         {BUSINESS_PERMISSIONS.map((p, i) => {
           // Section header row
-          if (!p.owner && !p.manager && !p.staff && !p.promoter) {
+          if (!p.owner && !p.manager && !p.staff) {
             return (
               <tr key={i}>
-                <td colSpan={5} className="pt-4 pb-1 text-xs font-bold text-gray-400 tracking-wide">{p.label}</td>
+                <td colSpan={4} className="pt-4 pb-1 text-xs font-bold text-gray-400 tracking-wide">{p.label}</td>
               </tr>
             )
           }
@@ -189,7 +187,6 @@ function BusinessTable() {
               <td className="py-2.5 text-center"><CellValue value={p.owner} /></td>
               <td className="py-2.5 text-center"><CellValue value={p.manager} /></td>
               <td className="py-2.5 text-center"><CellValue value={p.staff} /></td>
-              <td className="py-2.5 text-center"><CellValue value={p.promoter} /></td>
             </tr>
           )
         })}
