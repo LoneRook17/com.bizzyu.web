@@ -221,7 +221,7 @@ export interface EventAnalytics {
   doorSales: { preSales: number; doorSales: number }
   tierBreakdown: { ticket_id: number; tier_name: string; sold: number; revenue: number }[]
   trackingLinks: { tracking_link_id: number; promoter_name: string; code: string; sales_count: number; clicks: number }[]
-  revenue: { net: number }
+  revenue: { revenue: number; pre_sales_revenue: number; door_sales_revenue: number }
 }
 
 export interface DealAnalytics {

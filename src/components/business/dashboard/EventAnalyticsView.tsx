@@ -23,7 +23,7 @@ export default function EventAnalyticsView({ data }: { data: EventAnalytics }) {
       {/* Revenue */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-ink mb-4">Revenue</h3>
-        <p className="text-2xl font-bold text-green-600">{formatCurrency(data.revenue.net)}</p>
+        <p className="text-2xl font-bold text-green-600">{formatCurrency(data.revenue?.revenue ?? 0)}</p>
       </div>
 
       {/* Ticket Access + Check-in */}
