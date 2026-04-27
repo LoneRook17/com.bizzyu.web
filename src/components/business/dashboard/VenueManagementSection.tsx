@@ -61,15 +61,17 @@ export default function VenueManagementSection() {
             <span className="ml-2 text-gray-400">&middot; {venues.length} venue{venues.length !== 1 ? "s" : ""}</span>
           </p>
         </div>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Add Venue
-        </button>
+        {isOwner && (
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Venue
+          </button>
+        )}
       </div>
 
       {/* Venue Grid */}
@@ -114,22 +116,22 @@ export default function VenueManagementSection() {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => setEditVenue(venue)}
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    Edit
-                  </button>
-                  {isOwner && (
+                {isOwner && (
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => setEditVenue(venue)}
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => { setDeleteVenue(venue); setDeleteError("") }}
                       className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                     >
                       Delete
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
