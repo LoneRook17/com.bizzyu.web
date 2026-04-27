@@ -36,6 +36,11 @@ const nextConfig: NextConfig = {
         destination: "/events",
         permanent: true,
       },
+      {
+        source: "/event/:id(\\d+)",
+        destination: "https://bizzy-deals.com/checkout/:id",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
