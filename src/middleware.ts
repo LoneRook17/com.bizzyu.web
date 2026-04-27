@@ -27,6 +27,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/business", request.url))
   }
 
+  // Skip auth for deep link interstitial pages (numeric business IDs)
+  if (/^\/business\/\d+$/.test(pathname)) {
+    return NextResponse.next()
+  }
+
   // Unauthenticated user visiting dashboard pages → redirect to login
   if (!isAuthPage && !hasSession) {
     return NextResponse.redirect(new URL("/business/login", request.url))
