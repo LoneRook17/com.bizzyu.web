@@ -44,6 +44,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
   const canEditPrice = canEdit || user?.business_role === "staff"
+  const canViewRevenue = canEdit
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -257,23 +258,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           {/* Sales stats */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Sales Summary</h2>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Attendees</span>
-                <span className="text-sm font-medium text-ink">{event.sales?.total_attendees ?? event.total_attendees}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Revenue</span>
-                <span className="text-sm font-medium text-ink">{formatCurrency(event.sales?.total_revenue ?? event.total_revenue)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Check-in Rate</span>
-                <span className="text-sm font-medium text-ink">{(event.sales?.checkin_rate ?? event.checkin_rate).toFixed(1)}%</span>
+          {canViewRevenue && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h2 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Sales Summary</h2>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Attendees</span>
+                  <span className="text-sm font-medium text-ink">{event.sales?.total_attendees ?? event.total_attendees}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Revenue</span>
+                  <span className="text-sm font-medium text-ink">{formatCurrency(event.sales?.total_revenue ?? event.total_revenue)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Check-in Rate</span>
+                  <span className="text-sm font-medium text-ink">{(event.sales?.checkin_rate ?? event.checkin_rate).toFixed(1)}%</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
