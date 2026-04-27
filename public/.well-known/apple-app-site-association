@@ -7,7 +7,7 @@
           { "/": "/lineskip/*", "exclude": true },
           { "/": "/ls/*", "exclude": true },
           { "/": "/checkin/*", "exclude": true },
-          { "/": "/e/*" },
+          { "/": "/event/*" },
           { "/": "/venue/*" },
           { "/": "/deal/*" },
           { "/": "/business/*" }
