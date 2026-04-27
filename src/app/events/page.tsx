@@ -91,12 +91,6 @@ const FEATURES = [
   },
 ];
 
-const SAVINGS_ROWS = [
-  { fee: "10%", cost: "$2,000" },
-  { fee: "20%", cost: "$4,000" },
-  { fee: "30%", cost: "$6,000" },
-];
-
 const HOW_IT_WORKS = [
   {
     num: "1",
@@ -408,74 +402,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 6 — Savings comparison */}
-      <section id="pricing" className="bg-gray-50">
-        <SectionContainer>
-          <AnimatedSection>
-            <div className="text-center max-w-3xl mx-auto mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
-                See what venue-side fees can cost.
-              </h2>
-              <p className="text-lg text-muted">
-                If your current platform takes a venue fee, even a small
-                percentage can become real money fast. With Bizzy, your venue
-                keeps the ticket and cover price you set.
-              </p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection>
-            <div className="max-w-3xl mx-auto bg-white rounded-3xl border border-gray-200 overflow-hidden mb-12">
-              <div className="px-6 py-4 bg-gray-100 border-b border-gray-200">
-                <p className="text-sm font-semibold text-ink">
-                  Example: $20,000/month in ticket, line skip, and cover sales
-                </p>
-              </div>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-muted">
-                      Venue platform fee
-                    </th>
-                    <th className="text-right px-6 py-4 text-sm font-semibold text-muted">
-                      Monthly cost to venue
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {SAVINGS_ROWS.map((row) => (
-                    <tr
-                      key={row.fee}
-                      className="border-b border-gray-100 last:border-0"
-                    >
-                      <td className="px-6 py-4 text-ink">{row.fee}</td>
-                      <td className="px-6 py-4 text-right font-semibold text-ink">
-                        {row.cost}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="bg-primary-light/40">
-                    <td className="px-6 py-4 font-bold text-ink">
-                      Bizzy venue fee
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-primary text-lg">
-                      $0
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection>
-            <div className="text-center mt-12">
-              <DemoButton>Calculate your savings on a demo</DemoButton>
-            </div>
-          </AnimatedSection>
-        </SectionContainer>
-      </section>
-
-      {/* Section 7 — How it works */}
+      {/* Section 6 — How it works */}
       <section id="how-it-works">
         <SectionContainer>
           <AnimatedSection>
@@ -516,7 +443,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 8 — Built for college nightlife */}
+      {/* Section 7 — Built for college nightlife */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -547,7 +474,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 9 — Student marketing advantage */}
+      {/* Section 8 — Student marketing advantage */}
       <section>
         <SectionContainer>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -610,7 +537,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 10 — Nightlife reach (Dadbod Hospitality) */}
+      {/* Section 9 — Nightlife reach (Dadbod Hospitality) */}
       <section className="bg-gradient-to-br from-primary-light/30 via-white to-white">
         <SectionContainer>
           <AnimatedSection>
@@ -678,7 +605,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 11 — Comparison */}
+      {/* Section 10 — Comparison */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -745,7 +672,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 12 — Social proof */}
+      {/* Section 11 — Social proof */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -785,7 +712,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 13 — Founding Venue Program */}
+      {/* Section 12 — Founding Venue Program */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -815,7 +742,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 14 — FAQ */}
+      {/* Section 13 — FAQ */}
       <section id="faq" className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -832,7 +759,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 15 — Final CTA */}
+      {/* Section 14 — Final CTA */}
       <section className="bg-gradient-to-br from-primary to-emerald-500">
         <SectionContainer className="text-center py-16 md:py-24">
           <AnimatedSection>
