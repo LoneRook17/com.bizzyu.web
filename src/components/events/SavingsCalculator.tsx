@@ -9,6 +9,46 @@ const formatCurrency = (n: number) =>
     maximumFractionDigits: 0,
   });
 
+type TangibleItem = {
+  name: string;
+  cost: number;
+  emoji: string;
+  note: string;
+};
+
+const TANGIBLE_ITEMS: TangibleItem[] = [
+  {
+    name: "A new sound system",
+    cost: 12000,
+    emoji: "🔊",
+    note: "Mid-range commercial PA",
+  },
+  {
+    name: "A weekly DJ all year",
+    cost: 16000,
+    emoji: "🎧",
+    note: "52 nights × $300",
+  },
+  {
+    name: "A year of campus marketing",
+    cost: 25000,
+    emoji: "📣",
+    note: "Real reach into your market",
+  },
+  {
+    name: "A patio buildout",
+    cost: 50000,
+    emoji: "🌴",
+    note: "Add seats. Add summer revenue.",
+  },
+  {
+    name: "A full-time bartender",
+    cost: 65000,
+    emoji: "🥃",
+    note: "Salary + benefits, all year",
+  },
+];
+
 export default function SavingsCalculator() {
   const [volume, setVolume] = useState<string>("20000");
   const [feePct, setFeePct] = useState<string>("20");
@@ -78,7 +118,7 @@ export default function SavingsCalculator() {
         </label>
       </div>
 
-      <div className="bg-gradient-to-br from-primary-light to-white rounded-2xl p-6 md:p-8 mb-6">
+      <div className="bg-gradient-to-br from-primary-light to-white rounded-2xl p-6 md:p-8 mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-sm font-semibold text-muted uppercase tracking-wide mb-2">
@@ -96,6 +136,74 @@ export default function SavingsCalculator() {
               {formatCurrency(annualSavings)}
             </p>
           </div>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <p className="text-sm font-semibold text-muted uppercase tracking-wide mb-4">
+          What that could pay for
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {TANGIBLE_ITEMS.map((item) => {
+            const pct = Math.min(
+              100,
+              annualSavings > 0 ? (annualSavings / item.cost) * 100 : 0,
+            );
+            const covered = annualSavings >= item.cost;
+            return (
+              <div
+                key={item.name}
+                className={`relative rounded-2xl p-4 border transition-all ${
+                  covered
+                    ? "bg-primary-light/60 border-primary/30"
+                    : "bg-gray-50 border-gray-200"
+                }`}
+              >
+                <div className="text-2xl mb-2">{item.emoji}</div>
+                <p
+                  className={`text-sm font-bold mb-1 leading-tight ${
+                    covered ? "text-ink" : "text-ink/80"
+                  }`}
+                >
+                  {item.name}
+                </p>
+                <p className="text-xs text-muted mb-3 leading-snug">
+                  {formatCurrency(item.cost)}
+                </p>
+                {covered ? (
+                  <div className="inline-flex items-center gap-1 text-xs font-bold text-primary">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Covered
+                  </div>
+                ) : (
+                  <>
+                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1.5">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <p className="text-xs font-semibold text-muted">
+                      {Math.round(pct)}% there
+                    </p>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

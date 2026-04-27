@@ -48,46 +48,47 @@ const PROBLEMS = [
   },
 ];
 
-const FEATURES = [
+const NIGHT_VIGNETTES = [
   {
-    title: "Sell tickets online",
-    desc: "Create events with GA, early bird, tiered, VIP, or custom ticket types.",
+    time: "9:42 PM",
+    without:
+      "Line wraps the block. Door staff with a clipboard. Three people arguing about whose name is on the list.",
+    with: "Line moves. Staff scans QR codes from a phone. 6 seconds per guest.",
   },
   {
-    title: "Collect cover with Tap to Pay",
-    desc: "Take cover at the door without extra hardware.",
+    time: "10:15 PM",
+    without:
+      "Cover guy's apron is full of crumpled twenties. Two of them are fakes.",
+    with:
+      "Tap to Pay on the iPhone. Stripe handles it. No cash to count, no fakes to argue about.",
   },
   {
-    title: "Sell line skip",
-    desc: "Let students pay for faster entry and premium access.",
+    time: "10:48 PM",
+    without:
+      "“Tony said it was cool” — six guys you've never seen walk in for free.",
+    with:
+      "Promo code TONY10 — used 11 times tonight. You know exactly who drove what.",
   },
   {
-    title: "Scan tickets fast",
-    desc: "Door staff can check in guests quickly from their device.",
+    time: "11:30 PM",
+    without:
+      "Door staff has full admin access. They can see payouts, customer data, everything.",
+    with:
+      "Scoped staff access on their own phone. Scan and check in. Nothing else.",
   },
   {
-    title: "Assign door staff",
-    desc: "Give team members controlled access to scan tickets and manage entry.",
+    time: "12:14 AM",
+    without:
+      "You're guessing how many came in. Cover guy's count doesn't match the door head.",
+    with:
+      "Live dashboard on your phone. 312 in. $4,680 in cover. 47 line skips.",
   },
   {
-    title: "Create promo codes",
-    desc: "Track Greek life, influencers, promoters, ambassadors, and special campaigns.",
-  },
-  {
-    title: "Live sales dashboard",
-    desc: "See ticket sales, check-ins, revenue, and event performance in real time.",
-  },
-  {
-    title: "Promote to students nearby",
-    desc: "Put your events and deals inside a student app built for college towns.",
-  },
-  {
-    title: "Add exclusive student deals",
-    desc: "Drive repeat traffic on slower nights with Bizzy-only deals.",
-  },
-  {
-    title: "Direct Stripe payouts",
-    desc: "Your ticket and cover revenue flows through Stripe.",
+    time: "1:30 AM",
+    without:
+      "Counting cash. Reconciling tomorrow. Hoping the deposit clears Friday.",
+    with:
+      "Closed out. Stripe payout queued for Tuesday morning. You're already in the Uber home.",
   },
 ];
 
@@ -367,38 +368,123 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 5 — Feature grid */}
-      <section id="features">
-        <SectionContainer>
+      {/* Section 5 — Tonight at 11pm */}
+      <section
+        id="features"
+        className="bg-ink text-white relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(5,235,84,0.12),transparent_50%)] pointer-events-none" />
+        <SectionContainer className="relative py-20 md:py-28">
           <AnimatedSection>
-            <div className="text-center max-w-2xl mx-auto mb-14">
-              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
-                Everything your venue needs to run a packed night.
+            <div className="text-center max-w-3xl mx-auto mb-14">
+              <p className="text-primary text-sm font-bold uppercase tracking-widest mb-4">
+                Saturday night
+              </p>
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                Same bar. Same crowd.
+                <br />
+                <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
+                  Two completely different nights.
+                </span>
               </h2>
-              <p className="text-lg text-muted">
-                Ticketing, line skip, Tap to Pay, scanning, door staff, promo
-                codes, and student marketing — all in one platform.
+              <p className="text-lg text-white/70">
+                One is what your Saturday looks like right now. The other is
+                what it could look like next weekend.
               </p>
             </div>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
-            {FEATURES.map((f, i) => (
-              <AnimatedSection key={f.title} delay={i * 0.04}>
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 h-full hover:-translate-y-1 hover:border-primary/30 transition-all duration-300">
-                  <div className="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center mb-4">
-                    <CheckIcon className="text-primary w-5 h-5" />
+          <div className="max-w-6xl mx-auto">
+            {/* Column headers (desktop only) */}
+            <div className="hidden md:grid grid-cols-[1fr_auto_1fr] gap-6 items-center mb-6">
+              <div className="text-right">
+                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-bold uppercase tracking-wider">
+                  Without Bizzy
+                </span>
+              </div>
+              <div className="w-px" />
+              <div className="text-left">
+                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/15 border border-primary/40 text-primary text-xs font-bold uppercase tracking-wider">
+                  With Bizzy
+                </span>
+              </div>
+            </div>
+
+            <div className="relative space-y-6 md:space-y-8">
+              {/* Vertical timeline line — desktop */}
+              <div
+                aria-hidden="true"
+                className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent -translate-x-1/2"
+              />
+
+              {NIGHT_VIGNETTES.map((v, i) => (
+                <AnimatedSection key={v.time} delay={i * 0.06}>
+                  {/* Mobile layout — stacked */}
+                  <div className="md:hidden bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-5">
+                    <div className="inline-flex items-center gap-2 mb-4">
+                      <span className="w-2 h-2 rounded-full bg-primary" />
+                      <span className="text-primary text-sm font-bold tracking-wide">
+                        {v.time}
+                      </span>
+                    </div>
+                    <div className="border-l-2 border-red-500/40 pl-4 mb-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-red-300 mb-1">
+                        Without Bizzy
+                      </p>
+                      <p className="text-white/80 text-sm leading-relaxed">
+                        {v.without}
+                      </p>
+                    </div>
+                    <div className="border-l-2 border-primary pl-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">
+                        With Bizzy
+                      </p>
+                      <p className="text-white text-sm leading-relaxed">
+                        {v.with}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-base font-bold text-ink mb-2">
-                    {f.title}
-                  </h3>
-                  <p className="text-sm text-muted leading-relaxed">
-                    {f.desc}
-                  </p>
-                </div>
-              </AnimatedSection>
-            ))}
+
+                  {/* Desktop layout — timeline */}
+                  <div className="hidden md:grid grid-cols-[1fr_auto_1fr] gap-6 items-center">
+                    {/* Left — Without */}
+                    <div className="text-right">
+                      <div className="inline-block max-w-md text-left bg-white/5 backdrop-blur-sm rounded-2xl border border-red-500/20 p-5">
+                        <p className="text-white/80 text-base leading-relaxed">
+                          {v.without}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Center — time pill */}
+                    <div className="flex flex-col items-center">
+                      <div className="bg-ink border-2 border-primary rounded-full px-4 py-2 shadow-lg shadow-primary/20">
+                        <span className="text-primary text-sm font-bold whitespace-nowrap">
+                          {v.time}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Right — With */}
+                    <div className="text-left">
+                      <div className="inline-block max-w-md bg-primary/10 backdrop-blur-sm rounded-2xl border border-primary/30 p-5">
+                        <p className="text-white text-base leading-relaxed">
+                          {v.with}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </AnimatedSection>
+              ))}
+            </div>
           </div>
+
+          <AnimatedSection>
+            <div className="text-center mt-14">
+              <p className="text-white/70 mb-6 text-lg">
+                Pick the night you want to run.
+              </p>
+              <DemoButton>Book a 15-Min Demo</DemoButton>
+            </div>
+          </AnimatedSection>
         </SectionContainer>
       </section>
 
