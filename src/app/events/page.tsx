@@ -298,7 +298,29 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 2 — Proof strip */}
+      {/* Section 2 — Savings calculator */}
+      <section className="bg-gray-50 border-y border-gray-100">
+        <SectionContainer className="py-16 md:py-20">
+          <AnimatedSection>
+            <div className="text-center max-w-2xl mx-auto mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-3">
+                See what you could keep with Bizzy.
+              </h2>
+              <p className="text-muted">
+                Plug in your monthly volume and current platform fee. The
+                difference is what stays with your venue.
+              </p>
+            </div>
+          </AnimatedSection>
+          <AnimatedSection>
+            <div className="max-w-4xl mx-auto">
+              <SavingsCalculator />
+            </div>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
+
+      {/* Section 3 — Proof strip */}
       <section className="border-y border-gray-100 bg-white">
         <SectionContainer className="py-12 md:py-16">
           <AnimatedSection>
@@ -319,7 +341,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 3 — Problem */}
+      {/* Section 4 — Problem */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -351,7 +373,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 4 — Feature grid */}
+      {/* Section 5 — Feature grid */}
       <section id="features">
         <SectionContainer>
           <AnimatedSection>
@@ -386,7 +408,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 5 — Savings comparison */}
+      {/* Section 6 — Savings comparison */}
       <section id="pricing" className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -446,12 +468,6 @@ export default function EventsPage() {
           </AnimatedSection>
 
           <AnimatedSection>
-            <div className="max-w-4xl mx-auto">
-              <SavingsCalculator />
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection>
             <div className="text-center mt-12">
               <DemoButton>Calculate your savings on a demo</DemoButton>
             </div>
@@ -459,7 +475,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 6 — How it works */}
+      {/* Section 7 — How it works */}
       <section id="how-it-works">
         <SectionContainer>
           <AnimatedSection>
@@ -500,7 +516,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 7 — Built for college nightlife */}
+      {/* Section 8 — Built for college nightlife */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -531,7 +547,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 8 — Student marketing advantage */}
+      {/* Section 9 — Student marketing advantage */}
       <section>
         <SectionContainer>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -594,7 +610,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 9 — Nightlife reach (Dadbod Hospitality) */}
+      {/* Section 10 — Nightlife reach (Dadbod Hospitality) */}
       <section className="bg-gradient-to-br from-primary-light/30 via-white to-white">
         <SectionContainer>
           <AnimatedSection>
@@ -662,7 +678,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 10 — Comparison */}
+      {/* Section 11 — Comparison */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -729,7 +745,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 11 — Social proof */}
+      {/* Section 12 — Social proof */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -769,7 +785,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 12 — Founding Venue Program */}
+      {/* Section 13 — Founding Venue Program */}
       <section>
         <SectionContainer>
           <AnimatedSection>
@@ -799,7 +815,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 13 — FAQ */}
+      {/* Section 14 — FAQ */}
       <section id="faq" className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -816,7 +832,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 14 — Final CTA */}
+      {/* Section 15 — Final CTA */}
       <section className="bg-gradient-to-br from-primary to-emerald-500">
         <SectionContainer className="text-center py-16 md:py-24">
           <AnimatedSection>
