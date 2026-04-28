@@ -102,8 +102,9 @@ export default function AboutPage() {
                   When I first started, I hired a freelance developer because I
                   thought it would be the fastest way to get the first version of
                   Bizzy built. It ended up being a disaster. I got scammed for
-                  $4,000, the last $4,000 I had saved from working college jobs
-                  serving at restaurants.
+                  $8,000 — a lot of money for a 21-year-old college student, and
+                  the last $8,000 I had saved from working college jobs serving
+                  at restaurants.
                 </p>
                 <p>
                   That moment could have ended Bizzy before it ever began.
