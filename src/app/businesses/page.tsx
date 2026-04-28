@@ -12,14 +12,14 @@ import { BUSINESS_FAQ, CONTACT_EMAIL } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "Partner With Bizzy — Reach College Students Near You",
   description:
-    "Join 100+ local businesses on Bizzy. Reach thousands of college students with exclusive deals. No upfront cost to get started.",
+    "Join 100+ local businesses on Bizzy. Reach 25,000+ college students with exclusive deals. No upfront cost to get started.",
   alternates: {
     canonical: "https://bizzyu.com/businesses",
   },
   openGraph: {
     title: "Partner With Bizzy — Reach College Students Near You",
     description:
-      "Join 100+ local businesses on Bizzy. Reach thousands of college students with exclusive deals. No upfront cost to get started.",
+      "Join 100+ local businesses on Bizzy. Reach 25,000+ college students with exclusive deals. No upfront cost to get started.",
   },
 };
 

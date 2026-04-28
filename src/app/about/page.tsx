@@ -5,16 +5,16 @@ import Button from "@/components/ui/Button";
 import { APP_STORE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "About Bizzy — The Student Deals App for Your Campus",
+  title: "About Bizzy — The Campus App for Events, Tickets, Deals & Local Spots",
   description:
-    "Bizzy connects college students with exclusive local deals at restaurants, bars, and shops near campus. Learn our story and mission.",
+    "Bizzy is the campus app that connects students with events, tickets, deals, and local spots around their school. Learn our story and mission.",
   alternates: {
     canonical: "https://bizzyu.com/about",
   },
   openGraph: {
-    title: "About Bizzy — The Student Deals App for Your Campus",
+    title: "About Bizzy — The Campus App for Events, Tickets, Deals & Local Spots",
     description:
-      "Bizzy connects college students with exclusive local deals at restaurants, bars, and shops near campus. Learn our story and mission.",
+      "Bizzy is the campus app that connects students with events, tickets, deals, and local spots around their school. Learn our story and mission.",
   },
 };
 
@@ -176,27 +176,28 @@ export default function AboutPage() {
           <div className="max-w-3xl mx-auto">
             <div className="space-y-6 text-muted text-lg leading-relaxed">
               <p>
-                Bizzy started with exclusive local deals built specifically for
-                college students. Not generic coupons. Not public specials
-                recycled from social media. Real offers from local restaurants,
-                bars, and businesses that students could only access through
-                Bizzy.
+                Bizzy is the campus app for everything happening around your
+                school. Events, tickets, line skip, exclusive local deals, and
+                the businesses students actually go to — all in one place,
+                curated for each campus.
               </p>
               <p>
-                From there, we expanded into events. Because saving money
-                matters, but college life is also about knowing what is happening
-                tonight. Bizzy brings local deals, events, bar nights, and
-                campus experiences into one feed built for each school.
+                Students come to Bizzy to find what is going on this week,
+                grab tickets to events, skip the line at participating venues,
+                and unlock deals at the restaurants, bars, and local spots
+                near them. Local businesses come to Bizzy to reach those
+                students directly.
               </p>
 
               <p className="text-ink font-medium text-xl">
                 That is what makes Bizzy different.
               </p>
               <p>
-                We are not building a generic coupon app, and we are not building
-                just another event platform. Bizzy is built specifically for
-                college campuses, connecting students to the businesses, events,
-                and experiences that make each school feel alive.
+                We are not building a generic coupon app, and we are not
+                building just another event platform. Bizzy is built
+                specifically for college campuses, connecting students to the
+                events, tickets, deals, and local spots that make each school
+                feel alive.
               </p>
               <p>
                 Our vision is to become the pulse of every college campus in the
@@ -246,16 +247,16 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                title: "Exclusive, Not Recycled",
-                desc: "Our deals aren't generic coupons everyone gets. They're exclusive offers businesses create specifically for the college audience.",
+                title: "One App for Campus",
+                desc: "Events, tickets, line skip, deals, and local spots in a single feed — not a different app for each thing students do.",
               },
               {
                 title: "Campus by Campus",
-                desc: "Bizzy isn't one-size-fits-all. Every school has its own ecosystem of businesses, deals, events, and student community.",
+                desc: "Bizzy isn't one-size-fits-all. Every school has its own ecosystem of businesses, events, deals, and student community.",
               },
               {
-                title: "More Than Discounts",
-                desc: "We're a lifestyle platform. Deals, events, rankings, and discovery - making college feel more alive, not just cheaper.",
+                title: "Exclusive, Not Recycled",
+                desc: "Our deals and events are built with local businesses for the college audience — not generic coupons or recycled listings.",
               },
             ].map((item, i) => (
               <AnimatedSection key={item.title} delay={i * 0.1}>
@@ -285,11 +286,11 @@ export default function AboutPage() {
                 student community, and curated experience.
               </p>
               <p>
-                Our vision goes beyond deals. We&apos;re building the platform that
-                strengthens the relationship between every college campus and
-                the local businesses around it - making communities more active,
-                helping good businesses grow, and making student life better
-                everywhere.
+                Our vision is one app that connects every part of campus life —
+                events, tickets, deals, and the local spots around each
+                school. Strengthening the relationship between every college
+                campus and the businesses around it, helping good businesses
+                grow, and making student life better everywhere.
               </p>
             </div>
           </div>
@@ -307,10 +308,10 @@ export default function AboutPage() {
               Whether you&apos;re a student or a business, Bizzy is built for you.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button href={APP_STORE_URL} variant="white" size="lg">
-                Download the App
+              <Button href={APP_STORE_URL} variant="white" size="lg" external>
+                Explore Bizzy
               </Button>
-              <Button href="/business/signup" variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">
+              <Button href="/businesses" variant="outline" size="lg" className="!border-white !text-white hover:!bg-white/10">
                 List Your Business
               </Button>
             </div>

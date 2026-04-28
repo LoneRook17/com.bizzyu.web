@@ -190,7 +190,7 @@ export default function ContactPage() {
               Looking to list your business?
             </h2>
             <p className="text-white/80 text-lg mb-8 max-w-lg mx-auto">
-              Get your deals in front of thousands of college students - completely free.
+              Get your deals in front of 25,000+ college students - completely free.
             </p>
             <a
               href="/business/signup"
