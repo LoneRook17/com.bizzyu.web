@@ -85,45 +85,80 @@ export default function AboutPage() {
                 Cooper Aiello
               </h2>
               <div className="space-y-6 text-muted text-lg leading-relaxed">
+                <p className="text-xl text-ink font-medium">
+                  I have always been drawn to building things.
+                </p>
                 <p>
-                  My name is Cooper Aiello, and when I came to Florida Gulf Coast
-                  University, I found myself in the same position a lot of
-                  students do: in a new place, surrounded by opportunity, but not
-                  truly connected to it. I was trying to figure out where to go,
-                  what was worth doing, and how to actually feel part of the
-                  community around me. What became obvious pretty quickly was
-                  that the problem was not a lack of great places or experiences.
-                  The problem was that students had no real way to discover them.
+                  When I was 10 years old, I designed a t-shirt for my
+                  elementary school, sold over $5,000 worth, and donated the
+                  money to a local humane society. I did not know what
+                  entrepreneurship was yet. I just knew what it felt like to
+                  have an idea, bring people together, and turn it into
+                  something real.
+                </p>
+                <p className="text-ink font-medium">
+                  That instinct never left.
+                </p>
+                <p>
+                  At 18, I started a small marketing agency in college and
+                  worked with several notable clients. It taught me how
+                  attention moves, how businesses grow, and how hard it is for
+                  local brands to reach the right people.
+                </p>
+                <p>
+                  Then I came to Florida Gulf Coast University and felt the
+                  problem myself.
+                </p>
+                <p>
+                  I was in a new place, surrounded by restaurants, events,
+                  bars, and opportunities, but I still felt disconnected from
+                  what was happening around me. The best parts of campus life
+                  were scattered across group chats, Instagram stories,
+                  flyers, and word of mouth. Students wanted places to go.
+                  Businesses wanted students in the door. But there was no
+                  real bridge between them.
                 </p>
                 <p className="text-ink font-medium">
                   So I decided to build one.
                 </p>
+                <p className="text-ink font-medium">
+                  That became Bizzy.
+                </p>
                 <p>
-                  When I first started, I hired a freelance developer because I
-                  thought it would be the fastest way to get the first version of
-                  Bizzy built. It ended up being a disaster. I got scammed for
-                  $8,000 — a lot of money for a 21-year-old college student, and
-                  the last $8,000 I had saved from working college jobs serving
+                  The first version almost never happened. I hired a freelance
+                  developer because I thought it would be the fastest way to
+                  bring the idea to life. Instead, I got scammed for $8,000,
+                  the last money I had saved from working college jobs serving
                   at restaurants.
                 </p>
                 <p>
-                  That moment could have ended Bizzy before it ever began.
+                  For a moment, it felt like Bizzy was dead before it ever had
+                  a chance to live.
                 </p>
                 <p>
-                  Instead, it changed the way I approached building. I started
-                  learning the basics of app development myself. I stopped
-                  waiting for someone else to bring the vision to life and made
-                  the decision to become part of building it.
+                  But that loss became the turning point. I stopped waiting
+                  for someone else to build my vision. I started learning the
+                  basics of app development, studying the product, and pushing
+                  the company forward myself.
                 </p>
                 <p>
-                  A few months later, we started to see real traction, and I
-                  reached out to my close friend and mentor, Evangelos Milionis.
-                  He believed in the vision early and invested $20,000 into
-                  Bizzy, helping give the company real momentum in its early
-                  stages. He also brought valuable experience in the college bar
-                  and events market. Together, we saw the opportunity clearly: if
-                  Bizzy could work at one campus, it could work across the
-                  country.
+                  A few months later, Bizzy began gaining real traction. I
+                  reached out to my close friend and mentor, Evangelos
+                  Milionis, who believed in the vision early and invested
+                  $20,000 into the company. With his experience in the
+                  college bar and events market, we saw what Bizzy could
+                  become: not just a deals app, but the platform students use
+                  to unlock campus life.
+                </p>
+                <p>Bizzy was built from a simple belief:</p>
+                <blockquote className="border-l-4 border-primary pl-6 py-2 text-ink font-medium italic text-xl">
+                  Students should not have to feel disconnected from the
+                  community around them, and local businesses should not
+                  struggle to reach the students right outside their doors.
+                </blockquote>
+                <p className="text-ink font-medium">
+                  My goal is to build the platform I wish existed when I first
+                  got to campus.
                 </p>
               </div>
             </div>
