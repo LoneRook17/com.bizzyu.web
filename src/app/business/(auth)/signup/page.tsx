@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import AuthCard from "@/components/business/auth/AuthCard"
@@ -36,6 +36,14 @@ interface FormState {
   campus_id: string
 }
 
+interface CampusOption {
+  id: number
+  name: string
+  full_name?: string | null
+}
+
+const FALLBACK_CAMPUSES: CampusOption[] = CAMPUSES.map(({ id, name }) => ({ id, name }))
+
 export default function SignupPage() {
   const router = useRouter()
   const [form, setForm] = useState<FormState>({
@@ -54,6 +62,26 @@ export default function SignupPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({})
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [campuses, setCampuses] = useState<CampusOption[]>(FALLBACK_CAMPUSES)
+
+  useEffect(() => {
+    let cancelled = false
+
+    apiClient.authGet<{ campuses: CampusOption[] }>("/business/auth/campuses")
+      .then((data) => {
+        if (!cancelled && data.campuses.length > 0) {
+          setCampuses(data.campuses)
+        }
+      })
+      .catch(() => {
+        // Keep the bundled fallback list available if the campus API is unavailable.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     setErrors((prev) => ({ ...prev, [e.target.name]: undefined }))
@@ -227,7 +255,7 @@ export default function SignupPage() {
               ${errors.campus_id ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"}`}
           >
             <option value="">Select a campus</option>
-            {CAMPUSES.map((c) => (
+            {campuses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>

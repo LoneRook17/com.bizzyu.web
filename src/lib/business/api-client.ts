@@ -134,6 +134,23 @@ class BusinessApiClient {
   }
 
   // Auth-specific methods (don't trigger silent refresh redirect)
+  async authGet<T>(path: string): Promise<T> {
+    const url = `${getApiBaseUrl()}${path}`
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new ApiError(data.message || data.error || 'Request failed', response.status)
+    }
+
+    return response.json()
+  }
+
   async authPost<T>(path: string, body?: unknown): Promise<T> {
     const url = `${getApiBaseUrl()}${path}`
     const response = await fetch(url, {
