@@ -11,7 +11,7 @@ export const CALENDLY_DEMO_URL =
 export const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Events", href: "/events" },
-  { label: "List a Deal", href: "/businesses" },
+  { label: "For Businesses", href: "/businesses" },
   { label: "About", href: "/about" },
 ];
 

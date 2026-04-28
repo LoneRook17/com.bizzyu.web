@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 const STATS = [
-  { value: "15,000+", label: "Student downloads" },
+  { value: "25,000+", label: "Student downloads" },
   { value: "400+", label: "Businesses on Bizzy" },
   { value: "Multiple", label: "College markets active" },
   { value: "0%", label: "Venue platform fees" },
@@ -774,7 +774,7 @@ export default function EventsPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto mb-10">
             {[
-              { value: "15,000+", label: "Student downloads" },
+              { value: "25,000+", label: "Student downloads" },
               { value: "400+", label: "Businesses on Bizzy" },
               { value: "Multiple", label: "College markets" },
               { value: "1000s", label: "Deal claims & event interactions" },
