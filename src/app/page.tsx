@@ -63,7 +63,7 @@ const DEAL_FEATURES = [
 const PROOF_STATS = [
   { value: "25,000+", label: "Student users" },
   { value: "400+", label: "Local businesses" },
-  { value: "4", label: "Campus partners" },
+  { value: "Expanding", label: "Nationwide" },
   { value: "0%", label: "Venue platform fees" },
 ];
 
@@ -357,7 +357,7 @@ export default function Home() {
               Built for real college town activity.
             </h2>
             <p className="text-muted text-lg max-w-2xl mx-auto">
-              Real students, real local businesses, real campus partners.
+              Real students, real local businesses, expanding nationwide.
             </p>
           </div>
         </AnimatedSection>
