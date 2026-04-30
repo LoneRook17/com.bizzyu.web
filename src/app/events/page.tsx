@@ -48,47 +48,30 @@ const PROBLEMS = [
   },
 ];
 
-const NIGHT_VIGNETTES = [
+const VENUE_CAPABILITIES = [
   {
-    time: "9:42 PM",
-    without:
-      "Line wraps the block. Door staff with a clipboard. Three people arguing about whose name is on the list.",
-    with: "Line moves. Staff scans QR codes from a phone. 6 seconds per guest.",
+    title: "Sell tickets, cover, and line skip",
+    desc: "One checkout for every door product, on the student's phone or yours. Keep 100% of what you sell.",
   },
   {
-    time: "10:15 PM",
-    without:
-      "Cover guy's apron is full of crumpled twenties. Two of them are fakes.",
-    with:
-      "Tap to Pay on the iPhone. Stripe handles it. No cash to count, no fakes to argue about.",
+    title: "Tap to Pay at the door",
+    desc: "Take cover with the iPhone in your hand. Stripe processes it. No cash to count, no fakes to argue about.",
   },
   {
-    time: "10:48 PM",
-    without:
-      "“Tony said it was cool” — six guys you've never seen walk in for free.",
-    with:
-      "Promo code TONY10 — used 11 times tonight. You know exactly who drove what.",
+    title: "Scan tickets in seconds",
+    desc: "Your door staff use a phone. Lines move faster, the headcount stays accurate, no clipboards.",
   },
   {
-    time: "11:30 PM",
-    without:
-      "Door staff has full admin access. They can see payouts, customer data, everything.",
-    with:
-      "Scoped staff access on their own phone. Scan and check in. Nothing else.",
+    title: "Promo codes that actually track",
+    desc: "See exactly how many guests each promoter, ambassador, or Greek house drove. No more guessing.",
   },
   {
-    time: "12:14 AM",
-    without:
-      "You're guessing how many came in. Cover guy's count doesn't match the door head.",
-    with:
-      "Live dashboard on your phone. 312 in. $4,680 in cover. 47 line skips.",
+    title: "Scoped staff access",
+    desc: "Door staff scan and check in from their own phone. They never see payouts or customer data.",
   },
   {
-    time: "1:30 AM",
-    without:
-      "Counting cash. Reconciling tomorrow. Hoping the deposit clears Friday.",
-    with:
-      "Closed out. Stripe payout queued for Tuesday morning. You're already in the Uber home.",
+    title: "Live night dashboard",
+    desc: "Headcount, revenue, line skips, promoter performance — on your phone, updating as the night runs.",
   },
 ];
 
@@ -368,7 +351,7 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* Section 5 — Tonight at 11pm */}
+      {/* Section 5 — Run your whole night from one tool */}
       <section
         id="features"
         className="bg-ink text-white relative overflow-hidden"
@@ -378,109 +361,45 @@ export default function EventsPage() {
           <AnimatedSection>
             <div className="text-center max-w-3xl mx-auto mb-14">
               <p className="text-primary text-sm font-bold uppercase tracking-widest mb-4">
-                Saturday night
+                Built for venues
               </p>
               <h2 className="text-4xl md:text-5xl font-bold mb-4">
-                Same bar. Same crowd.
+                Run your whole night
                 <br />
                 <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-                  Two completely different nights.
+                  from one tool.
                 </span>
               </h2>
               <p className="text-lg text-white/70">
-                One is what your Saturday looks like right now. The other is
-                what it could look like next weekend.
+                Tickets, cover, line skip, scanning, promoters, and live
+                tracking — built into one platform you can run from your
+                phone.
               </p>
             </div>
           </AnimatedSection>
 
-          <div className="max-w-6xl mx-auto">
-            {/* Column headers (desktop only) */}
-            <div className="hidden md:grid grid-cols-[1fr_auto_1fr] gap-6 items-center mb-6">
-              <div className="text-right">
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-bold uppercase tracking-wider">
-                  Without Bizzy
-                </span>
-              </div>
-              <div className="w-px" />
-              <div className="text-left">
-                <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/15 border border-primary/40 text-primary text-xs font-bold uppercase tracking-wider">
-                  With Bizzy
-                </span>
-              </div>
-            </div>
-
-            <div className="relative space-y-6 md:space-y-8">
-              {/* Vertical timeline line — desktop */}
-              <div
-                aria-hidden="true"
-                className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent -translate-x-1/2"
-              />
-
-              {NIGHT_VIGNETTES.map((v, i) => (
-                <AnimatedSection key={v.time} delay={i * 0.06}>
-                  {/* Mobile layout — stacked */}
-                  <div className="md:hidden bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-5">
-                    <div className="inline-flex items-center gap-2 mb-4">
-                      <span className="w-2 h-2 rounded-full bg-primary" />
-                      <span className="text-primary text-sm font-bold tracking-wide">
-                        {v.time}
-                      </span>
-                    </div>
-                    <div className="border-l-2 border-red-500/40 pl-4 mb-4">
-                      <p className="text-xs font-bold uppercase tracking-wider text-red-300 mb-1">
-                        Without Bizzy
-                      </p>
-                      <p className="text-white/80 text-sm leading-relaxed">
-                        {v.without}
-                      </p>
-                    </div>
-                    <div className="border-l-2 border-primary pl-4">
-                      <p className="text-xs font-bold uppercase tracking-wider text-primary mb-1">
-                        With Bizzy
-                      </p>
-                      <p className="text-white text-sm leading-relaxed">
-                        {v.with}
-                      </p>
-                    </div>
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {VENUE_CAPABILITIES.map((cap, i) => (
+              <AnimatedSection key={cap.title} delay={i * 0.06}>
+                <div className="h-full bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:border-primary/40 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center mb-4">
+                    <CheckIcon className="text-primary" />
                   </div>
-
-                  {/* Desktop layout — timeline */}
-                  <div className="hidden md:grid grid-cols-[1fr_auto_1fr] gap-6 items-center">
-                    {/* Left — Without */}
-                    <div className="text-right">
-                      <div className="inline-block max-w-md text-left bg-white/5 backdrop-blur-sm rounded-2xl border border-red-500/20 p-5">
-                        <p className="text-white/80 text-base leading-relaxed">
-                          {v.without}
-                        </p>
-                      </div>
-                    </div>
-                    {/* Center — time pill */}
-                    <div className="flex flex-col items-center">
-                      <div className="bg-ink border-2 border-primary rounded-full px-4 py-2 shadow-lg shadow-primary/20">
-                        <span className="text-primary text-sm font-bold whitespace-nowrap">
-                          {v.time}
-                        </span>
-                      </div>
-                    </div>
-                    {/* Right — With */}
-                    <div className="text-left">
-                      <div className="inline-block max-w-md bg-primary/10 backdrop-blur-sm rounded-2xl border border-primary/30 p-5">
-                        <p className="text-white text-base leading-relaxed">
-                          {v.with}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </AnimatedSection>
-              ))}
-            </div>
+                  <h3 className="text-lg font-semibold text-white mb-2 leading-snug">
+                    {cap.title}
+                  </h3>
+                  <p className="text-white/70 text-sm leading-relaxed">
+                    {cap.desc}
+                  </p>
+                </div>
+              </AnimatedSection>
+            ))}
           </div>
 
           <AnimatedSection>
             <div className="text-center mt-14">
               <p className="text-white/70 mb-6 text-lg">
-                Pick the night you want to run.
+                See it live with your venue's setup.
               </p>
               <DemoButton>Book a 15-Min Demo</DemoButton>
             </div>
