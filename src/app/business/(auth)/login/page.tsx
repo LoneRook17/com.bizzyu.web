@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import AuthCard from "@/components/business/auth/AuthCard"
@@ -11,6 +11,14 @@ import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { LoginResponse } from "@/lib/business/types"
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthCard title="Welcome back" subtitle="Log in to your business dashboard"><div /></AuthCard>}>
+      <LoginPageInner />
+    </Suspense>
+  )
+}
+
+function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justRegistered = searchParams.get("registered") === "1"
