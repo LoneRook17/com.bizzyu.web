@@ -64,6 +64,20 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
   const [moderationNotice, setModerationNotice] = useState("")
+  const [stripeConnecting, setStripeConnecting] = useState(false)
+
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true)
+    try {
+      const data = await apiClient.post<{ url: string; stripe_connect_id: string }>(
+        "/business/profile/stripe-onboard?platform=web"
+      )
+      window.location.href = data.url
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : "Failed to start Stripe onboarding")
+      setStripeConnecting(false)
+    }
+  }
   const [showAddNight, setShowAddNight] = useState(false)
   const [newNight, setNewNight] = useState<RecurringNight>({ day_of_week: 0, start_time: "21:00", end_time: "02:00" })
   const [endDateMode, setEndDateMode] = useState<"never" | "on_date">(
@@ -306,7 +320,17 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
               ))}
             </select>
             {!stripeOnboarded && (
-              <p className="mt-1 text-xs text-yellow-600">Stripe Connect required for paid events.</p>
+              <div className="mt-1">
+                <p className="text-xs text-yellow-600">Stripe Connect required for paid events.</p>
+                <button
+                  type="button"
+                  onClick={handleConnectStripe}
+                  disabled={stripeConnecting}
+                  className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer disabled:opacity-60"
+                >
+                  {stripeConnecting ? "Connecting…" : "Connect Stripe →"}
+                </button>
+              </div>
             )}
           </div>
           <div className="mb-4 flex items-end pb-1">
@@ -466,7 +490,29 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
 
       {/* Submit */}
       {serverError && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{serverError}</div>
+        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          <p>{serverError}</p>
+          {/Stripe Connect/i.test(serverError) && (
+            <button
+              type="button"
+              onClick={handleConnectStripe}
+              disabled={stripeConnecting}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer disabled:opacity-60"
+            >
+              {stripeConnecting ? (
+                <>
+                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Connecting...
+                </>
+              ) : (
+                <>Connect Stripe &rarr;</>
+              )}
+            </button>
+          )}
+        </div>
       )}
       <AuthSubmitButton loading={loading}>
         {isEditing ? "Save Changes" : "Create Event"}
