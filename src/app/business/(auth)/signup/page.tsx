@@ -134,7 +134,7 @@ export default function SignupPage() {
         description: form.description,
       })
 
-      router.push(`/business/verify-email?email=${encodeURIComponent(form.email)}`)
+      router.push(`/business/login?registered=1`)
     } catch (err) {
       if (err instanceof ApiError) {
         setServerError(err.message)

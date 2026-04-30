@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import AuthCard from "@/components/business/auth/AuthCard"
 import FormInput from "@/components/business/auth/FormInput"
@@ -12,6 +12,8 @@ import type { LoginResponse } from "@/lib/business/types"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const justRegistered = searchParams.get("registered") === "1"
   const [form, setForm] = useState({ email: "", password: "" })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -55,6 +57,11 @@ export default function LoginPage() {
 
   return (
     <AuthCard title="Welcome back" subtitle="Log in to your business dashboard">
+      {justRegistered && !error && (
+        <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+          Application submitted. You&apos;ll receive an email once approved.
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
         <FormInput
           label="Email"
