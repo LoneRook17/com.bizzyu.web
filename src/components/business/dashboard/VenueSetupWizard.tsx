@@ -77,10 +77,6 @@ export default function VenueSetupWizard() {
       setError("Venue name is required.")
       return
     }
-    if (!photoFile && !photoPreview) {
-      setPhotoError("Venue photo is required.")
-      return
-    }
     setLoading(true)
     setError("")
     setWarning("")
@@ -173,7 +169,7 @@ export default function VenueSetupWizard() {
 
           {/* Venue Photo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Venue Photo <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Business Logo</label>
             {photoPreview ? (
               <div className="relative rounded-lg border border-gray-200 overflow-hidden">
                 <img src={photoPreview} alt="Venue photo preview" className="w-full h-40 object-cover" />
