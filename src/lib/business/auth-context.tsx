@@ -74,8 +74,20 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     }
     setUser(null)
     setBusiness(null)
-    document.cookie = "biz_session=; path=/business; max-age=0; SameSite=Lax"
-    router.push("/business/login")
+    // Cooper (May 2026): defensively clear biz_session across path/domain variants.
+    // Older deployments set this cookie host-only (no Domain attr); current backend
+    // sets it with Domain=.bizzyu.com. If a user has a stale variant, the server's
+    // single Set-Cookie clear can't match it and they stay "logged in" forever.
+    const cookieClears = [
+      "biz_session=; path=/business; max-age=0; SameSite=Lax",
+      "biz_session=; path=/business; max-age=0; SameSite=Lax; domain=.bizzyu.com",
+      "biz_session=; path=/business; max-age=0; SameSite=Lax; domain=bizzyu.com",
+      "biz_session=; path=/; max-age=0; SameSite=Lax",
+      "biz_session=; path=/; max-age=0; SameSite=Lax; domain=.bizzyu.com",
+    ]
+    cookieClears.forEach((c) => { document.cookie = c })
+    // Hard navigation so middleware re-evaluates cookie state from a fresh request.
+    window.location.href = "/business/login"
   }
 
   const refreshProfile = async () => {
