@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '@/lib/api-url'
+import { clearBizSession } from './cookies'
 
 export class ApiError extends Error {
   status: number
@@ -34,6 +35,10 @@ class BusinessApiClient {
         response = await fetch(url, config)
       } else {
         if (typeof window !== 'undefined') {
+          // Cooper (May 2026): clear biz_session before redirecting so the
+          // middleware doesn't see a stale session cookie and bounce us back
+          // to /business → 401 → /business/login → loop.
+          clearBizSession()
           window.location.href = '/business/login'
         }
         throw new ApiError('Session expired', 401)
@@ -119,6 +124,8 @@ class BusinessApiClient {
         response = await fetch(url, config)
       } else {
         if (typeof window !== 'undefined') {
+          // Cooper (May 2026): see clearBizSession comment in request().
+          clearBizSession()
           window.location.href = '/business/login'
         }
         throw new ApiError('Session expired', 401)
