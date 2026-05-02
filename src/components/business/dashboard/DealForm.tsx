@@ -29,6 +29,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     total_saving: initialData?.total_saving || "",
     redemption_frequency: initialData?.redemption_frequency || "",
     start_date: initialData?.start_date || "",
+    expired_date: initialData?.expired_date || "",
     deal_image_path: initialData?.deal_image_path || "",
   })
 
@@ -71,12 +72,20 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
       // Strip $ sign and parse savings
       const savingsNum = parseFloat(form.total_saving.replace(/[$,]/g, "")) || 0
 
+      // Default expiration: today's MM-DD in year 2099 (effectively "no expiration").
+      // If the business sets a real date, the daily DeactivateExpiredDeals cron will
+      // auto-pull the deal once it passes; live-deal queries filter expired_date >= CURDATE().
+      const today = new Date()
+      const defaultExpired = `2099-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+      const expiredDate = form.expired_date || defaultExpired
+
       const payload = {
         deal_title: form.deal_title,
         description: form.description,
         deal_type: dealType,
         deal_image_path: form.deal_image_path || undefined,
         start_date: form.start_date || undefined,
+        expired_date: expiredDate,
         total_saving: savingsNum,
         venue_id: selectedVenue?.id,
       }
@@ -396,19 +405,38 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                 </div>
               )}
 
-              {/* Start Date */}
-              <div className="mb-5">
-                <label htmlFor="start_date" className="block text-xs font-medium text-muted mb-1">
-                  Start Date
-                </label>
-                <input
-                  id="start_date"
-                  name="start_date"
-                  type="date"
-                  value={form.start_date}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                />
+              {/* Start Date + Expiration Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                <div>
+                  <label htmlFor="start_date" className="block text-xs font-medium text-muted mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    id="start_date"
+                    name="start_date"
+                    type="date"
+                    value={form.start_date}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="expired_date" className="block text-xs font-medium text-muted mb-1">
+                    Expiration Date <span className="font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="expired_date"
+                    name="expired_date"
+                    type="date"
+                    value={form.expired_date}
+                    onChange={handleChange}
+                    min={form.start_date || undefined}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    Deal automatically removes from the app on this date. Leave blank for no expiration.
+                  </p>
+                </div>
               </div>
 
               {/* Deal Image */}

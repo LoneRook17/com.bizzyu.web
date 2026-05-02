@@ -22,12 +22,17 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
     async function fetchDeal() {
       try {
         const deal = await apiClient.get<DealListItem>(`/business/deals/${id}`)
+        // Year-2099 expirations are the "no expiration" sentinel — don't surface
+        // that in the input; show blank instead so the field reads as optional.
+        const expiredRaw = toDateInput(deal.expired_date)
+        const expiredForForm = expiredRaw.startsWith("2099-") ? "" : expiredRaw
         setInitialData({
           deal_title: deal.deal_title,
           description: deal.description,
           total_saving: String(deal.total_saving || ""),
           redemption_frequency: DEAL_TYPE_TO_FREQUENCY[deal.deal_type] || "",
           start_date: toDateInput(deal.start_date),
+          expired_date: expiredForForm,
           deal_image_path: deal.deal_image_path || "",
         })
       } catch (err) {

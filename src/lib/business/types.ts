@@ -135,6 +135,7 @@ export interface EventDetail extends EventListItem {
   fee: number
   percentage: number
   tickets: TicketTier[]
+  my_event_role: 'owner' | 'cohost' | 'crew' | 'scan_only' | 'scan_door_sales' | null
   sales: { total_attendees: number; total_revenue: number; checkin_rate: number }
 }
 
@@ -198,6 +199,7 @@ export interface DealFormData {
   total_saving: string
   redemption_frequency: string
   start_date: string
+  expired_date: string
   deal_image_path: string
 }
 
