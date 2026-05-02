@@ -14,14 +14,12 @@ import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { DealListItem } from "@/lib/business/types"
 
 interface DealCounts {
-  pending: number
   live: number
   expired: number
   deactivated: number
 }
 
 const TAB_EMPTY_MESSAGES: Record<string, { title: string; message: string }> = {
-  pending: { title: "No deals pending approval", message: "New deals you create will appear here until approved by our team." },
   live: { title: "No live deals", message: "Create your first deal to get started." },
   expired: { title: "No expired deals", message: "Deals that have passed their expiration date will appear here." },
   deactivated: { title: "No deactivated deals", message: "Deals you deactivate will appear here." },
@@ -38,7 +36,7 @@ export default function DealsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [counts, setCounts] = useState<DealCounts>({ pending: 0, live: 0, expired: 0, deactivated: 0 })
+  const [counts, setCounts] = useState<DealCounts>({ live: 0, expired: 0, deactivated: 0 })
   const limit = 20
 
   const canCreate =
@@ -148,13 +146,6 @@ export default function DealsPage() {
           )
         })}
       </div>
-
-      {/* Info banner for pending tab */}
-      {tab === "pending" && !loading && deals.length > 0 && (
-        <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
-          These deals are under review and will be visible to students once approved by our team.
-        </div>
-      )}
 
       {/* Content */}
       {loading ? (

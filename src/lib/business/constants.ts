@@ -55,7 +55,6 @@ export const EVENT_TABS = [
 
 export const DEAL_TABS = [
   { value: 'live', label: 'Live' },
-  { value: 'pending', label: 'Pending' },
   { value: 'expired', label: 'Expired' },
   { value: 'deactivated', label: 'Deactivated' },
 ] as const

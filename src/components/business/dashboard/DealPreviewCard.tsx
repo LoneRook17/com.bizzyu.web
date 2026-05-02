@@ -4,12 +4,12 @@ import Link from "next/link"
 import type { DealListItem } from "@/lib/business/types"
 
 export default function DealPreviewCard({ deal, showVenue }: { deal: DealListItem; showVenue?: boolean }) {
-  const isPending = deal.moderation_status === "pending_review" || deal.moderation_status === "pending_approval"
+  const isUnderReview = deal.moderation_status === "pending_review"
   const isRejected = deal.moderation_status === "rejected"
-  const isActive = !isPending && !isRejected && deal.is_active
+  const isActive = !isUnderReview && !isRejected && deal.is_active
 
-  const dotColor = isPending ? "bg-yellow-400" : isActive ? "bg-green-500" : "bg-gray-400"
-  const statusText = isPending ? "Pending" : isActive ? "Active" : isRejected ? "Rejected" : "Inactive"
+  const dotColor = isUnderReview ? "bg-orange-400" : isActive ? "bg-green-500" : "bg-gray-400"
+  const statusText = isUnderReview ? "Under Review" : isActive ? "Active" : isRejected ? "Rejected" : "Inactive"
 
   return (
     <Link

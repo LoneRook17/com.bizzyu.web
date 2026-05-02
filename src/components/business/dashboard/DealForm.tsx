@@ -83,15 +83,18 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
       if (isEditing) {
         await apiClient.put(`/business/deals/${dealId}`, payload)
-        setModerationNotice("Your changes have been saved. The deal will be reviewed before going live.")
-        setTimeout(() => router.push(`/business/deals/${dealId}`), 2000)
+        router.push(`/business/deals/${dealId}`)
       } else {
-        await apiClient.post<{ deal_id: number; moderation_status: string | null }>(
+        const data = await apiClient.post<{ deal_id: number; moderation_status: string | null }>(
           "/business/deals",
           payload
         )
-        setModerationNotice("Your deal has been submitted for review. It will be visible to students once approved.")
-        setTimeout(() => router.push("/business/deals"), 3000)
+        if (data.moderation_status === "pending_review") {
+          setModerationNotice("Your deal has been created but is under review due to content moderation.")
+          setTimeout(() => router.push("/business/deals"), 3000)
+        } else {
+          router.push("/business/deals")
+        }
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -128,7 +131,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
       </div>
 
       {moderationNotice && (
-        <div className="mb-6 rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-800">
+        <div className="mb-6 rounded-lg bg-orange-50 border border-orange-200 p-4 text-sm text-orange-800">
           {moderationNotice}
         </div>
       )}

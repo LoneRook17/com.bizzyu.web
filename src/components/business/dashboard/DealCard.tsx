@@ -62,16 +62,10 @@ export default function DealCard({ deal, tab, showVenue, onReactivate }: DealCar
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              {tab === "pending" ? (
-                deal.moderation_reason ? (
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700">
-                    Under Review
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-700">
-                    Pending Approval
-                  </span>
-                )
+              {deal.moderation_status === "pending_review" ? (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700">
+                  Under Review
+                </span>
               ) : tab === "expired" ? (
                 <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600">
                   Expired
@@ -112,14 +106,12 @@ export default function DealCard({ deal, tab, showVenue, onReactivate }: DealCar
         >
           View
         </Link>
-        {tab !== "pending" && (
-          <Link
-            href={`/business/deals/${deal.id}/edit`}
-            className="text-xs font-medium text-gray-600 hover:text-ink hover:underline"
-          >
-            Edit
-          </Link>
-        )}
+        <Link
+          href={`/business/deals/${deal.id}/edit`}
+          className="text-xs font-medium text-gray-600 hover:text-ink hover:underline"
+        >
+          Edit
+        </Link>
         {tab === "deactivated" && onReactivate && (
           <button
             onClick={() => onReactivate(deal.id)}
