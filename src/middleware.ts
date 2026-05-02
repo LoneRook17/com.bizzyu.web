@@ -11,7 +11,10 @@ const AUTH_PAGES = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const hasSession = request.cookies.get("biz_session")
+  // The Node backend sets biz_token (httpOnly) on login; middleware runs server-side
+  // and can read httpOnly cookies. Earlier code looked for a non-existent biz_session
+  // cookie, which caused valid logins to bounce back to /business/login.
+  const hasSession = request.cookies.get("biz_token") || request.cookies.get("biz_refresh")
 
   // Only handle /business/* routes
   if (!pathname.startsWith("/business")) {

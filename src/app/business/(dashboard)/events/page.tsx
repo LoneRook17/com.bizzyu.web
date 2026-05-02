@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
@@ -26,7 +25,24 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true)
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
   const [stripeBannerDismissed, setStripeBannerDismissed] = useState(false)
+  const [stripeConnecting, setStripeConnecting] = useState(false)
+  const [stripeError, setStripeError] = useState<string | null>(null)
   const limit = 20
+
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true)
+    setStripeError(null)
+    try {
+      const data = await apiClient.post<{ url: string; stripe_connect_id: string }>(
+        "/business/profile/stripe-onboard?platform=web"
+      )
+      window.location.href = data.url
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to start Stripe onboarding"
+      setStripeError(message)
+      setStripeConnecting(false)
+    }
+  }
 
   const canCreate = user?.business_role === "owner" || user?.business_role === "manager"
 
@@ -92,19 +108,36 @@ export default function EventsPage() {
 
       {/* Stripe Connect prompt */}
       {canCreate && !stripeOnboarded && !stripeBannerDismissed && (
-        <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 flex items-start justify-between">
-          <div>
+        <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 flex items-start justify-between gap-3">
+          <div className="flex-1">
             <p className="text-sm font-medium text-yellow-800">Stripe Connect not linked</p>
             <p className="text-xs text-yellow-700 mt-0.5">
               To create paid events, complete Stripe Connect onboarding. Free events can be created without Stripe.
             </p>
-            <Link href="/business/settings" className="text-xs text-primary font-medium hover:underline mt-1 inline-block">
-              Go to Settings &rarr;
-            </Link>
+            {stripeError && (
+              <p className="text-xs text-red-600 mt-2">{stripeError}</p>
+            )}
+            <button
+              onClick={handleConnectStripe}
+              disabled={stripeConnecting}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer disabled:opacity-60"
+            >
+              {stripeConnecting ? (
+                <>
+                  <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Connecting...
+                </>
+              ) : (
+                <>Connect Stripe &rarr;</>
+              )}
+            </button>
           </div>
           <button
             onClick={() => setStripeBannerDismissed(true)}
-            className="text-yellow-600 hover:text-yellow-800 flex-shrink-0 ml-3 cursor-pointer"
+            className="text-yellow-600 hover:text-yellow-800 flex-shrink-0 cursor-pointer"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

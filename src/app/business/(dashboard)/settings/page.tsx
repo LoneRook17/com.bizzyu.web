@@ -108,6 +108,25 @@ export default function SettingsPage() {
         <p className="text-xs text-gray-500 mt-0.5">These settings apply to your entire business across all venues</p>
       </div>
 
+      {/* Stripe Connect */}
+      {(stripeParam === "return" || stripeParam === "refresh") && (
+        <StripeReturnBanner onComplete={() => {
+          fetchProfile()
+          refreshProfile()
+          // Clean the query string
+          router.replace("/business/settings")
+        }} />
+      )}
+      <div id="stripe-connect" className="mb-4 scroll-mt-20">
+        <StripeConnectCard
+          onboarded={profile.stripe_connect_onboarded}
+          onOnboardingComplete={() => {
+            fetchProfile()
+            refreshProfile()
+          }}
+        />
+      </div>
+
       {/* Business Photo */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 mb-4 flex justify-center">
         <LogoUpload
@@ -124,25 +143,6 @@ export default function SettingsPage() {
           profile={profile}
           onSaved={handleProfileSaved}
           disabled={!canEdit}
-        />
-      </div>
-
-      {/* Stripe Connect */}
-      {(stripeParam === "return" || stripeParam === "refresh") && (
-        <StripeReturnBanner onComplete={() => {
-          fetchProfile()
-          refreshProfile()
-          // Clean the query string
-          router.replace("/business/settings")
-        }} />
-      )}
-      <div className="mb-4">
-        <StripeConnectCard
-          onboarded={profile.stripe_connect_onboarded}
-          onOnboardingComplete={() => {
-            fetchProfile()
-            refreshProfile()
-          }}
         />
       </div>
 

@@ -66,6 +66,23 @@ export default function CreateLineSkipPage() {
     default_capacity: "",
   })
 
+  const [stripeConnecting, setStripeConnecting] = useState(false)
+  const [stripeError, setStripeError] = useState<string | null>(null)
+
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true)
+    setStripeError(null)
+    try {
+      const data = await apiClient.post<{ url: string; stripe_connect_id: string }>(
+        "/business/profile/stripe-onboard?platform=web"
+      )
+      window.location.href = data.url
+    } catch (err) {
+      setStripeError(err instanceof Error ? err.message : "Failed to start Stripe onboarding")
+      setStripeConnecting(false)
+    }
+  }
+
   useEffect(() => {
     apiClient
       .get<BusinessProfile>("/business/profile")
@@ -204,12 +221,26 @@ export default function CreateLineSkipPage() {
               <p className="text-sm text-gray-600 mb-4">
                 Line Skips are paid products. You need to connect your Stripe account before you can start selling them.
               </p>
-              <Link
-                href="/business/settings"
-                className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all"
+              {stripeError && (
+                <p className="text-sm text-red-600 mb-3">{stripeError}</p>
+              )}
+              <button
+                onClick={handleConnectStripe}
+                disabled={stripeConnecting}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer disabled:opacity-60"
               >
-                Go to Settings
-              </Link>
+                {stripeConnecting ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect Stripe"
+                )}
+              </button>
             </div>
           </div>
         </div>

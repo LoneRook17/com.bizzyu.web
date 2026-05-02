@@ -5,10 +5,13 @@ export const INSTAGRAM_URL = "https://instagram.com/Bizzy.University";
 export const TIKTOK_URL = "https://tiktok.com/@bizzyapp";
 export const CONTACT_EMAIL = "Contact@BizzyU.com";
 
+export const CALENDLY_DEMO_URL =
+  "https://calendly.com/partnerships-bizzyu/bizzy-bar-intro";
+
 export const NAV_LINKS = [
   { label: "Home", href: "/" },
   { label: "Events", href: "/events" },
-  { label: "List a Deal", href: "/businesses" },
+  { label: "For Businesses", href: "/businesses" },
   { label: "About", href: "/about" },
 ];
 
@@ -54,29 +57,54 @@ export const STUDENT_FAQ = [
 
 export const EVENTS_FAQ = [
   {
-    question: "How much does it cost to list events on Bizzy?",
+    question: "Does Bizzy charge the venue?",
     answer:
-      "It's free. 0% fees — you keep every dollar of ticket face value. No monthly fees, no contracts, no platform cut.",
+      "No. Venues pay 0% platform fees. Your bar keeps 100% of the ticket, line skip, and cover price you set.",
   },
   {
-    question: "When do I receive ticket revenue?",
+    question: "What does the bar receive?",
     answer:
-      "Ticket revenue is deposited to your connected Stripe account on a rolling basis, typically arriving the next business day after the event. You can track payouts in real time from your Bizzy business dashboard.",
+      "The bar receives the full ticket, line skip, or cover amount sold through Bizzy. Standard payment processing details are confirmed during setup based on your Stripe configuration.",
   },
   {
-    question: "Can I edit an event after it's published?",
+    question: "Can we test Bizzy for one event?",
     answer:
-      "Yes. You can update event details, add or modify ticket tiers, change prices, and upload new flyers from the Events tab in your business dashboard at any time before the event starts.",
+      "Yes. Most venues can test Bizzy on one event, one cover night, or one line skip offer before moving more volume.",
   },
   {
-    question: "What are Line Skips and how are they different from event tickets?",
+    question: "Can we still use our current system?",
     answer:
-      "Line Skips are cover + guaranteed entry passes for recurring venue nights (weekly Fridays, Saturdays, trivia nights, etc.). Students pay cover in advance and walk up to a guaranteed spot — no waiting in line. Event tickets are for one-off events with ticket tiers (general admission, VIP, etc.). Line Skip QR codes flag gold at check-in so your door staff can tell them apart from event tickets instantly.",
+      "Yes. You can test Bizzy alongside your current setup if needed.",
   },
   {
-    question: "Do I need any special hardware for door scanning or tap-to-pay?",
+    question: "How fast can we launch?",
     answer:
-      "No. The Bizzy scanner is a free web-based tool that works on any phone — just open the scanner URL and scan QR codes. Tap-to-pay uses the Stripe Terminal SDK built into Bizzy, so your phone is the only hardware you need.",
+      "Most venues can be set up quickly once we have your event details, ticket tiers, staff access needs, and Stripe information.",
+  },
+  {
+    question: "Can my door staff use it?",
+    answer:
+      "Yes. You can assign door staff to scan tickets, manage check-ins, and collect cover.",
+  },
+  {
+    question: "Can we sell line skip?",
+    answer:
+      "Yes. You can sell line skip, tickets, cover, VIP packages, or other event access.",
+  },
+  {
+    question: "Can we create promo codes?",
+    answer:
+      "Yes. You can create promo codes for Greek life, influencers, promoters, ambassadors, or special campaigns.",
+  },
+  {
+    question: "Does Bizzy help market events?",
+    answer:
+      "Yes. Bizzy can help promote your events and deals to local students through the app and campus marketing campaigns.",
+  },
+  {
+    question: "Is this only for college bars?",
+    answer:
+      "Bizzy is built primarily for college bars, nightlife venues, promoters, and student-driven events.",
   },
 ];
 

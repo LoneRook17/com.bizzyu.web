@@ -203,7 +203,7 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
 
           {/* Venue Photo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Venue Photo</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Business Logo</label>
             {photoPreview ? (
               <div className="relative rounded-lg border border-gray-200 overflow-hidden">
                 <img src={photoPreview} alt="Venue photo preview" className="w-full h-40 object-cover" />
