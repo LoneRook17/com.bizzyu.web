@@ -1,11 +1,11 @@
 export const NAV_LINKS = [
-  { label: 'Home', href: '/business', icon: 'home' },
-  { label: 'Events', href: '/business/events', icon: 'calendar' },
-  { label: 'Line Skips', href: '/business/line-skips', icon: 'bolt' },
-  { label: 'Deals', href: '/business/deals', icon: 'tag' },
-  { label: 'Analytics', href: '/business/analytics', icon: 'chart' },
-  { label: 'Team', href: '/business/team', icon: 'users' },
-  { label: 'Settings', href: '/business/settings', icon: 'settings' },
+  { label: 'Home', href: '/business', icon: 'home', description: '' },
+  { label: 'Events', href: '/business/events', icon: 'calendar', description: 'Sell tickets and manage events at your venue.' },
+  { label: 'Line Skips', href: '/business/line-skips', icon: 'bolt', description: 'Let students pay to skip the line at peak hours.' },
+  { label: 'Deals', href: '/business/deals', icon: 'tag', description: 'Offer Bizzy-exclusive promotions to drive students to your venue.' },
+  { label: 'Analytics', href: '/business/analytics', icon: 'chart', description: '' },
+  { label: 'Team', href: '/business/team', icon: 'users', description: '' },
+  { label: 'Settings', href: '/business/settings', icon: 'settings', description: '' },
 ] as const
 
 export const STATUS_LABELS: Record<string, string> = {

@@ -8,6 +8,7 @@ interface SidebarLinkProps {
   icon: string
   active: boolean
   disabled?: boolean
+  description?: string
 }
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -55,10 +56,13 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
 }
 
-export default function SidebarLink({ href, label, icon, active, disabled }: SidebarLinkProps) {
+export default function SidebarLink({ href, label, icon, active, disabled, description }: SidebarLinkProps) {
   if (disabled) {
     return (
-      <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
+      <div
+        className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-400 cursor-not-allowed"
+        title={description || undefined}
+      >
         {ICONS[icon]}
         <span>{label}</span>
       </div>
@@ -68,6 +72,7 @@ export default function SidebarLink({ href, label, icon, active, disabled }: Sid
   return (
     <Link
       href={href}
+      title={description || undefined}
       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
         ${active
           ? "bg-primary/10 text-primary"

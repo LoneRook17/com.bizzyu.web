@@ -31,6 +31,7 @@ interface AnimatedSectionProps {
   delay?: number;
   className?: string;
   variant?: AnimationVariant;
+  immediate?: boolean;
 }
 
 export default function AnimatedSection({
@@ -38,7 +39,12 @@ export default function AnimatedSection({
   delay = 0,
   className = "",
   variant = "fade-up",
+  immediate = false,
 }: AnimatedSectionProps) {
+  if (immediate) {
+    return <div className={className}>{children}</div>;
+  }
+
   const v = variants[variant];
 
   return (

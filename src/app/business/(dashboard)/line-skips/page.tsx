@@ -111,9 +111,13 @@ export default function LineSkipsPage() {
       ) : lineSkips.length === 0 ? (
         <EmptyState
           title="No Line Skips yet"
-          message="Set up Line Skips to let customers skip the line at your venue."
+          message={
+            "Line Skips let students pay to skip the line at your venue during peak hours.\nYou set the price, capacity, and which nights it runs — students claim through Bizzy and present a QR code at the door."
+          }
           actionLabel={canCreate ? "Create Line Skip" : undefined}
           onAction={canCreate ? handleCreate : undefined}
+          learnMoreHref="/business/help#line-skips"
+          learnMoreLabel="How line skips work"
         />
       ) : (
         <div className="space-y-3">

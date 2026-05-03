@@ -44,7 +44,7 @@ export default function BusinessesPage() {
       <section className="relative overflow-hidden">
         <SectionContainer className="py-20 md:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <AnimatedSection>
+            <AnimatedSection immediate>
               <div className="max-w-xl">
                 <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
                   Simple to Use. Reliable. Free

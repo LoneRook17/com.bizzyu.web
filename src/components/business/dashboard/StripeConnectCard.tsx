@@ -83,7 +83,7 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
           <div className="flex-1">
             <p className="text-sm font-medium text-yellow-700">Not Connected</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Stripe Connect is required to create paid events. Set up your account to start accepting payments.
+              Stripe Connect is required to create paid events or sell line skips. Connect your account to start accepting payments.
             </p>
 
             {error && (
@@ -101,10 +101,10 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Setting up...
+                  Connecting...
                 </>
               ) : (
-                "Set Up Stripe"
+                "Connect Stripe"
               )}
             </button>
           </div>
@@ -161,7 +161,7 @@ export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
     return (
       <div className="rounded-xl border border-green-200 bg-green-50 p-4 mb-4">
         <p className="text-sm text-green-700 font-medium">
-          Stripe Connect setup complete! You can now create paid events.
+          Stripe Connect setup complete! You can now create paid events and sell line skips.
         </p>
       </div>
     )

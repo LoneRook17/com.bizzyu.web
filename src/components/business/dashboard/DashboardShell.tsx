@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import Sidebar from "./Sidebar"
 import Topbar from "./Topbar"
 import PendingBanner from "./PendingBanner"
+import Toaster from "./Toast"
 import { useVenue } from "@/lib/business/venue-context"
 
 const DETAIL_PAGE_REDIRECTS = [
@@ -15,7 +16,7 @@ const DETAIL_PAGE_REDIRECTS = [
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { selectedVenue, isAllVenues, selectedVenueId } = useVenue()
+  const { venues, selectedVenue, isAllVenues, selectedVenueId } = useVenue()
   const pathname = usePathname()
   const router = useRouter()
   const prevVenueId = useRef(selectedVenueId)
@@ -45,11 +46,14 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
             </svg>
-            {isAllVenues ? "All Venues" : selectedVenue?.name ?? "Select a Venue"}
+            {isAllVenues
+              ? "All Venues"
+              : selectedVenue?.name ?? (venues.length === 0 ? "Add your venue to get started" : "Select a Venue")}
           </h1>
           {children}
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

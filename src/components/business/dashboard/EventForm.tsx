@@ -52,7 +52,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
     longitude: initialData?.longitude ?? null,
     start_date_time: initialData?.start_date_time || "",
     end_date_time: initialData?.end_date_time || "",
-    type: initialData?.type || "Ticketed",
+    type: initialData?.type || (stripeOnboarded ? "Ticketed" : "Free"),
     is_21_plus: initialData?.is_21_plus || false,
     is_recurring: initialData?.is_recurring || false,
     recurring_event: initialData?.recurring_event || undefined,
@@ -313,11 +313,19 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
             >
-              {EVENT_TYPES.map((t) => (
-                <option key={t} value={t} disabled={t === "Ticketed" && !stripeOnboarded}>
-                  {t}{t === "Ticketed" && !stripeOnboarded ? " (Stripe required)" : ""}
-                </option>
-              ))}
+              {EVENT_TYPES.map((t) => {
+                const ticketedDisabled = t === "Ticketed" && !stripeOnboarded
+                return (
+                  <option
+                    key={t}
+                    value={t}
+                    disabled={ticketedDisabled}
+                    title={ticketedDisabled ? "Connect Stripe to enable" : undefined}
+                  >
+                    {t}{ticketedDisabled ? " — Connect Stripe to enable" : ""}
+                  </option>
+                )
+              })}
             </select>
             {!stripeOnboarded && (
               <div className="mt-1">
@@ -514,9 +522,14 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           )}
         </div>
       )}
-      <AuthSubmitButton loading={loading}>
+      <AuthSubmitButton loading={loading} disabled={!stripeOnboarded && form.type === "Ticketed"}>
         {isEditing ? "Save Changes" : "Create Event"}
       </AuthSubmitButton>
+      {!stripeOnboarded && form.type === "Ticketed" && (
+        <p className="mt-2 text-center text-xs text-yellow-700">
+          Connect Stripe to create a Ticketed event, or switch Event Type to Free.
+        </p>
+      )}
     </form>
   )
 }

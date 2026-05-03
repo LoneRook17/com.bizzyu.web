@@ -109,7 +109,7 @@ export default function Home() {
       <section className="relative overflow-hidden bg-gradient-to-br from-white via-white to-primary-light">
         <SectionContainer className="!py-12 md:!py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center">
-            <AnimatedSection>
+            <AnimatedSection immediate>
               <div className="max-w-xl">
                 <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-xs md:text-sm font-semibold mb-6 tracking-wide">
                   Events • Tickets • Deals • Local Spots

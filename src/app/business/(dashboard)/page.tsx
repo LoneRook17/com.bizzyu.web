@@ -136,81 +136,105 @@ export default function DashboardHomePage() {
         </div>
       ) : (
         <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <StatCard label="Total Events" value={summary?.total_events ?? 0} />
-            <StatCard label="Total Attendees" value={summary?.total_attendees ?? 0} />
-            <StatCard label="Total Revenue" value={formatCurrency(summary?.total_revenue)} />
-          </div>
+          {(() => {
+            const hasEvents =
+              (summary?.total_events ?? 0) > 0 ||
+              (summary?.total_attendees ?? 0) > 0 ||
+              (quickStats?.upcoming_events_count ?? 0) > 0
+            const hasDeals =
+              (quickStats?.active_deals_count ?? 0) > 0 || liveDeals.length > 0
+            const dealsFirst = hasDeals && !hasEvents
 
-          {/* Quick stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <QuickStatCard label="Active Deals" value={quickStats?.active_deals_count ?? 0} />
-            <QuickStatCard label="Claims This Week" value={quickStats?.claims_this_week ?? 0} />
-            <QuickStatCard label="Upcoming Events" value={quickStats?.upcoming_events_count ?? 0} />
-            <QuickStatCard
-              label="Next Event"
-              value={
-                quickStats?.next_event_date
-                  ? new Date(quickStats.next_event_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                  : "—"
-              }
-            />
-          </div>
+            const eventsBlock = (
+              <div className="mb-6" key="events">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-ink">Your events</h2>
+                  <Link href="/business/events" className="text-xs font-medium text-primary hover:underline">
+                    View all
+                  </Link>
+                </div>
+                {upcomingEvents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {upcomingEvents.map((event) => (
+                      <EventPreviewCard key={event.event_id} event={event} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
+                    <p className="text-sm text-gray-400 mb-2">No upcoming events</p>
+                    <button
+                      onClick={() => handleCreate("/business/events/new")}
+                      className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                    >
+                      Create event
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
 
-          {/* Your events preview */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-ink">Your events</h2>
-              <Link href="/business/events" className="text-xs font-medium text-primary hover:underline">
-                View all
-              </Link>
-            </div>
-            {upcomingEvents.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {upcomingEvents.map((event) => (
-                  <EventPreviewCard key={event.event_id} event={event} />
-                ))}
+            const dealsBlock = (
+              <div className="mb-6" key="deals">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-semibold text-ink">Your deals</h2>
+                  <Link href="/business/deals" className="text-xs font-medium text-primary hover:underline">
+                    View all
+                  </Link>
+                </div>
+                {liveDeals.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {liveDeals.map((deal) => (
+                      <DealPreviewCard key={deal.id} deal={deal} showVenue={isAllVenues} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
+                    <p className="text-sm text-gray-400 mb-2">No deals yet</p>
+                    <button
+                      onClick={() => handleCreate("/business/deals/new")}
+                      className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
+                    >
+                      Create deal
+                    </button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
-                <p className="text-sm text-gray-400 mb-2">No upcoming events</p>
-                <button
-                  onClick={() => handleCreate("/business/events/new")}
-                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
-                >
-                  Create event
-                </button>
-              </div>
-            )}
-          </div>
+            )
 
-          {/* Your deals preview */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-ink">Your deals</h2>
-              <Link href="/business/deals" className="text-xs font-medium text-primary hover:underline">
-                View all
-              </Link>
-            </div>
-            {liveDeals.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {liveDeals.map((deal) => (
-                  <DealPreviewCard key={deal.id} deal={deal} showVenue={isAllVenues} />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
-                <p className="text-sm text-gray-400 mb-2">No deals yet</p>
-                <button
-                  onClick={() => handleCreate("/business/deals/new")}
-                  className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
-                >
-                  Create deal
-                </button>
-              </div>
-            )}
-          </div>
+            return (
+              <>
+                {/* Summary cards — only show event-revenue summary if business is using events */}
+                {hasEvents && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <StatCard label="Total Events" value={summary?.total_events ?? 0} />
+                    <StatCard label="Total Attendees" value={summary?.total_attendees ?? 0} />
+                    <StatCard label="Total Revenue" value={formatCurrency(summary?.total_revenue)} />
+                  </div>
+                )}
+
+                {/* Quick stats — order persona-aware; hide event tiles for deals-only businesses */}
+                <div className={`grid gap-4 mb-6 ${hasEvents ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
+                  <QuickStatCard label="Active Deals" value={quickStats?.active_deals_count ?? 0} />
+                  <QuickStatCard label="Claims This Week" value={quickStats?.claims_this_week ?? 0} />
+                  {hasEvents && (
+                    <>
+                      <QuickStatCard label="Upcoming Events" value={quickStats?.upcoming_events_count ?? 0} />
+                      <QuickStatCard
+                        label="Next Event"
+                        value={
+                          quickStats?.next_event_date
+                            ? new Date(quickStats.next_event_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                            : "—"
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+
+                {dealsFirst ? [dealsBlock, eventsBlock] : [eventsBlock, dealsBlock]}
+              </>
+            )
+          })()}
 
           {/* Activity feed */}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
