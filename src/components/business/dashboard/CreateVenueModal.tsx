@@ -21,8 +21,6 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
   const { refreshVenues, setSelectedVenue } = useVenue()
   const [name, setName] = useState("")
   const [address, setAddress] = useState("")
-  const [description, setDescription] = useState("")
-  const [website, setWebsite] = useState("")
   const [instagram, setInstagram] = useState("")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState("")
@@ -73,14 +71,6 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
       const created = await apiClient.post<{ venue: { id: number } }>("/business/venues", {
         name: name.trim(),
         address: address.trim(),
-        description: description.trim() || undefined,
-        website: (() => {
-          let w = website.trim()
-          if (w && !w.startsWith("http://") && !w.startsWith("https://")) {
-            w = "https://" + w
-          }
-          return w || undefined
-        })(),
         instagram: instagram.trim() || undefined,
       })
       const venueId = created.venue.id
@@ -106,8 +96,6 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
       setSelectedVenue(venueId)
       setName("")
       setAddress("")
-      setDescription("")
-      setWebsite("")
       setInstagram("")
       clearPhoto()
       if (!photoFailed) {
@@ -155,28 +143,6 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
               value={address}
               onChange={setAddress}
               placeholder="123 Main St, City, ST"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Brief description of this venue..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-            <input
-              type="text"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://www.example.com"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
             />
           </div>
