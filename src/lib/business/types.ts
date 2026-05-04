@@ -136,6 +136,9 @@ export interface EventDetail extends EventListItem {
   percentage: number
   tickets: TicketTier[]
   sales: { total_attendees: number; total_revenue: number; checkin_rate: number }
+  promotion_enabled?: boolean | number
+  promotion_commission_type?: 'percent' | 'fixed' | null
+  promotion_commission_value?: number | null
 }
 
 export interface RecurringNight {
@@ -167,6 +170,9 @@ export interface EventFormData {
   recurring_event?: RecurringEventConfig
   flyer_image_url: string
   tickets: TicketTier[]
+  promotion_enabled?: boolean
+  promotion_commission_type?: 'percent' | 'fixed'
+  promotion_commission_value?: number | null
 }
 
 // Deal types

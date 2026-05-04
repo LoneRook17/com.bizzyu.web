@@ -30,6 +30,38 @@ interface EventFormProps {
   businessAddress?: string
 }
 
+// promotion_commission_value is stored as basis points (percent) or cents (fixed).
+// The form-side state mirrors it as a string so users type "10" for 10% or
+// "5.00" for $5 — kept untouched while editing, only converted on submit.
+function commissionValueToInput(
+  type: 'percent' | 'fixed' | undefined,
+  storedValue: number | null | undefined
+): string {
+  if (storedValue == null) return ""
+  if (type === 'percent') return (storedValue / 100).toString()
+  if (type === 'fixed') return (storedValue / 100).toFixed(2)
+  return ""
+}
+
+function commissionInputToStored(
+  type: 'percent' | 'fixed',
+  inputValue: string
+): { value: number | null; error: string | null } {
+  const trimmed = inputValue.trim()
+  if (trimmed === "") return { value: null, error: "Enter a commission value" }
+  const num = Number(trimmed)
+  if (!Number.isFinite(num) || num <= 0) {
+    return { value: null, error: "Commission must be a positive number" }
+  }
+  if (type === 'percent') {
+    if (num > 50) return { value: null, error: "Commission cannot exceed 50%" }
+    // Persist as basis points (1000 = 10.00%). Accept up to 2 decimals.
+    return { value: Math.round(num * 100), error: null }
+  }
+  // fixed → cents
+  return { value: Math.round(num * 100), error: null }
+}
+
 const EMPTY_TICKET: TicketTier = {
   name: "General Admission",
   price_usd: 0,
@@ -58,7 +90,17 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
     recurring_event: initialData?.recurring_event || undefined,
     flyer_image_url: initialData?.flyer_image_url || "",
     tickets: initialData?.tickets || [{ ...EMPTY_TICKET }],
+    promotion_enabled: !!initialData?.promotion_enabled,
+    promotion_commission_type: initialData?.promotion_commission_type || "percent",
+    promotion_commission_value: initialData?.promotion_commission_value ?? null,
   })
+
+  const [promotionValueInput, setPromotionValueInput] = useState<string>(
+    commissionValueToInput(
+      initialData?.promotion_commission_type || "percent",
+      initialData?.promotion_commission_value
+    )
+  )
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
@@ -177,6 +219,27 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         }
       }
     }
+    if (form.promotion_enabled) {
+      const type = form.promotion_commission_type || "percent"
+      const { error } = commissionInputToStored(type, promotionValueInput)
+      if (error) {
+        errs.promotion_commission_value = error
+      } else if (type === "fixed") {
+        const cheapestPaidUsd = form.tickets
+          .filter((t) => (t.price_usd ?? 0) > 0)
+          .reduce<number>(
+            (min, t) => (t.price_usd < min ? t.price_usd : min),
+            Number.POSITIVE_INFINITY
+          )
+        if (Number.isFinite(cheapestPaidUsd)) {
+          const cap = cheapestPaidUsd / 2
+          if (Number(promotionValueInput) > cap) {
+            errs.promotion_commission_value =
+              `Fixed commission can't exceed 50% of the cheapest paid ticket ($${cap.toFixed(2)})`
+          }
+        }
+      }
+    }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -229,6 +292,19 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           max_per_person: t.max_per_person || undefined,
           ticket_type: t.ticket_type,
         }))
+      }
+
+      // Promoter Program — only send fields when promotion is enabled.
+      // When toggled off, send promotion_enabled: false so the server clears
+      // any prior commission_type/value.
+      if (form.promotion_enabled) {
+        const type = form.promotion_commission_type || "percent"
+        const { value } = commissionInputToStored(type, promotionValueInput)
+        payload.promotion_enabled = true
+        payload.promotion_commission_type = type
+        payload.promotion_commission_value = value
+      } else {
+        payload.promotion_enabled = false
       }
 
       if (isEditing) {
@@ -487,6 +563,107 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           {errors.tickets && <p className="mt-2 text-xs text-red-500">{errors.tickets}</p>}
         </div>
       )}
+
+      {/* Promoter Program */}
+      {form.type === "Ticketed" && (() => {
+        const hasPaidTicket = form.tickets.some((t) => (t.price_usd ?? 0) > 0)
+        const toggleDisabled = !hasPaidTicket || !stripeOnboarded
+        const disabledReason = !hasPaidTicket
+          ? "Add a paid ticket to enable Promoter Program."
+          : !stripeOnboarded
+            ? "Connect Stripe to enable Promoter Program."
+            : ""
+        const commissionType = form.promotion_commission_type || "percent"
+        return (
+          <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
+            <h2 className="text-sm font-semibold text-ink mb-1">Promoter Program</h2>
+            <p className="text-xs text-gray-500 mb-4">
+              Promoters share your event link and earn this on each sale.
+            </p>
+            <label
+              className={`flex items-center gap-2 ${toggleDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+              title={toggleDisabled ? disabledReason : undefined}
+            >
+              <input
+                type="checkbox"
+                checked={!!form.promotion_enabled}
+                disabled={toggleDisabled}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, promotion_enabled: e.target.checked }))
+                  setErrors((prev) => ({ ...prev, promotion_commission_value: "" }))
+                }}
+                className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+              />
+              <span className="text-sm text-gray-700">Enable Promoter Program</span>
+            </label>
+            {toggleDisabled && (
+              <p className="mt-1 text-xs text-yellow-600">{disabledReason}</p>
+            )}
+            {form.promotion_enabled && !toggleDisabled && (
+              <div className="mt-4 space-y-3">
+                <div>
+                  <p className="block text-sm font-medium text-gray-700 mb-1">Commission Type</p>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="promotion_commission_type"
+                        value="percent"
+                        checked={commissionType === "percent"}
+                        onChange={() => {
+                          setForm((prev) => ({ ...prev, promotion_commission_type: "percent" }))
+                          setPromotionValueInput("")
+                          setErrors((prev) => ({ ...prev, promotion_commission_value: "" }))
+                        }}
+                        className="text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-gray-700">Percent of ticket price</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="promotion_commission_type"
+                        value="fixed"
+                        checked={commissionType === "fixed"}
+                        onChange={() => {
+                          setForm((prev) => ({ ...prev, promotion_commission_type: "fixed" }))
+                          setPromotionValueInput("")
+                          setErrors((prev) => ({ ...prev, promotion_commission_value: "" }))
+                        }}
+                        className="text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-gray-700">Fixed amount per ticket</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="promotion_commission_value" className="block text-sm font-medium text-gray-700 mb-1">
+                    Commission {commissionType === "percent" ? "(%)" : "($)"}
+                  </label>
+                  <input
+                    id="promotion_commission_value"
+                    name="promotion_commission_value"
+                    type="number"
+                    inputMode="decimal"
+                    step={commissionType === "percent" ? "0.01" : "0.01"}
+                    min="0"
+                    placeholder={commissionType === "percent" ? "e.g. 10" : "e.g. 5.00"}
+                    value={promotionValueInput}
+                    onChange={(e) => {
+                      setPromotionValueInput(e.target.value)
+                      setErrors((prev) => ({ ...prev, promotion_commission_value: "" }))
+                    }}
+                    className="w-40 rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
+                  />
+                  {errors.promotion_commission_value && (
+                    <p className="mt-1 text-xs text-red-500">{errors.promotion_commission_value}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Submit */}
       {serverError && (

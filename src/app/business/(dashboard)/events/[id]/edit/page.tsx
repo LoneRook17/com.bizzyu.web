@@ -38,6 +38,9 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
           is_21_plus: event.is_21_plus,
           flyer_image_url: event.flyer_image_url || "",
           tickets: event.tickets || [],
+          promotion_enabled: !!event.promotion_enabled,
+          promotion_commission_type: event.promotion_commission_type ?? undefined,
+          promotion_commission_value: event.promotion_commission_value ?? null,
         })
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load event")
