@@ -7,6 +7,26 @@ import { getApiBaseUrl } from "@/lib/api-url"
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
 
+// Promoter attribution cookie (PRD §7.4). Read by client JS so the order
+// POST can include it; 24h TTL matches the PRD spec. Not httpOnly because
+// the cookie has to round-trip through React state.
+const REF_COOKIE = "bz_ref"
+const REF_COOKIE_TTL_SEC = 60 * 60 * 24
+
+function readRefCookie(): string | null {
+  if (typeof document === "undefined") return null
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${REF_COOKIE}=([^;]+)`))
+  return match?.[1] ? decodeURIComponent(match[1]) : null
+}
+
+function writeRefCookie(code: string) {
+  if (typeof document === "undefined") return
+  // SameSite=Lax keeps the cookie on the same-origin form POST that follows;
+  // the link is an external 302 from the API host, so Lax is the right floor.
+  const safe = encodeURIComponent(code)
+  document.cookie = `${REF_COOKIE}=${safe}; Max-Age=${REF_COOKIE_TTL_SEC}; Path=/; SameSite=Lax`
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface EventInfo {
@@ -107,6 +127,24 @@ export default function EventCheckoutClient({
   const [userName, setUserName] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+
+  // Promoter tracking code (PRD §7.4). On mount, hydrate from URL ?ref=
+  // (writing the cookie) or from any prior bz_ref cookie. Survives page
+  // reloads inside the 24h window so a buyer who tabs away and returns is
+  // still attributed to the promoter who got them here.
+  const [trackingCode, setTrackingCode] = useState<string | null>(null)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const fromUrl = params.get("ref")?.trim() || null
+    const valid = fromUrl && /^[A-Za-z0-9]{1,32}$/.test(fromUrl) ? fromUrl : null
+    if (valid) {
+      writeRefCookie(valid)
+      setTrackingCode(valid)
+    } else {
+      setTrackingCode(readRefCookie())
+    }
+  }, [])
 
   // ─── Fetch event data if not provided by server ─────────────────────────
 
@@ -339,6 +377,7 @@ export default function EventCheckoutClient({
           // correct .pkpass through the public session-id-gated route.
           successUrl: `${window.location.origin}/checkout/${eventId}?success=1&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: window.location.href,
+          ...(trackingCode ? { tracking_code: trackingCode } : {}),
         }),
       })
       const data = await res.json()
