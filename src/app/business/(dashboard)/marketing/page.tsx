@@ -11,7 +11,14 @@ import AttendeeFilterSheet, {
   EMPTY_FILTERS,
   type AttendeeFilters,
 } from "@/components/business/dashboard/marketing/AttendeeFilterSheet"
-import type { AttendeesResponse, AttendeeRow } from "@/components/business/dashboard/marketing/types"
+import BlastComposerModal from "@/components/business/dashboard/marketing/BlastComposerModal"
+import type {
+  AttendeesResponse,
+  AttendeeRow,
+  AudiencePreviewResponse,
+  BlastAudienceBody,
+  BlastChannel,
+} from "@/components/business/dashboard/marketing/types"
 
 const DISCLAIMER =
   "Marketing SMS blasts to all attendees are limited to 1 per 24h. To send unlimited event-specific updates, head to your event dashboard and use the SMS Blast tab there."
@@ -121,6 +128,78 @@ export default function AttendeesPage() {
     (filters.has_phone ? 1 : 0) +
     (filters.has_push ? 1 : 0)
 
+  // ─── Composer wiring (Session 5.1) ─────────────────────────────────────
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [composerChannel, setComposerChannel] = useState<BlastChannel>("sms")
+  const [composerAudience, setComposerAudience] = useState<BlastAudienceBody>({})
+  const [composerLabel, setComposerLabel] = useState<string>("")
+
+  /**
+   * Build the audience payload for filter-driven sends. Mirrors PRD §6.5.5:
+   * exactly one of `user_ids` or `filters` per request.
+   */
+  const filterAudience = useMemo<BlastAudienceBody | null>(() => {
+    if (filterCount === 0) return null
+    return {
+      filters: {
+        ...(filters.tag_id != null ? { tag_id: filters.tag_id } : {}),
+        ...(filters.last_purchase_within_days != null
+          ? { purchased_within_days: filters.last_purchase_within_days }
+          : {}),
+        ...(filters.has_phone ? { has_phone: true } : {}),
+        ...(filters.has_push ? { has_push: true } : {}),
+      },
+    }
+  }, [filterCount, filters])
+
+  // Live count for the active filter set (debounced via apiClient call).
+  const [filterPreview, setFilterPreview] = useState<AudiencePreviewResponse | null>(null)
+  useEffect(() => {
+    if (!filterAudience) {
+      setFilterPreview(null)
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(() => {
+      apiClient
+        .post<AudiencePreviewResponse>("/business/marketing/blasts/audience-preview", {
+          audience: filterAudience,
+        })
+        .then((res) => {
+          if (!cancelled) setFilterPreview(res)
+        })
+        .catch(() => {
+          if (!cancelled) setFilterPreview(null)
+        })
+    }, 500)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [filterAudience])
+
+  const openSelectionComposer = (channel: BlastChannel) => {
+    setComposerChannel(channel)
+    setComposerAudience({ user_ids: selectedIds })
+    setComposerLabel(`${selectedIds.length} selected attendee${selectedIds.length === 1 ? "" : "s"}`)
+    setComposerOpen(true)
+  }
+
+  const openFilterComposer = (channel: BlastChannel) => {
+    if (!filterAudience) return
+    setComposerChannel(channel)
+    setComposerAudience(filterAudience)
+    setComposerLabel(buildFilterLabel(filters))
+    setComposerOpen(true)
+  }
+
+  const openSingleSmsComposer = (userId: number, displayName: string) => {
+    setComposerChannel("sms")
+    setComposerAudience({ user_ids: [userId] })
+    setComposerLabel(`Direct SMS to ${displayName}`)
+    setComposerOpen(true)
+  }
+
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -214,6 +293,11 @@ export default function AttendeesPage() {
                 selected={selected.has(a.id)}
                 onToggle={() => toggleRow(a.id)}
                 onOpenDrawer={() => setDrawerUserId(a.id)}
+                onSendSms={
+                  canManageTags && a.contact.sms_reachable
+                    ? () => openSingleSmsComposer(a.id, a.full_name)
+                    : undefined
+                }
                 isOwner={isOwner}
               />
             ))}
@@ -247,23 +331,53 @@ export default function AttendeesPage() {
         </div>
       )}
 
+      {filterAudience && selected.size === 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+          <span className="text-sm text-ink">
+            {filterPreview
+              ? `Sending to ${filterPreview.recipients_count} attendee${filterPreview.recipients_count === 1 ? "" : "s"}`
+              : "Calculating audience…"}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => openFilterComposer("sms")}
+              disabled={!canManageTags || !filterPreview || filterPreview.recipients_count === 0}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Send SMS Blast
+            </button>
+            <button
+              type="button"
+              onClick={() => openFilterComposer("announcement")}
+              disabled={!canManageTags || !filterPreview || filterPreview.recipients_count === 0}
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              Send Announcement
+            </button>
+          </div>
+        </div>
+      )}
+
       {selected.size > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-gray-200 bg-white px-4 py-3 shadow-lg md:left-64">
           <span className="text-sm font-medium text-ink">{selected.size} selected</span>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              disabled
-              title="Available after Session 5.1 ships."
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-400"
+              onClick={() => openSelectionComposer("sms")}
+              disabled={!canManageTags}
+              title={canManageTags ? "" : "Owner or manager only"}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               Send SMS
             </button>
             <button
               type="button"
-              disabled
-              title="Available after Session 5.1 ships."
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-400"
+              onClick={() => openSelectionComposer("announcement")}
+              disabled={!canManageTags}
+              title={canManageTags ? "" : "Owner or manager only"}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               Send Announcement
             </button>
@@ -287,6 +401,21 @@ export default function AttendeesPage() {
         </div>
       )}
 
+      <BlastComposerModal
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        channel={composerChannel}
+        audience={composerAudience}
+        audienceLabel={composerLabel}
+        onSent={() => {
+          // Clear selection after a multi-select send so the user gets visual
+          // feedback that the cohort was consumed.
+          if (composerAudience.user_ids && composerAudience.user_ids.length > 1) {
+            clearSelection()
+          }
+        }}
+      />
+
       <AttendeeFilterSheet
         open={filterOpen}
         onClose={() => setFilterOpen(false)}
@@ -309,17 +438,29 @@ export default function AttendeesPage() {
   )
 }
 
+function buildFilterLabel(filters: AttendeeFilters): string {
+  const parts: string[] = []
+  if (filters.tag_id != null) parts.push(`tag #${filters.tag_id}`)
+  if (filters.last_purchase_within_days != null)
+    parts.push(`last ${filters.last_purchase_within_days}d`)
+  if (filters.has_phone) parts.push("has phone")
+  if (filters.has_push) parts.push("has push")
+  return parts.length > 0 ? `Filter: ${parts.join(", ")}` : "Filter audience"
+}
+
 function AttendeeRowView({
   row,
   selected,
   onToggle,
   onOpenDrawer,
+  onSendSms,
   isOwner,
 }: {
   row: AttendeeRow
   selected: boolean
   onToggle: () => void
   onOpenDrawer: () => void
+  onSendSms?: () => void
   isOwner: boolean
 }) {
   return (
@@ -351,7 +492,18 @@ function AttendeeRowView({
       <td className="px-3 py-2 text-right tabular-nums">${(row.spend_cents / 100).toFixed(2)}</td>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2 text-gray-500">
-          {row.contact.sms_reachable && (
+          {row.contact.sms_reachable && onSendSms && (
+            <button
+              type="button"
+              onClick={onSendSms}
+              title="Send 1-on-1 SMS"
+              aria-label="Send SMS"
+              className="hover:text-primary"
+            >
+              💬
+            </button>
+          )}
+          {row.contact.sms_reachable && !onSendSms && (
             <span title="SMS reachable" aria-label="SMS reachable">
               💬
             </span>
