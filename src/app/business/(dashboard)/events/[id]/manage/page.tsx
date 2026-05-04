@@ -8,6 +8,7 @@ import CancelEventModal from "@/components/business/dashboard/CancelEventModal"
 import { useRouter } from "next/navigation"
 import type { EventDetail } from "@/lib/business/types"
 import RolePermissionsModal from "@/components/business/dashboard/RolePermissionsModal"
+import DoorCountersRecap from "@/components/business/dashboard/DoorCountersRecap"
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -268,6 +269,9 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
       )}
+
+      {/* Door Counters recap (PRD §5.5) */}
+      {canEdit && <DoorCountersRecap eventId={Number(id)} className="mb-4" />}
 
       {/* Danger Zone */}
       {canEdit && (
