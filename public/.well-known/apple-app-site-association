@@ -7,10 +7,18 @@
           { "/": "/lineskip/*", "exclude": true },
           { "/": "/ls/*", "exclude": true },
           { "/": "/checkin/*", "exclude": true },
+          { "/": "/event/*/checkout" },
           { "/": "/event/*" },
+          { "/": "/ticket/*/wallet" },
+          { "/": "/ticket/*" },
+          { "/": "/line-skip/ticket/*/wallet" },
+          { "/": "/line-skip/*" },
+          { "/": "/scanner/*" },
+          { "/": "/business/*" },
+          { "/": "/promote/*" },
+          { "/": "/p/*" },
           { "/": "/venue/*" },
-          { "/": "/deal/*" },
-          { "/": "/business/*" }
+          { "/": "/deal/*" }
         ]
       }
     ]
