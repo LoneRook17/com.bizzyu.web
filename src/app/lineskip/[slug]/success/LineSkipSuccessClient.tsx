@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { QRCodeSVG } from "qrcode.react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
@@ -9,6 +9,18 @@ const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com
 
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
+
+// Apple Wallet only installs .pkpass files via Safari/iOS, Chrome/iOS, or
+// the iOS Mail/Messages share sheet. Hide the button on platforms where
+// the install will silently fail (desktop Chrome, Android browsers).
+function isAppleWalletCapable(): boolean {
+  if (typeof navigator === "undefined") return false
+  const ua = navigator.userAgent || ""
+  // iPhone, iPad, iPod, plus iPad-on-Safari that reports as Mac with touch.
+  if (/iPhone|iPad|iPod/.test(ua)) return true
+  if (/Macintosh/.test(ua) && typeof (navigator as { maxTouchPoints?: number }).maxTouchPoints === "number" && (navigator as { maxTouchPoints?: number }).maxTouchPoints! > 1) return true
+  return false
+}
 
 interface TicketInfo {
   id: number
@@ -207,6 +219,9 @@ export default function LineSkipSuccessClient({
           </div>
         </div>
 
+        {/* Add to Apple Wallet — iOS Safari / Chrome only */}
+        <AppleWalletLineSkipButton tickets={tickets} sessionId={sessionId} />
+
         {/* Download app CTA */}
         <div className="rounded-xl bg-white/5 border border-white/10 p-5">
           <div className="flex items-center gap-4">
@@ -241,6 +256,53 @@ export default function LineSkipSuccessClient({
           </a>
         </div>
       </div>
+    </div>
+  )
+}
+
+function AppleWalletLineSkipButton({
+  tickets,
+  sessionId,
+}: {
+  tickets: TicketInfo[]
+  sessionId: string
+}) {
+  // UA detection runs client-side only; render nothing until we know.
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    setShow(isAppleWalletCapable())
+  }, [])
+
+  const buttonStyle = useMemo(
+    () => ({
+      backgroundColor: "#000",
+      color: "#fff",
+    }),
+    [],
+  )
+
+  if (!show || tickets.length === 0) return null
+
+  return (
+    <div className="mt-4 space-y-2">
+      {tickets.map((ticket, idx) => (
+        <a
+          key={`wallet-${ticket.uuid}`}
+          // Anchor the user straight at the wallet-pass binary; iOS Safari
+          // serves it through PassKit's "Add to Wallet" sheet automatically.
+          // No-JS install — matches PRD §3.4 web button behavior.
+          href={`${API_URL}/public/wallet/line-skip-ticket/${ticket.uuid}/wallet-pass?session_id=${encodeURIComponent(sessionId)}`}
+          className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
+          style={buttonStyle}
+        >
+          {/* Apple Wallet wordmark */}
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
+          </svg>
+          Add to Apple Wallet
+          {tickets.length > 1 ? ` (#${idx + 1})` : ""}
+        </a>
+      ))}
     </div>
   )
 }
