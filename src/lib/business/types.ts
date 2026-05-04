@@ -224,6 +224,22 @@ export interface EventAnalytics {
   revenue: { revenue: number; pre_sales_revenue: number; door_sales_revenue: number }
 }
 
+export interface PerScannerRow {
+  staff_user_id: number | null
+  staff_name: string | null
+  scanner_label: string | null
+  scans: number
+  valid_scans: number
+  rejected_scans: number
+  revenue: number
+  first_scan_at: string | null
+  last_scan_at: string | null
+}
+
+export interface PerScannerResponse {
+  rows: PerScannerRow[]
+}
+
 export interface DealAnalytics {
   total_claims: number
   claims_by_period: { period: string; count: number }[]

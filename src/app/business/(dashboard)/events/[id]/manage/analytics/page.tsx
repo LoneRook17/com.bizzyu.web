@@ -4,11 +4,13 @@ import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import EventAnalyticsView from "@/components/business/dashboard/EventAnalyticsView"
-import type { EventAnalytics } from "@/lib/business/types"
+import DoorPerformanceCard from "@/components/business/dashboard/DoorPerformanceCard"
+import type { EventAnalytics, PerScannerResponse, PerScannerRow } from "@/lib/business/types"
 
 export default function EventAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [data, setData] = useState<EventAnalytics | null>(null)
+  const [perScanner, setPerScanner] = useState<PerScannerRow[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -18,6 +20,11 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
       .then(setData)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load analytics"))
       .finally(() => setLoading(false))
+
+    apiClient
+      .get<PerScannerResponse>(`/business/analytics/events/${id}/per-scanner`)
+      .then((res) => setPerScanner(res.rows ?? []))
+      .catch(() => setPerScanner([]))
   }, [id])
 
   if (loading) {
@@ -42,7 +49,10 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
           <p className="text-sm text-red-500">{error}</p>
         </div>
       ) : data ? (
-        <EventAnalyticsView data={data} />
+        <div className="space-y-6">
+          <EventAnalyticsView data={data} />
+          {perScanner !== null && <DoorPerformanceCard rows={perScanner} />}
+        </div>
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
           <p className="text-sm text-gray-500">No analytics data available yet.</p>
