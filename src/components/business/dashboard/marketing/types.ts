@@ -60,3 +60,74 @@ export const TAG_COLOR_PALETTE: Array<{ name: string; hex: string }> = [
   { name: "Pink", hex: "#EC4899" },
   { name: "Gray", hex: "#6B7280" },
 ]
+
+// ─── Campaigns / Blasts (Session 5.1) ────────────────────────────────────
+
+export type CampaignType = "announcement" | "event_sms" | "attendee_sms"
+export type CampaignTypeFilter = "all" | CampaignType
+export type BlastChannel = "announcement" | "sms"
+
+export interface AudienceFiltersBody {
+  tag_id?: number | null
+  purchased_within_days?: number | null
+  has_phone?: boolean
+  has_push?: boolean
+  is_follower?: boolean
+}
+
+export interface BlastAudienceBody {
+  user_ids?: number[]
+  filters?: AudienceFiltersBody
+}
+
+export interface AudiencePreviewResponse {
+  recipients_count: number
+  breakdown_by_channel: { phone_reachable: number; push_reachable: number }
+}
+
+export interface SendBlastResponse {
+  blast_id: number
+  recipients_count: number
+  estimated_cost_cents: number
+  channel: BlastChannel
+  blast_type: "announcement" | "sms_blast" | "organization_blast"
+}
+
+export interface CampaignRow {
+  id: number
+  blast_type: CampaignType
+  channel: "push" | "sms" | "both"
+  audience_summary: string
+  recipients_count: number
+  estimated_cost_cents: number
+  message_preview: string
+  sent_at: string
+}
+
+export interface CampaignsResponse {
+  campaigns: CampaignRow[]
+  pagination: { page: number; limit: number; total: number; total_pages: number }
+}
+
+export interface CampaignDetail {
+  id: number
+  blast_type: CampaignType
+  channel: "push" | "sms" | "both"
+  fired_by_user_id: number
+  sent_at: string
+  message: string
+  counts: {
+    recipients: number
+    push_sent: number
+    sms_segments_sent: number
+    estimated_cost_cents: number
+  }
+  audience: {
+    event_ids: number[]
+    events: Array<{ id: number; name: string }>
+    organization_filters: { user_ids?: number[]; filters?: AudienceFiltersBody } | null
+    recipients: Array<{ user_id: number; full_name: string }>
+    cohort_note: string | null
+  }
+  delivery_note: string
+}
