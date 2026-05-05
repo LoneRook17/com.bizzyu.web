@@ -258,15 +258,6 @@ export default function CreateLineSkipPage() {
       </Link>
       <h1 className="text-xl font-bold text-ink mb-6">Create Line Skip</h1>
 
-      <div className="mb-5 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 space-y-2">
-        <p className="text-sm text-blue-700">
-          Line skips include cover. Customers who purchase a line skip will skip the line and have their cover included in the price.
-        </p>
-        <p className="text-sm text-blue-700">
-          Line skip tickets are scanned using the universal scanner — customers simply show their QR code and staff scan it with any phone camera. No app or special equipment needed.
-        </p>
-      </div>
-
       {serverError && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
           {serverError}

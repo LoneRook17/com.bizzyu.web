@@ -11,7 +11,7 @@ export default function HowEventsWorkSection() {
           <p className="text-sm text-muted leading-relaxed">
             List your event on Bizzy and get it in front of students at your
             campus. Sell tickets, accept cover at the door, and scan tickets
-            in &mdash; all from one place. We take{" "}
+            in, all from one place. We take{" "}
             <span className="font-semibold text-ink">0% of every ticket</span>.
             Payouts go straight to your Stripe account.
           </p>
@@ -28,7 +28,7 @@ export default function HowEventsWorkSection() {
           />
           <FactPillLink
             title="Tap to Pay at the door"
-            body="Collect cover on any iPhone — no separate POS needed."
+            body="Collect cover on any iPhone. No separate POS needed."
             href="/business/help/tap-to-pay"
           />
         </div>

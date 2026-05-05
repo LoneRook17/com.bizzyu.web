@@ -44,7 +44,7 @@ export default function HowDealsWorkSection() {
           </p>
         </div>
 
-        {/* Staff-tap callout — make it impossible to miss */}
+        {/* Staff-tap callout, make it impossible to miss */}
         <div className="mb-5 rounded-lg border border-primary/30 bg-primary/5 p-3 flex gap-2.5">
           <div className="shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
             !

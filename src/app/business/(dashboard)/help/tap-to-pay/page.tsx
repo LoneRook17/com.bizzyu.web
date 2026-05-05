@@ -6,7 +6,7 @@ const STEPS = [
   {
     title: "Download the Bizzy app",
     body:
-      "Get the Bizzy app on the iPhone of any door staff member who'll be collecting cover. The same app students use — Tap to Pay tools unlock once they're added to your team.",
+      "Get the Bizzy app on the iPhone of any door staff member who'll be collecting cover. It's the same app students use. Tap to Pay tools unlock once they're added to your team.",
   },
   {
     title: "Add their phone number to your event team",
@@ -16,7 +16,7 @@ const STEPS = [
   {
     title: "They unlock Accept Payments in the app",
     body:
-      "Once added to the team, the door staff sees an Accept Payments button on the event in the Bizzy app — no setup, no card reader, no extra account.",
+      "Once added to the team, the door staff sees an Accept Payments button on the event in the Bizzy app. No setup, no card reader, no extra account.",
   },
   {
     title: "Tap to Pay at the door",
