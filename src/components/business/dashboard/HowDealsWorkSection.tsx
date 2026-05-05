@@ -33,23 +33,23 @@ const STEPS: Step[] = [
 
 export default function HowDealsWorkSection() {
   return (
-    <section className="mb-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 md:p-8">
-        <div className="mb-6">
-          <h2 className="text-lg md:text-xl font-bold text-ink mb-1">
+    <section className="mb-6">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
+        <div className="mb-4">
+          <h2 className="text-base md:text-lg font-bold text-ink mb-0.5">
             How students claim your deal
           </h2>
-          <p className="text-sm text-muted">
+          <p className="text-xs text-muted">
             Three steps. The middle one is on your staff.
           </p>
         </div>
 
         {/* Staff-tap callout — make it impossible to miss */}
-        <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4 flex gap-3">
-          <div className="shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">
+        <div className="mb-5 rounded-lg border border-primary/30 bg-primary/5 p-3 flex gap-2.5">
+          <div className="shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
             !
           </div>
-          <div className="text-sm">
+          <div className="text-xs">
             <p className="font-semibold text-ink mb-0.5">
               Your staff must tap the green button on the student&rsquo;s phone.
             </p>
@@ -64,30 +64,30 @@ export default function HowDealsWorkSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {STEPS.map((step, i) => (
             <div
               key={step.img}
               className="flex flex-col items-center text-center"
             >
               <div
-                className={`relative w-[180px] md:w-[200px] h-[360px] md:h-[400px] mb-3 ${
+                className={`relative w-[120px] md:w-[140px] h-[240px] md:h-[280px] mb-2 ${
                   step.highlight
-                    ? "ring-4 ring-primary/30 rounded-[2rem]"
+                    ? "ring-2 ring-primary/30 rounded-[1.5rem]"
                     : ""
                 }`}
               >
-                <div className="absolute inset-0 bg-primary/5 rounded-[2rem] blur-xl scale-[0.85] -z-10" />
+                <div className="absolute inset-0 bg-primary/5 rounded-[1.5rem] blur-xl scale-[0.85] -z-10" />
                 <Image
                   src={step.img}
                   alt={step.alt}
                   fill
-                  className="object-contain drop-shadow-xl"
+                  className="object-contain drop-shadow-md"
                 />
               </div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
                 <span
-                  className={`w-6 h-6 shrink-0 rounded-full text-xs font-bold flex items-center justify-center ${
+                  className={`w-5 h-5 shrink-0 rounded-full text-[10px] font-bold flex items-center justify-center ${
                     step.highlight
                       ? "bg-primary text-white"
                       : "bg-gray-100 text-ink"
@@ -95,11 +95,11 @@ export default function HowDealsWorkSection() {
                 >
                   {i + 1}
                 </span>
-                <h3 className="text-sm md:text-base font-bold text-ink">
+                <h3 className="text-xs md:text-sm font-bold text-ink">
                   {step.title}
                 </h3>
               </div>
-              <p className="text-xs md:text-sm text-muted max-w-[220px]">
+              <p className="text-[11px] md:text-xs text-muted max-w-[200px]">
                 {step.desc}
               </p>
             </div>

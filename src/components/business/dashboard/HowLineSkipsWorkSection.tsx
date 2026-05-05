@@ -15,7 +15,7 @@ const STEPS: Step[] = [
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="w-9 h-9"
+        className="w-7 h-7"
       >
         <rect x="6" y="3" width="12" height="18" rx="2.5" />
         <path d="M9 7h6" />
@@ -35,7 +35,7 @@ const STEPS: Step[] = [
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="w-9 h-9"
+        className="w-7 h-7"
       >
         <rect x="3" y="3" width="7" height="7" rx="1" />
         <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -60,7 +60,7 @@ const STEPS: Step[] = [
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="w-9 h-9"
+        className="w-7 h-7"
       >
         <path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
         <path d="M22 4L12 14.01l-3-3" />
@@ -74,23 +74,23 @@ const STEPS: Step[] = [
 
 export default function HowLineSkipsWorkSection() {
   return (
-    <section className="mb-8">
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 md:p-8">
-        <div className="mb-6">
-          <h2 className="text-lg md:text-xl font-bold text-ink mb-1">
+    <section className="mb-6">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
+        <div className="mb-4">
+          <h2 className="text-base md:text-lg font-bold text-ink mb-0.5">
             How students redeem your line skip
           </h2>
-          <p className="text-sm text-muted">
+          <p className="text-xs text-muted">
             Three steps. The middle one is on your door staff.
           </p>
         </div>
 
         {/* Door-staff scan callout — make it impossible to miss */}
-        <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4 flex gap-3">
-          <div className="shrink-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">
+        <div className="mb-5 rounded-lg border border-primary/30 bg-primary/5 p-3 flex gap-2.5">
+          <div className="shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
             !
           </div>
-          <div className="text-sm">
+          <div className="text-xs">
             <p className="font-semibold text-ink mb-0.5">
               Your door staff must scan the QR on the student&rsquo;s phone.
             </p>
@@ -103,18 +103,18 @@ export default function HowLineSkipsWorkSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
           {STEPS.map((step, i) => (
             <div
               key={step.title}
-              className={`flex flex-col items-center text-center rounded-2xl p-5 border ${
+              className={`flex flex-col items-center text-center rounded-xl p-3 border ${
                 step.highlight
                   ? "border-primary/40 bg-primary/5"
                   : "border-gray-200 bg-white"
               }`}
             >
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center mb-2.5 ${
                   step.highlight
                     ? "bg-primary text-white"
                     : "bg-gray-100 text-ink"
@@ -122,9 +122,9 @@ export default function HowLineSkipsWorkSection() {
               >
                 {step.icon}
               </div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
                 <span
-                  className={`w-6 h-6 shrink-0 rounded-full text-xs font-bold flex items-center justify-center ${
+                  className={`w-5 h-5 shrink-0 rounded-full text-[10px] font-bold flex items-center justify-center ${
                     step.highlight
                       ? "bg-primary text-white"
                       : "bg-gray-100 text-ink"
@@ -132,11 +132,11 @@ export default function HowLineSkipsWorkSection() {
                 >
                   {i + 1}
                 </span>
-                <h3 className="text-sm md:text-base font-bold text-ink">
+                <h3 className="text-xs md:text-sm font-bold text-ink">
                   {step.title}
                 </h3>
               </div>
-              <p className="text-xs md:text-sm text-muted max-w-[260px]">
+              <p className="text-[11px] md:text-xs text-muted max-w-[240px]">
                 {step.desc}
               </p>
             </div>
