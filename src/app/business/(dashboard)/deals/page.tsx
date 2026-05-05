@@ -9,6 +9,7 @@ import { apiClient } from "@/lib/business/api-client"
 import { DEAL_TABS } from "@/lib/business/constants"
 import DealCard from "@/components/business/dashboard/DealCard"
 import EmptyState from "@/components/business/dashboard/EmptyState"
+import HowDealsWorkSection from "@/components/business/dashboard/HowDealsWorkSection"
 import Pagination from "@/components/business/dashboard/Pagination"
 import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { DealListItem } from "@/lib/business/types"
@@ -112,6 +113,7 @@ export default function DealsPage() {
 
   return (
     <div>
+      <HowDealsWorkSection />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-ink">Deals</h1>
