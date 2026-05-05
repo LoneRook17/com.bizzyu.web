@@ -9,6 +9,7 @@ import ImageUpload from "./ImageUpload"
 import TicketTierForm from "./TicketTierForm"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { EVENT_TYPES } from "@/lib/business/constants"
+import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import type { EventFormData, RecurringEventConfig, RecurringNight, TicketTier } from "@/lib/business/types"
 
@@ -41,6 +42,7 @@ const EMPTY_TICKET: TicketTier = {
 export default function EventForm({ initialData, eventId, stripeOnboarded = true, businessName, businessAddress }: EventFormProps) {
   const router = useRouter()
   const isEditing = !!eventId
+  const { business } = useAuth()
   const { venues, selectedVenue, isAllVenues, setSelectedVenue } = useVenue()
 
   const [form, setForm] = useState<EventFormData>({
@@ -239,6 +241,27 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           "/business/events",
           payload
         )
+        // Best-effort admin notification — never block redirect on failure
+        void fetch("/api/admin-notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "event",
+            title: form.name,
+            business: business?.name,
+            venue: form.venue_name,
+            id: data.event_id,
+            createdBy: business?.email,
+            details: {
+              "Type": form.type,
+              "Venue address": form.venue_address,
+              "Start": form.start_date_time || "(unset)",
+              "End": form.end_date_time || "(unset)",
+              "Tickets": form.type === "Ticketed" ? `${form.tickets.length} tier(s)` : "—",
+              "Moderation status": data.moderation_status ?? "approved",
+            },
+          }),
+        }).catch((err) => console.error("Admin notify failed:", err))
         if (data.moderation_status === "pending_review") {
           setModerationNotice("Your event has been created but is under review due to content moderation.")
           setTimeout(() => router.push("/business/events"), 3000)

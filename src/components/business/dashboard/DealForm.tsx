@@ -52,6 +52,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     if (!form.description.trim()) errs.description = "Description is required"
     if (!form.total_saving.trim()) errs.total_saving = "Estimated savings is required"
     if (!form.redemption_frequency) errs.redemption_frequency = "Redemption frequency is required"
+    if (!form.deal_image_path) errs.deal_image_path = "Deal image is required"
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -98,6 +99,27 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
           "/business/deals",
           payload
         )
+        // Best-effort admin notification — never block redirect on failure
+        void fetch("/api/admin-notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "deal",
+            title: form.deal_title,
+            business: business?.name,
+            venue: selectedVenue?.name,
+            id: data.deal_id,
+            createdBy: business?.email,
+            details: {
+              "Description": form.description,
+              "Estimated savings": `$${savingsNum}`,
+              "Frequency": selectedOption?.label ?? dealType,
+              "Start date": form.start_date || "(immediate)",
+              "Expiration": form.expired_date || "(none)",
+              "Moderation status": data.moderation_status ?? "approved",
+            },
+          }),
+        }).catch((err) => console.error("Admin notify failed:", err))
         if (data.moderation_status === "pending_review") {
           setModerationNotice("Your deal has been created but is under review due to content moderation.")
           setTimeout(() => router.push("/business/deals"), 3000)
@@ -442,16 +464,22 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
               {/* Deal Image */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-ink mb-1">
-                  Deal Image <span className="text-muted font-normal">(optional)</span>
+                  Deal Image <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs text-muted mb-2">
-                  Recommended: 1600&times;1000px landscape (16:10). You can always send one later.
+                  Recommended: 1600&times;1000px landscape (16:10).
                 </p>
                 <ImageUpload
                   value={form.deal_image_path}
-                  onChange={(url) => setForm((prev) => ({ ...prev, deal_image_path: url }))}
+                  onChange={(url) => {
+                    setForm((prev) => ({ ...prev, deal_image_path: url }))
+                    setErrors((prev) => ({ ...prev, deal_image_path: "" }))
+                  }}
                   label=""
                 />
+                {errors.deal_image_path && (
+                  <p className="text-xs text-red-500 mt-2">{errors.deal_image_path}</p>
+                )}
               </div>
 
               {/* Submit */}
