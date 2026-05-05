@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
 import EmptyState from "@/components/business/dashboard/EmptyState"
+import HowLineSkipsWorkSection from "@/components/business/dashboard/HowLineSkipsWorkSection"
 import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { LineSkip } from "@/lib/business/types"
 
@@ -79,6 +80,7 @@ export default function LineSkipsPage() {
 
   return (
     <div>
+      <HowLineSkipsWorkSection />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-ink">Line Skips</h1>
