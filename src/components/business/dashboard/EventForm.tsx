@@ -383,7 +383,14 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
 
       {/* Date & Time */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-semibold text-ink mb-4">Date & Time</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-ink">Date & Time</h2>
+          {selectedVenue?.name && (
+            <span className="text-xs text-muted">
+              Times are in <span className="font-semibold text-ink">{selectedVenue.name} local time</span>
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <FormInput
             label="Start"
