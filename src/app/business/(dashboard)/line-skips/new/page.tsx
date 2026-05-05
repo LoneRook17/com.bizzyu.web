@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { useVenue } from "@/lib/business/venue-context"
+import HowLineSkipsWorkSection from "@/components/business/dashboard/HowLineSkipsWorkSection"
 import type { BusinessProfile, LineSkipFormData } from "@/lib/business/types"
 
 const DAYS = [
@@ -249,7 +250,9 @@ export default function CreateLineSkipPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <>
+      <HowLineSkipsWorkSection />
+      <div className="max-w-2xl">
       <Link href="/business/line-skips" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
         &larr; Back to Line Skips
       </Link>
@@ -472,5 +475,6 @@ export default function CreateLineSkipPage() {
         </div>
       </form>
     </div>
+    </>
   )
 }
