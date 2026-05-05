@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/business/api-client"
 import { EVENT_TABS } from "@/lib/business/constants"
 import EventCard from "@/components/business/dashboard/EventCard"
 import EmptyState from "@/components/business/dashboard/EmptyState"
+import HowEventsWorkSection from "@/components/business/dashboard/HowEventsWorkSection"
 import Pagination from "@/components/business/dashboard/Pagination"
 import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { EventListItem, BusinessProfile } from "@/lib/business/types"
@@ -93,6 +94,7 @@ export default function EventsPage() {
 
   return (
     <div>
+      <HowEventsWorkSection />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-ink">Events</h1>
