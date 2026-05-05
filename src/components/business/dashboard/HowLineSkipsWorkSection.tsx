@@ -48,7 +48,7 @@ const STEPS: Step[] = [
     ),
     title: "Door staff scans the QR",
     desc:
-      "When the student arrives, your door staff opens the Bizzy scanner and scans the QR on the student's phone. Takes 2 seconds.",
+      "When the student arrives, your door staff scans the QR on the student's phone with any phone camera — the iPhone camera reads it automatically. No app or special scanner needed.",
     highlight: true,
   },
   {
@@ -95,10 +95,10 @@ export default function HowLineSkipsWorkSection() {
               Your door staff must scan the QR on the student&rsquo;s phone.
             </p>
             <p className="text-muted">
-              If staff doesn&rsquo;t scan, the skip can&rsquo;t be marked
-              used &mdash; you lose the audit trail and the ticket could be
-              reused. Make sure scanner devices are set up and your team
-              knows where the scanner button lives in the app.
+              Any phone camera works &mdash; even the iPhone camera. No app
+              or special scanner needed. If staff doesn&rsquo;t scan, the
+              skip can&rsquo;t be marked used &mdash; you lose the audit
+              trail and the ticket could be reused.
             </p>
           </div>
         </div>
