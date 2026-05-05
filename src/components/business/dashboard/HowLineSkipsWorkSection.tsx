@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 export default function HowLineSkipsWorkSection() {
   return (
     <section className="mb-6">
@@ -10,7 +12,13 @@ export default function HowLineSkipsWorkSection() {
             Line skips let students skip the line at your venue on busy
             nights. They purchase a skip in Bizzy, walk up to your line-skip
             line, and show the QR at the door. Your door staff scans it with
-            the <span className="font-semibold text-ink">Bizzy scanner</span>{" "}
+            the{" "}
+            <Link
+              href="/business/scanner"
+              className="font-bold text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+            >
+              Bizzy scanner
+            </Link>{" "}
             or any phone camera and they walk in.
           </p>
         </div>
