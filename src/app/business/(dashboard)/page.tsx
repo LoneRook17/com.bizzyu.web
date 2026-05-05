@@ -30,13 +30,44 @@ function QuickStatCard({ label, value, sub }: { label: string; value: string | n
   )
 }
 
-function ActivityItem({ item }: { item: ActivityFeedItem }) {
-  const time = new Date(item.timestamp).toLocaleDateString("en-US", {
+/** Parse Laravel timestamps that may or may not include a timezone marker.
+ * Naked ISO strings (e.g. "2026-05-05 23:41:00") are stored as UTC server-side;
+ * JS would otherwise parse them as local time. Treat them as UTC so the
+ * display converts correctly to the viewer's local zone. */
+function parseTimestamp(raw: string): Date {
+  const hasTimezone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw)
+  const normalized = hasTimezone
+    ? raw
+    : raw.replace(" ", "T") + "Z"
+  return new Date(normalized)
+}
+
+function formatActivityTime(raw: string): string {
+  const date = parseTimestamp(raw)
+  const now = new Date()
+  const diffSec = Math.max(0, (now.getTime() - date.getTime()) / 1000)
+
+  // Relative for very recent so the feed feels live.
+  if (diffSec < 60) return "Just now"
+  if (diffSec < 3600) {
+    const mins = Math.floor(diffSec / 60)
+    return `${mins} min${mins === 1 ? "" : "s"} ago`
+  }
+  if (diffSec < 86400) {
+    const hours = Math.floor(diffSec / 3600)
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`
+  }
+  // Absolute for older — viewer's local timezone.
+  return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   })
+}
+
+function ActivityItem({ item }: { item: ActivityFeedItem }) {
+  const time = formatActivityTime(item.timestamp)
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
