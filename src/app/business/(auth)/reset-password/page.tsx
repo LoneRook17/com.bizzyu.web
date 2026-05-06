@@ -11,6 +11,7 @@ import { apiClient, ApiError } from "@/lib/business/api-client"
 function ResetPasswordContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
+  const isWelcome = searchParams.get("welcome") === "1"
 
   const [form, setForm] = useState({ password: "", confirm_password: "" })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -39,7 +40,10 @@ function ResetPasswordContent() {
 
   if (success) {
     return (
-      <AuthCard title="Password reset!" subtitle="Your password has been updated successfully.">
+      <AuthCard
+        title={isWelcome ? "You're all set!" : "Password reset!"}
+        subtitle={isWelcome ? "Your business dashboard is ready. Log in to start managing your deals and events." : "Your password has been updated successfully."}
+      >
         <Link
           href="/business/login"
           className="block w-full rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:brightness-110"
@@ -82,7 +86,10 @@ function ResetPasswordContent() {
   }
 
   return (
-    <AuthCard title="Set new password" subtitle="Enter your new password below.">
+    <AuthCard
+      title={isWelcome ? "Welcome to Bizzy" : "Set new password"}
+      subtitle={isWelcome ? "Set your password to access your business dashboard." : "Enter your new password below."}
+    >
       <form onSubmit={handleSubmit}>
         <FormPasswordInput
           label="New Password"
@@ -109,7 +116,7 @@ function ResetPasswordContent() {
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{serverError}</div>
         )}
 
-        <AuthSubmitButton loading={loading}>Reset Password</AuthSubmitButton>
+        <AuthSubmitButton loading={loading}>{isWelcome ? "Set Password" : "Reset Password"}</AuthSubmitButton>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-500">
