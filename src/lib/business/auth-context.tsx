@@ -4,12 +4,13 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { useRouter } from "next/navigation"
 import { apiClient } from "./api-client"
 import { clearBizSession } from "./cookies"
-import type { BusinessUser, Business, AuthState, MeResponse } from "./types"
+import type { BusinessUser, Business, BusinessSummary, AuthState, MeResponse } from "./types"
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
+  switchBusiness: (businessId: number) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -24,6 +25,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter()
   const [user, setUser] = useState<BusinessUser | null>(null)
   const [business, setBusiness] = useState<Business | null>(null)
+  const [availableBusinesses, setAvailableBusinesses] = useState<BusinessSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const isAuthenticated = !!user
@@ -36,6 +38,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
       const data = await apiClient.get<MeResponse>("/business/auth/me")
       setUser(data.user)
       setBusiness(data.business)
+      setAvailableBusinesses(data.available_businesses ?? [])
     } catch {
       // Access token may be expired — try refreshing before giving up
       try {
@@ -43,9 +46,11 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
         const data = await apiClient.get<MeResponse>("/business/auth/me")
         setUser(data.user)
         setBusiness(data.business)
+        setAvailableBusinesses(data.available_businesses ?? [])
       } catch {
         setUser(null)
         setBusiness(null)
+        setAvailableBusinesses([])
         // Cooper (May 2026): use multi-variant clear so stale biz_session
         // cookies (set with different domain/path by older deployments) are
         // actually removed — otherwise middleware keeps the user "logged in"
@@ -89,9 +94,27 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     await fetchMe()
   }
 
+  const switchBusiness = async (businessId: number) => {
+    await apiClient.authPost("/business/auth/switch", { business_id: businessId })
+    // Hard reload so every page refetches with the new business JWT.
+    // Lighter approaches (just refreshProfile) leave per-page data stale.
+    window.location.href = "/business"
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, business, isLoading, isAuthenticated, isPending, login, logout, refreshProfile }}
+      value={{
+        user,
+        business,
+        availableBusinesses,
+        isLoading,
+        isAuthenticated,
+        isPending,
+        login,
+        logout,
+        refreshProfile,
+        switchBusiness,
+      }}
     >
       {children}
     </AuthContext.Provider>
