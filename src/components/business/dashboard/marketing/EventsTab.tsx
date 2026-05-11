@@ -8,12 +8,19 @@ import type { EventListItem } from "@/lib/business/types"
 /**
  * Marketing → Events sub-tab.
  *
- * Lists the business's upcoming events. Each card links to the existing
- * per-event Announcements + SMS Blast composer pages under
- * `/business/events/[id]/manage/announcements` and `/sms-blast`, which we
- * intentionally kept as power-user shortcuts.
+ * Lists the business's upcoming events. When a specific venue is selected
+ * on the parent Marketing page, the list is scoped to that venue via the
+ * existing `?venue_id=` query param on /business/events. "All Venues"
+ * (venueId=null) returns the full list.
+ *
+ * Each card links to the existing per-event Announcements + SMS Blast
+ * composer pages under /business/events/[id]/manage/.
  */
-export default function EventsTab() {
+interface Props {
+  venueId: number | null
+}
+
+export default function EventsTab({ venueId }: Props) {
   const [events, setEvents] = useState<EventListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -21,9 +28,11 @@ export default function EventsTab() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    const params = new URLSearchParams({ tab: "upcoming", limit: "50" })
+    if (venueId != null) params.set("venue_id", String(venueId))
     apiClient
       .get<{ events: EventListItem[]; total: number }>(
-        "/business/events?tab=upcoming&limit=50",
+        `/business/events?${params.toString()}`,
       )
       .then((res) => {
         if (cancelled) return
@@ -38,7 +47,7 @@ export default function EventsTab() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [venueId])
 
   if (loading) {
     return <div className="py-10 text-center text-sm text-gray-500">Loading events…</div>
@@ -51,7 +60,9 @@ export default function EventsTab() {
       <div className="py-12 text-center">
         <p className="text-sm font-semibold text-ink">No upcoming events.</p>
         <p className="mt-1 text-xs text-gray-500">
-          Create an event to start sending event-specific blasts to ticket holders.
+          {venueId == null
+            ? "Create an event to start sending event-specific blasts to ticket holders."
+            : "No upcoming events at the selected venue."}
         </p>
       </div>
     )

@@ -97,7 +97,7 @@ export default function MarketingPage() {
         </TabPill>
       </div>
       {tab === "events" ? (
-        <EventsTab />
+        <EventsTab venueId={selectedVenueId} />
       ) : (
         <FollowingTab
           venueId={selectedVenueId}
