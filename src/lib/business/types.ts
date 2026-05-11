@@ -237,7 +237,15 @@ export interface PerScannerRow {
   scans: number
   valid_scans: number
   rejected_scans: number
+  // scan_revenue + sold_revenue. Server emits `revenue` as an alias of this
+  // for backwards compat with older clients.
   revenue: number
+  // Newly added fields (May 2026 — tap-to-pay attribution). Optional so the
+  // type still describes responses from older service deploys.
+  scan_revenue?: number
+  sold_count?: number
+  sold_revenue?: number
+  total_revenue?: number
   first_scan_at: string | null
   last_scan_at: string | null
 }
