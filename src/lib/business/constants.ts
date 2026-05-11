@@ -1,6 +1,7 @@
 export const NAV_LINKS = [
   { label: 'Home', href: '/business', icon: 'home', description: '' },
   { label: 'Events', href: '/business/events', icon: 'calendar', description: 'Sell tickets and manage events at your venue.' },
+  { label: 'Marketing', href: '/business/marketing', icon: 'megaphone', description: 'Send blasts to followers and run promoter campaigns to drive ticket sales.' },
   { label: 'Line Skips', href: '/business/line-skips', icon: 'bolt', description: 'Let students pay to skip the line at peak hours.' },
   { label: 'Deals', href: '/business/deals', icon: 'tag', description: 'Offer Bizzy-exclusive promotions to drive students to your venue.' },
   { label: 'Analytics', href: '/business/analytics', icon: 'chart', description: '' },

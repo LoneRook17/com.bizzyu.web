@@ -7,6 +7,26 @@ import { getApiBaseUrl } from "@/lib/api-url"
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
 
+// Promoter attribution cookie (PRD §7.4). Read by client JS so the order
+// POST can include it; 24h TTL matches the PRD spec. Not httpOnly because
+// the cookie has to round-trip through React state.
+const REF_COOKIE = "bz_ref"
+const REF_COOKIE_TTL_SEC = 60 * 60 * 24
+
+function readRefCookie(): string | null {
+  if (typeof document === "undefined") return null
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${REF_COOKIE}=([^;]+)`))
+  return match?.[1] ? decodeURIComponent(match[1]) : null
+}
+
+function writeRefCookie(code: string) {
+  if (typeof document === "undefined") return
+  // SameSite=Lax keeps the cookie on the same-origin form POST that follows;
+  // the link is an external 302 from the API host, so Lax is the right floor.
+  const safe = encodeURIComponent(code)
+  document.cookie = `${REF_COOKIE}=${safe}; Max-Age=${REF_COOKIE_TTL_SEC}; Path=/; SameSite=Lax`
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface EventInfo {
@@ -107,6 +127,24 @@ export default function EventCheckoutClient({
   const [userName, setUserName] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+
+  // Promoter tracking code (PRD §7.4). On mount, hydrate from URL ?ref=
+  // (writing the cookie) or from any prior bz_ref cookie. Survives page
+  // reloads inside the 24h window so a buyer who tabs away and returns is
+  // still attributed to the promoter who got them here.
+  const [trackingCode, setTrackingCode] = useState<string | null>(null)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const fromUrl = params.get("ref")?.trim() || null
+    const valid = fromUrl && /^[A-Za-z0-9]{1,32}$/.test(fromUrl) ? fromUrl : null
+    if (valid) {
+      writeRefCookie(valid)
+      setTrackingCode(valid)
+    } else {
+      setTrackingCode(readRefCookie())
+    }
+  }, [])
 
   // ─── Fetch event data if not provided by server ─────────────────────────
 
@@ -333,8 +371,13 @@ export default function EventCheckoutClient({
         headers,
         body: JSON.stringify({
           quantity: ticket.quantity,
-          successUrl: `${window.location.origin}/checkout/${eventId}?success=1`,
+          // {CHECKOUT_SESSION_ID} is a Stripe-side placeholder — Stripe
+          // substitutes the real Checkout Session ID at redirect time. Used
+          // by the Apple Wallet button on the success state to fetch the
+          // correct .pkpass through the public session-id-gated route.
+          successUrl: `${window.location.origin}/checkout/${eventId}?success=1&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: window.location.href,
+          ...(trackingCode ? { tracking_code: trackingCode } : {}),
         }),
       })
       const data = await res.json()
@@ -356,13 +399,22 @@ export default function EventCheckoutClient({
   // ─── Success State ──────────────────────────────────────────────────────
 
   const [purchaseSuccess, setPurchaseSuccess] = useState(false)
+  const [successSessionId, setSuccessSessionId] = useState<string | null>(null)
+  const [showWalletButton, setShowWalletButton] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
     const params = new URLSearchParams(window.location.search)
     if (params.get("success") === "1") {
       setPurchaseSuccess(true)
+      setSuccessSessionId(params.get("session_id"))
     }
+    // Apple Wallet only installs .pkpass via Safari/iOS or Chrome/iOS.
+    // Hide the button on desktop Chrome and Android browsers per PRD §3.4.
+    const ua = navigator.userAgent || ""
+    const isIos = /iPhone|iPad|iPod/.test(ua) ||
+      (/Macintosh/.test(ua) && typeof (navigator as { maxTouchPoints?: number }).maxTouchPoints === "number" && (navigator as { maxTouchPoints?: number }).maxTouchPoints! > 1)
+    setShowWalletButton(isIos)
   }, [])
 
   // ─── Render: Loading ────────────────────────────────────────────────────
@@ -443,6 +495,22 @@ export default function EventCheckoutClient({
               </p>
             </div>
           </div>
+
+          {/* Add to Apple Wallet — iOS Safari / Chrome only. Anchored
+              directly at the .pkpass binary so iOS handles the install
+              sheet without any client JS. */}
+          {showWalletButton && successSessionId && (
+            <a
+              href={`/api/proxy/public/wallet/by-session/${encodeURIComponent(successSessionId)}/event-ticket`}
+              className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-black py-2.5 text-sm font-semibold text-white transition-colors"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
+              </svg>
+              Add to Apple Wallet
+            </a>
+          )}
+
           <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
             <p className="mb-2 text-sm text-white/70">Download the Bizzy app to access your tickets</p>
             <a
