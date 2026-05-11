@@ -1,23 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import EventsTab from "@/components/business/dashboard/marketing/EventsTab"
 import FollowingTab from "@/components/business/dashboard/marketing/FollowingTab"
 
 type TabKey = "events" | "followers"
 
+interface VenueOption {
+  id: number
+  name: string
+}
+
 /**
  * Marketing dashboard — two send-paths surface to owners and managers.
  *
  *   • Events    — pick one event, blast that event's audience via the
  *                 existing per-event composers under /business/events/[id]/manage/.
- *   • Following — blast everyone who follows the business (audience:
- *                 {all_followers: true}). Independent of ticket purchase.
+ *   • Followers — blast everyone who follows the selected venue (May 2026
+ *                 venue-scope update). Multi-venue businesses pick one
+ *                 venue from the top dropdown; "All Venues" rolls up
+ *                 unique followers across every venue.
  *
- * The old Attendees / Tags / Campaigns surface was dropped in favor of these
- * two clearer mental models. Per-event Announcement + SMS Blast menu items
- * stay on each event's manage page as a power-user shortcut.
+ * Per-event Announcement + SMS Blast menu items stay on each event's manage
+ * page as a power-user shortcut.
  */
 export default function MarketingPage() {
   const { user } = useAuth()
@@ -25,6 +32,22 @@ export default function MarketingPage() {
   const canSend = role === "owner" || role === "manager"
 
   const [tab, setTab] = useState<TabKey>("events")
+  const [venues, setVenues] = useState<VenueOption[]>([])
+  const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!canSend) return
+    apiClient
+      .get<{ venues: VenueOption[] }>("/user/business/venues")
+      .then((res) => setVenues(res.venues ?? []))
+      .catch(() => {})
+  }, [canSend])
+
+  const venueIds = useMemo(() => venues.map((v) => v.id), [venues])
+  const venueLabel = useMemo(() => {
+    if (selectedVenueId == null) return "All venues"
+    return venues.find((v) => v.id === selectedVenueId)?.name ?? "Venue"
+  }, [selectedVenueId, venues])
 
   if (!canSend) {
     return (
@@ -39,6 +62,29 @@ export default function MarketingPage() {
   return (
     <div>
       <h1 className="mb-3 text-xl font-bold text-ink">Marketing</h1>
+
+      {venues.length > 1 && (
+        <div className="mb-3">
+          <label className="mb-1 block text-xs font-semibold text-gray-500">
+            Venue
+          </label>
+          <select
+            value={selectedVenueId ?? ""}
+            onChange={(e) =>
+              setSelectedVenueId(e.target.value === "" ? null : Number(e.target.value))
+            }
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">All Venues</option>
+            {venues.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div role="tablist" className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
         <TabPill active={tab === "events"} onClick={() => setTab("events")}>
           Events
@@ -47,10 +93,18 @@ export default function MarketingPage() {
           active={tab === "followers"}
           onClick={() => setTab("followers")}
         >
-          Following
+          Followers
         </TabPill>
       </div>
-      {tab === "events" ? <EventsTab /> : <FollowingTab />}
+      {tab === "events" ? (
+        <EventsTab />
+      ) : (
+        <FollowingTab
+          venueId={selectedVenueId}
+          venueIds={venueIds}
+          venueLabel={venueLabel}
+        />
+      )}
     </div>
   )
 }

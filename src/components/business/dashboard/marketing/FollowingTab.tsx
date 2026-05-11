@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import BlastComposerModal from "./BlastComposerModal"
 import type {
@@ -10,27 +10,51 @@ import type {
 } from "./types"
 
 /**
- * Marketing → Following sub-tab.
+ * Marketing → Followers sub-tab.
  *
- * Surfaces the count of business_followers (regardless of purchase history),
- * channel-reachable breakdown, and the two send actions. Audience body is
- * `{all_followers: true}` — the backend's BlastService.getFollowerSmsCohort /
- * getFollowerAnnouncementCohort resolves the actual recipients.
+ * Followers are venue-scoped (May 2026 update) — a buyer at Venue A follows
+ * Venue A only, even when the parent business has other venues. This tab
+ * scopes by the venue selected on the Marketing page; passing no venue
+ * scopes to "All Venues" (rollup, deduped on user_id).
  */
-const FOLLOWER_AUDIENCE: BlastAudienceBody = { all_followers: true }
+interface Props {
+  /** Single-venue scope. Mutually exclusive with venueIds. */
+  venueId: number | null
+  /** All-Venues rollup scope. Mutually exclusive with venueId. */
+  venueIds: number[]
+  /** Display label for the venue scope, used in the composer header. */
+  venueLabel: string
+}
 
-export default function FollowingTab() {
+export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
   const [preview, setPreview] = useState<AudiencePreviewResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [composerChannel, setComposerChannel] = useState<BlastChannel | null>(null)
 
+  const audience: BlastAudienceBody = useMemo(() => {
+    if (venueId != null) {
+      return { all_followers: true, venue_id: venueId }
+    }
+    return { all_followers: true, venue_ids: venueIds }
+  }, [venueId, venueIds])
+
+  const hasTarget = audience.venue_id != null || (audience.venue_ids?.length ?? 0) > 0
+
   const load = useCallback(() => {
+    if (!hasTarget) {
+      setPreview({
+        recipients_count: 0,
+        breakdown_by_channel: { phone_reachable: 0, push_reachable: 0 },
+      })
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     apiClient
       .post<AudiencePreviewResponse>("/business/marketing/blasts/audience-preview", {
-        audience: FOLLOWER_AUDIENCE,
+        audience,
       })
       .then((res) => {
         setPreview(res)
@@ -40,7 +64,7 @@ export default function FollowingTab() {
         setError(err instanceof ApiError ? err.message : "Could not load followers")
         setLoading(false)
       })
-  }, [])
+  }, [audience, hasTarget])
 
   useEffect(() => {
     load()
@@ -70,7 +94,7 @@ export default function FollowingTab() {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-primary/40 bg-primary/10 p-5">
-        <p className="text-xs text-gray-600">Followers</p>
+        <p className="text-xs text-gray-600">Followers of {venueLabel}</p>
         <p className="mt-1 text-4xl font-extrabold text-primary">{total}</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <MiniStat label="Push reachable" value={pushReachable} />
@@ -82,8 +106,8 @@ export default function FollowingTab() {
         <div className="rounded-lg border border-gray-200 bg-white p-5 text-center">
           <p className="text-sm font-semibold text-ink">No followers yet.</p>
           <p className="mt-1 text-xs text-gray-500">
-            Users auto-follow your business when they buy a ticket, and can
-            manually follow from your venue page.
+            Users auto-follow when they buy a ticket at one of your venues,
+            and can manually follow from the venue page.
           </p>
         </div>
       ) : (
@@ -105,8 +129,8 @@ export default function FollowingTab() {
         open={composerChannel !== null}
         onClose={() => setComposerChannel(null)}
         channel={composerChannel ?? "announcement"}
-        audience={FOLLOWER_AUDIENCE}
-        audienceLabel={`All followers of your business · ~${total} recipient${total === 1 ? "" : "s"}`}
+        audience={audience}
+        audienceLabel={`Followers of ${venueLabel} · ~${total} recipient${total === 1 ? "" : "s"}`}
         onSent={() => {
           setComposerChannel(null)
           load()
