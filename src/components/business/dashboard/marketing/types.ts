@@ -78,6 +78,8 @@ export interface AudienceFiltersBody {
 export interface BlastAudienceBody {
   user_ids?: number[]
   filters?: AudienceFiltersBody
+  /** Marketing → Following tab: target every business_followers row. */
+  all_followers?: boolean
 }
 
 export interface AudiencePreviewResponse {
