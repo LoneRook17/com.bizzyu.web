@@ -15,7 +15,7 @@ const EVENT_PERMISSIONS: { label: string; owner: boolean; cohost: boolean; crew:
   { label: "Door Sales",      owner: true,  cohost: true,  crew: true  },
   { label: "Promo Codes",     owner: true,  cohost: true,  crew: false },
   { label: "Tracking Links",  owner: true,  cohost: true,  crew: false },
-  { label: "Manage Team",     owner: true,  cohost: false, crew: false },
+  { label: "Manage Team",     owner: true,  cohost: true,  crew: false },
   { label: "Scanner Links",   owner: true,  cohost: true,  crew: false },
   { label: "Delete Event",    owner: true,  cohost: false, crew: false },
 ]

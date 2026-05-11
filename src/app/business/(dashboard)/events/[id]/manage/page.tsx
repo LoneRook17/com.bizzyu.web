@@ -68,7 +68,17 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState("")
   const [showCancel, setShowCancel] = useState(false)
 
-  const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
+  // Edit + manage sub-sections are allowed for business owners/managers, OR
+  // for users assigned as owner/cohost on the event itself.
+  const eventRole = event?.my_event_role ?? null
+  const bizRole = user?.business_role ?? null
+  const canEdit =
+    bizRole === "owner" ||
+    bizRole === "manager" ||
+    eventRole === "owner" ||
+    eventRole === "cohost"
+  // Delete is strictly an owner action (business owner or event owner).
+  const canDelete = bizRole === "owner" || eventRole === "owner"
 
   useEffect(() => {
     apiClient
@@ -247,7 +257,7 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* Danger Zone */}
-      {canEdit && (
+      {canDelete && (
         <div className="rounded-xl border border-red-200 bg-red-50/30 p-5">
           <h2 className="text-sm font-semibold text-red-700 mb-2">Danger Zone</h2>
           <div className="flex gap-3">

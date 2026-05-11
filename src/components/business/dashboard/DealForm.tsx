@@ -467,7 +467,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                   Deal Image <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs text-muted mb-2">
-                  Recommended: 1600&times;1000px landscape (16:10).
+                  Recommended: 1600&times;1000px landscape (16:10). Use an HD photo that clearly showcases the item you&apos;re offering.
                 </p>
                 <ImageUpload
                   value={form.deal_image_path}
