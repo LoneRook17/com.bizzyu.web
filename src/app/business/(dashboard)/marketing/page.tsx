@@ -1,17 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { apiClient } from "@/lib/business/api-client"
+import { useMemo, useState } from "react"
 import { useAuth } from "@/lib/business/auth-context"
+import { useVenue } from "@/lib/business/venue-context"
 import EventsTab from "@/components/business/dashboard/marketing/EventsTab"
 import FollowingTab from "@/components/business/dashboard/marketing/FollowingTab"
 
 type TabKey = "events" | "followers"
-
-interface VenueOption {
-  id: number
-  name: string
-}
 
 /**
  * Marketing dashboard — two send-paths surface to owners and managers.
@@ -19,35 +14,33 @@ interface VenueOption {
  *   • Events    — pick one event, blast that event's audience via the
  *                 existing per-event composers under /business/events/[id]/manage/.
  *   • Followers — blast everyone who follows the selected venue (May 2026
- *                 venue-scope update). Multi-venue businesses pick one
- *                 venue from the top dropdown; "All Venues" rolls up
- *                 unique followers across every venue.
+ *                 venue-scope update). Multi-venue businesses use the global
+ *                 venue switcher in the sidebar to scope; "All Venues"
+ *                 rolls up unique followers across every venue.
  *
- * Per-event Announcement + SMS Blast menu items stay on each event's manage
- * page as a power-user shortcut.
+ * The venue scope comes from the global `useVenue()` context (the
+ * sidebar's venue switcher), NOT a page-local dropdown — keeps the
+ * Marketing tab consistent with Line Skips / Team / etc.
  */
 export default function MarketingPage() {
   const { user } = useAuth()
   const role = user?.business_role
   const canSend = role === "owner" || role === "manager"
 
+  const { venues, selectedVenueId, selectedVenue, isAllVenues } = useVenue()
+
   const [tab, setTab] = useState<TabKey>("events")
-  const [venues, setVenues] = useState<VenueOption[]>([])
-  const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (!canSend) return
-    apiClient
-      .get<{ venues: VenueOption[] }>("/user/business/venues")
-      .then((res) => setVenues(res.venues ?? []))
-      .catch(() => {})
-  }, [canSend])
+  // Single venue id (null when "All Venues" is active). Followers tab uses
+  // venueIds for the All-Venues rollup; EventsTab passes venueId through to
+  // /business/events?venue_id=.
+  const scopedVenueId = useMemo(() => {
+    if (isAllVenues || selectedVenueId === null || selectedVenueId === "all") return null
+    return typeof selectedVenueId === "number" ? selectedVenueId : null
+  }, [isAllVenues, selectedVenueId])
 
-  const venueIds = useMemo(() => venues.map((v) => v.id), [venues])
-  const venueLabel = useMemo(() => {
-    if (selectedVenueId == null) return "All venues"
-    return venues.find((v) => v.id === selectedVenueId)?.name ?? "Venue"
-  }, [selectedVenueId, venues])
+  const allVenueIds = useMemo(() => venues.map((v) => v.id), [venues])
+  const venueLabel = scopedVenueId == null ? "All venues" : selectedVenue?.name ?? "Venue"
 
   if (!canSend) {
     return (
@@ -63,28 +56,6 @@ export default function MarketingPage() {
     <div>
       <h1 className="mb-3 text-xl font-bold text-ink">Marketing</h1>
 
-      {venues.length > 1 && (
-        <div className="mb-3">
-          <label className="mb-1 block text-xs font-semibold text-gray-500">
-            Venue
-          </label>
-          <select
-            value={selectedVenueId ?? ""}
-            onChange={(e) =>
-              setSelectedVenueId(e.target.value === "" ? null : Number(e.target.value))
-            }
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">All Venues</option>
-            {venues.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
       <div role="tablist" className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
         <TabPill active={tab === "events"} onClick={() => setTab("events")}>
           Events
@@ -97,11 +68,11 @@ export default function MarketingPage() {
         </TabPill>
       </div>
       {tab === "events" ? (
-        <EventsTab venueId={selectedVenueId} />
+        <EventsTab venueId={scopedVenueId} />
       ) : (
         <FollowingTab
-          venueId={selectedVenueId}
-          venueIds={venueIds}
+          venueId={scopedVenueId}
+          venueIds={allVenueIds}
           venueLabel={venueLabel}
         />
       )}
