@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
 import { isAppleWalletCapable } from "@/lib/apple-wallet"
+import { nativeShare } from "@/lib/share"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 
@@ -211,6 +212,10 @@ export default function LineSkipSuccessClient({
         {/* Add to Apple Wallet — iOS Safari / Chrome only */}
         <AppleWalletLineSkipButton tickets={tickets} sessionId={sessionId} />
 
+        {/* Share — mirrors the Flutter event-share flow but shares the
+            venue page since line-skips are venue-scoped, not event-scoped. */}
+        <ShareVenueButton title={displayName} venueId={venueId} />
+
         {/* Download app CTA */}
         <div className="rounded-xl bg-white/5 border border-white/10 p-5">
           <div className="flex items-center gap-4">
@@ -288,6 +293,32 @@ function AppleWalletLineSkipButton({
         </svg>
         {label}
       </a>
+    </div>
+  )
+}
+
+function ShareVenueButton({ title, venueId }: { title: string; venueId: string }) {
+  const [copied, setCopied] = useState(false)
+  const shareUrl = `${WEB_BASE_URL}/venue/${venueId}?utm_source=web_share`
+  const onClick = async () => {
+    const outcome = await nativeShare({ title: title || "Bizzy", url: shareUrl })
+    if (outcome === "copied") {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+  return (
+    <div className="mt-3 mb-4">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+        {copied ? "Link Copied!" : "Share"}
+      </button>
     </div>
   )
 }
