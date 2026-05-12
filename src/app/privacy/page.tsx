@@ -18,14 +18,14 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Privacy Policy</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> March 15, 2026 | <strong>Last Updated:</strong> March 22, 2026
+          <strong>Effective Date:</strong> May 12, 2026 | <strong>Last Updated:</strong> May 12, 2026
         </p>
 
         <p className="text-muted leading-relaxed">
           Bizzy Holdings LLC, Bizzy Deals LLC, and Bizzy Ticketing LLC (collectively, &quot;Bizzy,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) respect your privacy and are committed to protecting the personal information you share with us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website at <strong>www.bizzyu.com</strong>, use the Bizzy mobile application, or interact with any of our services (collectively, the &quot;Platform&quot;).
         </p>
         <p className="text-muted leading-relaxed">
-          This Privacy Policy applies to all users of the Platform, including students, general users, Merchants, and Event Organizers. Please read this policy carefully. By accessing or using the Platform, you acknowledge that you have read, understood, and agree to be bound by this Privacy Policy. If you do not agree, please discontinue use of the Platform immediately.
+          This Privacy Policy applies to all users of the Platform, including students, general users, Merchants, Event Organizers, and Promoters. Please read this policy carefully. By accessing or using the Platform, you acknowledge that you have read, understood, and agree to be bound by this Privacy Policy. If you do not agree, please discontinue use of the Platform immediately.
         </p>
 
         {/* ── 1. Information We Collect ── */}
@@ -71,9 +71,19 @@ export default function PrivacyPage() {
                 <td className="border border-gray-300 px-4 py-3">Platform usage, purchases</td>
               </tr>
               <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3"><strong>Promoter Tax &amp; Payout Information</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Legal name, taxpayer identification number (e.g., SSN or EIN on IRS Form W-9), payout destination (bank account through Stripe Connect)</td>
+                <td className="border border-gray-300 px-4 py-3">Only when you enroll in the Bizzy Promoter Program (see Section 18)</td>
+              </tr>
+              <tr>
                 <td className="border border-gray-300 px-4 py-3"><strong>Communication Data</strong></td>
                 <td className="border border-gray-300 px-4 py-3">Messages to customer support, feedback, reviews, survey responses</td>
                 <td className="border border-gray-300 px-4 py-3">When you contact us or provide feedback</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3"><strong>Marketing Consent Records</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Opt-in and opt-out timestamps, source of consent, channel (SMS, email, push), and which businesses you have agreed to receive communications from</td>
+                <td className="border border-gray-300 px-4 py-3">When you opt in to marketing or opt out at any time</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-4 py-3"><strong>User-Generated Content</strong></td>
@@ -97,18 +107,28 @@ export default function PrivacyPage() {
             <tbody>
               <tr>
                 <td className="border border-gray-300 px-4 py-3"><strong>Device Information</strong></td>
-                <td className="border border-gray-300 px-4 py-3">Device type, model, operating system, OS version, unique device identifiers (IDFA, GAID), screen resolution</td>
+                <td className="border border-gray-300 px-4 py-3">Device type, model, operating system, OS version, unique device identifiers (IDFA, GAID, where Apple ATT permits), screen resolution</td>
                 <td className="border border-gray-300 px-4 py-3">App functionality, analytics, troubleshooting</td>
               </tr>
               <tr className="bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3"><strong>Usage Data</strong></td>
-                <td className="border border-gray-300 px-4 py-3">Pages visited, features used, deals viewed, search queries, time spent on pages, click patterns</td>
+                <td className="border border-gray-300 px-4 py-3">Pages visited, features used, deals viewed, search queries, time spent on pages, click patterns, leaderboard ranking activity</td>
                 <td className="border border-gray-300 px-4 py-3">Service improvement, personalization</td>
               </tr>
               <tr>
                 <td className="border border-gray-300 px-4 py-3"><strong>Location Data</strong></td>
                 <td className="border border-gray-300 px-4 py-3">Approximate location (IP-based), precise GPS location (with your permission)</td>
                 <td className="border border-gray-300 px-4 py-3">Displaying nearby deals and events, location-based features</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3"><strong>Tracking-Link / Attribution Data</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Click events on Bizzy promoter links, a short-lived attribution identifier stored in browser storage or in the app, source/medium parameters</td>
+                <td className="border border-gray-300 px-4 py-3">Promoter Program commission attribution (24-hour window) and analytics</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3"><strong>Communications Engagement</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Email opens and clicks, SMS delivery and reply events (e.g., STOP), push notification delivery status</td>
+                <td className="border border-gray-300 px-4 py-3">Measuring delivery, honoring opt-outs, complying with carrier and regulatory requirements</td>
               </tr>
               <tr className="bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3"><strong>Network Information</strong></td>
@@ -127,20 +147,28 @@ export default function PrivacyPage() {
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">1.3 Information from Third Parties</h3>
         <p className="text-muted leading-relaxed">We may receive information about you from third-party sources, including:</p>
         <ul className="text-muted space-y-1 list-disc pl-6">
-          <li><strong>Social media platforms:</strong> If you register or log in using a social media account (e.g., Google, Apple, Facebook), we may receive your name, email, and profile information from that platform.</li>
+          <li><strong>Social media platforms:</strong> If you register or log in using a social media account (e.g., Google, Apple), we may receive your name, email, and profile information from that platform.</li>
           <li><strong>Student verification services:</strong> If we use a third-party service to verify your student status, we receive verification results (confirmed/denied) but generally not the underlying verification documents.</li>
-          <li><strong>Payment processors:</strong> Our payment processors may share limited transaction data necessary for order fulfillment and dispute resolution.</li>
+          <li><strong>Payment processors:</strong> Our payment processors may share limited transaction data necessary for order fulfillment, payouts, and dispute resolution.</li>
+          <li><strong>Subscription management providers:</strong> If you subscribe to Bizzy Premium through the Apple App Store or Google Play, we receive subscription status and entitlement information from those stores and our subscription management provider (e.g., RevenueCat).</li>
+          <li><strong>SMS aggregators and carrier registries:</strong> We receive delivery-status information and opt-out (STOP) signals from SMS aggregators and U.S. carrier campaign registries (10DLC).</li>
           <li><strong>Analytics providers:</strong> We receive aggregated and individual-level analytics data from third-party analytics services.</li>
         </ul>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">1.4 What We Do Not Collect</h3>
+        <p className="text-muted leading-relaxed">
+          The Platform does <strong>not</strong> use session-replay or screen-recording technologies, does <strong>not</strong> collect biometric identifiers (such as fingerprints, facial geometry, or voiceprints), and does <strong>not</strong> handle protected health information (PHI) subject to the U.S. Health Insurance Portability and Accountability Act (HIPAA). Bizzy is not a consumer reporting agency under the Fair Credit Reporting Act (FCRA) and does not collect or sell consumer credit information.
+        </p>
 
         {/* ── 2. How We Collect Information ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">2. How We Collect Information</h2>
         <p className="text-muted leading-relaxed">We collect information through the following methods:</p>
         <ul className="text-muted space-y-1 list-disc pl-6">
-          <li><strong>Direct interactions:</strong> When you create an account, redeem a deal, purchase a ticket, contact support, or otherwise interact with the Platform.</li>
+          <li><strong>Direct interactions:</strong> When you create an account, redeem a deal, purchase a ticket, enroll in the Promoter Program, contact support, or otherwise interact with the Platform.</li>
           <li><strong>Automated technologies:</strong> When you browse or use the Platform, we automatically collect technical and usage data through cookies, pixel tags, SDKs, and similar technologies (see Section 5).</li>
           <li><strong>Third-party sources:</strong> As described in Section 1.3 above.</li>
-          <li><strong>Device permissions:</strong> With your consent, we may access certain device features such as your camera (for scanning QR codes), location services (for nearby deals), contacts (for referral features), and push notification settings.</li>
+          <li><strong>Device permissions:</strong> With your consent, we may access certain device features such as your camera (for scanning QR codes), location services (for nearby deals), and push notification settings.</li>
+          <li><strong>Apple App Tracking Transparency (ATT):</strong> On iOS, the Platform requests permission via Apple&apos;s App Tracking Transparency framework before using your IDFA for cross-application tracking. If you decline, we do not access your IDFA for tracking, and certain personalization or attribution features may be limited.</li>
         </ul>
 
         {/* ── 3. How We Use Your Information ── */}
@@ -152,10 +180,10 @@ export default function PrivacyPage() {
           <li>Creating and managing your account</li>
           <li>Displaying relevant deals and events based on your location and preferences</li>
           <li>Processing ticket purchases and deal redemptions</li>
-          <li>Generating and delivering digital tickets, QR codes, and vouchers</li>
+          <li>Generating and delivering digital tickets, QR codes, and vouchers (including Apple/Google Wallet passes if you elect)</li>
           <li>Verifying your identity and student status</li>
-          <li>Facilitating admission to events through QR-code scanning and verification</li>
-          <li>Processing payments and managing subscriptions</li>
+          <li>Facilitating admission to events through QR-code scanning, door counters, and verification</li>
+          <li>Processing payments, managing subscriptions, and disbursing Promoter payouts</li>
           <li>Providing customer support and responding to inquiries</li>
         </ul>
 
@@ -170,18 +198,29 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.3 Communications &amp; Marketing</h3>
         <ul className="text-muted space-y-1 list-disc pl-6">
-          <li>Sending transactional messages (order confirmations, ticket delivery, account alerts)</li>
-          <li>Sending promotional communications about deals, events, and new features (with your consent or where permitted by law)</li>
-          <li>Sending push notifications about nearby deals or upcoming events (with your device permission)</li>
+          <li>Sending transactional messages (order confirmations, ticket delivery, OTP codes, account security alerts, event reminders for Tickets you hold)</li>
+          <li>Sending Bizzy marketing communications (with your opt-in consent and where permitted by law)</li>
+          <li>Facilitating marketing communications sent by Merchants, Event Organizers, and venues you have opted in to receive messages from (see Section 17)</li>
+          <li>Sending push notifications about deals or events (with your device permission)</li>
           <li>Personalizing the content and offers you see on the Platform</li>
+          <li>Maintaining records of your consent and opt-out actions for compliance with TCPA, CAN-SPAM, and other applicable laws</li>
         </ul>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.4 Safety, Security &amp; Legal Compliance</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.4 Promoter Program Operations</h3>
+        <ul className="text-muted space-y-1 list-disc pl-6">
+          <li>Verifying eligibility, identity, and tax-reporting information for enrolled Promoters</li>
+          <li>Attributing Ticket purchases to Promoter tracking links and calculating commissions</li>
+          <li>Disbursing payouts through Stripe Connect</li>
+          <li>Generating tax forms (e.g., IRS Form 1099-NEC) for U.S. Promoters who meet the reporting threshold</li>
+          <li>Detecting and preventing self-purchase, click fraud, and other prohibited Promoter conduct</li>
+        </ul>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.5 Safety, Security &amp; Legal Compliance</h3>
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li>Detecting, investigating, and preventing fraud, unauthorized access, and other illegal activities</li>
           <li>Enforcing our Terms of Service and other policies</li>
-          <li>Complying with applicable legal obligations, regulations, and lawful requests from authorities</li>
-          <li>Protecting the rights, property, and safety of Bizzy, our Users, Merchants, Event Organizers, and the public</li>
+          <li>Complying with applicable legal obligations, regulations, and lawful requests from authorities (including subpoenas, court orders, and tax-reporting obligations)</li>
+          <li>Protecting the rights, property, and safety of Bizzy, our Users, Merchants, Event Organizers, Promoters, and the public</li>
           <li>Resolving disputes and enforcing our agreements</li>
         </ul>
 
@@ -193,24 +232,81 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">4.1 With Merchants &amp; Event Organizers</h3>
         <p className="text-muted leading-relaxed">
-          When you redeem a Deal or purchase a Ticket, we may share limited information with the applicable Merchant or Event Organizer necessary to fulfill the transaction — for example, your name and ticket details for admission verification. Merchants and Event Organizers are independent data controllers and their use of your information is governed by their own privacy policies.
+          When you redeem a Deal or purchase a Ticket, we share limited information with the applicable Merchant or Event Organizer necessary to fulfill the transaction. For Ticket purchases, this includes your name, email address, phone number (if collected), Ticket purchase details, redemption status, scan history, any tags or notes the Event Organizer has applied to your profile within the Bizzy business dashboard, and any communication preferences you have provided to that business. Merchants and Event Organizers are independent data controllers and their use of your information is governed by their own privacy policies and our separate agreements with them. See Section 19 for more detail on ticketing-specific data flows.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">4.2 With Service Providers</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">4.2 With Service Providers (Sub-processors)</h3>
         <p className="text-muted leading-relaxed">
-          We share information with third-party service providers who perform services on our behalf, including:
+          We share information with third-party service providers who perform services on our behalf. These providers (often called &quot;sub-processors&quot;) are contractually obligated to use your information only for the purposes of providing services to Bizzy and are required to maintain appropriate security measures. The categories below are illustrative; specific providers may change from time to time as we refine our infrastructure.
         </p>
-        <ul className="text-muted space-y-1 list-disc pl-6">
-          <li>Payment processors (e.g., Stripe) for transaction processing</li>
-          <li>Cloud hosting providers for data storage and infrastructure</li>
-          <li>Analytics services for usage analysis</li>
-          <li>Email and communication services for sending notifications</li>
-          <li>Student verification services for confirming enrollment status</li>
-          <li>Customer support platforms for handling inquiries</li>
-        </ul>
-        <p className="text-muted leading-relaxed mt-3">
-          These service providers are contractually obligated to use your information only for the purposes of providing services to Bizzy and are required to maintain appropriate security measures.
-        </p>
+        <div className="overflow-x-auto my-4">
+          <table className="w-full border-collapse text-sm text-muted">
+            <thead>
+              <tr>
+                <th className="border border-gray-300 bg-gray-900 text-white px-4 py-3 text-left font-semibold">Category</th>
+                <th className="border border-gray-300 bg-gray-900 text-white px-4 py-3 text-left font-semibold">Examples of Providers</th>
+                <th className="border border-gray-300 bg-gray-900 text-white px-4 py-3 text-left font-semibold">Data Categories Shared</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3">Payment processing &amp; Connect payouts</td>
+                <td className="border border-gray-300 px-4 py-3">Stripe, Apple Pay, Google Pay, Apple In-App Purchase, Google Play Billing</td>
+                <td className="border border-gray-300 px-4 py-3">Name, billing details, transaction info, taxpayer ID for Promoter payouts</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3">Subscription management</td>
+                <td className="border border-gray-300 px-4 py-3">RevenueCat</td>
+                <td className="border border-gray-300 px-4 py-3">Subscription entitlement state, purchase events, app/device identifier</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3">Cloud hosting &amp; storage</td>
+                <td className="border border-gray-300 px-4 py-3">Amazon Web Services (AWS) and similar</td>
+                <td className="border border-gray-300 px-4 py-3">All categories of data processed by the Platform</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3">Email delivery</td>
+                <td className="border border-gray-300 px-4 py-3">Resend, SendGrid, or similar</td>
+                <td className="border border-gray-300 px-4 py-3">Email address, message content, engagement events (opens, clicks, bounces, unsubscribes)</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3">SMS delivery (10DLC A2P)</td>
+                <td className="border border-gray-300 px-4 py-3">Twilio or similar SMS aggregator</td>
+                <td className="border border-gray-300 px-4 py-3">Phone number, message content, delivery status, opt-out (STOP) signals</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3">Push notifications</td>
+                <td className="border border-gray-300 px-4 py-3">Apple Push Notification Service, Firebase Cloud Messaging</td>
+                <td className="border border-gray-300 px-4 py-3">Device push token, notification content, delivery status</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3">Analytics &amp; crash reporting</td>
+                <td className="border border-gray-300 px-4 py-3">Firebase, Google Analytics, or similar</td>
+                <td className="border border-gray-300 px-4 py-3">Pseudonymous device identifiers, event logs, crash data</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3">Maps &amp; location lookup</td>
+                <td className="border border-gray-300 px-4 py-3">Google Maps Platform, Apple Maps</td>
+                <td className="border border-gray-300 px-4 py-3">Approximate or precise location for distance/route calculations</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3">Apple/Google Wallet passes</td>
+                <td className="border border-gray-300 px-4 py-3">Apple Wallet, Google Wallet</td>
+                <td className="border border-gray-300 px-4 py-3">Ticket metadata required to render the pass (event, holder name, QR/barcode)</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3">Customer support</td>
+                <td className="border border-gray-300 px-4 py-3">Tawk.to or similar</td>
+                <td className="border border-gray-300 px-4 py-3">Name, email, support correspondence</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3">Student verification</td>
+                <td className="border border-gray-300 px-4 py-3">.edu validation services</td>
+                <td className="border border-gray-300 px-4 py-3">Email or student-status data minimally necessary to verify enrollment</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">4.3 Among Bizzy Entities</h3>
         <p className="text-muted leading-relaxed">
@@ -240,7 +336,7 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">4.7 Aggregated or De-Identified Data</h3>
         <p className="text-muted leading-relaxed">
-          We may share aggregated or de-identified data that cannot reasonably be used to identify you for any purpose, including industry analysis, demographic profiling, marketing, and research.
+          We may share aggregated or de-identified data that cannot reasonably be used to identify you for any purpose, including industry analysis, demographic profiling, marketing, and research. De-identified data is processed in a manner that prevents re-identification, and we contractually require recipients not to attempt re-identification.
         </p>
 
         {/* ── 5. Cookies & Tracking Technologies ── */}
@@ -274,13 +370,18 @@ export default function PrivacyPage() {
                 <td className="border border-gray-300 px-4 py-3">Up to 1 year</td>
               </tr>
               <tr>
+                <td className="border border-gray-300 px-4 py-3"><strong>Attribution Cookies</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Capture and short-term cache the Promoter tracking-link identifier (&quot;bz_ref&quot;) so a subsequent purchase can be attributed to the Promoter who shared the link</td>
+                <td className="border border-gray-300 px-4 py-3">24 hours from the click, or until cleared by a successful purchase, a different tracking-link click, or device storage being cleared</td>
+              </tr>
+              <tr className="bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3"><strong>Analytics Cookies</strong></td>
                 <td className="border border-gray-300 px-4 py-3">Help us understand how Users interact with the Platform (page views, navigation paths, engagement)</td>
                 <td className="border border-gray-300 px-4 py-3">Up to 2 years</td>
               </tr>
-              <tr className="bg-gray-50">
+              <tr>
                 <td className="border border-gray-300 px-4 py-3"><strong>Marketing Cookies</strong></td>
-                <td className="border border-gray-300 px-4 py-3">Used to deliver relevant promotions and measure the effectiveness of advertising campaigns</td>
+                <td className="border border-gray-300 px-4 py-3">Used to deliver relevant promotions and measure the effectiveness of campaigns (only set with your consent where required by law)</td>
                 <td className="border border-gray-300 px-4 py-3">Up to 2 years</td>
               </tr>
             </tbody>
@@ -294,26 +395,28 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">5.3 Mobile SDKs</h3>
         <p className="text-muted leading-relaxed">
-          The Bizzy mobile app may include software development kits (SDKs) from third-party analytics and advertising partners that collect device-level data.
+          The Bizzy mobile app may include software development kits (SDKs) from third-party analytics, subscription management, push-notification, and advertising-attribution partners that collect device-level data. We disclose our principal sub-processors in Section 4.2.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">5.4 Managing Cookies</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">5.4 No Session Replay or Wiretapping</h3>
         <p className="text-muted leading-relaxed">
-          Most web browsers allow you to manage cookie preferences through browser settings. You can configure your browser to block or delete cookies. However, disabling cookies may affect the functionality of the Platform. For mobile devices, you can manage tracking permissions through your device settings (e.g., &quot;Limit Ad Tracking&quot; on iOS or &quot;Opt Out of Ads Personalization&quot; on Android).
+          The Platform does not use session-replay, screen-recording, keystroke-logging, or similar technologies that would record your interactions with the Platform in a form replayable by a third party. We do not employ &quot;chat-wiretapping&quot; vendors or technologies that intercept the contents of your communications in a manner prohibited by the California Invasion of Privacy Act (CIPA) or analogous state laws.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">5.5 Managing Cookies &amp; Mobile Tracking</h3>
+        <p className="text-muted leading-relaxed">
+          Most web browsers allow you to manage cookie preferences through browser settings. You can configure your browser to block or delete cookies; however, disabling cookies may affect the functionality of the Platform. For mobile devices, you can manage tracking permissions through your device settings (e.g., Apple App Tracking Transparency on iOS, or &quot;Opt Out of Ads Personalization&quot; on Android). On iOS, the Platform requests ATT permission before accessing your IDFA for tracking; if you decline, certain attribution and personalization features may be limited.
         </p>
 
         {/* ── 6. Third-Party Services & Integrations ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">6. Third-Party Services &amp; Integrations</h2>
         <p className="text-muted leading-relaxed">
-          The Platform integrates with or links to third-party services that have their own privacy practices. These may include:
+          The Platform integrates with or links to third-party services that have their own privacy practices. Refer to Section 4.2 for a list of sub-processors. In addition, we may link to or integrate with:
         </p>
         <ul className="text-muted space-y-1 list-disc pl-6">
-          <li><strong>Payment processors:</strong> Stripe, Apple Pay, Google Pay</li>
+          <li><strong>Social login providers:</strong> Google, Apple</li>
           <li><strong>Map services:</strong> Google Maps, Apple Maps</li>
-          <li><strong>Social login providers:</strong> Google, Apple, Facebook</li>
-          <li><strong>Analytics platforms:</strong> Google Analytics, Firebase, Mixpanel, or similar services</li>
-          <li><strong>Push notification services:</strong> Firebase Cloud Messaging, Apple Push Notification Service</li>
-          <li><strong>Advertising networks:</strong> As applicable for promotional features</li>
+          <li><strong>Advertising networks:</strong> As applicable for promotional features (subject to your consent where required)</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
           We encourage you to review the privacy policies of any third-party service you interact with through our Platform. Bizzy is not responsible for the privacy practices or data security of third-party services.
@@ -327,7 +430,8 @@ export default function PrivacyPage() {
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li><strong>Active accounts:</strong> We retain your information for the duration of your account&#39;s existence and active use of the Platform.</li>
           <li><strong>Closed accounts:</strong> After account closure, we may retain certain information for up to <strong>three (3) years</strong> to comply with legal obligations, resolve disputes, enforce our agreements, and maintain business records.</li>
-          <li><strong>Transaction records:</strong> Purchase history, ticket records, and deal redemption data may be retained for up to <strong>seven (7) years</strong> for tax, accounting, and legal compliance purposes.</li>
+          <li><strong>Transaction records:</strong> Purchase history, ticket records, deal redemption data, and Promoter payout records may be retained for up to <strong>seven (7) years</strong> for tax, accounting, and legal compliance purposes (including IRS 1099 reporting).</li>
+          <li><strong>Marketing consent records:</strong> Opt-in and opt-out records for SMS, email, and push communications are retained for at least <strong>four (4) years</strong> after the most recent opt-out, consistent with TCPA recordkeeping guidance.</li>
           <li><strong>Anonymized data:</strong> Aggregated and de-identified data may be retained indefinitely for analytics and business purposes.</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
@@ -340,12 +444,12 @@ export default function PrivacyPage() {
           We implement commercially reasonable administrative, technical, and physical security measures to protect your personal information from unauthorized access, disclosure, alteration, and destruction. These measures include:
         </p>
         <ul className="text-muted space-y-1 list-disc pl-6">
-          <li>Encryption of data in transit (TLS/SSL) and at rest</li>
-          <li>Secure password hashing (bcrypt or equivalent)</li>
+          <li>Encryption of data in transit (TLS/SSL) and at rest where supported by the underlying infrastructure</li>
+          <li>Secure password hashing (bcrypt)</li>
           <li>Access controls limiting employee and contractor access to personal information on a need-to-know basis</li>
           <li>Regular security assessments and vulnerability testing</li>
           <li>Incident response procedures for potential data breaches</li>
-          <li>Secure cloud infrastructure with reputable hosting providers</li>
+          <li>Secure cloud infrastructure with reputable hosting providers; sensitive financial and payment information is handled within PCI-DSS-compliant payment processors and we do not directly store full payment card numbers on Bizzy infrastructure</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
           <strong>Important:</strong> While we strive to protect your personal information, no method of electronic transmission or storage is 100% secure. We cannot guarantee the absolute security of your data. You are responsible for maintaining the confidentiality of your account credentials and for any activity that occurs under your account.
@@ -353,7 +457,7 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">8.1 Breach Notification</h3>
         <p className="text-muted leading-relaxed">
-          In the event of a data breach that affects your personal information, Bizzy will notify you and relevant authorities as required by applicable law. Notification will include the nature of the breach, the categories of data affected, steps we are taking to address the breach, and recommendations for actions you can take to protect yourself.
+          In the event of a data breach that affects your personal information, Bizzy will notify you and relevant authorities as required by applicable law, including New York&apos;s SHIELD Act and applicable state data breach notification statutes. Notification will include the nature of the breach, the categories of data affected, steps we are taking to address the breach, and recommendations for actions you can take to protect yourself.
         </p>
 
         {/* ── 9. Your Privacy Rights ── */}
@@ -369,7 +473,7 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Delete</h3>
         <p className="text-muted leading-relaxed">
-          Request the deletion of your personal information, subject to certain exceptions (e.g., legal obligations, fraud prevention, completing transactions).
+          Request the deletion of your personal information, subject to certain exceptions (e.g., legal obligations, tax recordkeeping, completing transactions, fraud prevention).
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Correct</h3>
@@ -382,9 +486,19 @@ export default function PrivacyPage() {
           Request a portable, machine-readable copy of your personal data to transfer to another service.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Opt Out</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Opt Out of Targeted Advertising or Sale/Share</h3>
         <p className="text-muted leading-relaxed">
-          Opt out of the sale or sharing of your personal information for targeted advertising purposes. (Note: Bizzy does not sell personal information.)
+          Opt out of the sale or sharing of your personal information for targeted advertising purposes. Bizzy does not sell your personal information. To the extent that the use of certain analytics or advertising-attribution sub-processors qualifies as &quot;sharing&quot; under the CCPA, you may opt out as described in Section 10.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Limit Use of Sensitive Personal Information</h3>
+        <p className="text-muted leading-relaxed">
+          Where applicable, request that we limit our use of sensitive personal information (e.g., precise geolocation) to what is necessary to provide the service.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Opt Out of Profiling / Automated Decision-Making</h3>
+        <p className="text-muted leading-relaxed">
+          Residents of certain states (including Colorado, Virginia, Connecticut, and others) may opt out of profiling in furtherance of decisions that produce legal or similarly significant effects. Bizzy does not make decisions with legal or similarly significant effects about you based solely on automated processing.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Non-Discrimination</h3>
@@ -469,7 +583,13 @@ export default function PrivacyPage() {
                 <td className="border border-gray-300 px-4 py-3">No</td>
               </tr>
               <tr className="bg-gray-50">
-                <td className="border border-gray-300 px-4 py-3">Inferences (preferences, characteristics, behavior)</td>
+                <td className="border border-gray-300 px-4 py-3">Financial information for Promoter payouts (taxpayer ID, payout account)</td>
+                <td className="border border-gray-300 px-4 py-3">Yes — Promoters only</td>
+                <td className="border border-gray-300 px-4 py-3">No</td>
+                <td className="border border-gray-300 px-4 py-3">No</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3">Inferences (preferences, characteristics, behavior, business-applied tags)</td>
                 <td className="border border-gray-300 px-4 py-3">Yes</td>
                 <td className="border border-gray-300 px-4 py-3">No</td>
                 <td className="border border-gray-300 px-4 py-3">No</td>
@@ -480,22 +600,22 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.2 We Do Not Sell Personal Information</h3>
         <p className="text-muted leading-relaxed">
-          Bizzy does <strong>not sell</strong> your personal information as defined by the CCPA, and has not done so in the preceding twelve (12) months.
+          Bizzy does <strong>not sell</strong> your personal information as defined by the CCPA, and has not done so in the preceding twelve (12) months. We do not knowingly sell or share the personal information of minors under 16 years of age.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.3 Sensitive Personal Information</h3>
         <p className="text-muted leading-relaxed">
-          We may collect certain categories of sensitive personal information, including precise geolocation data (with your consent). We use sensitive personal information only for the purposes permitted by the CCPA, including providing the services you request.
+          We may collect certain categories of sensitive personal information, including: precise geolocation data (only with your device permission), account log-in credentials (passwords are stored in hashed form), and, for Promoters who enroll in the Promoter Program, taxpayer identification information (such as SSN or EIN provided via IRS Form W-9). We use sensitive personal information only for the purposes permitted by the CCPA, including providing the services you request, processing payouts, and complying with tax reporting requirements. We do not use or disclose sensitive personal information to infer characteristics about you for marketing purposes.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.4 Opt-Out Preference Signals</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.4 Opt-Out Preference Signals (Global Privacy Control)</h3>
         <p className="text-muted leading-relaxed">
-          We recognize and honor the Global Privacy Control (GPC) signal as a valid opt-out preference signal. If your browser or device sends a GPC signal, we will treat it as a request to opt out of the sale or sharing of personal information associated with that browser or device.
+          We recognize and honor the Global Privacy Control (GPC) signal as a valid opt-out preference signal for the sale or sharing of personal information. If your browser or device sends a GPC signal, we will treat it as a request to opt out of the sale or sharing of personal information associated with that browser or device.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.5 Financial Incentive Programs</h3>
         <p className="text-muted leading-relaxed">
-          We may offer loyalty programs, referral bonuses, or promotional offers that involve the collection of personal information. Participation is voluntary, and you may opt out at any time. The value of such programs is reasonably related to the value of the data provided, calculated based on the expense related to offering the program.
+          We may offer loyalty features, referral bonuses, the Bizzy Promoter Program, or promotional offers that involve the collection of personal information. Participation is voluntary, and you may opt out at any time. The value of such programs is reasonably related to the value of the data provided, calculated based on the expense related to offering the program.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.6 Your California Rights</h3>
@@ -503,12 +623,22 @@ export default function PrivacyPage() {
           In addition to the rights listed in Section 9, California residents may exercise the right to know the specific pieces and categories of personal information collected, the right to delete, the right to correct, and the right to limit the use of sensitive personal information. To exercise any of these rights, please contact us using the methods described in Section 9.
         </p>
 
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.7 California Civil Code § 1789.3 Notice</h3>
+        <p className="text-muted leading-relaxed">
+          California users may contact the Complaint Assistance Unit of the Division of Consumer Services of the California Department of Consumer Affairs by mail at 1625 North Market Blvd., Suite N 112, Sacramento, CA 95834, or by telephone at (800) 952-5210.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.8 &quot;Shine the Light&quot; Disclosure</h3>
+        <p className="text-muted leading-relaxed">
+          California residents may request information about the disclosure of their personal information to third parties for the third parties&apos; direct marketing purposes by emailing {CONTACT_EMAIL} with the subject line &quot;Shine the Light Request.&quot;
+        </p>
+
         {/* ── 11. Other State Privacy Rights ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">11. Other State Privacy Rights</h2>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">11.1 Virginia, Colorado, Connecticut, Utah, Texas, Oregon, Montana &amp; Other States</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">11.1 Virginia, Colorado, Connecticut, Utah, Texas, Oregon, Montana, Tennessee, Delaware, Iowa &amp; Other States</h3>
         <p className="text-muted leading-relaxed">
-          Residents of states with comprehensive consumer privacy laws (including but not limited to Virginia&#39;s CDPA, Colorado&#39;s CPA, Connecticut&#39;s CTDPA, Texas&#39;s TDPSA, and Oregon&#39;s OCPA) may have similar rights to those described in Section 9, including the right to access, delete, correct, and opt out of certain data processing activities. We will comply with applicable state privacy laws and honor verifiable consumer requests consistent with those laws.
+          Residents of states with comprehensive consumer privacy laws may have similar rights to those described in Section 9, including the rights to access, delete, correct, port, and opt out of certain data processing activities (including targeted advertising, sale of personal data, and profiling in furtherance of decisions producing legal or similarly significant effects). We will comply with applicable state privacy laws and honor verifiable consumer requests consistent with those laws.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">11.2 How to Appeal</h3>
@@ -516,7 +646,12 @@ export default function PrivacyPage() {
           If we decline to take action on your privacy request, you have the right to appeal that decision. To submit an appeal, email us at <strong>{CONTACT_EMAIL}</strong> with the subject line &quot;Privacy Request Appeal.&quot; We will respond to appeals within the time frame required by applicable law (typically 45-60 days).
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">11.3 Florida Privacy</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">11.3 New York SHIELD Act</h3>
+        <p className="text-muted leading-relaxed">
+          For New York residents, Bizzy maintains a security program reasonably designed to protect the security, confidentiality, and integrity of personal information collected from New York residents, consistent with the New York SHIELD Act, and will provide breach notification as required by New York law.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">11.4 Florida Privacy</h3>
         <p className="text-muted leading-relaxed">
           As a Florida-based company, we comply with all applicable Florida laws regarding data privacy and security. Florida residents may contact us to exercise any rights afforded under applicable state law.
         </p>
@@ -524,13 +659,13 @@ export default function PrivacyPage() {
         {/* ── 12. Children's Privacy ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">12. Children&#39;s Privacy</h2>
         <p className="text-muted leading-relaxed">
-          The Platform is not intended for children under the age of <strong>13</strong>, and we do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child under 13 has provided personal information to Bizzy, please contact us immediately at {CONTACT_EMAIL} and we will take steps to delete such information.
+          The Platform is not intended for children under the age of <strong>13</strong>, and we do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child under 13 has provided personal information to Bizzy, please contact us immediately at {CONTACT_EMAIL} and we will take steps to delete such information. We comply with the Children&#39;s Online Privacy Protection Act (&quot;COPPA&quot;).
         </p>
         <p className="text-muted leading-relaxed">
-          The Platform is designed for users who are at least <strong>18 years of age</strong>. We do not knowingly collect or solicit personal information from anyone under 18, except in compliance with applicable law. If we learn that we have collected personal information from a person under 18 without appropriate consent, we will delete that information as quickly as possible.
+          The Platform is designed for users who are at least <strong>18 years of age</strong>, except for certain Deals and Tickets that require the User to be 21 or older. We do not knowingly solicit account registration from anyone under 18. If we learn that we have collected personal information from a person under 18 without appropriate consent, we will delete that information as quickly as possible.
         </p>
         <p className="text-muted leading-relaxed">
-          We comply with the Children&#39;s Online Privacy Protection Act (&quot;COPPA&quot;) and will not knowingly collect personal information from children without verifiable parental consent where required.
+          We do not knowingly sell or share the personal information of minors under 16 years of age.
         </p>
 
         {/* ── 13. Do Not Track Signals ── */}
@@ -546,7 +681,7 @@ export default function PrivacyPage() {
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li><strong>Approximate location:</strong> Derived from your IP address and collected automatically when you use the Platform. This helps us display relevant deals and events in your general area.</li>
           <li><strong>Precise location:</strong> Collected through GPS, Wi-Fi, or Bluetooth signals on your mobile device only when you explicitly grant location permission. This enables features like nearby deal discovery, distance calculations to participating merchants and venues, and location-based notifications.</li>
-          <li><strong>Place and venue data:</strong> We use third-party location and place lookup services to resolve venue names, addresses, business details, and geographic coordinates associated with deals and events listed on the Platform. This data is used to display accurate merchant and event information and to calculate distances between you and nearby offers.</li>
+          <li><strong>Place and venue data:</strong> We use third-party location and place lookup services (e.g., Google Maps Platform, Apple Maps) to resolve venue names, addresses, business details, and geographic coordinates associated with deals and events listed on the Platform.</li>
         </ul>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">14.2 Distance Calculations</h3>
@@ -559,40 +694,109 @@ export default function PrivacyPage() {
           You can control precise location access at any time through your device&#39;s system settings. Denying or revoking location permission may limit certain features of the Platform (e.g., nearby deals may not be displayed accurately, and distance-based sorting will be unavailable). Approximate (IP-based) location is collected as part of standard internet communication and cannot be separately opted out of.
         </p>
 
-        {/* ── 15. Push Notifications & Marketing ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">15. Push Notifications &amp; Marketing</h2>
+        {/* ── 15. Apple/Google Wallet Pass ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">15. Apple/Google Wallet Pass</h2>
+        <p className="text-muted leading-relaxed">
+          If you elect to add a Bizzy Ticket to Apple Wallet or Google Wallet, the Platform transmits to the applicable wallet provider the data necessary to render the pass, including the event name, venue, date and time, your name as the ticket holder, the seat or ticket type, and the QR or barcode used for admission. The wallet provider stores the pass on your device, and may transmit limited data (e.g., last-used timestamps, geofenced suggestions to surface the pass at the venue) back to itself in accordance with its own privacy policy. Bizzy does not control the wallet provider&apos;s handling of pass data after delivery.
+        </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.1 Push Notifications</h3>
+        {/* ── 16. Push Notifications & Personal Marketing ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">16. Push Notifications &amp; Personal Marketing</h2>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.1 Push Notifications</h3>
         <p className="text-muted leading-relaxed">
           With your permission, we send push notifications to your mobile device. These may include notifications about new deals, upcoming events, account-related information, welcome sequences for new users, and promotional campaigns. You can manage push notification preferences in the app settings or through your device&#39;s notification settings at any time.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.2 Email Marketing</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.2 Email Marketing (CAN-SPAM)</h3>
         <p className="text-muted leading-relaxed">
-          We may send promotional emails about deals, events, and Platform updates. Every promotional email includes an &quot;unsubscribe&quot; link at the bottom. You may opt out of marketing emails at any time. Please allow up to <strong>10 business days</strong> for opt-out requests to take effect. Even after opting out of marketing emails, you will continue to receive transactional emails (e.g., purchase confirmations, account security alerts, and important service announcements).
+          We may send promotional emails about deals, events, and Platform updates. Every promotional email includes (a) accurate header and routing information, (b) a non-deceptive subject line, (c) clear identification of the email as an advertisement (where required), (d) a valid physical postal address for the sender, and (e) a clear and conspicuous unsubscribe mechanism. Bulk-marketing emails also support the List-Unsubscribe-Post header (RFC 8058) to enable one-click unsubscribe through major mail providers. We honor opt-out requests within the timeframe required by law (no later than 10 business days). Even after opting out of marketing emails, you will continue to receive transactional emails (purchase confirmations, account security alerts, event reminders for Tickets you hold, important service announcements).
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.3 SMS/Text Messages</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.3 SMS/Text Messages (TCPA)</h3>
         <p className="text-muted leading-relaxed">
-          If you provide your phone number and consent to SMS communications, we may send text messages about deals, event reminders, and account updates. Standard message and data rates may apply. You can opt out at any time by replying &quot;STOP&quot; to any message or adjusting your preferences in the app. Message frequency varies.
+          Marketing SMS messages from Bizzy or any business operating on the Platform are sent only with your prior express written consent as required by the Telephone Consumer Protection Act (47 U.S.C. § 227) and its implementing regulations. By providing your mobile phone number and affirmatively opting in to marketing SMS, you agree to receive recurring marketing SMS messages; message frequency varies; message and data rates may apply; consent is not a condition of any purchase. You may opt out at any time by replying STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, or QUIT to any marketing SMS, or by toggling SMS off in your account notification settings. Reply HELP for help. We maintain records of your opt-in and opt-out actions for compliance purposes (see Section 7).
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.4 CAN-SPAM Compliance</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.4 Consent Records</h3>
         <p className="text-muted leading-relaxed">
-          We comply with the CAN-SPAM Act. All commercial emails from Bizzy will accurately identify the sender, include a valid physical mailing address or P.O. Box, and provide a clear and conspicuous opt-out mechanism. We will honor opt-out requests promptly and will not share or sell your email address to third parties for their marketing purposes.
+          We maintain records of your opt-in and opt-out actions (including timestamp, source, and channel) for compliance with the TCPA, the CAN-SPAM Act, and other applicable laws. You may request a copy of your consent record by contacting {CONTACT_EMAIL}.
         </p>
 
-        {/* ── 16. Data Transfers ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">16. Data Transfers</h2>
+        {/* ── 17. Business-Sent Communications & Follower Relationships ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">17. Business-Sent Communications &amp; Follower Relationships</h2>
         <p className="text-muted leading-relaxed">
-          Bizzy is based in the United States. If you access the Platform from outside the United States, please be aware that your information may be transferred to, stored, and processed in the United States, where data protection laws may differ from those of your country. By using the Platform, you consent to the transfer of your information to the United States.
+          Merchants, Event Organizers, and venues you have opted in to may use Bizzy&apos;s in-app marketing tools to send communications to you. When this occurs:
         </p>
+        <ul className="text-muted space-y-1 list-disc pl-6">
+          <li><strong>The business is the sender of record.</strong> Bizzy acts as the technology platform. The business is responsible for the content and accuracy of the communication, subject to Bizzy&apos;s content policies.</li>
+          <li><strong>We process delivery and engagement data on the business&apos;s behalf.</strong> This includes phone numbers and email addresses for delivery, opt-out (STOP) signals from carriers, message delivery status, opens, clicks, and the message content itself. We do not use this data to build a Bizzy-side profile of you for unrelated advertising purposes.</li>
+          <li><strong>Following a business after a Ticket purchase.</strong> When you purchase a Ticket, the Platform may add you to the Event Organizer&apos;s follower list for transactional event communications. Marketing communications from that business still require a separate opt-in (see Section 16). Unfollowing is available in your account settings.</li>
+          <li><strong>10DLC and short-code compliance.</strong> SMS sent through the Platform on behalf of businesses is delivered over U.S. carrier-registered messaging campaigns (10DLC or short codes) so that you can identify the sender and the carrier can enforce STOP/HELP keywords.</li>
+        </ul>
+
+        {/* ── 18. Promoter Program Data ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">18. Promoter Program Data</h2>
         <p className="text-muted leading-relaxed">
-          We take steps to ensure that your information receives an adequate level of protection in the jurisdictions in which we process it, consistent with applicable law.
+          If you enroll in the Bizzy Promoter Program (governed in detail by the Terms of Service), we collect and process additional categories of information:
         </p>
 
-        {/* ── 17. Merchant & Event Organizer Data ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">17. Merchant &amp; Event Organizer Data</h2>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">18.1 Identity, Tax &amp; Payout Information</h3>
+        <ul className="text-muted space-y-1 list-disc pl-6">
+          <li><strong>Legal identity and tax information:</strong> Legal name, address, date of birth, and taxpayer identification number (such as SSN or EIN) provided on IRS Form W-9 or its successor.</li>
+          <li><strong>Payout destination:</strong> Bank account or other supported payout destination collected through Stripe Connect onboarding. Sensitive banking information is handled directly by Stripe (a PCI-DSS-compliant payment processor) and is not stored in Bizzy&apos;s primary systems.</li>
+          <li><strong>Identity verification artifacts:</strong> Where Stripe Connect requires Know-Your-Customer (KYC) verification, you may be asked to upload a government-issued ID or other documents. These documents are submitted directly to Stripe and are not stored by Bizzy.</li>
+        </ul>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">18.2 Promoter Activity &amp; Performance</h3>
+        <ul className="text-muted space-y-1 list-disc pl-6">
+          <li>Tracking links you have generated, their associated Events, and commission terms (snapshot at link creation)</li>
+          <li>Click events, attributed Ticket purchases, accrued commission amounts, and clawback events</li>
+          <li>Aggregated dashboard analytics (lifetime earnings, per-event click and sale counts)</li>
+          <li>Communications between you and Bizzy or Event Organizers regarding your Promoter activity</li>
+        </ul>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">18.3 Use, Disclosure &amp; Retention</h3>
+        <p className="text-muted leading-relaxed">
+          We use Promoter data to operate the Promoter Program, attribute purchases, calculate and disburse payouts, generate IRS Forms 1099-NEC (where the U.S. reporting threshold is met), and detect and prevent fraud or prohibited conduct. We disclose Promoter data to Stripe (for payouts and KYC), to the relevant Event Organizer (limited to the attributed-purchase summary necessary to validate commissions), and to tax authorities as required by law. We retain Promoter tax records and payout records for at least seven (7) years to comply with U.S. tax recordkeeping obligations.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">18.4 What Promoters See About Users</h3>
+        <p className="text-muted leading-relaxed">
+          Promoters do <strong>not</strong> receive personal information about the individual Users who click their tracking links or who complete purchases attributed to them. The Promoter dashboard shows aggregated counts, not buyer identities.
+        </p>
+
+        {/* ── 19. Ticketing-Specific Data Practices ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">19. Ticketing-Specific Data Practices</h2>
+        <p className="text-muted leading-relaxed">
+          When you purchase a Ticket through Bizzy Ticketing LLC, additional data practices apply:
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">19.1 Data Collected for Ticketing</h3>
+        <ul className="text-muted space-y-1 list-disc pl-6">
+          <li><strong>Ticket purchaser identity:</strong> Name, email, and phone number for order confirmation and event communication.</li>
+          <li><strong>Transaction details:</strong> Event name, ticket type, quantity, price, fees, payment method (last four digits only), promo code applied, and order timestamp.</li>
+          <li><strong>Admission data:</strong> QR code scan records, time of entry, scanner identifier, and admission status (used for event operations, capacity management, and door counter analytics).</li>
+          <li><strong>Transfer records:</strong> If Tickets are transferred to another party (where permitted), we record the transfer for audit and fraud prevention purposes.</li>
+        </ul>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">19.2 Sharing with Event Organizers</h3>
+        <p className="text-muted leading-relaxed">
+          We share ticket-purchaser information with the relevant Event Organizer for the purposes of admission management, transactional event communications, customer service, and (where you have separately opted in under Section 16) marketing communications. The data shared with an Event Organizer includes: your name, email address, phone number (if collected), Ticket type and order details, redemption and scan status, any tags or notes the Event Organizer has applied to your profile within the Bizzy business dashboard (e.g., &quot;VIP,&quot; &quot;repeat attendee&quot;), and your communication preferences. Event Organizers use this information in accordance with our agreements with them and their own privacy policies. We encourage you to review the privacy policy of each Event Organizer.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">19.3 Authorized Event Staff &amp; Scanners</h3>
+        <p className="text-muted leading-relaxed">
+          Authorized event staff (door personnel, security, volunteers) operating Bizzy scanner links may view information necessary to validate admission, including your name, ticket type, redemption status, and previous scan timestamps. Scanner access is scoped to the Event for which the staff is authorized.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">19.4 Fraud Prevention</h3>
+        <p className="text-muted leading-relaxed">
+          We use ticket transaction data and device information to detect and prevent ticket fraud, including duplicate ticket use, unauthorized transfers, counterfeit tickets, and prohibited automated purchasing (consistent with the federal BOTS Act). Suspected fraud may result in ticket cancellation and account suspension.
+        </p>
+
+        {/* ── 20. Merchant & Event Organizer Data ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">20. Merchant &amp; Event Organizer Data</h2>
         <p className="text-muted leading-relaxed">
           If you are a Merchant or Event Organizer using the Platform, we collect additional information necessary to operate your business relationship with Bizzy, including:
         </p>
@@ -601,38 +805,38 @@ export default function PrivacyPage() {
           <li>Authorized representative name and contact details</li>
           <li>Business type, category, and operating hours</li>
           <li>Deal or event details you create on the Platform</li>
-          <li>Aggregated analytics about deal redemptions or ticket sales (no individual User identity is disclosed to Merchants without the User&#39;s involvement in a transaction)</li>
+          <li>Stripe Connect account information for payouts</li>
+          <li>Marketing campaign data, including blast content, recipient counts, and engagement metrics</li>
+          <li>Aggregated analytics about deal redemptions, ticket sales, and follower base</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
           We use this information to operate the Platform, facilitate transactions, provide analytics, and communicate with you about your account. Merchant and Event Organizer data is subject to the same security and retention practices described in this Privacy Policy.
         </p>
 
-        {/* ── 18. Ticketing-Specific Data Practices ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">18. Ticketing-Specific Data Practices</h2>
+        {/* ── 21. Data Transfers ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">21. Data Transfers</h2>
         <p className="text-muted leading-relaxed">
-          When you purchase a Ticket through Bizzy Ticketing LLC, additional data practices apply:
+          Bizzy is based in the United States and the Platform is intended for use by U.S. residents. If you access the Platform from outside the United States, please be aware that your information may be transferred to, stored, and processed in the United States, where data protection laws may differ from those of your country. By using the Platform, you consent to the transfer of your information to the United States.
+        </p>
+        <p className="text-muted leading-relaxed">
+          We take steps to ensure that your information receives an adequate level of protection in the jurisdictions in which we process it, consistent with applicable law.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">18.1 Data Collected for Ticketing</h3>
+        {/* ── 22. Data Broker / Negative Disclosures ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">22. What Bizzy Is Not</h2>
+        <p className="text-muted leading-relaxed">
+          For clarity, Bizzy:
+        </p>
         <ul className="text-muted space-y-1 list-disc pl-6">
-          <li><strong>Ticket purchaser identity:</strong> Name, email, and phone number for order confirmation and communication.</li>
-          <li><strong>Transaction details:</strong> Event name, ticket type, quantity, price, fees, payment method (last four digits only), and order timestamp.</li>
-          <li><strong>Admission data:</strong> QR code scan records, time of entry, and admission status (used for event operations and capacity management).</li>
-          <li><strong>Transfer records:</strong> If tickets are transferred to another party (where permitted), we record the transfer for audit and fraud prevention purposes.</li>
+          <li>Is <strong>not a data broker</strong> within the meaning of California Civil Code § 1798.99.80 or the registration laws of any U.S. state.</li>
+          <li>Is <strong>not a consumer reporting agency</strong> under the Fair Credit Reporting Act and does not provide consumer reports.</li>
+          <li>Does <strong>not handle protected health information (PHI)</strong> subject to the U.S. Health Insurance Portability and Accountability Act (HIPAA).</li>
+          <li>Does <strong>not collect biometric identifiers or biometric information</strong> subject to the Illinois Biometric Information Privacy Act (BIPA) or analogous state laws.</li>
+          <li>Does <strong>not use session-replay, screen-recording, or chat-wiretapping technologies</strong> in a manner prohibited by the California Invasion of Privacy Act (CIPA) or analogous state laws.</li>
         </ul>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">18.2 Sharing with Event Organizers</h3>
-        <p className="text-muted leading-relaxed">
-          We share ticket purchaser information (name, email, ticket type) with Event Organizers for the purposes of admission management, event communication, and customer service. Event Organizers may use this information in accordance with their own privacy policies. We encourage you to review the privacy policy of each Event Organizer.
-        </p>
-
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">18.3 Fraud Prevention</h3>
-        <p className="text-muted leading-relaxed">
-          We use ticket transaction data and device information to detect and prevent ticket fraud, including duplicate ticket use, unauthorized transfers, and counterfeit tickets. Suspected fraud may result in ticket cancellation and account suspension.
-        </p>
-
-        {/* ── 19. Changes to This Privacy Policy ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">19. Changes to This Privacy Policy</h2>
+        {/* ── 23. Changes to This Privacy Policy ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">23. Changes to This Privacy Policy</h2>
         <p className="text-muted leading-relaxed">
           We may update this Privacy Policy from time to time to reflect changes in our practices, technology, legal requirements, or other factors. When we make material changes, we will:
         </p>
@@ -645,8 +849,8 @@ export default function PrivacyPage() {
           Your continued use of the Platform after the effective date of the revised Privacy Policy constitutes your acceptance of the changes. We encourage you to review this Privacy Policy periodically.
         </p>
 
-        {/* ── 20. Contact Information ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">20. Contact Information</h2>
+        {/* ── 24. Contact Information ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">24. Contact Information</h2>
         <p className="text-muted leading-relaxed">
           If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
         </p>
