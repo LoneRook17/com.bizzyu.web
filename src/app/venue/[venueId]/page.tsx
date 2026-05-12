@@ -33,8 +33,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title: `${venueName} | Bizzy`,
       description,
-      images: data?.venue?.venue_photo_url
-        ? [data.venue.venue_photo_url]
+      // /ui/venues/venue/:id returns the venue photo as `venuePhotoUrl`
+      // (camelCase — see venues.ts:462). Reading snake_case silently
+      // undefined the field and every venue share fell back to the
+      // business logo (the green Bizzy badge), which is why an LS share
+      // through Messages had no rich preview of the venue itself.
+      images: data?.venue?.venuePhotoUrl
+        ? [data.venue.venuePhotoUrl]
         : data?.business?.logo_image_url
           ? [data.business.logo_image_url]
           : [],
