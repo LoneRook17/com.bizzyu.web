@@ -32,6 +32,10 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [composerChannel, setComposerChannel] = useState<BlastChannel | null>(null)
 
+  // Followers are per-venue (PRD §6.5). When the business has >1 venues and
+  // the operator hasn't scoped to one, force them to pick before sending.
+  const mustPickVenue = venueId == null && venueIds.length > 1
+
   const audience: BlastAudienceBody = useMemo(() => {
     if (venueId != null) {
       return { all_followers: true, venue_id: venueId }
@@ -102,7 +106,17 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
         </div>
       </div>
 
-      {total === 0 ? (
+      {mustPickVenue ? (
+        <div className="rounded-lg border border-primary/40 bg-primary/5 p-5">
+          <p className="text-sm font-semibold text-ink">
+            Pick a venue to send follower blasts.
+          </p>
+          <p className="mt-1 text-xs text-gray-600">
+            Followers are per-venue, so we send to one venue at a time. Use
+            the venue switcher in the sidebar to choose a specific venue.
+          </p>
+        </div>
+      ) : total === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-5 text-center">
           <p className="text-sm font-semibold text-ink">No followers yet.</p>
           <p className="mt-1 text-xs text-gray-500">
@@ -126,7 +140,7 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
       )}
 
       <BlastComposerModal
-        open={composerChannel !== null}
+        open={composerChannel !== null && !mustPickVenue}
         onClose={() => setComposerChannel(null)}
         channel={composerChannel ?? "announcement"}
         audience={audience}
