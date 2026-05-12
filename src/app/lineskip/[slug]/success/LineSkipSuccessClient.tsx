@@ -4,23 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { QRCodeSVG } from "qrcode.react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
+import { isAppleWalletCapable } from "@/lib/apple-wallet"
+import { nativeShare } from "@/lib/share"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
-
-// Apple Wallet only installs .pkpass files via Safari/iOS, Chrome/iOS, or
-// the iOS Mail/Messages share sheet. Hide the button on platforms where
-// the install will silently fail (desktop Chrome, Android browsers).
-function isAppleWalletCapable(): boolean {
-  if (typeof navigator === "undefined") return false
-  const ua = navigator.userAgent || ""
-  // iPhone, iPad, iPod, plus iPad-on-Safari that reports as Mac with touch.
-  if (/iPhone|iPad|iPod/.test(ua)) return true
-  if (/Macintosh/.test(ua) && typeof (navigator as { maxTouchPoints?: number }).maxTouchPoints === "number" && (navigator as { maxTouchPoints?: number }).maxTouchPoints! > 1) return true
-  return false
-}
 
 interface TicketInfo {
   id: number
@@ -222,6 +212,10 @@ export default function LineSkipSuccessClient({
         {/* Add to Apple Wallet — iOS Safari / Chrome only */}
         <AppleWalletLineSkipButton tickets={tickets} sessionId={sessionId} />
 
+        {/* Share — mirrors the Flutter event-share flow but shares the
+            venue page since line-skips are venue-scoped, not event-scoped. */}
+        <ShareVenueButton title={displayName} venueId={venueId} />
+
         {/* Download app CTA */}
         <div className="rounded-xl bg-white/5 border border-white/10 p-5">
           <div className="flex items-center gap-4">
@@ -283,26 +277,48 @@ function AppleWalletLineSkipButton({
 
   if (!show || tickets.length === 0) return null
 
+  // Single anchor points at the `.pkpasses` bundle so iOS Safari surfaces one
+  // PassKit sheet with every ticket stacked — mirrors the Flutter app's
+  // `apple_passkit.addPasses()` flow used by `installLineSkipTicketPasses`.
+  const label = `Add ${tickets.length > 1 ? `${tickets.length} ` : ""}to Apple Wallet`
   return (
-    <div className="mt-4 space-y-2">
-      {tickets.map((ticket, idx) => (
-        <a
-          key={`wallet-${ticket.uuid}`}
-          // Anchor the user straight at the wallet-pass binary; iOS Safari
-          // serves it through PassKit's "Add to Wallet" sheet automatically.
-          // No-JS install — matches PRD §3.4 web button behavior.
-          href={`${API_URL}/public/wallet/line-skip-ticket/${ticket.uuid}/wallet-pass?session_id=${encodeURIComponent(sessionId)}`}
-          className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
-          style={buttonStyle}
-        >
-          {/* Apple Wallet wordmark */}
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
-          </svg>
-          Add to Apple Wallet
-          {tickets.length > 1 ? ` (#${idx + 1})` : ""}
-        </a>
-      ))}
+    <div className="mt-4">
+      <a
+        href={`${API_URL}/public/wallet/by-session/${encodeURIComponent(sessionId)}/line-skip-tickets-bundle`}
+        className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
+        style={buttonStyle}
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
+        </svg>
+        {label}
+      </a>
+    </div>
+  )
+}
+
+function ShareVenueButton({ title, venueId }: { title: string; venueId: string }) {
+  const [copied, setCopied] = useState(false)
+  const shareUrl = `${WEB_BASE_URL}/venue/${venueId}?utm_source=web_share`
+  const onClick = async () => {
+    const outcome = await nativeShare({ title: title || "Bizzy", url: shareUrl })
+    if (outcome === "copied") {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+  return (
+    <div className="mt-3 mb-4">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+        {copied ? "Link Copied!" : "Share"}
+      </button>
     </div>
   )
 }

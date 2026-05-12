@@ -126,9 +126,14 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
       <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4">
         <div className="mx-auto max-w-3xl flex items-center justify-between gap-3">
           <div className="text-xs text-gray-500">
-            {selected.size} event{selected.size === 1 ? "" : "s"}
-            {recipientCount !== null && (
-              <> · ~{recipientCount} contact{recipientCount === 1 ? "" : "s"}</>
+            {recipientCount !== null ? (
+              <>
+                ~{recipientCount} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in
+                {" · "}
+                {selected.size} event{selected.size === 1 ? "" : "s"}
+              </>
+            ) : (
+              <>{selected.size} event{selected.size === 1 ? "" : "s"}</>
             )}
             {previewLoading && <> · …</>}
           </div>

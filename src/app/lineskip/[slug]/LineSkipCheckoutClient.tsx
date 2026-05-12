@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react"
 import { QRCodeSVG } from "qrcode.react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
+import { isAppleWalletCapable } from "@/lib/apple-wallet"
+import { nativeShare } from "@/lib/share"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
@@ -447,7 +449,8 @@ export default function LineSkipCheckoutClient({
           return
         }
         const ticketUuids = (data.tickets || []).map((t: any) => t.uuid).join(",")
-        window.location.href = `/lineskip/${venueId}?free_success=1&venue_name=${encodeURIComponent(data.venue_name || "")}&business_name=${encodeURIComponent(data.business_name || "")}&venue_id=${data.venue_id || venueId}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}&tickets=${encodeURIComponent(ticketUuids)}`
+        const walletToken = data.wallet_token || ""
+        window.location.href = `/lineskip/${venueId}?free_success=1&venue_name=${encodeURIComponent(data.venue_name || "")}&business_name=${encodeURIComponent(data.business_name || "")}&venue_id=${data.venue_id || venueId}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}&tickets=${encodeURIComponent(ticketUuids)}&wallet_token=${encodeURIComponent(walletToken)}`
         return
       }
 
@@ -491,7 +494,9 @@ export default function LineSkipCheckoutClient({
     end: string
     count: number
     tickets: string[]
+    wallet_token: string
   } | null>(null)
+  const [showFreeWalletButton, setShowFreeWalletButton] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -508,7 +513,9 @@ export default function LineSkipCheckoutClient({
         end: params.get("end") || "",
         count: Number(params.get("count") || 1),
         tickets: ticketParam ? ticketParam.split(",") : [],
+        wallet_token: params.get("wallet_token") || "",
       })
+      setShowFreeWalletButton(isAppleWalletCapable())
     }
   }, [])
 
@@ -622,6 +629,32 @@ export default function LineSkipCheckoutClient({
               </p>
             </div>
           </div>
+
+          {/* Add to Apple Wallet — iOS-only. Bundle endpoint serves a
+              `.pkpasses` archive so a single tap installs every ticket
+              from this free purchase, mirroring the Flutter app's
+              `apple_passkit.addPasses()` flow. */}
+          {showFreeWalletButton && freeSuccessData.tickets.length > 0 && freeSuccessData.wallet_token && (
+            <div className="mb-4">
+              <a
+                href={`${API_URL}/public/wallet/line-skip-tickets-bundle?uuids=${encodeURIComponent(freeSuccessData.tickets.join(","))}&token=${encodeURIComponent(freeSuccessData.wallet_token)}`}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-black py-2.5 text-sm font-semibold text-white transition-colors"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
+                </svg>
+                Add {freeSuccessData.tickets.length > 1 ? `${freeSuccessData.tickets.length} ` : ""}to Apple Wallet
+              </a>
+            </div>
+          )}
+
+          {/* Share — mirrors the Flutter event-share pattern but targets
+              the venue page since line-skips are venue-scoped. */}
+          <ShareVenueButton
+            title={freeSuccessData.venue_name || freeSuccessData.business_name || "Bizzy"}
+            venueId={freeSuccessData.venue_id}
+          />
+
           <div className="rounded-xl bg-white/5 border border-white/10 p-5">
             <div className="flex items-center gap-4">
               <img
@@ -1122,6 +1155,32 @@ export default function LineSkipCheckoutClient({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ShareVenueButton({ title, venueId }: { title: string; venueId: string }) {
+  const [copied, setCopied] = useState(false)
+  const shareUrl = `${WEB_BASE_URL}/venue/${venueId}?utm_source=web_share`
+  const onClick = async () => {
+    const outcome = await nativeShare({ title, url: shareUrl })
+    if (outcome === "copied") {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+  return (
+    <div className="mt-3 mb-4">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/5 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+        {copied ? "Link Copied!" : "Share"}
+      </button>
     </div>
   )
 }

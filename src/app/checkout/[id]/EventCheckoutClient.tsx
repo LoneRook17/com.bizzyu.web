@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
+import { isAppleWalletCapable } from "@/lib/apple-wallet"
 
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
@@ -409,12 +410,7 @@ export default function EventCheckoutClient({
       setPurchaseSuccess(true)
       setSuccessSessionId(params.get("session_id"))
     }
-    // Apple Wallet only installs .pkpass via Safari/iOS or Chrome/iOS.
-    // Hide the button on desktop Chrome and Android browsers per PRD §3.4.
-    const ua = navigator.userAgent || ""
-    const isIos = /iPhone|iPad|iPod/.test(ua) ||
-      (/Macintosh/.test(ua) && typeof (navigator as { maxTouchPoints?: number }).maxTouchPoints === "number" && (navigator as { maxTouchPoints?: number }).maxTouchPoints! > 1)
-    setShowWalletButton(isIos)
+    setShowWalletButton(isAppleWalletCapable())
   }, [])
 
   // ─── Render: Loading ────────────────────────────────────────────────────
@@ -497,11 +493,12 @@ export default function EventCheckoutClient({
           </div>
 
           {/* Add to Apple Wallet — iOS Safari / Chrome only. Anchored
-              directly at the .pkpass binary so iOS handles the install
-              sheet without any client JS. */}
+              directly at the `.pkpasses` bundle so iOS surfaces a single
+              install sheet with every ticket from this order stacked
+              (mirrors the Flutter app's `apple_passkit.addPasses()` flow). */}
           {showWalletButton && successSessionId && (
             <a
-              href={`/api/proxy/public/wallet/by-session/${encodeURIComponent(successSessionId)}/event-ticket`}
+              href={`/api/proxy/public/wallet/by-session/${encodeURIComponent(successSessionId)}/event-tickets-bundle`}
               className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-black py-2.5 text-sm font-semibold text-white transition-colors"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
