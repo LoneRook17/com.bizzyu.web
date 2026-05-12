@@ -74,8 +74,13 @@ export default function ComposeSmsBlastPage({ params }: { params: Promise<{ id: 
       <div className="mb-2">
         <h1 className="text-xl font-bold text-ink">New SMS Blast</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {eventIds.length} event{eventIds.length === 1 ? "" : "s"}
-          {recipientCount !== null && <> · ~{recipientCount} contact{recipientCount === 1 ? "" : "s"}</>}
+          {recipientCount !== null ? (
+            <>
+              ~{recipientCount} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in · {eventIds.length} event{eventIds.length === 1 ? "" : "s"}
+            </>
+          ) : (
+            <>{eventIds.length} event{eventIds.length === 1 ? "" : "s"}</>
+          )}
         </p>
       </div>
 
@@ -129,7 +134,7 @@ export default function ComposeSmsBlastPage({ params }: { params: Promise<{ id: 
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <h2 className="text-lg font-bold text-ink mb-2">Confirm send</h2>
             <p className="text-sm text-gray-700">
-              Sending to {recipientCount ?? "?"} contact{recipientCount === 1 ? "" : "s"}.
+              Sending to {recipientCount ?? "?"} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in.
               Free during the May 2026 update — future blasts will be billed per Twilio segment cost.
             </p>
             <div className="mt-4 flex justify-end gap-2">
