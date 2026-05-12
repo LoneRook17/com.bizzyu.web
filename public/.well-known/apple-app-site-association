@@ -8,6 +8,8 @@
           { "/": "/checkin/*", "exclude": true },
           { "/": "/event/*" },
           { "/": "/lineskip/*" },
+          { "/": "/p/*" },
+          { "/": "/promote/*" },
           { "/": "/venue/*" },
           { "/": "/deal/*" },
           { "/": "/business/*" }
