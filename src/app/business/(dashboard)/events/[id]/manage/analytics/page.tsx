@@ -11,6 +11,7 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
   const { id } = use(params)
   const [data, setData] = useState<EventAnalytics | null>(null)
   const [perScanner, setPerScanner] = useState<PerScannerRow[] | null>(null)
+  const [perScannerError, setPerScannerError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -23,8 +24,16 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
 
     apiClient
       .get<PerScannerResponse>(`/business/analytics/events/${id}/per-scanner`)
-      .then((res) => setPerScanner(res.rows ?? []))
-      .catch(() => setPerScanner([]))
+      .then((res) => {
+        setPerScanner(res.rows ?? [])
+        setPerScannerError(null)
+      })
+      .catch((err) => {
+        const message = err instanceof ApiError ? err.message : "Couldn't load Door Performance"
+        console.error("Door Performance load failed:", err)
+        setPerScannerError(message)
+        setPerScanner([])
+      })
   }, [id])
 
   if (loading) {
@@ -51,7 +60,9 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
       ) : data ? (
         <div className="space-y-6">
           <EventAnalyticsView data={data} />
-          {perScanner !== null && <DoorPerformanceCard rows={perScanner} />}
+          {perScanner !== null && (
+            <DoorPerformanceCard rows={perScanner} error={perScannerError} />
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">

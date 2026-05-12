@@ -39,7 +39,13 @@ function staffLabel(row: PerScannerRow) {
   return row.staff_name
 }
 
-export default function DoorPerformanceCard({ rows }: { rows: PerScannerRow[] }) {
+export default function DoorPerformanceCard({
+  rows,
+  error,
+}: {
+  rows: PerScannerRow[]
+  error?: string | null
+}) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
@@ -74,6 +80,16 @@ export default function DoorPerformanceCard({ rows }: { rows: PerScannerRow[] })
   function arrow(key: SortKey) {
     if (sortKey !== key) return ""
     return sortDir === "asc" ? " ▲" : " ▼"
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-5">
+        <h3 className="text-sm font-semibold text-ink mb-1">Door Performance</h3>
+        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-xs text-red-500 mt-1">Refresh the page to retry.</p>
+      </div>
+    )
   }
 
   if (rows.length === 0) {
