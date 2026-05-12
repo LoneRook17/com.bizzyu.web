@@ -137,6 +137,9 @@ export interface EventDetail extends EventListItem {
   tickets: TicketTier[]
   my_event_role: 'owner' | 'cohost' | 'crew' | 'scan_only' | 'scan_door_sales' | null
   sales: { total_attendees: number; total_revenue: number; checkin_rate: number }
+  promotion_enabled?: boolean | number
+  promotion_commission_type?: 'percent' | 'fixed' | null
+  promotion_commission_value?: number | null
 }
 
 export interface RecurringNight {
@@ -168,6 +171,9 @@ export interface EventFormData {
   recurring_event?: RecurringEventConfig
   flyer_image_url: string
   tickets: TicketTier[]
+  promotion_enabled?: boolean
+  promotion_commission_type?: 'percent' | 'fixed'
+  promotion_commission_value?: number | null
 }
 
 // Deal types
@@ -224,6 +230,30 @@ export interface EventAnalytics {
   tierBreakdown: { ticket_id: number; tier_name: string; sold: number; revenue: number }[]
   trackingLinks: { tracking_link_id: number; promoter_name: string; code: string; sales_count: number; clicks: number }[]
   revenue: { revenue: number; pre_sales_revenue: number; door_sales_revenue: number }
+}
+
+export interface PerScannerRow {
+  staff_user_id: number | null
+  staff_name: string | null
+  scanner_label: string | null
+  scans: number
+  valid_scans: number
+  rejected_scans: number
+  // scan_revenue + sold_revenue. Server emits `revenue` as an alias of this
+  // for backwards compat with older clients.
+  revenue: number
+  // Newly added fields (May 2026 — tap-to-pay attribution). Optional so the
+  // type still describes responses from older service deploys.
+  scan_revenue?: number
+  sold_count?: number
+  sold_revenue?: number
+  total_revenue?: number
+  first_scan_at: string | null
+  last_scan_at: string | null
+}
+
+export interface PerScannerResponse {
+  rows: PerScannerRow[]
 }
 
 export interface DealAnalytics {

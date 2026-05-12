@@ -6,13 +6,17 @@
         "components": [
           { "/": "/ls/*", "exclude": true },
           { "/": "/checkin/*", "exclude": true },
+          { "/": "/event/*/checkout" },
           { "/": "/event/*" },
+          { "/": "/ticket/*/wallet" },
+          { "/": "/ticket/*" },
           { "/": "/lineskip/*" },
-          { "/": "/p/*" },
+          { "/": "/scanner/*" },
+          { "/": "/business/*" },
           { "/": "/promote/*" },
+          { "/": "/p/*" },
           { "/": "/venue/*" },
-          { "/": "/deal/*" },
-          { "/": "/business/*" }
+          { "/": "/deal/*" }
         ]
       }
     ]

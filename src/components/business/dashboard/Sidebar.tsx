@@ -211,7 +211,6 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   icon={link.icon}
                   active={isActive}
                   disabled={isDisabled}
-                  description={link.description}
                 />
               </div>
             )
