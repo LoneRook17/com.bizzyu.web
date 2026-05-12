@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { QRCodeSVG } from "qrcode.react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
+import { isAppleWalletCapable } from "@/lib/apple-wallet"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
@@ -447,7 +448,8 @@ export default function LineSkipCheckoutClient({
           return
         }
         const ticketUuids = (data.tickets || []).map((t: any) => t.uuid).join(",")
-        window.location.href = `/lineskip/${venueId}?free_success=1&venue_name=${encodeURIComponent(data.venue_name || "")}&business_name=${encodeURIComponent(data.business_name || "")}&venue_id=${data.venue_id || venueId}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}&tickets=${encodeURIComponent(ticketUuids)}`
+        const walletToken = data.wallet_token || ""
+        window.location.href = `/lineskip/${venueId}?free_success=1&venue_name=${encodeURIComponent(data.venue_name || "")}&business_name=${encodeURIComponent(data.business_name || "")}&venue_id=${data.venue_id || venueId}&date=${encodeURIComponent(data.instance_date || "")}&start=${encodeURIComponent(data.start_time || "")}&end=${encodeURIComponent(data.end_time || "")}&count=${data.tickets?.length || qty}&tickets=${encodeURIComponent(ticketUuids)}&wallet_token=${encodeURIComponent(walletToken)}`
         return
       }
 
@@ -491,7 +493,9 @@ export default function LineSkipCheckoutClient({
     end: string
     count: number
     tickets: string[]
+    wallet_token: string
   } | null>(null)
+  const [showFreeWalletButton, setShowFreeWalletButton] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -508,7 +512,9 @@ export default function LineSkipCheckoutClient({
         end: params.get("end") || "",
         count: Number(params.get("count") || 1),
         tickets: ticketParam ? ticketParam.split(",") : [],
+        wallet_token: params.get("wallet_token") || "",
       })
+      setShowFreeWalletButton(isAppleWalletCapable())
     }
   }, [])
 
@@ -622,6 +628,25 @@ export default function LineSkipCheckoutClient({
               </p>
             </div>
           </div>
+
+          {/* Add to Apple Wallet — iOS-only. Bundle endpoint serves a
+              `.pkpasses` archive so a single tap installs every ticket
+              from this free purchase, mirroring the Flutter app's
+              `apple_passkit.addPasses()` flow. */}
+          {showFreeWalletButton && freeSuccessData.tickets.length > 0 && freeSuccessData.wallet_token && (
+            <div className="mb-4">
+              <a
+                href={`${API_URL}/public/wallet/line-skip-tickets-bundle?uuids=${encodeURIComponent(freeSuccessData.tickets.join(","))}&token=${encodeURIComponent(freeSuccessData.wallet_token)}`}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-black py-2.5 text-sm font-semibold text-white transition-colors"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
+                </svg>
+                Add {freeSuccessData.tickets.length > 1 ? `${freeSuccessData.tickets.length} ` : ""}to Apple Wallet
+              </a>
+            </div>
+          )}
+
           <div className="rounded-xl bg-white/5 border border-white/10 p-5">
             <div className="flex items-center gap-4">
               <img

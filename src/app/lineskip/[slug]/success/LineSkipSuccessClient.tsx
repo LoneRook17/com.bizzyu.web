@@ -4,23 +4,12 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { QRCodeSVG } from "qrcode.react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
+import { isAppleWalletCapable } from "@/lib/apple-wallet"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
-
-// Apple Wallet only installs .pkpass files via Safari/iOS, Chrome/iOS, or
-// the iOS Mail/Messages share sheet. Hide the button on platforms where
-// the install will silently fail (desktop Chrome, Android browsers).
-function isAppleWalletCapable(): boolean {
-  if (typeof navigator === "undefined") return false
-  const ua = navigator.userAgent || ""
-  // iPhone, iPad, iPod, plus iPad-on-Safari that reports as Mac with touch.
-  if (/iPhone|iPad|iPod/.test(ua)) return true
-  if (/Macintosh/.test(ua) && typeof (navigator as { maxTouchPoints?: number }).maxTouchPoints === "number" && (navigator as { maxTouchPoints?: number }).maxTouchPoints! > 1) return true
-  return false
-}
 
 interface TicketInfo {
   id: number
@@ -283,26 +272,22 @@ function AppleWalletLineSkipButton({
 
   if (!show || tickets.length === 0) return null
 
+  // Single anchor points at the `.pkpasses` bundle so iOS Safari surfaces one
+  // PassKit sheet with every ticket stacked — mirrors the Flutter app's
+  // `apple_passkit.addPasses()` flow used by `installLineSkipTicketPasses`.
+  const label = `Add ${tickets.length > 1 ? `${tickets.length} ` : ""}to Apple Wallet`
   return (
-    <div className="mt-4 space-y-2">
-      {tickets.map((ticket, idx) => (
-        <a
-          key={`wallet-${ticket.uuid}`}
-          // Anchor the user straight at the wallet-pass binary; iOS Safari
-          // serves it through PassKit's "Add to Wallet" sheet automatically.
-          // No-JS install — matches PRD §3.4 web button behavior.
-          href={`${API_URL}/public/wallet/line-skip-ticket/${ticket.uuid}/wallet-pass?session_id=${encodeURIComponent(sessionId)}`}
-          className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
-          style={buttonStyle}
-        >
-          {/* Apple Wallet wordmark */}
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
-          </svg>
-          Add to Apple Wallet
-          {tickets.length > 1 ? ` (#${idx + 1})` : ""}
-        </a>
-      ))}
+    <div className="mt-4">
+      <a
+        href={`${API_URL}/public/wallet/by-session/${encodeURIComponent(sessionId)}/line-skip-tickets-bundle`}
+        className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
+        style={buttonStyle}
+      >
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
+        </svg>
+        {label}
+      </a>
     </div>
   )
 }
