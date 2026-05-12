@@ -3,8 +3,24 @@
 import { useMemo, useState } from "react"
 import type { PerScannerRow } from "@/lib/business/types"
 
-type SortKey = "staff" | "scanner_label" | "valid_scans" | "rejected_scans" | "revenue" | "first_scan_at" | "last_scan_at"
+type SortKey =
+  | "staff"
+  | "scanner_label"
+  | "valid_scans"
+  | "rejected_scans"
+  | "sold_count"
+  | "sold_revenue"
+  | "revenue"
+  | "first_scan_at"
+  | "last_scan_at"
 type SortDir = "asc" | "desc"
+
+// total_revenue is the new canonical sort key. Older service deploys only
+// emit `revenue` (which is itself the alias the new server writes); fall back
+// so an old API + new client still sorts sensibly.
+function totalRevenueOf(r: PerScannerRow): number {
+  return r.total_revenue ?? r.revenue
+}
 
 function formatCurrency(val: number) {
   return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -36,7 +52,9 @@ export default function DoorPerformanceCard({ rows }: { rows: PerScannerRow[] })
         case "scanner_label": return (a.scanner_label ?? "").localeCompare(b.scanner_label ?? "") * dir
         case "valid_scans": return (a.valid_scans - b.valid_scans) * dir
         case "rejected_scans": return (a.rejected_scans - b.rejected_scans) * dir
-        case "revenue": return (a.revenue - b.revenue) * dir
+        case "sold_count": return ((a.sold_count ?? 0) - (b.sold_count ?? 0)) * dir
+        case "sold_revenue": return ((a.sold_revenue ?? 0) - (b.sold_revenue ?? 0)) * dir
+        case "revenue": return (totalRevenueOf(a) - totalRevenueOf(b)) * dir
         case "first_scan_at": return ((a.first_scan_at ?? "").localeCompare(b.first_scan_at ?? "")) * dir
         case "last_scan_at": return ((a.last_scan_at ?? "").localeCompare(b.last_scan_at ?? "")) * dir
       }
@@ -62,7 +80,7 @@ export default function DoorPerformanceCard({ rows }: { rows: PerScannerRow[] })
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-ink mb-3">Door Performance</h3>
-        <p className="text-sm text-gray-400">No scans recorded yet.</p>
+        <p className="text-sm text-gray-400">No door activity recorded yet.</p>
       </div>
     )
   }
@@ -80,6 +98,8 @@ export default function DoorPerformanceCard({ rows }: { rows: PerScannerRow[] })
               <th className={`${cellHeader} text-left`} onClick={() => clickHeader("scanner_label")}>Scanner Label{arrow("scanner_label")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("valid_scans")}>Valid{arrow("valid_scans")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("rejected_scans")}>Rejected{arrow("rejected_scans")}</th>
+              <th className={`${cellHeader} text-right`} onClick={() => clickHeader("sold_count")}>Sold{arrow("sold_count")}</th>
+              <th className={`${cellHeader} text-right`} onClick={() => clickHeader("sold_revenue")}>Sales ${arrow("sold_revenue")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("revenue")}>Revenue{arrow("revenue")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("first_scan_at")}>First scan{arrow("first_scan_at")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("last_scan_at")}>Last scan{arrow("last_scan_at")}</th>
@@ -92,7 +112,9 @@ export default function DoorPerformanceCard({ rows }: { rows: PerScannerRow[] })
                 <td className="py-2 text-gray-600">{r.scanner_label ?? "—"}</td>
                 <td className="py-2 text-right text-gray-600">{r.valid_scans}</td>
                 <td className="py-2 text-right text-gray-600">{r.rejected_scans}</td>
-                <td className="py-2 text-right font-medium text-ink">{formatCurrency(r.revenue)}</td>
+                <td className="py-2 text-right text-gray-600">{r.sold_count ?? 0}</td>
+                <td className="py-2 text-right text-gray-600">{formatCurrency(r.sold_revenue ?? 0)}</td>
+                <td className="py-2 text-right font-medium text-ink">{formatCurrency(totalRevenueOf(r))}</td>
                 <td className="py-2 text-right text-gray-500 whitespace-nowrap">{formatTime(r.first_scan_at)}</td>
                 <td className="py-2 text-right text-gray-500 whitespace-nowrap">{formatTime(r.last_scan_at)}</td>
               </tr>

@@ -78,6 +78,14 @@ export interface AudienceFiltersBody {
 export interface BlastAudienceBody {
   user_ids?: number[]
   filters?: AudienceFiltersBody
+  /**
+   * Marketing → Followers tab: target every business_followers row for the
+   * specified venue(s). Followers are venue-scoped (May 2026 update), so
+   * either `venue_id` (single) or `venue_ids` (rollup) must be set.
+   */
+  all_followers?: boolean
+  venue_id?: number
+  venue_ids?: number[]
 }
 
 export interface AudiencePreviewResponse {

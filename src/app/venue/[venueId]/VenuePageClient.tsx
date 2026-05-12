@@ -29,7 +29,7 @@ interface VenueData {
     end_date_time: string
     venue_name: string
     flyer_image_url: string | null
-    min_ticket_price: number | null
+    min_ticket_price: number | string | null
   }>
   deals: Array<{
     id: number
@@ -40,7 +40,7 @@ interface VenueData {
     deal_type: string
   }>
   line_skips: Array<{
-    instance_id: number
+    id: number
     date: string
     start_time: string
     end_time: string
@@ -215,7 +215,7 @@ export default function VenuePageClient({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {line_skips.map((ls) => {
-                const isHighlighted = highlightLineSkip === String(ls.instance_id)
+                const isHighlighted = highlightLineSkip === String(ls.id)
                 const available = ls.capacity !== null
                   ? Math.max(0, ls.capacity - ls.tickets_sold)
                   : null
@@ -223,7 +223,7 @@ export default function VenuePageClient({
 
                 return (
                   <div
-                    key={ls.instance_id}
+                    key={ls.id}
                     className={`rounded-2xl border p-4 transition-shadow hover:shadow-md ${
                       isHighlighted
                         ? "border-primary bg-primary-light ring-2 ring-primary"
@@ -291,11 +291,14 @@ export default function VenuePageClient({
                     <p className="mt-1 text-sm text-muted">
                       {formatEventDate(event.start_date_time)} &middot; {formatEventTime(event.start_date_time)}
                     </p>
-                    {event.min_ticket_price !== null && (
-                      <p className="mt-1 text-sm font-medium text-ink">
-                        {event.min_ticket_price === 0 ? "Free" : `From $${event.min_ticket_price.toFixed(2)}`}
-                      </p>
-                    )}
+                    {event.min_ticket_price !== null && (() => {
+                      const price = Number(event.min_ticket_price)
+                      return (
+                        <p className="mt-1 text-sm font-medium text-ink">
+                          {price === 0 ? "Free" : `From $${price.toFixed(2)}`}
+                        </p>
+                      )
+                    })()}
                     <Link
                       href={`/checkout/${event.event_id}`}
                       className="mt-3 block rounded-xl bg-primary py-2.5 text-center text-sm font-semibold text-ink transition-opacity hover:opacity-90"
