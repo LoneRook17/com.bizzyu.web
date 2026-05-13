@@ -126,11 +126,9 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
-          <SendButton
-            label="Send Announcement"
-            subtitle={`${pushReachable} reachable via push`}
-            onClick={() => setComposerChannel("announcement")}
-          />
+          {/* "Send Announcement" was removed 2026-05-13 — replaced by the
+              automatic push that fires when an event hits status='published'.
+              SMS to followers stays operator-initiated. */}
           <SendButton
             label="Send SMS"
             subtitle={`${phoneReachable} reachable via SMS`}
@@ -142,7 +140,7 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
       <BlastComposerModal
         open={composerChannel !== null && !mustPickVenue}
         onClose={() => setComposerChannel(null)}
-        channel={composerChannel ?? "announcement"}
+        channel={composerChannel ?? "sms"}
         audience={audience}
         audienceLabel={`Followers of ${venueLabel} · ~${total} recipient${total === 1 ? "" : "s"}`}
         onSent={() => {

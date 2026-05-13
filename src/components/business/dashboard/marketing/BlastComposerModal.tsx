@@ -12,7 +12,7 @@ import type {
 
 const ANNOUNCEMENT_MAX = 280
 const SMS_MAX = 400
-const SMS_SUFFIX = " Reply STOP to opt out · Bizzy"
+const SMS_SUFFIX = "\nReply STOP to opt out · Bizzy"
 
 interface Props {
   open: boolean

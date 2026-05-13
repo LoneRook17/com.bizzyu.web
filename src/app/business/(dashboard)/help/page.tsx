@@ -321,7 +321,7 @@ const SECTIONS: Section[] = [
             <li><strong>View check-ins</strong> &mdash; see who has arrived and who hasn&rsquo;t shown up yet</li>
             <li><strong>Manage promo codes</strong> &mdash; create discount codes for your event (more details below)</li>
             <li><strong>Manage event team</strong> &mdash; add staff members who can scan tickets at the door</li>
-            <li><strong>View tracking links</strong> &mdash; see which of your marketing links drove the most ticket sales</li>
+            <li><strong>View promoters</strong> &mdash; see who&rsquo;s promoting your event and how their referrals are performing</li>
             <li><strong>Duplicate event</strong> &mdash; quickly create a new event with the same details as this one (great for recurring nights)</li>
             <li><strong>Cancel event</strong> &mdash; cancel the event (see the Cancellations section below for what happens)</li>
           </ul>
@@ -379,18 +379,18 @@ const SECTIONS: Section[] = [
         `,
       },
       {
-        id: "tracking-links",
-        title: "3.8 Tracking Links",
+        id: "promoters",
+        title: "3.8 Promoters",
         content: `
-          <p>Tracking links help you see which of your marketing efforts are actually driving ticket sales.</p>
-          <p><strong>How to create a tracking link:</strong></p>
+          <p>Promoters are users who sign up to promote your event and earn a commission on every ticket they sell. They get a personal share link and you can see exactly who&rsquo;s driving sales.</p>
+          <p><strong>How it works:</strong></p>
           <ol>
-            <li>Go to your event &rarr; <strong>Manage</strong> &rarr; <strong>Tracking Links</strong></li>
-            <li>Click <strong>&ldquo;Create Link&rdquo;</strong></li>
-            <li>Give it a descriptive name (e.g., &ldquo;Instagram Story&rdquo;, &ldquo;Flyer QR Code&rdquo;, &ldquo;Email Blast&rdquo;)</li>
-            <li>Copy the generated link and share it wherever you promote the event</li>
+            <li>When creating or editing an event, enable the <strong>Promoter Program</strong> and set commission terms (percent or fixed cents per ticket).</li>
+            <li>Users discover the event in the Bizzy app and tap <strong>&ldquo;Get paid to promote&rdquo;</strong> &mdash; they verify their phone, link Stripe Connect, and accept terms.</li>
+            <li>Each promoter gets a personalized share link like <code>bizzyu.com/p/lukecaprio-springfest</code>.</li>
+            <li>Visit your event &rarr; <strong>Manage</strong> &rarr; <strong>Promoters</strong> to see who&rsquo;s promoting, with their clicks, sales, and commission earned.</li>
           </ol>
-          <p>Come back to the tracking links page to see how many clicks and ticket purchases each link generated. This tells you exactly which marketing channels are working best.</p>
+          <p>Commissions accrue automatically when a ticket is purchased through a promoter&rsquo;s link, and they&rsquo;re paid out weekly via Stripe Connect.</p>
         `,
       },
     ],
@@ -711,7 +711,7 @@ const SECTIONS: Section[] = [
             <li><strong>Owner</strong> &mdash; Full access to everything. Can manage the team, change settings, view all analytics. This is you (the person who created the business account).</li>
             <li><strong>Manager</strong> &mdash; Can create and manage events, deals, and line skips. Can view analytics. Cannot change business settings or manage the owner&rsquo;s account.</li>
             <li><strong>Staff</strong> &mdash; Can scan tickets at the door, sell tickets via Tap-to-Pay, and view basic event info. Cannot create events or change settings.</li>
-            <li><strong>Promoter</strong> &mdash; Can view their own tracking links and see how their promotions are performing. Cannot manage events or view full analytics.</li>
+            <li><strong>Promoter</strong> &mdash; Can view their own promoter share link and see how their promotions are performing. Cannot manage events or view full analytics.</li>
           </ul>
         `,
       },
