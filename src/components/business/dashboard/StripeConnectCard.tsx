@@ -48,7 +48,10 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <h3 className="text-sm font-semibold text-ink mb-3">Stripe Connect</h3>
+      <h3 className="text-sm font-semibold text-ink mb-1">Business Stripe Connect</h3>
+      <p className="text-xs text-gray-500 mb-3">
+        Ticket revenue lands here. Promoter commission (if anyone on your team also promotes events) pays to a separate personal Stripe — not this account.
+      </p>
 
       {onboarded ? (
         <div className="flex items-start gap-3">
@@ -58,9 +61,9 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
             </svg>
           </div>
           <div>
-            <p className="text-sm font-medium text-green-700">Connected</p>
+            <p className="text-sm font-medium text-green-700">Business Stripe Connected</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Your Stripe account is connected and ready to accept payments.
+              Your business&apos;s Stripe account is connected and ready to accept ticket payments.
             </p>
             <a
               href="https://dashboard.stripe.com/express"
@@ -81,9 +84,9 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
             </svg>
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-yellow-700">Not Connected</p>
+            <p className="text-sm font-medium text-yellow-700">Business Stripe Not Connected</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Stripe Connect is required to create paid events. Set up your account to start accepting payments.
+              Connecting your business&apos;s Stripe account is required to create paid events. Ticket payments will pay into this BUSINESS account.
             </p>
 
             {error && (
@@ -104,7 +107,7 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
                   Setting up...
                 </>
               ) : (
-                "Set Up Stripe"
+                "Set Up Business Stripe"
               )}
             </button>
           </div>
