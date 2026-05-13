@@ -226,8 +226,48 @@ export interface EventAnalytics {
   checkIn: { scanned: number; notScanned: number; total: number; percent: number }
   doorSales: { preSales: number; doorSales: number }
   tierBreakdown: { ticket_id: number; tier_name: string; sold: number; revenue: number }[]
-  trackingLinks: { tracking_link_id: number; promoter_name: string; code: string; sales_count: number; clicks: number }[]
-  revenue: { revenue: number; pre_sales_revenue: number; door_sales_revenue: number }
+  trackingLinks: {
+    tracking_link_id: number
+    promoter_name: string
+    code: string
+    sales_count: number
+    clicks: number
+    // Combined pending+paid commission cents for this promoter on this event.
+    // Excludes clawed_back. New 2026-05-12 (May 2026 promoter rework).
+    commission_cents: number
+  }[]
+  revenue: {
+    // The "Revenue" tile reads this — now matches the Stripe payout (net of
+    // promoter commission). Pre-2026-05-12 this was gross creator payout.
+    revenue: number
+    pre_sales_revenue: number
+    door_sales_revenue: number
+    // Total commission owed to promoters this event (pending + paid). Already
+    // deducted from `revenue` above. Surfaced for the "Going to promoters"
+    // tile on the new Web Promoters tab.
+    promoter_commission_total_cents: number
+    // Business take-home from promoter-attributed sales specifically. Drives
+    // the "Of the $X above, $Y was promoter-generated" callout.
+    promoter_attributed_take_home_cents: number
+  }
+}
+
+// Per-event promoters (matches Node `GET /events/:id/promoters`). Used by the
+// new Web Promoters tab in Manage Event.
+export interface PromoterDetail {
+  tracking_link_id: number
+  user_id: number
+  full_name: string | null
+  profile_photo_path: string | null
+  code: string
+  clicks: number
+  sales_count: number
+  commission_pending_cents: number
+  commission_paid_cents: number
+}
+
+export interface PromotersResponse {
+  promoters: PromoterDetail[]
 }
 
 export interface PerScannerRow {

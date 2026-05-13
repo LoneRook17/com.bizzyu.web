@@ -20,10 +20,11 @@ export default function EventAnalyticsView({ data }: { data: EventAnalytics }) {
 
   return (
     <div className="space-y-6">
-      {/* Revenue */}
+      {/* Revenue — net of promoter commission, matches Stripe payout */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-ink mb-4">Revenue</h3>
         <p className="text-2xl font-bold text-green-600">{formatCurrency(data.revenue?.revenue ?? 0)}</p>
+        <p className="text-xs text-gray-500 mt-1">Your take-home — matches Stripe payout.</p>
       </div>
 
       {/* Ticket Access + Check-in */}
@@ -107,29 +108,43 @@ export default function EventAnalyticsView({ data }: { data: EventAnalytics }) {
               ))}
             </tbody>
           </table>
+          {/* Promoter-generated callout — shown when there's any promoter
+              attribution. Tier rows above are gross; this surfaces the
+              business take-home from promoter-attributed sales specifically. */}
+          {data.revenue?.promoter_attributed_take_home_cents > 0 && (() => {
+            const tierTotal = data.tierBreakdown.reduce((s, t) => s + t.revenue, 0)
+            const promoterTakeHome = data.revenue.promoter_attributed_take_home_cents / 100
+            return (
+              <div className="mt-4 rounded-lg bg-purple-50 border border-purple-100 px-3 py-2 text-xs text-purple-700">
+                Of the {formatCurrency(tierTotal)} above,{' '}
+                <span className="font-semibold">{formatCurrency(promoterTakeHome)}</span>{' '}
+                was promoter-generated.
+              </div>
+            )
+          })()}
         </div>
       )}
 
-      {/* Tracking Links */}
+      {/* Promoter Performance (renamed from Tracking Links) */}
       {data.trackingLinks.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-semibold text-ink mb-3">Tracking Links</h3>
+          <h3 className="text-sm font-semibold text-ink mb-3">Promoter Performance</h3>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-gray-500 border-b border-gray-100">
-                <th className="text-left py-2 font-medium">Promoter</th>
-                <th className="text-left py-2 font-medium">Code</th>
+                <th className="text-left py-2 font-medium">Name</th>
                 <th className="text-right py-2 font-medium">Clicks</th>
                 <th className="text-right py-2 font-medium">Sales</th>
+                <th className="text-right py-2 font-medium">Commission</th>
               </tr>
             </thead>
             <tbody>
               {data.trackingLinks.map((link) => (
                 <tr key={link.tracking_link_id} className="border-b border-gray-50 last:border-0">
                   <td className="py-2 text-ink">{link.promoter_name}</td>
-                  <td className="py-2 text-gray-500 font-mono text-xs">{link.code}</td>
                   <td className="py-2 text-right text-gray-600">{link.clicks}</td>
-                  <td className="py-2 text-right font-medium text-ink">{link.sales_count}</td>
+                  <td className="py-2 text-right text-gray-600">{link.sales_count}</td>
+                  <td className="py-2 text-right font-medium text-ink">{formatCurrency((link.commission_cents ?? 0) / 100)}</td>
                 </tr>
               ))}
             </tbody>
