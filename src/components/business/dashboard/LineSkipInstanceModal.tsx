@@ -385,13 +385,17 @@ export default function LineSkipInstanceModal({
                     <p className="font-semibold text-amber-800 mb-2">
                       This night has {refundPreview.ticketCount} paid ticket{refundPreview.ticketCount !== 1 ? "s" : ""}.
                     </p>
-                    <p className="text-xs text-amber-700 mb-2">
-                      Your business is responsible for reimbursing customers for the ticket price plus fees.
-                    </p>
-                    <div className="flex justify-between text-sm font-bold text-amber-900 mb-2">
-                      <span>Total refund cost:</span>
+                    <div className="flex justify-between text-sm text-amber-900">
+                      <span>Customer receives:</span>
                       <span>${(refundPreview.totalCustomerRefundCents / 100).toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between text-sm font-bold text-amber-900 mb-1">
+                      <span>Your business pays:</span>
+                      <span>${(refundPreview.totalBusinessCostCents / 100).toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-amber-700 mb-2">
+                      Ticket price plus Stripe processing fee. Bizzy absorbs its platform fee.
+                    </p>
                     {refundPreview.freeTicketCount > 0 && (
                       <p className="text-xs text-amber-600 mb-2">
                         Plus {refundPreview.freeTicketCount} free ticket{refundPreview.freeTicketCount !== 1 ? "s" : ""} that will be cancelled (no refund needed).
