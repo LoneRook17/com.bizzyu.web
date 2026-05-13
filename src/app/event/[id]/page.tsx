@@ -20,7 +20,13 @@ interface EventResponse {
 
 interface PageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
+
+// Event ticket checkout lives on the Laravel app at bizzy-deals.com.
+// /checkout/:id on this Next.js app is the line-skip-only flow.
+const LARAVEL_CHECKOUT_BASE_URL =
+  process.env.LARAVEL_CHECKOUT_BASE_URL || "https://bizzy-deals.com"
 
 async function getEvent(eventId: string): Promise<EventResponse | null> {
   try {
@@ -61,8 +67,9 @@ function formatDate(iso?: string | null): string {
   })
 }
 
-export default async function PublicEventPage({ params }: PageProps) {
+export default async function PublicEventPage({ params, searchParams }: PageProps) {
   const { id } = await params
+  const sp = await searchParams
   const event = await getEvent(id)
 
   if (!event) {
@@ -78,6 +85,12 @@ export default async function PublicEventPage({ params }: PageProps) {
 
   const promotionEnabled = !!event.promotion_enabled
   const startsAt = formatDate(event.start_date_time)
+
+  const refRaw = sp?.ref
+  const ref = Array.isArray(refRaw) ? refRaw[0] : refRaw
+  const buyTicketHref =
+    `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${event.event_id}` +
+    (ref ? `?ref=${encodeURIComponent(ref)}` : "")
 
   return (
     <main className="min-h-screen bg-white text-ink">
@@ -116,12 +129,12 @@ export default async function PublicEventPage({ params }: PageProps) {
           </Link>
         )}
 
-        <Link
-          href={`/checkout/${event.event_id}`}
+        <a
+          href={buyTicketHref}
           className="block w-full text-center rounded-xl bg-ink text-white font-semibold py-3 hover:opacity-90 transition"
         >
           Buy Ticket
-        </Link>
+        </a>
       </div>
     </main>
   )
