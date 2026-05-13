@@ -17,7 +17,7 @@ export default function EventPromotersPage({ params }: { params: Promise<{ id: s
 
   useEffect(() => {
     apiClient
-      .get<PromotersResponse>(`/events/${id}/promoters`)
+      .get<PromotersResponse>(`/business/events/${id}/promoters`)
       .then((res) => setPromoters(res.promoters ?? []))
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load promoters"))
       .finally(() => setLoading(false))
