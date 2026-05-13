@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 
 const MAX_LEN = 400
-const STOP_SUFFIX = " Reply STOP to opt out · Bizzy"
+const STOP_SUFFIX = "\nReply STOP to opt out · Bizzy"
 
 export default function ComposeSmsBlastPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
