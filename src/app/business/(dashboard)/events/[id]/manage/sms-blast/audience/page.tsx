@@ -13,7 +13,8 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
   const currentEventId = Number(id)
 
   const [events, setEvents] = useState<EventListItem[]>([])
-  const [selected, setSelected] = useState<Set<number>>(new Set([currentEventId]))
+  // Single-select to match the Flutter app — one event per SMS blast.
+  const [selectedId, setSelectedId] = useState<number | null>(currentEventId)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [recipientCount, setRecipientCount] = useState<number | null>(null)
@@ -28,32 +29,21 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
   }, [])
 
   useEffect(() => {
-    if (selected.size === 0) {
+    if (selectedId == null) {
       setRecipientCount(0)
       return
     }
-    const ids = Array.from(selected).join(",")
     setPreviewLoading(true)
     apiClient
-      .get<{ recipient_count: number }>(`/business/sms-blasts/audience-preview?event_ids=${ids}`)
+      .get<{ recipient_count: number }>(`/business/sms-blasts/audience-preview?event_ids=${selectedId}`)
       .then((d) => setRecipientCount(d.recipient_count))
       .catch(() => setRecipientCount(null))
       .finally(() => setPreviewLoading(false))
-  }, [selected])
-
-  const toggle = (eventId: number) => {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(eventId)) next.delete(eventId)
-      else next.add(eventId)
-      return next
-    })
-  }
+  }, [selectedId])
 
   const handleContinue = () => {
-    if (selected.size === 0) return
-    const ids = Array.from(selected).join(",")
-    router.push(`/business/events/${id}/manage/sms-blast/compose?event_ids=${ids}`)
+    if (selectedId == null) return
+    router.push(`/business/events/${id}/manage/sms-blast/compose?event_ids=${selectedId}`)
   }
 
   return (
@@ -84,7 +74,7 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
       ) : (
         <ul className="space-y-2">
           {events.map((e) => {
-            const isChecked = selected.has(e.event_id)
+            const isChecked = selectedId === e.event_id
             return (
               <li key={e.event_id}>
                 <label
@@ -93,10 +83,11 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
                   }`}
                 >
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="sms-blast-event"
                     checked={isChecked}
-                    onChange={() => toggle(e.event_id)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    onChange={() => setSelectedId(e.event_id)}
+                    className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
                   />
                   {e.flyer_image_url ? (
                     <Image
@@ -129,17 +120,15 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
             {recipientCount !== null ? (
               <>
                 ~{recipientCount} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in
-                {" · "}
-                {selected.size} event{selected.size === 1 ? "" : "s"}
               </>
             ) : (
-              <>{selected.size} event{selected.size === 1 ? "" : "s"}</>
+              <>1 event</>
             )}
             {previewLoading && <> · …</>}
           </div>
           <button
             onClick={handleContinue}
-            disabled={selected.size === 0}
+            disabled={selectedId == null}
             className="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
           >
             Select audience
