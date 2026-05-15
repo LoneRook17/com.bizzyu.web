@@ -14,6 +14,17 @@ export default function EventPromotersPage({ params }: { params: Promise<{ id: s
   const [promoters, setPromoters] = useState<PromoterDetail[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [copiedId, setCopiedId] = useState<number | null>(null)
+
+  async function copyShareUrl(p: PromoterDetail) {
+    try {
+      await navigator.clipboard.writeText(p.share_url)
+      setCopiedId(p.tracking_link_id)
+      setTimeout(() => setCopiedId((cur) => (cur === p.tracking_link_id ? null : cur)), 1500)
+    } catch {
+      // Clipboard blocked — leave the URL visible so user can copy manually.
+    }
+  }
 
   useEffect(() => {
     apiClient
@@ -79,36 +90,50 @@ export default function EventPromotersPage({ params }: { params: Promise<{ id: s
           ) : (
             <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
               {(promoters ?? []).map((p) => (
-                <div key={p.tracking_link_id} className="p-4 flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {p.profile_photo_path ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.profile_photo_path} alt={p.full_name ?? ""} className="h-full w-full object-cover" />
-                    ) : (
-                      <svg className="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                      </svg>
-                    )}
+                <div key={p.tracking_link_id} className="p-4 flex flex-col gap-3">
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {p.profile_photo_path ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.profile_photo_path} alt={p.full_name ?? ""} className="h-full w-full object-cover" />
+                      ) : (
+                        <svg className="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-ink truncate">{p.full_name ?? "Unknown"}</p>
+                      <p className="text-xs text-gray-500 truncate font-mono">{p.code}</p>
+                    </div>
+                    <div className="flex gap-3 text-xs">
+                      <div className="text-center">
+                        <p className="font-semibold text-gray-700">{p.clicks}</p>
+                        <p className="text-gray-400">clicks</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-gray-700">{p.sales_count}</p>
+                        <p className="text-gray-400">sales</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-purple-600">
+                          {formatCurrency(p.commission_pending_cents + p.commission_paid_cents)}
+                        </p>
+                        <p className="text-gray-400">earned</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink truncate">{p.full_name ?? "Unknown"}</p>
-                    <p className="text-xs text-gray-500 truncate font-mono">{p.code}</p>
-                  </div>
-                  <div className="flex gap-3 text-xs">
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-700">{p.clicks}</p>
-                      <p className="text-gray-400">clicks</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-gray-700">{p.sales_count}</p>
-                      <p className="text-gray-400">sales</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-purple-600">
-                        {formatCurrency(p.commission_pending_cents + p.commission_paid_cents)}
-                      </p>
-                      <p className="text-gray-400">earned</p>
-                    </div>
+                  <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-gray-600 font-mono flex-1 truncate" title={p.share_url}>
+                      {p.share_url}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => copyShareUrl(p)}
+                      className="text-xs font-semibold text-primary hover:underline cursor-pointer whitespace-nowrap"
+                    >
+                      {copiedId === p.tracking_link_id ? "Copied!" : "Copy"}
+                    </button>
                   </div>
                 </div>
               ))}

@@ -260,6 +260,7 @@ export interface PromoterDetail {
   full_name: string | null
   profile_photo_path: string | null
   code: string
+  share_url: string
   clicks: number
   sales_count: number
   commission_pending_cents: number
