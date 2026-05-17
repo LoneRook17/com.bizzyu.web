@@ -127,6 +127,7 @@ export interface TicketTier {
   sold_count?: number
   max_per_person?: number
   ticket_type: 'paid' | 'free' | 'guest'
+  is_hidden?: boolean
 }
 
 export interface EventDetail extends EventListItem {

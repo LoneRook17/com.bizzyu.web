@@ -139,6 +139,19 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
           />
         )}
 
+        {canEdit && (
+          <ManageCard
+            href={`${base}/tickets`}
+            title="Manage Tickets"
+            subtitle="Add, edit, or hide ticket tiers"
+            icon={
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75c0 .414.336.75.75.75h2.25c.414 0 .75-.336.75-.75V6m-3.75 6v.75c0 .414.336.75.75.75h2.25c.414 0 .75-.336.75-.75V12m-3.75 6v.75c0 .414.336.75.75.75h2.25c.414 0 .75-.336.75-.75V18M3 6.75A1.5 1.5 0 014.5 5.25h9A1.5 1.5 0 0115 6.75v10.5a1.5 1.5 0 01-1.5 1.5h-9a1.5 1.5 0 01-1.5-1.5V6.75z" />
+              </svg>
+            }
+          />
+        )}
+
         <ManageCard
           href={`${base}/team`}
           title="Team Members"
