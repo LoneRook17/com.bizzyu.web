@@ -32,10 +32,8 @@ export default function LineSkipsPage() {
   const [showVenueModal, setShowVenueModal] = useState(false)
   const [lineSkips, setLineSkips] = useState<LineSkip[]>([])
   const [loading, setLoading] = useState(true)
-  const [deactivating, setDeactivating] = useState<number | null>(null)
 
   const canCreate = user?.business_role === "owner" || user?.business_role === "manager"
-  const canManage = canCreate
 
   const handleCreate = () => {
     if (isAllVenues && venues.length > 1) {
@@ -63,19 +61,6 @@ export default function LineSkipsPage() {
   useEffect(() => {
     fetchLineSkips()
   }, [fetchLineSkips])
-
-  const handleDeactivate = async (id: number, name: string) => {
-    if (!confirm(`Stop "${name}"? This will cancel all future nights. This cannot be undone.`)) return
-    setDeactivating(id)
-    try {
-      await apiClient.delete(`/business/line-skips/${id}`)
-      await fetchLineSkips()
-    } catch {
-      alert("Failed to deactivate line skip")
-    } finally {
-      setDeactivating(null)
-    }
-  }
 
   return (
     <div>
@@ -148,15 +133,6 @@ export default function LineSkipsPage() {
                   >
                     {ls.is_active ? "Active" : "Stopped"}
                   </span>
-                  {ls.is_active && canManage && (
-                    <button
-                      onClick={() => handleDeactivate(ls.id, ls.name)}
-                      disabled={deactivating === ls.id}
-                      className="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 cursor-pointer"
-                    >
-                      {deactivating === ls.id ? "Stopping..." : "Stop"}
-                    </button>
-                  )}
                   <Link href={`/business/line-skips/${ls.id}`}>
                     <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
