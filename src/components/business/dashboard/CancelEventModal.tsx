@@ -99,19 +99,20 @@ export default function CancelEventModal({
               ) : hasPaidOrders ? (
                 <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
                   <p className="font-semibold text-amber-800 mb-2">
-                    This event has {preview.orderCount} paid order{preview.orderCount !== 1 ? "s" : ""}.
+                    Cancelling a paid event requires you to reimburse customers for the full ticket price plus processing fees.
                   </p>
-                  <div className="flex justify-between text-sm text-amber-900">
-                    <span>Customers receive:</span>
-                    <span>${preview.totalRefundAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-bold text-amber-900 mb-1">
-                    <span>Your business pays:</span>
-                    <span>${preview.totalBusinessCost.toFixed(2)}</span>
-                  </div>
-                  <p className="text-xs text-amber-700 mb-2">
-                    Ticket price plus Stripe processing fee. Bizzy absorbs its platform fee.
+                  <p className="text-sm text-amber-900 mb-2">
+                    This event has {preview.orderCount} paid order{preview.orderCount !== 1 ? "s" : ""} totaling{" "}
+                    <span className="font-semibold">${preview.totalRefundAmount.toFixed(2)}</span> including fees.
                   </p>
+                  <p className="text-sm text-amber-900 mb-1">
+                    Cancelling requires admin approval. Once approved:
+                  </p>
+                  <ul className="text-sm text-amber-900 list-disc pl-5 mb-2 space-y-0.5">
+                    <li>All {preview.orderCount} ticket holder{preview.orderCount !== 1 ? "s" : ""} will receive full refunds</li>
+                    <li>Your Stripe account will be debited (ticket revenue + processing fees, minus any promoter commission that gets clawed back from the promoter)</li>
+                    <li>This action cannot be undone</li>
+                  </ul>
                   {preview.freeOrderCount > 0 && (
                     <p className="text-xs text-amber-600 mb-2">
                       Plus {preview.freeOrderCount} free order{preview.freeOrderCount !== 1 ? "s" : ""} that will be cancelled (no refund needed).
