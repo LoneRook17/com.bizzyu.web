@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { QRCodeSVG } from "qrcode.react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
@@ -11,6 +11,7 @@ const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com
 
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
+const GREEN = "#05EB54"
 
 interface TicketInfo {
   id: number
@@ -135,6 +136,21 @@ export default function LineSkipSuccessClient({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
+          <a
+            href="https://apps.apple.com/app/id6683306360"
+            target="_blank"
+            rel="noreferrer"
+            className="mx-auto mb-6 flex w-full max-w-sm flex-col items-center justify-center rounded-2xl px-8 py-5 text-black shadow-xl transition active:scale-[0.98] hover:opacity-95"
+            style={{ backgroundColor: GREEN, boxShadow: `0 18px 40px -10px ${GREEN}80` }}
+          >
+            <span className="flex items-center gap-2.5 text-xl font-extrabold leading-none tracking-tight">
+              <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+              </svg>
+              Get the Bizzy App
+            </span>
+            <span className="mt-1.5 text-[13px] font-semibold text-black/70">Tickets, line skips & exclusive deals</span>
+          </a>
           <h1 className="mb-2 text-2xl font-bold text-white">You&apos;re all set!</h1>
           <p className="text-white/60">
             Your Line Skip{tickets.length > 1 ? "s are" : " is"} confirmed
@@ -216,31 +232,6 @@ export default function LineSkipSuccessClient({
             venue page since line-skips are venue-scoped, not event-scoped. */}
         <ShareVenueButton title={displayName} venueId={venueId} />
 
-        {/* Download app CTA */}
-        <div className="rounded-xl bg-white/5 border border-white/10 p-5">
-          <div className="flex items-center gap-4">
-            <img
-              src="/images/appicon.png"
-              alt="Bizzy"
-              className="h-14 w-14 rounded-xl"
-            />
-            <div className="flex-1">
-              <h3 className="text-sm font-bold text-white">Get the Bizzy App</h3>
-              <p className="mt-0.5 text-xs text-white/50">Manage your tickets anytime, anywhere</p>
-            </div>
-          </div>
-          <a
-            href="https://apps.apple.com/app/id6683306360"
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold text-black transition-colors"
-            style={{ backgroundColor: GOLD }}
-          >
-            <svg className="h-4 w-4" viewBox="0 0 384 512" fill="currentColor">
-              <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-            </svg>
-            Download on App Store
-          </a>
-        </div>
-
         <div className="mt-6 text-center">
           <a
             href={`/lineskip/${venueId}`}
@@ -267,14 +258,6 @@ function AppleWalletLineSkipButton({
     setShow(isAppleWalletCapable())
   }, [])
 
-  const buttonStyle = useMemo(
-    () => ({
-      backgroundColor: "#000",
-      color: "#fff",
-    }),
-    [],
-  )
-
   if (!show || tickets.length === 0) return null
 
   // Single anchor points at the `.pkpasses` bundle so iOS Safari surfaces one
@@ -285,11 +268,10 @@ function AppleWalletLineSkipButton({
     <div className="mt-4">
       <a
         href={`${API_URL}/public/wallet/by-session/${encodeURIComponent(sessionId)}/line-skip-tickets-bundle`}
-        className="flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-colors"
-        style={buttonStyle}
+        className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-black px-6 py-4 text-lg font-bold text-white ring-1 ring-white/15 shadow-2xl shadow-white/15 transition hover:bg-neutral-900 active:scale-[0.98]"
       >
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M21 7H3a1 1 0 0 0-1 1v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1zm-3 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM3 6h18a1 1 0 0 1 0 2H3a1 1 0 0 1 0-2zm1-2h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z" />
+        <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
         </svg>
         {label}
       </a>
