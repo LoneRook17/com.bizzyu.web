@@ -8,6 +8,7 @@ import FormInput from "@/components/business/auth/FormInput"
 import FormPasswordInput from "@/components/business/auth/FormPasswordInput"
 import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
 import AddressAutocomplete from "@/components/business/dashboard/AddressAutocomplete"
+import TurnstileWidget from "@/components/ui/TurnstileWidget"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { CAMPUSES } from "@/lib/business/constants"
 
@@ -63,6 +64,8 @@ export default function SignupPage() {
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
   const [campuses, setCampuses] = useState<CampusOption[]>(FALLBACK_CAMPUSES)
+  const [turnstileToken, setTurnstileToken] = useState("")
+  const [honeypot, setHoneypot] = useState("")
 
   useEffect(() => {
     let cancelled = false
@@ -132,6 +135,8 @@ export default function SignupPage() {
           : undefined,
         instagram: form.instagram || undefined,
         description: form.description,
+        "cf-turnstile-response": turnstileToken,
+        website_url: honeypot,
       })
 
       router.push(`/business/login?registered=1`)
@@ -284,6 +289,25 @@ export default function SignupPage() {
           autoComplete="new-password"
           error={errors.confirm_password}
         />
+
+        {/* Honeypot — humans never see this, bots fill every field */}
+        <input
+          type="text"
+          name="website_url"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+          className="absolute -left-[9999px] h-0 w-0 opacity-0"
+        />
+
+        <div className="mb-4">
+          <TurnstileWidget
+            onVerify={setTurnstileToken}
+            onExpire={() => setTurnstileToken("")}
+          />
+        </div>
 
         {serverError && (
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
