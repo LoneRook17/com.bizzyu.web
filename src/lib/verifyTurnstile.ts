@@ -20,7 +20,7 @@ export async function verifyTurnstile(
     return { ok: false, reason: "honeypot" };
   }
 
-  const secret = process.env.TURNSTILE_SECRET_KEY;
+  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
     console.warn("[turnstile] TURNSTILE_SECRET_KEY not set — failing open");
     return { ok: true };
