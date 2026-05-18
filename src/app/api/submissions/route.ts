@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
 
@@ -34,7 +35,12 @@ async function uploadBase64ToS3(base64: string, folder: string): Promise<string>
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { business, deal, media } = body;
+    const { business, deal, media, turnstileToken, website_url } = body;
+
+    const check = await verifyTurnstile(turnstileToken, website_url, getClientIp(request));
+    if (!check.ok) {
+      return NextResponse.json({ error: "Verification failed" }, { status: 422 });
+    }
 
     if (!business?.businessName || !business?.email || !deal?.title) {
       return NextResponse.json(

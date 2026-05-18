@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
+import TurnstileWidget from "@/components/ui/TurnstileWidget";
 import { CONTACT_EMAIL } from "@/lib/constants";
 
 function ContactForm() {
@@ -13,6 +14,7 @@ function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   const defaultType =
     typeParam === "business"
@@ -32,6 +34,8 @@ function ContactForm() {
       email: (form.elements.namedItem("email") as HTMLInputElement).value,
       type: (form.elements.namedItem("type") as HTMLSelectElement).value,
       message: (form.elements.namedItem("message") as HTMLTextAreaElement).value,
+      website_url: (form.elements.namedItem("website_url") as HTMLInputElement).value,
+      turnstileToken,
     };
 
     try {
@@ -129,6 +133,18 @@ function ContactForm() {
               placeholder="Tell us what's on your mind..."
             />
           </div>
+
+          {/* Honeypot — humans never see this, bots fill every field */}
+          <input
+            type="text"
+            name="website_url"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="absolute -left-[9999px] h-0 w-0 opacity-0"
+          />
+
+          <TurnstileWidget onVerify={setTurnstileToken} onExpire={() => setTurnstileToken("")} />
 
           {error && (
             <p className="text-red-500 text-sm text-center">{error}</p>

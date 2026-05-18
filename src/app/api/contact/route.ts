@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
 
 export async function POST(request: Request) {
   try {
-    const { name, email, type, message } = await request.json();
+    const { name, email, type, message, turnstileToken, website_url } = await request.json();
+
+    const check = await verifyTurnstile(turnstileToken, website_url, getClientIp(request));
+    if (!check.ok) {
+      return NextResponse.json({ error: "Verification failed" }, { status: 422 });
+    }
 
     if (!name || !email || !type || !message) {
       return NextResponse.json(
