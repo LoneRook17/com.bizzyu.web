@@ -864,13 +864,16 @@ export default function TermsPage() {
           If you believe that content on the Platform infringes your copyright, you may submit a notice under the Digital Millennium Copyright Act (&quot;DMCA&quot;) to our Designated Copyright Agent:
         </p>
         <p className="text-muted leading-relaxed">
-          <strong>Designated Agent:</strong> Bizzy DMCA Agent, c/o Bizzy Holdings LLC<br />
+          <strong>Designated Agent:</strong> DMCA Agent, Bizzy Holdings LLC<br />
+          <strong>Organization:</strong> Bizzy Holdings LLC<br />
+          <strong>Address:</strong> 3302 Weston Manor Drive, Alva, FL 33920, United States<br />
+          <strong>Phone:</strong> (331) 444-3077<br />
           <strong>Email:</strong>{" "}
-          <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary hover:underline">{CONTACT_EMAIL}</a><br />
+          <a href="mailto:Contact@BizzyU.com" className="text-primary hover:underline">Contact@BizzyU.com</a><br />
           <strong>Subject Line:</strong> DMCA Takedown Notice
         </p>
         <p className="text-muted leading-relaxed text-sm">
-          To verify the most current contact information for our Designated Agent, including any registration with the U.S. Copyright Office, please consult the U.S. Copyright Office&apos;s DMCA Designated Agent Directory:{" "}
+          Bizzy&apos;s Designated Agent is registered with the United States Copyright Office. The current registration may be verified in the U.S. Copyright Office&apos;s DMCA Designated Agent Directory:{" "}
           <a href="https://www.copyright.gov/dmca-directory/" className="text-primary hover:underline">https://www.copyright.gov/dmca-directory/</a>.
         </p>
         <p className="text-muted leading-relaxed">
