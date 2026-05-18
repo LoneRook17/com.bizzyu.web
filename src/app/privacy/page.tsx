@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Privacy Policy</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> May 12, 2026 | <strong>Last Updated:</strong> May 12, 2026
+          <strong>Effective Date:</strong> May 12, 2026 | <strong>Last Updated:</strong> May 17, 2026 | <strong>Version:</strong> 1.1
         </p>
 
         <p className="text-muted leading-relaxed">
@@ -715,7 +715,7 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.3 SMS/Text Messages (TCPA)</h3>
         <p className="text-muted leading-relaxed">
-          Marketing SMS messages from Bizzy or any business operating on the Platform are sent only with your prior express written consent as required by the Telephone Consumer Protection Act (47 U.S.C. § 227) and its implementing regulations. By providing your mobile phone number and affirmatively opting in to marketing SMS, you agree to receive recurring marketing SMS messages; message frequency varies; message and data rates may apply; consent is not a condition of any purchase. You may opt out at any time by replying STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, or QUIT to any marketing SMS, or by toggling SMS off in your account notification settings. Reply HELP for help. We maintain records of your opt-in and opt-out actions for compliance purposes (see Section 7).
+          Marketing SMS messages from Bizzy or any business operating on the Platform are sent only with your prior express written consent as required by the Telephone Consumer Protection Act (47 U.S.C. § 227) and its implementing regulations. By providing your mobile phone number and affirmatively opting in to marketing SMS, you agree to receive recurring marketing SMS messages; message frequency varies; message and data rates may apply; consent is not a condition of any purchase. You may opt out at any time by replying STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, OPTOUT, or REVOKE to any marketing SMS, or by toggling SMS off in your account notification settings. Reply HELP for help. We maintain records of your opt-in and opt-out actions for compliance purposes (see Section 7).
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.4 Consent Records</h3>
@@ -849,8 +849,18 @@ export default function PrivacyPage() {
           Your continued use of the Platform after the effective date of the revised Privacy Policy constitutes your acceptance of the changes. We encourage you to review this Privacy Policy periodically.
         </p>
 
-        {/* ── 24. Contact Information ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">24. Contact Information</h2>
+        {/* ── 24. Revision History ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">24. Revision History</h2>
+        <p className="text-muted leading-relaxed">
+          This section lists material revisions to this Privacy Policy. Non-material changes (typographical corrections, formatting, or clarifications that do not alter your rights) may be made without notation.
+        </p>
+        <ul className="text-muted space-y-2 list-disc pl-6">
+          <li><strong>v1.1 &mdash; May 17, 2026:</strong> Added OPTOUT and REVOKE to the list of recognized SMS opt-out keywords (Section 17); added this Revision History section.</li>
+          <li><strong>v1.0 &mdash; May 12, 2026:</strong> Initial publication of this Privacy Policy, including expanded coverage of Promoter Program data, marketing communications, sub-processor disclosures, Apple Wallet pass data, and state-specific privacy rights (CA, VA, CO, CT, UT, NY, FL).</li>
+        </ul>
+
+        {/* ── 25. Contact Information ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">25. Contact Information</h2>
         <p className="text-muted leading-relaxed">
           If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
         </p>
