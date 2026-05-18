@@ -18,7 +18,7 @@ export default function TermsPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Terms of Service</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> May 12, 2026 | <strong>Last Updated:</strong> May 12, 2026
+          <strong>Effective Date:</strong> May 12, 2026 | <strong>Last Updated:</strong> May 17, 2026 | <strong>Version:</strong> 1.1
         </p>
 
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-10">
@@ -556,7 +556,7 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.3 SMS Opt-Out and Help</h3>
         <p className="text-muted leading-relaxed">
-          You may opt out of marketing SMS messages at any time by replying <strong>STOP</strong>, <strong>STOPALL</strong>, <strong>UNSUBSCRIBE</strong>, <strong>CANCEL</strong>, <strong>END</strong>, or <strong>QUIT</strong> to any marketing SMS, or by toggling SMS off in your account notification settings. You will receive a single confirmation message and no further marketing SMS from the sender from which you opted out. Reply <strong>HELP</strong> to any Bizzy SMS for help, or contact us at {CONTACT_EMAIL}. Opting out of marketing SMS does not opt you out of transactional or security SMS (including OTP codes), which are necessary for account operation.
+          You may opt out of marketing SMS messages at any time by replying <strong>STOP</strong>, <strong>STOPALL</strong>, <strong>UNSUBSCRIBE</strong>, <strong>CANCEL</strong>, <strong>END</strong>, <strong>QUIT</strong>, <strong>OPTOUT</strong>, or <strong>REVOKE</strong> to any marketing SMS, or by toggling SMS off in your account notification settings. You will receive a single confirmation message and no further marketing SMS from the sender from which you opted out. Reply <strong>HELP</strong> to any Bizzy SMS for help, or contact us at {CONTACT_EMAIL}. Opting out of marketing SMS does not opt you out of transactional or security SMS (including OTP codes), which are necessary for account operation.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.4 Quiet Hours &amp; Timing</h3>
@@ -855,18 +855,23 @@ export default function TermsPage() {
         {/* ── 32. Accessibility ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">32. Accessibility</h2>
         <p className="text-muted leading-relaxed">
-          Bizzy is committed to making the Platform reasonably accessible to Users with disabilities. We aim to conform with Web Content Accessibility Guidelines (WCAG) 2.1 Level AA principles where commercially practicable. If you encounter an accessibility barrier while using the Platform, please contact us at {CONTACT_EMAIL} with a description of the barrier and the specific feature or page affected, and we will make reasonable efforts to address the issue.
+          Bizzy is committed to making the Platform reasonably accessible to Users with disabilities. We aim to conform with Web Content Accessibility Guidelines (WCAG) 2.2 Level AA principles where commercially practicable. If you encounter an accessibility barrier while using the Platform, please contact us at {CONTACT_EMAIL} with a description of the barrier and the specific feature or page affected, and we will make reasonable efforts to address the issue.
         </p>
 
         {/* ── 33. DMCA & Copyright Complaints ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">33. DMCA &amp; Copyright Complaints</h2>
         <p className="text-muted leading-relaxed">
-          If you believe that content on the Platform infringes your copyright, you may submit a notice under the Digital Millennium Copyright Act (&quot;DMCA&quot;) to our designated copyright agent at:
+          If you believe that content on the Platform infringes your copyright, you may submit a notice under the Digital Millennium Copyright Act (&quot;DMCA&quot;) to our Designated Copyright Agent:
         </p>
         <p className="text-muted leading-relaxed">
+          <strong>Designated Agent:</strong> Bizzy DMCA Agent, c/o Bizzy Holdings LLC<br />
           <strong>Email:</strong>{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary hover:underline">{CONTACT_EMAIL}</a><br />
           <strong>Subject Line:</strong> DMCA Takedown Notice
+        </p>
+        <p className="text-muted leading-relaxed text-sm">
+          To verify the most current contact information for our Designated Agent, including any registration with the U.S. Copyright Office, please consult the U.S. Copyright Office&apos;s DMCA Designated Agent Directory:{" "}
+          <a href="https://www.copyright.gov/dmca-directory/" className="text-primary hover:underline">https://www.copyright.gov/dmca-directory/</a>.
         </p>
         <p className="text-muted leading-relaxed">
           Your notice must include: (a) a physical or electronic signature of the owner or authorized agent; (b) a description of the copyrighted work claimed to be infringed; (c) identification of the allegedly infringing material and its location on the Platform; (d) your contact information; (e) a statement that you have a good-faith belief that the use is not authorized; and (f) a statement under penalty of perjury that the information in the notice is accurate and that you are the copyright owner or authorized to act on their behalf. Bizzy will respond to properly submitted DMCA notices in accordance with applicable law and will, in appropriate circumstances, terminate the accounts of repeat infringers.
@@ -917,8 +922,18 @@ export default function TermsPage() {
           We encourage you to review these Terms periodically to stay informed of any updates.
         </p>
 
-        {/* ── 40. Contact Information ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">40. Contact Information</h2>
+        {/* ── 40. Revision History ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">40. Revision History</h2>
+        <p className="text-muted leading-relaxed">
+          This section lists material revisions to these Terms. Non-material changes (typographical corrections, formatting, or clarifications that do not alter your rights) may be made without notation.
+        </p>
+        <ul className="text-muted space-y-2 list-disc pl-6">
+          <li><strong>v1.1 &mdash; May 17, 2026:</strong> Added OPTOUT and REVOKE to the list of recognized SMS opt-out keywords (Section 16); updated accessibility commitment from WCAG 2.1 to WCAG 2.2 Level AA (Section 32); clarified Designated Copyright Agent contact and added reference to the U.S. Copyright Office DMCA Directory (Section 33); added this Revision History section.</li>
+          <li><strong>v1.0 &mdash; May 12, 2026:</strong> Initial publication of these Terms, including the Promoter Program, marketing communications and TCPA/CAN-SPAM provisions, Apple Wallet integration, and state-specific privacy and consumer protection notices.</li>
+        </ul>
+
+        {/* ── 41. Contact Information ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">41. Contact Information</h2>
         <p className="text-muted leading-relaxed">
           If you have questions, concerns, or feedback about these Terms, please contact us:
         </p>
