@@ -110,9 +110,9 @@ export default function BusinessesPage() {
                 </div>
 
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-4">
-                  Sell tickets.
+                  Sell Tickets.
                   <br />
-                  Fill the bar.
+                  Reach More Students.
                   <br />
                   <span className="font-display-italic font-normal text-white">
                     Keep <span className="marker-sticker"><span>100%</span></span>.
