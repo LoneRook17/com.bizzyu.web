@@ -169,9 +169,9 @@ export default function BusinessesPage() {
                 </div>
 
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-4">
-                  Post discounts.
+                  Post Discounts.
                   <br />
-                  Reach the crowd.
+                  Reach Nearby Students.
                   <br />
                   <span className="font-display-italic font-normal text-ink">
                     <span className="marker-underline">Free</span> to list.
