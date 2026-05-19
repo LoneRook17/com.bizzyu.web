@@ -76,9 +76,9 @@ export const EVENTS_FAQ = [
       "Yes. Assign door staff to scan tickets, manage check-ins, and collect cover from their own phone. They never see payouts or customer data.",
   },
   {
-    question: "How fast can we launch?",
+    question: "How fast can we get going?",
     answer:
-      "Most venues launch within days. We help build your profile, events, ticket tiers, promo codes, staff access, and Stripe payout flow on a single setup call.",
+      "You can post events within a day. We help build your profile, ticket tiers, promo codes, staff access, and Stripe payout flow on a single setup call, then you take it from there.",
   },
 ];
 

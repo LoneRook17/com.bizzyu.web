@@ -352,11 +352,17 @@ export default function EventsPage() {
             {/* Hero visual: stacked SMS + push mockups */}
             <div className="lg:col-span-5">
               <AnimatedSection delay={0.15} variant="fade-left">
-                <div className="relative h-[520px] md:h-[600px]">
-                  <div className="absolute right-0 top-0 scale-90 md:scale-100">
+                {/* Mobile: single centered phone. Desktop: stacked SMS + push. */}
+                <div className="md:hidden flex justify-center">
+                  <div className="scale-90 origin-top">
                     <SMSMockup />
                   </div>
-                  <div className="absolute left-0 bottom-0 scale-75 md:scale-90 z-10">
+                </div>
+                <div className="hidden md:block relative h-[600px]">
+                  <div className="absolute right-0 top-0">
+                    <SMSMockup />
+                  </div>
+                  <div className="absolute left-0 bottom-0 scale-90 z-10">
                     <PushMockup />
                   </div>
                 </div>
@@ -396,7 +402,7 @@ export default function EventsPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
 
-        <SectionContainer className="relative !py-20 md:!py-32">
+        <SectionContainer className="relative !py-16 md:!py-32">
           <AnimatedSection>
             <div className="max-w-3xl mx-auto text-center mb-16 md:mb-24">
               <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">The unfair advantage</p>
@@ -414,7 +420,7 @@ export default function EventsPage() {
           </AnimatedSection>
 
           {/* ─ Block 1: Promoter Program ─ */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center mb-24 md:mb-32">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center mb-16 md:mb-32">
             <AnimatedSection className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/15 border border-primary/30 rounded-full text-primary text-[11px] font-bold uppercase tracking-widest mb-5">
                 <span className="text-base">①</span> Promoter Program
@@ -459,7 +465,7 @@ export default function EventsPage() {
           </div>
 
           {/* ─ Block 2: SMS Blast ─ */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center mb-24 md:mb-32">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-center mb-16 md:mb-32">
             <AnimatedSection variant="fade-right" className="lg:col-span-5 lg:order-1 order-2">
               <div className="relative flex justify-center">
                 <div className="absolute -inset-10 bg-emerald-500/10 rounded-full blur-3xl" />
@@ -599,6 +605,54 @@ export default function EventsPage() {
         </div>
       </section>
 
+      {/* ─── 5a. Self-Serve Dashboard ──────────────────────── */}
+      <section className="bg-gray-50">
+      <SectionContainer className="!py-20 md:!py-28">
+        <AnimatedSection>
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Self-Serve Dashboard</p>
+            <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
+              Every venue. Every shift.
+              <br />
+              <span className="font-display-italic font-normal text-ink">
+                <span className="marker-underline">One dashboard</span>.
+              </span>
+            </h2>
+            <p className="text-lg text-muted leading-relaxed">
+              Manage all your venues in one place. Delegate to promoters, managers, and door staff with tools built in. You can post events within a day.
+            </p>
+          </div>
+        </AnimatedSection>
+
+        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[
+            {
+              title: "All your venues, one login",
+              desc: "Manage every bar in your group from a single dashboard. Switch between them instantly. No spreadsheets, no separate logins.",
+            },
+            {
+              title: "Delegate with scoped access",
+              desc: "Add promoters, managers, and door staff with role-based permissions. They see what they need to do their job, nothing they don't.",
+            },
+            {
+              title: "Post events within a day",
+              desc: "Publish a new event in minutes. Set ticket tiers, line skip, cover, and promoter commission terms. Go live the same day.",
+            },
+          ].map((cap, i) => (
+            <AnimatedSection key={cap.title} delay={i * 0.06}>
+              <div className="h-full bg-white rounded-2xl border border-gray-100 p-7 hover:-translate-y-1 hover:border-primary/30 transition-all duration-300">
+                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center mb-4">
+                  <CheckIcon className="text-primary w-5 h-5" />
+                </div>
+                <h3 className="text-lg md:text-xl font-bold text-ink mb-2 leading-snug">{cap.title}</h3>
+                <p className="text-muted text-sm md:text-base leading-relaxed">{cap.desc}</p>
+              </div>
+            </AnimatedSection>
+          ))}
+        </div>
+      </SectionContainer>
+      </section>
+
       {/* ─── 5. Run your whole night ────────────────────────── */}
       <SectionContainer className="!py-20 md:!py-28">
         <AnimatedSection>
@@ -633,9 +687,9 @@ export default function EventsPage() {
         <SectionContainer className="!py-20 md:!py-28">
           <AnimatedSection>
             <div className="text-center max-w-2xl mx-auto mb-14">
-              <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">How we launch you</p>
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Onboarding</p>
               <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-                Live in days, not weeks.
+                One call. You&apos;re live.
               </h2>
               <p className="text-lg text-muted">
                 Onboarding is hands-on. We get you live without the headache.
@@ -706,36 +760,53 @@ export default function EventsPage() {
           </AnimatedSection>
 
           <AnimatedSection delay={0.1}>
-            <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px]">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                      <th className="text-left px-6 py-5 text-xs font-bold text-muted uppercase tracking-wider">
-                        Feature
-                      </th>
-                      <th className="text-center px-6 py-5 text-sm font-bold text-primary">
-                        Bizzy
-                      </th>
-                      <th className="text-center px-6 py-5 text-xs font-semibold text-muted uppercase tracking-wider">
-                        Other platforms
-                      </th>
+            {/* Mobile: stacked cards. md+: traditional table. */}
+            <div className="md:hidden max-w-md mx-auto space-y-3">
+              {COMPARISON.map((row) => (
+                <div key={row.feature} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                  <p className="text-ink text-sm font-semibold mb-3 leading-snug">{row.feature}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-primary-light rounded-xl px-3 py-2.5">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">Bizzy</p>
+                      <p className="text-sm font-bold text-primary leading-tight">{row.bizzy}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl px-3 py-2.5">
+                      <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">Others</p>
+                      <p className="text-sm text-muted leading-tight">{row.others}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block max-w-4xl mx-auto bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                    <th className="text-left px-6 py-5 text-xs font-bold text-muted uppercase tracking-wider">
+                      Feature
+                    </th>
+                    <th className="text-center px-6 py-5 text-sm font-bold text-primary">
+                      Bizzy
+                    </th>
+                    <th className="text-center px-6 py-5 text-xs font-semibold text-muted uppercase tracking-wider">
+                      Other platforms
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON.map((row, i) => (
+                    <tr
+                      key={row.feature}
+                      className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}
+                    >
+                      <td className="px-6 py-4 text-ink text-sm font-medium">{row.feature}</td>
+                      <td className="px-6 py-4 text-center font-bold text-primary">{row.bizzy}</td>
+                      <td className="px-6 py-4 text-center text-muted text-sm">{row.others}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {COMPARISON.map((row, i) => (
-                      <tr
-                        key={row.feature}
-                        className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}
-                      >
-                        <td className="px-6 py-4 text-ink text-sm font-medium">{row.feature}</td>
-                        <td className="px-6 py-4 text-center font-bold text-primary">{row.bizzy}</td>
-                        <td className="px-6 py-4 text-center text-muted text-sm">{row.others}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </AnimatedSection>
 
