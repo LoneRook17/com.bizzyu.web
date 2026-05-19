@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Fraunces, Fredoka } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif, Fredoka } from "next/font/google";
 import LayoutShell from "@/components/layout/LayoutShell";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_STORE_URL } from "@/lib/constants";
@@ -15,14 +15,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Editorial display serif for italic accent words. Variable axes: SOFT
-// (rounded vs angular), opsz (display vs text). We use heavy italic for
-// emotional/accent headlines so we never need a gradient-text crutch.
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+// Editorial display serif for italic accent words. Single style (italic)
+// and weight (400). Chosen for clarity at all sizes and to avoid the
+// over-tuned display feel of Fraunces opsz 144. Cooper picked this over
+// Fraunces because Fraunces felt too AI-SaaS editorial.
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-display-italic",
   subsets: ["latin"],
-  axes: ["opsz", "SOFT"],
-  style: ["italic", "normal"],
+  weight: "400",
+  style: "italic",
   display: "swap",
 });
 
@@ -171,7 +172,7 @@ export default function RootLayout({
         <JsonLd data={appJsonLd} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${fredoka.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${fredoka.variable} antialiased`}
       >
         <LayoutShell>{children}</LayoutShell>
       </body>
