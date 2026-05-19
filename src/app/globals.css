@@ -15,6 +15,7 @@
   --color-ink: #030303;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
 }
 
 body {
@@ -60,4 +61,78 @@ body {
 
 .green-glow {
   background: radial-gradient(ellipse at center, rgba(5, 235, 84, 0.12) 0%, transparent 70%);
+}
+
+/* Editorial display italic — Fraunces variable, expressive opsz.
+   Apply to ONE accent word/phrase per headline. Never to whole lines. */
+.font-display-italic {
+  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+/* Marker highlighter under emphasized words. Looks hand-drawn, on-brand
+   green. Replaces the AI-default "gradient text" headline crutch. */
+.marker-underline {
+  background-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    transparent 62%,
+    var(--color-primary) 62%,
+    var(--color-primary) 92%,
+    transparent 92%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  padding: 0 0.08em;
+}
+
+/* Diagonal slash marker, for "do not" style strikethroughs or accents. */
+.marker-slash {
+  background-image: linear-gradient(
+    -8deg,
+    transparent 46%,
+    var(--color-primary) 46%,
+    var(--color-primary) 54%,
+    transparent 54%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* Sticker block: green fill, dark text inside. For dark backgrounds where
+   the highlighter-underline pattern would disappear. Feels like a hand-
+   stamped sticker. Slight skew gives it tactile, hand-placed energy. */
+.marker-sticker {
+  display: inline-block;
+  background-color: var(--color-primary);
+  color: var(--color-ink);
+  padding: 0.04em 0.22em 0.06em;
+  border-radius: 0.18em;
+  transform: skew(-4deg);
+  margin: 0 0.05em;
+  white-space: nowrap;
+}
+.marker-sticker > * { display: inline-block; transform: skew(4deg); }
+
+/* Bizzy brand wordmark — matches the nav logo: rounded chunky sans
+   (Fredoka), white text on solid green pill. Use ONLY when "Bizzy"
+   appears as a brand stamp in a headline. Never inside flowing body
+   copy (it would feel like every Bizzy mention is shouting). */
+.bizzy-wordmark {
+  display: inline-block;
+  font-family: var(--font-fredoka), system-ui, sans-serif;
+  font-weight: 600;
+  font-style: normal;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  padding: 0.04em 0.32em 0.1em;
+  border-radius: 0.32em;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  margin: 0 0.06em;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.12);
 }

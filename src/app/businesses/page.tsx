@@ -1,360 +1,271 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import Link from "next/link";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import ZeroFrictionBanner from "@/components/ui/ZeroFrictionBanner";
 import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
-import HeroDealCard from "@/components/businesses/HeroDealCard";
-import HowItWorks from "@/components/businesses/HowItWorks";
-import { BUSINESS_FAQ, CONTACT_EMAIL } from "@/lib/constants";
+import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
+import { BUSINESS_FAQ, CALENDLY_DEMO_URL, CONTACT_EMAIL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Partner With Bizzy — Reach College Students Near You",
+  title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
   description:
-    "Join 100+ local businesses on Bizzy. Reach 25,000+ college students with exclusive deals. No upfront cost to get started.",
+    "Two paths to reach 25,000+ college students. Bars & venues: tickets, line skip, promoter army, SMS blasts, plus 100+ influencer events brought to venues nationwide. Restaurants & retail: list exclusive deals free.",
   alternates: {
     canonical: "https://bizzyu.com/businesses",
   },
   openGraph: {
-    title: "Partner With Bizzy — Reach College Students Near You",
+    title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
     description:
-      "Join 100+ local businesses on Bizzy. Reach 25,000+ college students with exclusive deals. No upfront cost to get started.",
+      "Bars & venues book a 15-min call. Restaurants & retail sign up free in 5 minutes. Both pay 0% to Bizzy.",
   },
 };
 
-const LOGOS = [
-  { src: "/images/logos/chick-fil-a.svg", alt: "Chick-fil-A", width: 280, height: "h-16" },
-  { src: "/images/logos/taco-bell.svg", alt: "Taco Bell", width: 280, height: "h-16" },
-  { src: "/images/logos/jersey-mikes.svg", alt: "Jersey Mike's", width: 280, height: "h-16" },
-  { src: "/images/logos/tropical-smoothie.svg", alt: "Tropical Smoothie", width: 260, height: "h-14" },
-  { src: "/images/logos/chipotle.svg", alt: "Chipotle", width: 280, height: "h-16" },
-  { src: "/images/logos/crisp-and-green.svg", alt: "Crisp & Green", width: 260, height: "h-14" },
-  { src: "/images/logos/playa-bowls.svg", alt: "Playa Bowls", width: 260, height: "h-14" },
-  { src: "/images/logos/firehouse-subs.svg", alt: "Firehouse Subs", width: 280, height: "h-16" },
-  { src: "/images/logos/jimmy-johns.svg", alt: "Jimmy John's", width: 260, height: "h-14" },
-  { src: "/images/logos/zaxbys.svg", alt: "Zaxby's", width: 240, height: "h-14" },
-  { src: "/images/logos/pei-wei.svg", alt: "Pei Wei", width: 220, height: "h-14" },
-];
+function ArrowRight({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <polyline points="12 5 19 12 12 19" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 
 export default function BusinessesPage() {
   return (
     <>
-      {/* 1. Hero -Split Layout with Floating Deal Card */}
-      <section className="relative overflow-hidden">
-        <SectionContainer className="py-20 md:py-32">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <AnimatedSection>
-              <div className="max-w-xl">
-                <div className="inline-flex items-center px-4 py-1.5 bg-primary-light rounded-full text-primary text-sm font-semibold mb-6">
-                  Simple to Use. Reliable. Free
+      {/* ─── 1. Hero, Pick your lane ──────────────────────── */}
+      <section className="relative overflow-hidden bg-white">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-light/40 via-white to-white pointer-events-none" />
+        <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-primary/8 rounded-full blur-3xl pointer-events-none" />
+
+        <SectionContainer className="relative !py-14 md:!py-20">
+          <AnimatedSection>
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-primary/20 rounded-full text-xs font-semibold mb-6 shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+                <span className="text-ink">25K+ students. 400+ businesses. 0% fees.</span>
+              </div>
+
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.05] tracking-tight mb-6">
+                Reach the students near you.
+                <br />
+                <span className="font-display-italic font-normal text-ink">
+                  Pick <span className="marker-underline">your lane</span>.
+                </span>
+              </h1>
+              <p className="text-lg md:text-xl text-muted max-w-2xl leading-relaxed">
+                Bizzy is a free platform for any business that wants to reach college students. Two ways in. Choose the one that fits.
+              </p>
+            </div>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
+
+      {/* ─── 2. The two doors ─────────────────────────────── */}
+      <SectionContainer className="!pt-4 md:!pt-8 !pb-20 md:!pb-28">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+          {/* DOOR 1: Bars & Venues */}
+          <AnimatedSection>
+            <div className="group relative overflow-hidden rounded-3xl bg-ink p-8 md:p-10 lg:p-12 h-full min-h-[600px] flex flex-col">
+              <div className="absolute -right-32 -top-32 w-[500px] h-[500px] bg-primary/25 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -left-20 -bottom-20 w-[400px] h-[400px] bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="inline-flex items-center w-fit gap-2 px-3 py-1.5 bg-primary text-ink rounded-full text-[11px] font-bold uppercase tracking-widest mb-6">
+                  Bars & Event Venues
                 </div>
-                <h1 className="text-4xl md:text-6xl font-bold text-ink leading-tight mb-6">
-                  Get college students through your door{" "}
-                  <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-                    for free.
+
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-4">
+                  Sell tickets.
+                  <br />
+                  Fill the bar.
+                  <br />
+                  <span className="font-display-italic font-normal text-white">
+                    Keep <span className="marker-sticker"><span>100%</span></span>.
                   </span>
-                </h1>
-                <p className="text-lg text-muted mb-8 max-w-md leading-relaxed">
-                  Bizzy brings students to your business and inside your door
-                  so you can sell them more. List student deals and sell event
-                  tickets. No fees, no percent taken.
+                </h2>
+                <p className="text-white/70 text-base md:text-lg leading-relaxed mb-7 max-w-md">
+                  0% platform fees on tickets, line skip, and cover. Plus an auto-paid promoter army, SMS blasts to past attendees, and influencer + DJ talent we bring to venues nationwide.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button href="/business/signup" size="lg">
+
+                <ul className="space-y-3 mb-8">
+                  {[
+                    "0% platform fees on tickets and cover",
+                    "Auto-paid promoter referral links",
+                    "SMS blasts to past attendees, included",
+                    "100+ influencer events brought to bars nationwide",
+                  ].map((line) => (
+                    <li key={line} className="flex items-center gap-3 text-white/90 text-sm md:text-base">
+                      <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
+                        <CheckIcon className="text-primary w-3 h-3" />
+                      </div>
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                  <Button href={CALENDLY_DEMO_URL} variant="primary" size="lg" external>
+                    Book a 15-Min Call
+                  </Button>
+                  <Link
+                    href="/events"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full font-semibold text-base text-white border-2 border-white/15 hover:border-white/40 hover:bg-white/5 transition-all"
+                  >
+                    See the full pitch
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+
+                <p className="mt-5 text-xs text-white/50">
+                  Recommended for: college bars, nightclubs, music venues, event spaces, promoters.
+                </p>
+              </div>
+            </div>
+          </AnimatedSection>
+
+          {/* DOOR 2: Restaurants & Retail */}
+          <AnimatedSection delay={0.1}>
+            <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-light via-white to-primary-light border border-primary/15 p-8 md:p-10 lg:p-12 h-full min-h-[600px] flex flex-col">
+              <div className="absolute -right-32 -top-32 w-[400px] h-[400px] bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="inline-flex items-center w-fit gap-2 px-3 py-1.5 bg-white border border-primary/20 rounded-full text-[11px] font-bold uppercase tracking-widest text-primary mb-6 shadow-sm">
+                  Restaurants & Retail
+                </div>
+
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-4">
+                  Post discounts.
+                  <br />
+                  Reach the crowd.
+                  <br />
+                  <span className="font-display-italic font-normal text-ink">
+                    <span className="marker-underline">Free</span> to list.
+                  </span>
+                </h2>
+                <p className="text-muted text-base md:text-lg leading-relaxed mb-7 max-w-md">
+                  Post a student discount and reach thousands of nearby students in your college town. You set the deal, the redemption cap, and the hours. Bizzy puts it in front of the right crowd.
+                </p>
+
+                <ul className="space-y-3 mb-8">
+                  {[
+                    "Reach thousands of nearby students",
+                    "Cap redemptions so you don't get crushed",
+                    "Push product during slow hours",
+                    "Free to list, no commissions on redemptions",
+                  ].map((line) => (
+                    <li key={line} className="flex items-center gap-3 text-ink text-sm md:text-base">
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                        <CheckIcon className="text-white w-3 h-3" />
+                      </div>
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                  <Button href="/business/signup" variant="primary" size="lg">
                     Get Started Free
                   </Button>
-                  <Button href="/business/signup" variant="outline" size="lg">
-                    List a Deal
+                  <Button href={CALENDLY_DEMO_URL} variant="outline" size="lg" external>
+                    Or book a call
                   </Button>
                 </div>
-              </div>
-            </AnimatedSection>
 
-            <AnimatedSection delay={0.2} className="flex justify-center">
-              <HeroDealCard />
-            </AnimatedSection>
-          </div>
-        </SectionContainer>
-      </section>
-
-      {/* 2. Logo Trust Strip */}
-      <section className="py-12 overflow-hidden">
-        <p className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-[0.2em] mb-8">
-          Brands already on Bizzy
-        </p>
-        <div className="relative">
-          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-          <div className="flex animate-marquee" style={{ animationDuration: "7s" }}>
-            {[...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS].map((logo, i) => (
-              <div
-                key={`${logo.alt}-${i}`}
-                className="flex-shrink-0 mx-12 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-300"
-              >
-                <Image
-                  src={logo.src}
-                  alt={logo.alt}
-                  width={logo.width}
-                  height={64}
-                  className={`${logo.height} w-auto`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 2.5 How Deals Work In-Store */}
-      <section className="bg-gray-50">
-        <SectionContainer className="!py-10 md:!py-14">
-          <AnimatedSection>
-            <div className="text-center mb-6 md:mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-2">
-                How it works
-              </h2>
-              <p className="text-muted text-base">
-                Simple for students. Even simpler for your staff.
-              </p>
-            </div>
-          </AnimatedSection>
-
-          <div className="max-w-5xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                {/* Step 1 */}
-                <AnimatedSection delay={0.15} variant="fade-left">
-                <div className="flex flex-col items-center text-center">
-                  <div className="relative w-[260px] md:w-[320px] h-[520px] md:h-[570px] mb-2">
-                    <div className="absolute inset-0 bg-primary/5 rounded-[2rem] blur-xl scale-[0.85] -z-10" />
-                    <Image src="/images/screen-1.png" alt="Student browsing deals on Bizzy" fill className="object-contain drop-shadow-xl" />
-                  </div>
-                  <h3 className="text-base font-bold text-ink mb-1">Student finds your deal</h3>
-                  <p className="text-muted text-sm">They browse Bizzy, see your deal, and head to your business.</p>
-                </div>
-                </AnimatedSection>
-
-                {/* Step 2 */}
-                <AnimatedSection delay={0.35} variant="scale-in">
-                <div className="flex flex-col items-center text-center">
-                  <div className="relative w-[260px] md:w-[320px] h-[520px] md:h-[570px] mb-2">
-                    <div className="absolute inset-0 bg-primary/10 rounded-[2rem] blur-2xl scale-90 -z-10" />
-                    <Image src="/images/screen-3.png" alt="Staff member tap here to verify deal" fill className="object-contain drop-shadow-xl" />
-                  </div>
-                  <h3 className="text-base font-bold text-ink mb-1">Staff taps to verify</h3>
-                  <p className="text-muted text-sm">At checkout, your staff taps the green button. Takes 2 seconds.</p>
-                </div>
-                </AnimatedSection>
-
-                {/* Step 3 */}
-                <AnimatedSection delay={0.55} variant="fade-right">
-                <div className="flex flex-col items-center text-center">
-                  <div className="relative w-[260px] md:w-[320px] h-[520px] md:h-[570px] mb-2">
-                    <div className="absolute inset-0 bg-primary/20 rounded-[2rem] blur-2xl scale-90 -z-10" />
-                    <Image src="/images/screen-4d.png" alt="Deal claimed confirmation screen" fill className="object-contain drop-shadow-xl" />
-                  </div>
-                  <h3 className="text-base font-bold text-ink mb-1">Deal claimed, discount applied</h3>
-                  <p className="text-muted text-sm">The deal locks. Staff honors the discount. Done.</p>
-                </div>
-                </AnimatedSection>
-              </div>
-            </div>
-        </SectionContainer>
-      </section>
-
-      {/* 4. What You Can Do -Three Cards */}
-      <SectionContainer>
-        <AnimatedSection>
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
-              Everything you need to reach students
-            </h2>
-          </div>
-        </AnimatedSection>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Deals card */}
-          <AnimatedSection>
-            <div className="bg-white rounded-2xl p-8 md:p-10 border border-gray-100 h-full hover:-translate-y-1 transition-transform duration-300">
-              <div className="inline-flex items-center px-3 py-1 bg-primary-light rounded-full text-primary text-xs font-semibold mb-4">
-                Deals
-              </div>
-              <h3 className="text-2xl font-bold text-ink mb-3">
-                List exclusive deals
-              </h3>
-              <p className="text-muted text-base mb-6">
-                Offer deals students can only get through Bizzy. The more
-                compelling the offer, the more students walk in.
-              </p>
-              {/* Deal screen previews */}
-              <div className="flex gap-4 mb-6 justify-center">
-                <div className="w-[140px] -rotate-3">
-                  <Image
-                    src="/images/screens/3.png"
-                    alt="Bizzy deal claim screen"
-                    width={140}
-                    height={300}
-                    className="rounded-xl shadow-md w-full"
-                  />
-                </div>
-                <div className="w-[140px] rotate-3">
-                  <Image
-                    src="/images/screens/4.png"
-                    alt="Bizzy deal claimed confirmation"
-                    width={140}
-                    height={300}
-                    className="rounded-xl shadow-md w-full"
-                  />
-                </div>
-              </div>
-              <div className="space-y-3">
-                {[
-                  "Drive new foot traffic every week",
-                  "Zero fees, zero commissions",
-                  "You control the offer and terms",
-                  "Turn first-timers into regulars",
-                ].map((deal) => (
-                  <div key={deal} className="flex items-center gap-2.5">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#05EB54" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    <span className="text-ink text-base">{deal}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6">
-                <Button href="/business/signup" variant="outline" size="sm">
-                  List a Deal
-                </Button>
-              </div>
-            </div>
-          </AnimatedSection>
-
-          {/* Events card */}
-          <AnimatedSection delay={0.1}>
-            <div className="bg-white rounded-2xl p-8 md:p-10 border border-gray-100 h-full hover:-translate-y-1 transition-transform duration-300">
-              <div className="inline-flex items-center px-3 py-1 bg-primary-light rounded-full text-primary text-xs font-semibold mb-4">
-                Events
-              </div>
-              <h3 className="text-2xl font-bold text-ink mb-3">
-                Sell event tickets
-              </h3>
-              <p className="text-muted text-base mb-6">
-                Post events for students to discover, RSVP, or buy tickets,
-                all inside the app.
-              </p>
-              {/* Event screen previews */}
-              <div className="flex gap-4 mb-6 justify-center">
-                <div className="w-[140px] -rotate-3">
-                  <Image
-                    src="/images/screens/6.png"
-                    alt="Bizzy event ticket tiers"
-                    width={140}
-                    height={300}
-                    className="rounded-xl shadow-md w-full"
-                  />
-                </div>
-                <div className="w-[140px] rotate-3">
-                  <Image
-                    src="/images/screens/5.png"
-                    alt="Bizzy event ticket purchase with Apple Pay"
-                    width={140}
-                    height={300}
-                    className="rounded-xl shadow-md w-full"
-                  />
-                </div>
-              </div>
-              <div className="space-y-4">
-                {[
-                  {
-                    title: "Tap to Pay",
-                    desc: "Accept cover and payments at the door with your phone.",
-                  },
-                  {
-                    title: "In-App Ticketing",
-                    desc: "Students RSVP or buy tickets directly in the app.",
-                  },
-                  {
-                    title: "Keep 100% of Proceeds",
-                    desc: "Powered by Stripe. You keep every dollar.",
-                  },
-                ].map((item) => (
-                  <div key={item.title} className="flex items-start gap-2.5">
-                    <svg className="mt-0.5 flex-shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#05EB54" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    <div>
-                      <span className="text-ink text-base font-semibold">{item.title}</span>
-                      <span className="text-muted text-base"> - {item.desc}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6">
-                <Button href="/events" variant="outline" size="sm">
-                  List Your Event
-                </Button>
+                <p className="mt-5 text-xs text-muted">
+                  Recommended for: restaurants, cafés, QSR, retail, services, anything off-premise students walk into.
+                </p>
               </div>
             </div>
           </AnimatedSection>
         </div>
       </SectionContainer>
 
-      {/* 5.5 Getting Started */}
-      <HowItWorks />
+      {/* ─── 3. Live venue logo marquee ───────────────────── */}
+      <BizzyVenuesMarquee label="Already on Bizzy" theme="light" />
 
-      {/* 6. Zero Friction Banner */}
-      <SectionContainer className="!pt-4 md:!pt-6">
+      {/* ─── 4. Zero friction banner ─────────────────────── */}
+      <SectionContainer className="!py-16 md:!py-24">
         <ZeroFrictionBanner />
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
-          <Button href="/business/signup" size="lg">
-            List a Deal
-          </Button>
-          <Button href="/events" variant="outline" size="lg">
-            List Your Event
-          </Button>
-        </div>
       </SectionContainer>
 
-      {/* 7. FAQ */}
+      {/* ─── 4. FAQ ──────────────────────────────────────── */}
       <section className="bg-gray-50">
-        <SectionContainer>
+        <SectionContainer className="!py-20 md:!py-24">
           <AnimatedSection>
-            <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-bold text-ink mb-4">
-                Frequently asked questions
+            <div className="max-w-2xl mx-auto text-center mb-12">
+              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-3">
+                Common questions.
               </h2>
-              <p className="text-muted text-lg">
-                Everything you need to know about listing on Bizzy.
-              </p>
+              <p className="text-muted text-lg">For deals and retail. For bar-specific questions, see the events page.</p>
             </div>
           </AnimatedSection>
-          <FAQ items={BUSINESS_FAQ} />
+          <div className="max-w-3xl mx-auto">
+            <FAQ items={BUSINESS_FAQ} />
+          </div>
         </SectionContainer>
       </section>
 
-      {/* 8. Final CTA - Green Gradient */}
-      <section className="bg-gradient-to-br from-primary to-emerald-500">
-        <SectionContainer className="text-center py-16 md:py-24">
+      {/* ─── 5. Final CTA, mirror the two doors ───────────── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary to-emerald-500">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)] pointer-events-none" />
+        <SectionContainer className="relative text-center !py-20 md:!py-24">
           <AnimatedSection>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              List your business on Bizzy. It&apos;s free
+            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-5">
+              Pick your lane. Start today.
             </h2>
-            <p className="text-white/80 text-lg mb-8 max-w-lg mx-auto">
-              500+ local business owners are already reaching students through
-              Bizzy. No fees, no commissions, no contracts.
+            <p className="text-white/90 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
+              Both paths are free. Both reach the same 25,000+ students. Both pay 0% to Bizzy.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button href="/business/signup" variant="white" size="lg">
-                Sign Up for Free
+              <Button href={CALENDLY_DEMO_URL} variant="white" size="lg" external>
+                I run a bar → Book a call
               </Button>
-              <Button href="/business/signup" variant="white" size="lg" className="!bg-white/20 !text-white hover:!bg-white/30">
-                List a Deal Instead
+              <Button
+                href="/business/signup"
+                variant="white"
+                size="lg"
+                className="!bg-white/15 !text-white hover:!bg-white/25 backdrop-blur-sm"
+              >
+                I run a restaurant → Sign up
               </Button>
             </div>
-            <p className="mt-6 text-white/60 text-sm">
-              Questions?{" "}
-              <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className="text-white/80 hover:text-white transition-colors underline"
-              >
-                {CONTACT_EMAIL}
-              </a>
+            <p className="mt-6 text-white/75 text-sm">
+              Questions? <a href={`mailto:${CONTACT_EMAIL}`} className="text-white underline hover:no-underline">{CONTACT_EMAIL}</a>
             </p>
           </AnimatedSection>
         </SectionContainer>

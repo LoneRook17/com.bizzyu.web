@@ -10,7 +10,6 @@ export const CALENDLY_DEMO_URL =
 
 export const NAV_LINKS = [
   { label: "Home", href: "/" },
-  { label: "Events", href: "/events" },
   { label: "For Businesses", href: "/businesses" },
   { label: "About", href: "/about" },
 ];
@@ -59,52 +58,27 @@ export const EVENTS_FAQ = [
   {
     question: "Does Bizzy charge the venue?",
     answer:
-      "No. Venues pay 0% platform fees. Your bar keeps 100% of the ticket, line skip, and cover price you set.",
+      "No. Venues pay 0% platform fees. Your bar keeps 100% of the ticket, line skip, and cover price you set. Students pay the service fee at checkout.",
   },
   {
-    question: "What does the bar receive?",
+    question: "How does the promoter payout actually work?",
     answer:
-      "The bar receives the full ticket, line skip, or cover amount sold through Bizzy. Standard payment processing details are confirmed during setup based on your Stripe configuration.",
+      "You set a commission rate per event (e.g. 10%). Anyone who wants to earn grabs a personal referral link with their name. No approval needed. Every ticket sold through their link auto-pays the promoter. Bizzy pays out automatically within days. You see every dollar tracked in real time.",
   },
   {
-    question: "Can we test Bizzy for one event?",
+    question: "Can we send SMS blasts to past attendees?",
     answer:
-      "Yes. Most venues can test Bizzy on one event, one cover night, or one line skip offer before moving more volume.",
-  },
-  {
-    question: "Can we still use our current system?",
-    answer:
-      "Yes. You can test Bizzy alongside your current setup if needed.",
-  },
-  {
-    question: "How fast can we launch?",
-    answer:
-      "Most venues can be set up quickly once we have your event details, ticket tiers, staff access needs, and Stripe information.",
+      "Yes. SMS blasts go to every student who's attended a past event at your venue. Personalized to your bar. One-tap to grab a line skip or ticket. Included and unlimited.",
   },
   {
     question: "Can my door staff use it?",
     answer:
-      "Yes. You can assign door staff to scan tickets, manage check-ins, and collect cover.",
+      "Yes. Assign door staff to scan tickets, manage check-ins, and collect cover from their own phone. They never see payouts or customer data.",
   },
   {
-    question: "Can we sell line skip?",
+    question: "How fast can we launch?",
     answer:
-      "Yes. You can sell line skip, tickets, cover, VIP packages, or other event access.",
-  },
-  {
-    question: "Can we create promo codes?",
-    answer:
-      "Yes. You can create promo codes for Greek life, influencers, promoters, ambassadors, or special campaigns.",
-  },
-  {
-    question: "Does Bizzy help market events?",
-    answer:
-      "Yes. Bizzy can help promote your events and deals to local students through the app and campus marketing campaigns.",
-  },
-  {
-    question: "Is this only for college bars?",
-    answer:
-      "Bizzy is built primarily for college bars, nightlife venues, promoters, and student-driven events.",
+      "Most venues launch within days. We help build your profile, events, ticket tiers, promo codes, staff access, and Stripe payout flow on a single setup call.",
   },
 ];
 
@@ -112,7 +86,7 @@ export const BUSINESS_FAQ = [
   {
     question: "Is it really free for businesses?",
     answer:
-      "Yes, 100% free. No fees, no commissions, no percentage of sales, no contracts. We don't take a cut from your sales or deal redemptions.",
+      "Yes. No platform fees, no commissions, no percentage of sales, no contracts. We don't take a cut from your sales or deal redemptions.",
   },
   {
     question: "What's the catch?",
@@ -132,7 +106,7 @@ export const BUSINESS_FAQ = [
   {
     question: "Does Bizzy take a percentage of sales or redemptions?",
     answer:
-      "No. Bizzy does not take a cut from your sales, deal redemptions, or ticket sales. It's completely free.",
+      "No. Bizzy does not take a cut from your sales, deal redemptions, or ticket sales.",
   },
   {
     question: "Is there any technical setup required?",

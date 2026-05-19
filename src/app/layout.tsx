@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Fraunces, Fredoka } from "next/font/google";
 import LayoutShell from "@/components/layout/LayoutShell";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_STORE_URL } from "@/lib/constants";
@@ -13,6 +13,27 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Editorial display serif for italic accent words. Variable axes: SOFT
+// (rounded vs angular), opsz (display vs text). We use heavy italic for
+// emotional/accent headlines so we never need a gradient-text crutch.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["opsz", "SOFT"],
+  style: ["italic", "normal"],
+  display: "swap",
+});
+
+// Fredoka, rounded chunky sans, matches the Bizzy logo wordmark.
+// Used only for ".bizzy-wordmark" callouts where the brand name appears
+// as a stamp (not in flowing body copy).
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -150,7 +171,7 @@ export default function RootLayout({
         <JsonLd data={appJsonLd} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${fredoka.variable} antialiased`}
       >
         <LayoutShell>{children}</LayoutShell>
       </body>
