@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import SavingsCalculator from "@/components/events/SavingsCalculator";
 import StickyDemoCTA from "@/components/events/StickyDemoCTA";
 import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
+import BizzyMark from "@/components/ui/BizzyMark";
 import { EVENTS_FAQ, CALENDLY_DEMO_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -422,7 +423,7 @@ export default function EventsPage() {
                 Anyone can promote.
                 <br />
                 <span className="font-display-italic font-normal text-white">
-                  <span className="bizzy-wordmark">Bizzy</span> pays them out.
+                  <BizzyMark /> pays them out.
                 </span>
               </h3>
               <p className="text-lg text-white/70 leading-relaxed mb-8">
@@ -556,7 +557,7 @@ export default function EventsPage() {
                   <p className="text-primary text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
                     Events delivered
                   </p>
-                  <p className="text-[180px] md:text-[240px] lg:text-[280px] font-black leading-none bg-gradient-to-br from-primary via-emerald-500 to-emerald-600 bg-clip-text text-transparent select-none">
+                  <p className="text-[112px] sm:text-[160px] md:text-[220px] lg:text-[280px] font-black leading-none bg-gradient-to-br from-primary via-emerald-500 to-emerald-600 bg-clip-text text-transparent select-none">
                     100+
                   </p>
                   <p className="text-ink text-lg md:text-xl font-bold mt-3">
