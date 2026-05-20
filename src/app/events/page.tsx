@@ -83,15 +83,6 @@ const USE_CASES = [
   "Graduation week events",
 ];
 
-const COMPARISON = [
-  { feature: "Platform fee on your sales", bizzy: "0%", others: "5 to 12%" },
-  { feature: "Tap to Pay cover at the door", bizzy: "Yes", others: "Sometimes" },
-  { feature: "Auto-paid promoter referral links", bizzy: "Yes", others: "No" },
-  { feature: "SMS blast to past attendees", bizzy: "Yes, free", others: "No" },
-  { feature: "Direct Stripe payouts", bizzy: "Yes", others: "Varies" },
-  { feature: "Exclusive student deals to drive off-nights", bizzy: "Yes", others: "Usually no" },
-];
-
 const FOUNDING_PERKS = [
   "0% venue platform fees",
   "Hands-on setup and staff onboarding",
@@ -606,81 +597,93 @@ export default function EventsPage() {
       </section>
 
       {/* ─── 5a. Self-Serve Dashboard ──────────────────────── */}
-      <section className="bg-gray-50">
-      <SectionContainer className="!py-20 md:!py-28">
-        <AnimatedSection>
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Self-Serve Dashboard</p>
-            <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-              Every venue. Every shift.
-              <br />
-              <span className="font-display-italic font-normal text-ink">
-                <span className="marker-underline">One dashboard</span>.
-              </span>
-            </h2>
-            <p className="text-lg text-muted leading-relaxed">
-              Manage all your venues in one place. Delegate to promoters, managers, and door staff with tools built in. You can post events within a day.
-            </p>
-          </div>
-        </AnimatedSection>
+      <section className="relative overflow-hidden bg-ink text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
 
-        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[
-            {
-              title: "All your venues, one login",
-              desc: "Manage every bar in your group from a single dashboard. Switch between them instantly. No spreadsheets, no separate logins.",
-            },
-            {
-              title: "Delegate with scoped access",
-              desc: "Add promoters, managers, and door staff with role-based permissions. They see what they need to do their job, nothing they don't.",
-            },
-            {
-              title: "Post events within a day",
-              desc: "Publish a new event in minutes. Set ticket tiers, line skip, cover, and promoter commission terms. Go live the same day.",
-            },
-          ].map((cap, i) => (
-            <AnimatedSection key={cap.title} delay={i * 0.06}>
-              <div className="h-full bg-white rounded-2xl border border-gray-100 p-7 hover:-translate-y-1 hover:border-primary/30 transition-all duration-300">
-                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center mb-4">
-                  <CheckIcon className="text-primary w-5 h-5" />
+        <SectionContainer className="relative !py-20 md:!py-28">
+          <AnimatedSection>
+            <div className="text-center max-w-2xl mx-auto mb-14">
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">Self-Serve Dashboard</p>
+              <h2 className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight mb-5 text-white">
+                Every venue. Every shift.
+                <br />
+                <span className="font-display-italic font-normal text-white">
+                  One dashboard.
+                </span>
+              </h2>
+              <p className="text-lg md:text-xl text-white/70 leading-relaxed">
+                Manage all your venues in one place. Delegate to promoters, managers, and door staff with tools built in. You can post events within a day.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              {
+                title: "All your venues, one login",
+                desc: "Manage every bar in your group from a single dashboard. Switch between them instantly. No spreadsheets, no separate logins.",
+              },
+              {
+                title: "Delegate with scoped access",
+                desc: "Add promoters, managers, and door staff with role-based permissions. They see what they need to do their job, nothing they don't.",
+              },
+              {
+                title: "Post events within a day",
+                desc: "Publish a new event in minutes. Set ticket tiers, line skip, cover, and promoter commission terms. Go live the same day.",
+              },
+            ].map((cap, i) => (
+              <AnimatedSection key={cap.title} delay={i * 0.06}>
+                <div className="h-full bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-7 hover:-translate-y-1 hover:border-primary/40 transition-all duration-300">
+                  <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-4">
+                    <CheckIcon className="text-primary w-5 h-5" />
+                  </div>
+                  <h3 className="text-lg md:text-xl font-bold text-white mb-2 leading-snug">{cap.title}</h3>
+                  <p className="text-white/70 text-sm md:text-base leading-relaxed">{cap.desc}</p>
                 </div>
-                <h3 className="text-lg md:text-xl font-bold text-ink mb-2 leading-snug">{cap.title}</h3>
-                <p className="text-muted text-sm md:text-base leading-relaxed">{cap.desc}</p>
-              </div>
-            </AnimatedSection>
-          ))}
-        </div>
-      </SectionContainer>
+              </AnimatedSection>
+            ))}
+          </div>
+        </SectionContainer>
       </section>
 
       {/* ─── 5. Run your whole night ────────────────────────── */}
-      <SectionContainer className="!py-20 md:!py-28">
-        <AnimatedSection>
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Door + back office</p>
-            <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-              Run your whole night from one phone.
-            </h2>
-            <p className="text-lg text-muted">
-              Tap to Pay, ticket scanning, scoped staff access, live revenue tracking. Everything you need to actually operate, in one app.
-            </p>
-          </div>
-        </AnimatedSection>
+      <section className="relative overflow-hidden bg-ink text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
 
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
-          {VENUE_CAPABILITIES.map((cap, i) => (
-            <AnimatedSection key={cap.title} delay={i * 0.06}>
-              <div className="h-full bg-white rounded-2xl border border-gray-100 p-7 hover:-translate-y-1 hover:border-primary/30 transition-all duration-300">
-                <div className="w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center mb-4">
-                  <CheckIcon className="text-primary w-5 h-5" />
+        <SectionContainer className="relative !py-20 md:!py-28">
+          <AnimatedSection>
+            <div className="text-center max-w-2xl mx-auto mb-14">
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">Door + back office</p>
+              <h2 className="text-4xl md:text-6xl font-bold leading-[1.05] tracking-tight mb-5 text-white">
+                Run your whole night
+                <br />
+                <span className="font-display-italic font-normal text-white">
+                  from one phone.
+                </span>
+              </h2>
+              <p className="text-lg md:text-xl text-white/70 leading-relaxed">
+                Tap to Pay, ticket scanning, scoped staff access, live revenue tracking. Everything you need to actually operate, in one app.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
+            {VENUE_CAPABILITIES.map((cap, i) => (
+              <AnimatedSection key={cap.title} delay={i * 0.06}>
+                <div className="h-full bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-7 hover:-translate-y-1 hover:border-primary/40 transition-all duration-300">
+                  <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-4">
+                    <CheckIcon className="text-primary w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2 leading-snug">{cap.title}</h3>
+                  <p className="text-white/70 text-base leading-relaxed">{cap.desc}</p>
                 </div>
-                <h3 className="text-xl font-bold text-ink mb-2 leading-snug">{cap.title}</h3>
-                <p className="text-muted text-base leading-relaxed">{cap.desc}</p>
-              </div>
-            </AnimatedSection>
-          ))}
-        </div>
-      </SectionContainer>
+              </AnimatedSection>
+            ))}
+          </div>
+        </SectionContainer>
+      </section>
 
       {/* ─── 6. How it works ────────────────────────────────── */}
       <section className="bg-gray-50" id="how-it-works">
@@ -743,80 +746,6 @@ export default function EventsPage() {
           </div>
         </AnimatedSection>
       </SectionContainer>
-
-      {/* ─── 8. Comparison table ─────────────────────────────── */}
-      <section className="bg-gray-50">
-        <SectionContainer className="!py-20 md:!py-28">
-          <AnimatedSection>
-            <div className="text-center max-w-3xl mx-auto mb-12">
-              <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Side by side</p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-                Why bars switch.
-              </h2>
-              <p className="text-lg text-muted">
-                Same door tools every platform has. Plus the marketing weapons no one else gives you.
-              </p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.1}>
-            {/* Mobile: stacked cards. md+: traditional table. */}
-            <div className="md:hidden max-w-md mx-auto space-y-3">
-              {COMPARISON.map((row) => (
-                <div key={row.feature} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-                  <p className="text-ink text-sm font-semibold mb-3 leading-snug">{row.feature}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-primary-light rounded-xl px-3 py-2.5">
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">Bizzy</p>
-                      <p className="text-sm font-bold text-primary leading-tight">{row.bizzy}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl px-3 py-2.5">
-                      <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">Others</p>
-                      <p className="text-sm text-muted leading-tight">{row.others}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="hidden md:block max-w-4xl mx-auto bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                    <th className="text-left px-6 py-5 text-xs font-bold text-muted uppercase tracking-wider">
-                      Feature
-                    </th>
-                    <th className="text-center px-6 py-5 text-sm font-bold text-primary">
-                      Bizzy
-                    </th>
-                    <th className="text-center px-6 py-5 text-xs font-semibold text-muted uppercase tracking-wider">
-                      Other platforms
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON.map((row, i) => (
-                    <tr
-                      key={row.feature}
-                      className={`border-b border-gray-100 last:border-0 ${i % 2 === 1 ? "bg-gray-50/50" : ""}`}
-                    >
-                      <td className="px-6 py-4 text-ink text-sm font-medium">{row.feature}</td>
-                      <td className="px-6 py-4 text-center font-bold text-primary">{row.bizzy}</td>
-                      <td className="px-6 py-4 text-center text-muted text-sm">{row.others}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.2}>
-            <div className="text-center mt-10">
-              <DemoButton>Compare your current setup</DemoButton>
-            </div>
-          </AnimatedSection>
-        </SectionContainer>
-      </section>
 
       {/* ─── 9. Founding Venue Program ───────────────────────── */}
       <SectionContainer className="!py-20 md:!py-28">
