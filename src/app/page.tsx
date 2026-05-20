@@ -260,7 +260,7 @@ export default function Home() {
                   Find what&apos;s happening on your campus.
                 </h3>
                 <p className="text-muted text-base leading-relaxed mb-6">
-                  Events, tickets, line skips, and deals at the spots near you. Free to download. No fees on tickets you buy.
+                  Events, tickets, line skips, and local deals at the spots near you. Discover where to go, what to do, and how to save around campus.
                 </p>
                 <span className="inline-flex items-center gap-2 text-ink font-semibold group-hover:text-primary transition-colors">
                   Download on the App Store
@@ -293,11 +293,10 @@ export default function Home() {
                   For Businesses
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-3 leading-tight">
-                  Get students through your door.{" "}
-                  <span className="text-primary">For free.</span>
+                  Get your business on <span className="text-primary">Bizzy</span>
                 </h3>
                 <p className="text-white/70 text-base leading-relaxed mb-6">
-                  List deals and sell event tickets to 25K+ students. Zero platform fees. No POS integration. Setup in under 5 minutes.
+                  List deals, promote events, and sell tickets to students near your campus. No setup fees, no monthly fees, and businesses keep 100% of ticket and cover revenue sold.
                 </p>
                 <span className="inline-flex items-center gap-2 text-white font-semibold group-hover:text-primary transition-colors">
                   See how it works
