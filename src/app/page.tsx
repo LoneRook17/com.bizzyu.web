@@ -270,10 +270,10 @@ export default function Home() {
 
               <div className="absolute -right-6 -bottom-12 w-[220px] md:w-[260px] rotate-[6deg] opacity-90 group-hover:rotate-[3deg] group-hover:-translate-y-2 transition-transform duration-500">
                 <Image
-                  src="/images/screen-5.png"
-                  alt="Bizzy events screen"
+                  src="/images/bizzy-deals-screen.png"
+                  alt="Bizzy deals feed on iPhone"
                   width={260}
-                  height={560}
+                  height={462}
                   className="rounded-[2rem] shadow-2xl"
                 />
               </div>
