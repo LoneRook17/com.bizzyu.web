@@ -54,7 +54,7 @@ export default function MarketingPage() {
 
   return (
     <div>
-      <h1 className="mb-3 text-xl font-bold text-ink">Marketing</h1>
+      <h1 className="mb-3 text-xl font-bold text-ink">Event Marketing</h1>
 
       <div role="tablist" className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
         <TabPill active={tab === "events"} onClick={() => setTab("events")}>
