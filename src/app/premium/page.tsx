@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import SectionContainer from "@/components/ui/SectionContainer"
-import { saveSession } from "@/lib/premium/auth"
+import { getToken, saveSession } from "@/lib/premium/auth"
 
-// Premium 2.0 Phase 3 — bizzyu.com/premium entry. Phone-OTP signup/login.
+// Premium 2.0 Phase 3 + 4 — bizzyu.com/premium entry. Phone-OTP signup/login.
 // PRD §7.2 (FR-W-5/6/7), §6.4, §12.8. After verify, lands on /premium/plans.
+// Phase 4 addition: forwards `?code=...` query param into the plan picker so
+// promo-share deep-links survive the auth round-trip.
 
 interface University {
   id: number
@@ -19,6 +21,19 @@ const LARAVEL_API = "/api/laravel"
 
 export default function PremiumAuthPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const promoFromUrl = searchParams.get("code")
+  const canceled = searchParams.get("canceled") === "1"
+
+  const plansHref = promoFromUrl
+    ? `/premium/plans?code=${encodeURIComponent(promoFromUrl)}`
+    : "/premium/plans"
+
+  // Already signed in → straight to plan picker (preserving any ?code).
+  useEffect(() => {
+    if (getToken()) router.replace(plansHref)
+  }, [router, plansHref])
+
   const [step, setStep] = useState<Step>("phone")
   const [phone, setPhone] = useState("")
   const [otp, setOtp] = useState("")
@@ -133,7 +148,7 @@ export default function PremiumAuthPage() {
     if (json.token && json.user) {
       saveSession(json.token, json.user)
       setStep("done")
-      router.push("/premium/plans")
+      router.push(plansHref)
     }
   }
 
@@ -152,7 +167,7 @@ export default function PremiumAuthPage() {
     if (json.token && json.user) {
       saveSession(json.token, json.user)
       setStep("done")
-      router.push("/premium/plans")
+      router.push(plansHref)
     }
   }
 
@@ -173,6 +188,12 @@ export default function PremiumAuthPage() {
           {error && (
             <div className="mb-4 rounded-lg border border-red-400 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
+            </div>
+          )}
+
+          {canceled && !error && (
+            <div className="mb-4 rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Checkout canceled. You can try again any time.
             </div>
           )}
 
