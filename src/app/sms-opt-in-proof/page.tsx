@@ -298,8 +298,8 @@ export default function SmsOptInProofPage() {
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted">
             This page documents how users consent to receive text messages from{" "}
-            <span className="font-semibold text-ink">Bizzy</span> (operated by
-            Bizzy Deals LLC). It shows the in-app opt-in flow: the phone number
+            <span className="font-semibold text-ink">Bizzy</span>. It shows the
+            in-app opt-in flow: the phone number
             field, the unchecked consent checkbox, the verbatim consent
             language, the continue action, and the confirmation screen.
           </p>
@@ -375,9 +375,9 @@ export default function SmsOptInProofPage() {
               &ldquo;{CONSENT_TEXT}&rdquo;
             </blockquote>
             <p className="mt-4 text-sm leading-relaxed text-muted">
-              Program: <span className="font-semibold text-ink">Bizzy</span>{" "}
-              (Bizzy Deals LLC) — student deals, local business promotions, event
-              alerts, ticket updates, and app updates. Message frequency varies.
+              Program: <span className="font-semibold text-ink">Bizzy</span> —
+              student deals, local business promotions, event alerts, ticket
+              updates, and app updates. Message frequency varies.
               Message and data rates may apply. Text{" "}
               <span className="font-semibold text-ink">STOP</span> to cancel and{" "}
               <span className="font-semibold text-ink">HELP</span> for help.
