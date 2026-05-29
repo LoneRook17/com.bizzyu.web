@@ -29,9 +29,37 @@ export default function PremiumAuthPage() {
     ? `/premium/plans?code=${encodeURIComponent(promoFromUrl)}`
     : "/premium/plans"
 
-  // Already signed in → straight to plan picker (preserving any ?code).
+  // Already signed in → check for an active subscription first.
+  // Phase 7 prep: if the user already has Premium (e.g. via iOS), route
+  // them to /account instead of letting them buy a second sub on web.
+  // Network failure or no-sub → fall through to plan picker as before.
   useEffect(() => {
-    if (getToken()) router.replace(plansHref)
+    const token = getToken()
+    if (!token) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`${LARAVEL_API}/premium/subscription`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const body = (await res.json()) as { has_subscription?: boolean }
+          if (body?.has_subscription === true) {
+            if (!cancelled) router.replace("/account?already_premium=1")
+            return
+          }
+        }
+      } catch {
+        // Network failure — fall through to the existing flow. The
+        // Stripe Checkout path itself has no built-in dedupe, but the
+        // /account redirect on success will at least surface the
+        // duplicate to the user post-purchase.
+      }
+      if (!cancelled) router.replace(plansHref)
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [router, plansHref])
 
   const [step, setStep] = useState<Step>("phone")

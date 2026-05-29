@@ -85,6 +85,9 @@ export default function PremiumPlansPage() {
   const [checkoutError, setCheckoutError] = useState("")
 
   // Auth gate — Phase 3 sets the bearer session in localStorage.
+  // Phase 7 prep: also check for an active subscription before showing the
+  // plan picker. Catches deep-links directly to /premium/plans that bypass
+  // the /premium check, protecting against duplicate purchases.
   useEffect(() => {
     const u = getUser()
     if (!u) {
@@ -92,7 +95,27 @@ export default function PremiumPlansPage() {
       router.replace(`/premium${fwd}`)
       return
     }
-    setUser(u)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`${LARAVEL_API}/premium/subscription`, {
+          headers: { ...authHeader() },
+        })
+        if (res.ok) {
+          const body = (await res.json()) as { has_subscription?: boolean }
+          if (body?.has_subscription === true) {
+            if (!cancelled) router.replace("/account?already_premium=1")
+            return
+          }
+        }
+      } catch {
+        // Network failure — fall through and show the picker.
+      }
+      if (!cancelled) setUser(u)
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [router, initialCode])
 
   // Auto-validate a code passed via ?code= once the user is hydrated and the
@@ -253,26 +276,26 @@ export default function PremiumPlansPage() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-gray-900 text-white p-6">
+          <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-6">
             <div className="flex items-baseline justify-between mb-4">
               <div>
-                <p className="text-sm text-white/60">{currentPlan.label}</p>
-                <p className="text-3xl font-bold flex items-baseline gap-3">
+                <p className="text-sm text-muted">{currentPlan.label}</p>
+                <p className="text-3xl font-bold text-ink flex items-baseline gap-3">
                   {showStrikethrough && (
-                    <span className="text-lg text-white/40 line-through">
+                    <span className="text-lg text-gray-400 line-through">
                       {formatCents(currentPlan.priceCents)}
                     </span>
                   )}
                   {formatCents(displayCents)}
                 </p>
               </div>
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-muted">
                 {currentPlan.recurring ? "billed monthly" : "one-time"}
               </p>
             </div>
 
             {checkoutError && (
-              <div className="mb-4 rounded-lg bg-red-500/20 border border-red-400 px-4 py-3 text-sm">
+              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                 {checkoutError}
               </div>
             )}
@@ -285,7 +308,7 @@ export default function PremiumPlansPage() {
             >
               {checkingOut ? "Starting checkout…" : "Continue to checkout"}
             </button>
-            <p className="mt-3 text-xs text-white/60 text-center">
+            <p className="mt-3 text-xs text-muted text-center">
               Secure checkout on Stripe. You can cancel anytime from your account.
             </p>
           </div>
