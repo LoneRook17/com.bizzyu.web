@@ -80,6 +80,10 @@ export default function PremiumPlansPage() {
   const [promo, setPromo] = useState<PromoState>({ status: "idle" })
   const [checkingOut, setCheckingOut] = useState(false)
   const [checkoutError, setCheckoutError] = useState("")
+  // Whether this user qualifies for the 7-day yearly trial (first-time
+  // subscribers only). Set from the subscription check; drives the CTA so it
+  // matches what the backend will actually do.
+  const [trialEligible, setTrialEligible] = useState(true)
 
   // Auth gate — Phase 3 sets the bearer session in localStorage.
   // Phase 7 prep: also check for an active subscription before showing the
@@ -99,11 +103,12 @@ export default function PremiumPlansPage() {
           headers: { ...authHeader() },
         })
         if (res.ok) {
-          const body = (await res.json()) as { has_subscription?: boolean }
+          const body = (await res.json()) as { has_subscription?: boolean; eligible_for_trial?: boolean }
           if (body?.has_subscription === true) {
             if (!cancelled) router.replace("/account?already_premium=1")
             return
           }
+          if (!cancelled) setTrialEligible(body?.eligible_for_trial !== false)
         }
       } catch {
         // Network failure — fall through and show the picker.
@@ -185,10 +190,11 @@ export default function PremiumPlansPage() {
   const currentPlan = PLANS.find(p => p.id === selectedPlan)!
   const displayCents = promo.status === "ok" ? promo.data.discounted_price_cents : currentPlan.priceCents
   const showStrikethrough = promo.status === "ok" && promo.data.discounted_price_cents < currentPlan.priceCents
-  // A promo code replaces the free trial (Apple/Stripe — can't stack), so the
-  // trial only applies to a promo-free yearly selection. The backend makes the
-  // authoritative call; this just drives the copy.
-  const isTrial = currentPlan.hasTrial && promo.status !== "ok"
+  // A promo code replaces the free trial (Apple/Stripe — can't stack), and
+  // only first-time subscribers qualify. The backend makes the authoritative
+  // call; this just keeps the CTA honest (no "free trial" promise to a user
+  // who'll actually be charged).
+  const isTrial = currentPlan.hasTrial && promo.status !== "ok" && trialEligible
   const ctaLabel = checkingOut
     ? "Starting checkout…"
     : isTrial
@@ -213,6 +219,14 @@ export default function PremiumPlansPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {PLANS.map(plan => {
               const selected = plan.id === selectedPlan
+              const showTrial = plan.hasTrial && trialEligible
+              const badge = plan.id === "yearly" ? (showTrial ? "7 days free" : "Best value") : plan.badge
+              const renewLine =
+                plan.id === "yearly"
+                  ? showTrial
+                    ? "7-day free trial, then auto-renews yearly."
+                    : "Auto-renews yearly."
+                  : "Auto-renews monthly."
               return (
                 <button
                   key={plan.id}
@@ -222,9 +236,9 @@ export default function PremiumPlansPage() {
                     selected ? "border-primary shadow-primary/20 shadow-md" : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  {plan.badge && (
+                  {badge && (
                     <span className="absolute -top-3 right-4 px-3 py-1 rounded-full bg-primary text-white text-xs font-semibold">
-                      {plan.badge}
+                      {badge}
                     </span>
                   )}
                   <h3 className="text-lg font-semibold mb-1">{plan.label}</h3>
@@ -234,9 +248,7 @@ export default function PremiumPlansPage() {
                   </p>
                   <p className="text-sm text-muted mb-3">{plan.perMonthLabel}</p>
                   <p className="text-xs text-muted">{plan.blurb}</p>
-                  <p className="text-xs text-muted mt-1">
-                    {plan.hasTrial ? "7-day free trial, then auto-renews yearly." : "Auto-renews monthly."}
-                  </p>
+                  <p className="text-xs text-muted mt-1">{renewLine}</p>
                 </button>
               )
             })}
