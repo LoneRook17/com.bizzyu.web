@@ -128,6 +128,9 @@ export interface TicketTier {
   max_per_person?: number
   ticket_type: 'paid' | 'free' | 'guest'
   is_hidden?: boolean
+  // Scheduled tickets: optional sales/scan window (datetime-local strings, US/Eastern wall-clock). Empty/null = no limit.
+  valid_from?: string | null
+  valid_until?: string | null
 }
 
 export interface EventDetail extends EventListItem {

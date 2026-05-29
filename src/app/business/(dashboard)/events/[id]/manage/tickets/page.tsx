@@ -13,6 +13,8 @@ type FormState = {
   price_usd: string
   quantity: string
   max_per_person: string
+  valid_from: string
+  valid_until: string
 }
 
 const EMPTY_FORM: FormState = {
@@ -22,6 +24,15 @@ const EMPTY_FORM: FormState = {
   price_usd: "0",
   quantity: "0",
   max_per_person: "",
+  valid_from: "",
+  valid_until: "",
+}
+
+// Normalize a stored DATETIME ("2026-06-14 01:00:00" or ISO) into the
+// "YYYY-MM-DDTHH:MM" shape a datetime-local input expects. Empty stays empty.
+function toLocalInput(v?: string | null): string {
+  if (!v) return ""
+  return v.replace(" ", "T").slice(0, 16)
 }
 
 function tierToForm(t: TicketTier): FormState {
@@ -33,6 +44,8 @@ function tierToForm(t: TicketTier): FormState {
     price_usd: String(t.price_usd ?? 0),
     quantity: String(t.quantity ?? 0),
     max_per_person: t.max_per_person == null ? "" : String(t.max_per_person),
+    valid_from: toLocalInput(t.valid_from),
+    valid_until: toLocalInput(t.valid_until),
   }
 }
 
@@ -79,6 +92,10 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
       setSaveError("Name is required")
       return
     }
+    if (editing.valid_from && editing.valid_until && editing.valid_from >= editing.valid_until) {
+      setSaveError('"Sales valid from" must be before "valid until"')
+      return
+    }
     setSaving(true)
     setSaveError("")
 
@@ -89,6 +106,8 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
       price_usd: editing.ticket_type === "paid" ? parseFloat(editing.price_usd) || 0 : 0,
       quantity: parseInt(editing.quantity) || 0,
       max_per_person: editing.max_per_person.trim() ? parseInt(editing.max_per_person) : null,
+      valid_from: editing.valid_from || null,
+      valid_until: editing.valid_until || null,
     }
 
     try {
@@ -235,7 +254,32 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
               />
             </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                Sales valid from <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={editing.valid_from}
+                onChange={(e) => setEditing({ ...editing, valid_from: e.target.value })}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">
+                Sales valid until <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={editing.valid_until}
+                onChange={(e) => setEditing({ ...editing, valid_until: e.target.value })}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </div>
           </div>
+          <p className="text-xs text-gray-400 -mt-1">
+            Leave the window blank for no time limit. Outside it, this ticket can&apos;t be bought or scanned.
+          </p>
 
           {saveError && <p className="text-xs text-red-500">{saveError}</p>}
 

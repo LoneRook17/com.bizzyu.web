@@ -14,6 +14,8 @@ const EMPTY_TIER: TicketTier = {
   quantity: 0,
   max_per_person: 0,
   ticket_type: "paid",
+  valid_from: "",
+  valid_until: "",
 }
 
 const TICKET_TYPE_LABELS: Record<string, string> = {
@@ -92,6 +94,26 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
                   onChange={(e) => updateTier(i, "quantity", e.target.value === "" ? "" as any : parseInt(e.target.value))}
                   onBlur={() => { if (tier.quantity === "" as any || isNaN(tier.quantity)) updateTier(i, "quantity", 0) }}
                   placeholder="0 = unlimited"
+                  className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Sales from <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  type="datetime-local"
+                  value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
+                  onChange={(e) => updateTier(i, "valid_from", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Sales until <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  type="datetime-local"
+                  value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
+                  onChange={(e) => updateTier(i, "valid_until", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
                 />
               </div>
