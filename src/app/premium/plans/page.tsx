@@ -5,48 +5,45 @@ import { useRouter, useSearchParams } from "next/navigation"
 import SectionContainer from "@/components/ui/SectionContainer"
 import { authHeader, clearSession, getUser, type PremiumWebUser } from "@/lib/premium/auth"
 
-// Premium 2.0 Phase 4 — plan picker + promo code + Stripe Checkout handoff.
-// PRD §7.1.1 (3-plan structure), §7.2 (FR-W-1..9), §7.3 (FR-L-3/4).
+// Premium 2.0 — plan picker + promo code + Stripe Checkout handoff.
+// Phase 6.5: 2-plan model — Monthly $4.99/mo + Yearly $24.99/yr (both recurring).
+// Yearly is pre-selected, "Best value", and carries a 7-day free trial.
 
-type PlanId = "monthly" | "6mo" | "12mo"
+type PlanId = "monthly" | "yearly"
 
 interface Plan {
   id: PlanId
   label: string
   priceCents: number
+  priceLabel: string
+  periodLabel: string
   perMonthLabel: string
   badge?: string
   blurb: string
-  recurring: boolean
+  hasTrial: boolean
 }
 
-// Prices locked in DECISIONS.md OD-1 / OD-2.
 const PLANS: Plan[] = [
   {
     id: "monthly",
     label: "Monthly",
-    priceCents: 399,
-    perMonthLabel: "$3.99 / month",
+    priceCents: 499,
+    priceLabel: "$4.99",
+    periodLabel: "/ month",
+    perMonthLabel: "$4.99 / mo",
     blurb: "Cancel anytime.",
-    recurring: true,
+    hasTrial: false,
   },
   {
-    id: "6mo",
-    label: "6 Months",
-    priceCents: 1999,
-    perMonthLabel: "$3.33 / mo",
-    badge: "Save 16%",
-    blurb: "One payment, six months of Premium.",
-    recurring: false,
-  },
-  {
-    id: "12mo",
-    label: "12 Months",
-    priceCents: 3599,
-    perMonthLabel: "$3.00 / mo",
-    badge: "Best value",
-    blurb: "One payment, a full year of Premium.",
-    recurring: false,
+    id: "yearly",
+    label: "Yearly",
+    priceCents: 2499,
+    priceLabel: "$24.99",
+    periodLabel: "/ year",
+    perMonthLabel: "Just $2.08 / mo",
+    badge: "7 days free",
+    blurb: "Save 58% vs monthly. Cancel anytime.",
+    hasTrial: true,
   },
 ]
 
@@ -78,7 +75,7 @@ export default function PremiumPlansPage() {
   const initialCode = (searchParams.get("code") || "").toUpperCase()
 
   const [user, setUser] = useState<PremiumWebUser | null>(null)
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>("12mo")
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>("yearly")
   const [codeInput, setCodeInput] = useState(initialCode)
   const [promo, setPromo] = useState<PromoState>({ status: "idle" })
   const [checkingOut, setCheckingOut] = useState(false)
@@ -188,6 +185,18 @@ export default function PremiumPlansPage() {
   const currentPlan = PLANS.find(p => p.id === selectedPlan)!
   const displayCents = promo.status === "ok" ? promo.data.discounted_price_cents : currentPlan.priceCents
   const showStrikethrough = promo.status === "ok" && promo.data.discounted_price_cents < currentPlan.priceCents
+  // A promo code replaces the free trial (Apple/Stripe — can't stack), so the
+  // trial only applies to a promo-free yearly selection. The backend makes the
+  // authoritative call; this just drives the copy.
+  const isTrial = currentPlan.hasTrial && promo.status !== "ok"
+  const ctaLabel = checkingOut
+    ? "Starting checkout…"
+    : isTrial
+      ? "Start 7-Day Free Trial"
+      : "Continue to checkout"
+  const reassurance = isTrial
+    ? "7 days free, then $24.99/year • cancel anytime"
+    : `${formatCents(displayCents)} ${currentPlan.id === "yearly" ? "/ year" : "/ month"} • cancel anytime`
 
   return (
     <main className="min-h-[calc(100vh-200px)] py-12">
@@ -201,7 +210,7 @@ export default function PremiumPlansPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {PLANS.map(plan => {
               const selected = plan.id === selectedPlan
               return (
@@ -219,11 +228,15 @@ export default function PremiumPlansPage() {
                     </span>
                   )}
                   <h3 className="text-lg font-semibold mb-1">{plan.label}</h3>
-                  <p className="text-3xl font-bold mb-1">{formatCents(plan.priceCents)}</p>
+                  <p className="text-3xl font-bold mb-1">
+                    {plan.priceLabel}
+                    <span className="text-base font-medium text-muted"> {plan.periodLabel}</span>
+                  </p>
                   <p className="text-sm text-muted mb-3">{plan.perMonthLabel}</p>
                   <p className="text-xs text-muted">{plan.blurb}</p>
-                  {plan.recurring && <p className="text-xs text-muted mt-1">Renews monthly.</p>}
-                  {!plan.recurring && <p className="text-xs text-muted mt-1">One-time payment.</p>}
+                  <p className="text-xs text-muted mt-1">
+                    {plan.hasTrial ? "7-day free trial, then auto-renews yearly." : "Auto-renews monthly."}
+                  </p>
                 </button>
               )
             })}
@@ -290,7 +303,7 @@ export default function PremiumPlansPage() {
                 </p>
               </div>
               <p className="text-sm text-muted">
-                {currentPlan.recurring ? "billed monthly" : "one-time"}
+                {currentPlan.id === "yearly" ? "billed yearly" : "billed monthly"}
               </p>
             </div>
 
@@ -306,10 +319,10 @@ export default function PremiumPlansPage() {
               disabled={checkingOut}
               className="w-full inline-flex items-center justify-center font-semibold rounded-full px-7 py-3 bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white shadow-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
             >
-              {checkingOut ? "Starting checkout…" : "Continue to checkout"}
+              {ctaLabel}
             </button>
             <p className="mt-3 text-xs text-muted text-center">
-              Secure checkout on Stripe. You can cancel anytime from your account.
+              {reassurance}. Secure checkout on Stripe.
             </p>
           </div>
 
