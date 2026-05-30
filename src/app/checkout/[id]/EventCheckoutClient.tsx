@@ -53,6 +53,8 @@ interface TicketTier {
   sold_count: number
   max_per_person: number | null
   ticket_type: string
+  valid_from?: string | null
+  valid_until?: string | null
 }
 
 interface FeePreview {
@@ -571,6 +573,14 @@ export default function EventCheckoutClient({
                   ticket.available_quantity !== undefined &&
                   ticket.available_quantity <= 0
                 const remaining = ticket.available_quantity
+                // Scheduled tickets: sales-window state (client hint; the API
+                // re-checks at checkout). Half-open [from, until), exclusive end.
+                const now = new Date()
+                const vf = ticket.valid_from ? new Date(ticket.valid_from.replace(" ", "T")) : null
+                const vu = ticket.valid_until ? new Date(ticket.valid_until.replace(" ", "T")) : null
+                const salesNotOpen = vf !== null && now < vf
+                const salesClosed = vu !== null && now >= vu
+                const unavailable = isSoldOut || salesNotOpen || salesClosed
 
                 return (
                   <div
@@ -599,6 +609,10 @@ export default function EventCheckoutClient({
                       <div className="mb-3">
                         {isSoldOut ? (
                           <span className="text-xs font-semibold text-red-400">Sold Out</span>
+                        ) : salesNotOpen ? (
+                          <span className="text-xs font-semibold text-amber-400">Sales not open yet</span>
+                        ) : salesClosed ? (
+                          <span className="text-xs font-semibold text-amber-400">Sales closed</span>
                         ) : remaining !== null && remaining !== undefined ? (
                           <span className="text-xs text-white/40">{remaining} remaining</span>
                         ) : (
@@ -606,7 +620,7 @@ export default function EventCheckoutClient({
                         )}
                       </div>
 
-                      {!isSoldOut && (
+                      {!unavailable && (
                         <div className="flex items-center gap-3">
                           <div className="flex items-center rounded-lg bg-white/5 border border-white/10">
                             <button
