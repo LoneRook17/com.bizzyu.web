@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import SectionContainer from "@/components/ui/SectionContainer"
 import { getToken, saveSession } from "@/lib/premium/auth"
@@ -20,6 +20,14 @@ type Step = "phone" | "otp" | "profile" | "done"
 const LARAVEL_API = "/api/laravel"
 
 export default function PremiumAuthPage() {
+  return (
+    <Suspense fallback={null}>
+      <PremiumAuthPageInner />
+    </Suspense>
+  )
+}
+
+function PremiumAuthPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const promoFromUrl = searchParams.get("code")

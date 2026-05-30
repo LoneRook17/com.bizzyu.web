@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import SectionContainer from "@/components/ui/SectionContainer"
 import { authHeader, clearSession, getUser, type PremiumWebUser } from "@/lib/premium/auth"
@@ -70,6 +70,14 @@ type PromoState = { status: "idle" } | { status: "validating" } | { status: "ok"
 const LARAVEL_API = "/api/laravel"
 
 export default function PremiumPlansPage() {
+  return (
+    <Suspense fallback={null}>
+      <PremiumPlansPageInner />
+    </Suspense>
+  )
+}
+
+function PremiumPlansPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialCode = (searchParams.get("code") || "").toUpperCase()

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import SectionContainer from "@/components/ui/SectionContainer"
@@ -15,6 +15,14 @@ const APP_STORE_URL = "https://apps.apple.com/us/app/bizzy-deals/id6443537537"
 const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.bizzy.app"
 
 export default function PremiumSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <PremiumSuccessPageInner />
+    </Suspense>
+  )
+}
+
+function PremiumSuccessPageInner() {
   const searchParams = useSearchParams()
   const [sessionId, setSessionId] = useState<string | null>(null)
 

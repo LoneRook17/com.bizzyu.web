@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import SectionContainer from "@/components/ui/SectionContainer"
@@ -46,6 +46,14 @@ type SubState =
   | { status: "active"; sub: Subscription }
 
 export default function AccountPage() {
+  return (
+    <Suspense fallback={null}>
+      <AccountPageInner />
+    </Suspense>
+  )
+}
+
+function AccountPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justSubscribed = searchParams.get("subscribed") === "1"
