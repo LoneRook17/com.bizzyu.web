@@ -53,10 +53,18 @@ const nextConfig: NextConfig = {
   async rewrites() {
     const apiUrl =
       process.env.INTERNAL_API_URL || "http://localhost:3000";
+    // Laravel API host. Used by Premium 2.0 phone-OTP auth + universities list.
+    // Dev EC2: http://3.80.143.224  |  Prod: https://bizzy-deals.com
+    const laravelApiUrl =
+      process.env.LARAVEL_API_URL || "http://127.0.0.1:8001";
     return [
       {
         source: "/api/proxy/:path*",
         destination: `${apiUrl}/:path*`,
+      },
+      {
+        source: "/api/laravel/:path*",
+        destination: `${laravelApiUrl}/api/:path*`,
       },
     ];
   },

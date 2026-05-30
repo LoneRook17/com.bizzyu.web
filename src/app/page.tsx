@@ -268,13 +268,12 @@ export default function Home() {
                 </span>
               </div>
 
-              <div className="absolute -right-6 -bottom-12 w-[220px] md:w-[260px] rotate-[6deg] opacity-90 group-hover:rotate-[3deg] group-hover:-translate-y-2 transition-transform duration-500">
+              <div className="hidden md:block absolute -right-6 -bottom-12 w-[260px] rotate-[6deg] opacity-90 group-hover:rotate-[3deg] group-hover:-translate-y-2 transition-transform duration-500">
                 <Image
-                  src="/images/bizzy-deals-screen.png"
-                  alt="Bizzy deals feed on iPhone"
+                  src="/images/bizzy-taco-main.png"
+                  alt="Bizzy Taco Bell deal on iPhone"
                   width={260}
                   height={462}
-                  className="rounded-[2rem] shadow-2xl"
                 />
               </div>
             </Link>
@@ -345,7 +344,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="absolute -right-8 -bottom-12 w-[210px] md:w-[240px] rotate-[6deg] z-10">
+              <div className="hidden md:block absolute -right-8 -bottom-12 w-[240px] rotate-[6deg] z-10">
                 <Image
                   src="/images/screen-5.png"
                   alt="Bizzy events screen"
