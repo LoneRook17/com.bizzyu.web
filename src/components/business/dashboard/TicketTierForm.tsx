@@ -1,11 +1,38 @@
 "use client"
 
+import { useState } from "react"
 import { TICKET_TYPES } from "@/lib/business/constants"
 import type { TicketTier } from "@/lib/business/types"
 
 interface TicketTierFormProps {
   tiers: TicketTier[]
   onChange: (tiers: TicketTier[]) => void
+}
+
+// Small (i) button with a click-to-open plain-language explanation of timed tickets.
+function ValidTimeInfo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="What does ticket valid time do?"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-semibold leading-none text-gray-500 hover:bg-gray-100"
+      >
+        i
+      </button>
+      {open && (
+        <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-gray-200 bg-white p-3 text-[11px] leading-relaxed text-gray-600 shadow-lg">
+          <strong className="mb-1 block text-gray-800">Ticket valid time (optional)</strong>
+          Sets a window for when this ticket can be <strong>bought</strong> and <strong>scanned at the door</strong>. Outside the window it can&apos;t be purchased and won&apos;t scan in.
+          <span className="mt-2 block text-gray-500">
+            <strong>Example:</strong> For a &ldquo;Before 1 AM&rdquo; ticket, set <strong>Sales until</strong> to 1:00 AM. After 1:00 AM it stops selling and won&apos;t scan in. Leave both blank for no time limit.
+          </span>
+        </span>
+      )}
+    </span>
+  )
 }
 
 const EMPTY_TIER: TicketTier = {
@@ -98,7 +125,12 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="flex items-center gap-1.5 mt-3">
+              <span className="text-xs font-medium text-gray-600">Ticket valid time</span>
+              <span className="text-gray-400 text-xs font-normal">(optional)</span>
+              <ValidTimeInfo />
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-1">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Sales from <span className="text-gray-400 font-normal">(optional)</span></label>
                 <input
