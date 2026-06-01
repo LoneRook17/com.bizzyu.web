@@ -38,6 +38,7 @@ interface EventInfo {
   venue_address: string
   start_date_time: string
   end_date_time: string
+  timezone?: string | null
   type: string
   is_21_plus: boolean
   flyer_image_url: string | null
@@ -55,6 +56,11 @@ interface TicketTier {
   ticket_type: string
   valid_from?: string | null
   valid_until?: string | null
+  // Authoritative window state from the API (evaluated in the event's tz).
+  // Prefer these over local-time math: buyable until the window CLOSES.
+  event_timezone?: string | null
+  sales_state?: "open" | "not_open" | "closed" | string
+  is_purchasable?: boolean
 }
 
 interface FeePreview {
@@ -80,8 +86,12 @@ type CheckoutStep = "idle" | "phone" | "name" | "verify" | "processing"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Stored event datetimes are naive wall-clock strings in the EVENT's timezone
+// (e.g. "2026-06-15 20:00:00" = 8 PM in America/Phoenix). Parsing as local and
+// formatting as local preserves the wall-clock number; we then append the
+// event's zone label so it reads "8:00 PM MST" regardless of the viewer's zone.
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
+  const d = new Date(dateStr.replace(" ", "T"))
   return d.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -90,9 +100,28 @@ function formatDate(dateStr: string): string {
   })
 }
 
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+function formatTime(dateStr: string, timezone?: string | null): string {
+  const d = new Date(dateStr.replace(" ", "T"))
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  const tz = tzAbbrev(dateStr, timezone)
+  return tz ? `${time} ${tz}` : time
+}
+
+// Short zone label ("MST", "EDT", …) for an IANA timezone around the given date.
+function tzAbbrev(dateStr: string, timezone?: string | null): string {
+  if (!timezone) return ""
+  try {
+    const d = new Date(dateStr.replace(" ", "T"))
+    const part = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "short",
+    })
+      .formatToParts(d)
+      .find((p) => p.type === "timeZoneName")
+    return part?.value ?? ""
+  } catch {
+    return ""
+  }
 }
 
 function formatPrice(dollars: number): string {
@@ -479,7 +508,7 @@ export default function EventCheckoutClient({
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-white/50">Time</span>
                   <span className="text-sm font-medium text-white">
-                    {formatTime(event.start_date_time)} - {formatTime(event.end_date_time)}
+                    {formatTime(event.start_date_time, event.timezone)} - {formatTime(event.end_date_time, event.timezone)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -547,7 +576,7 @@ export default function EventCheckoutClient({
             <img src="/images/bizzy-logo.png" alt="Bizzy" className="mb-3 h-6 opacity-60" />
             <h1 className="text-2xl font-bold text-white">{event.name}</h1>
             <p className="mt-1 text-sm text-white/50">
-              {formatDate(event.start_date_time)} &middot; {formatTime(event.start_date_time)}
+              {formatDate(event.start_date_time)} &middot; {formatTime(event.start_date_time, event.timezone)}
             </p>
             <p className="text-sm text-white/40">{event.venue_name}</p>
           </div>
@@ -573,14 +602,23 @@ export default function EventCheckoutClient({
                   ticket.available_quantity !== undefined &&
                   ticket.available_quantity <= 0
                 const remaining = ticket.available_quantity
-                // Scheduled tickets: sales-window state (client hint; the API
-                // re-checks at checkout). Half-open [from, until), exclusive end.
+                // Scheduled tickets: the window is the REDEEM/scan window, and a
+                // ticket stays BUYABLE until it CLOSES (buying before it opens is
+                // fine). Trust the API's timezone-aware state; fall back to local
+                // math only if the field is absent (older API). Half-open end.
                 const now = new Date()
                 const vf = ticket.valid_from ? new Date(ticket.valid_from.replace(" ", "T")) : null
                 const vu = ticket.valid_until ? new Date(ticket.valid_until.replace(" ", "T")) : null
-                const salesNotOpen = vf !== null && now < vf
-                const salesClosed = vu !== null && now >= vu
-                const unavailable = isSoldOut || salesNotOpen || salesClosed
+                const salesClosed = ticket.sales_state
+                  ? ticket.sales_state === "closed"
+                  : vu !== null && now >= vu
+                const salesNotOpen = ticket.sales_state
+                  ? ticket.sales_state === "not_open"
+                  : vf !== null && now < vf
+                // Lock only when sold out or CLOSED — never merely "not open yet".
+                const unavailable =
+                  isSoldOut ||
+                  (ticket.is_purchasable !== undefined ? !ticket.is_purchasable : salesClosed)
 
                 return (
                   <div
@@ -609,10 +647,15 @@ export default function EventCheckoutClient({
                       <div className="mb-3">
                         {isSoldOut ? (
                           <span className="text-xs font-semibold text-red-400">Sold Out</span>
-                        ) : salesNotOpen ? (
-                          <span className="text-xs font-semibold text-amber-400">Sales not open yet</span>
                         ) : salesClosed ? (
                           <span className="text-xs font-semibold text-amber-400">Sales closed</span>
+                        ) : salesNotOpen ? (
+                          // Still buyable — the window only gates when it can be SCANNED.
+                          <span className="text-xs text-white/40">
+                            {ticket.valid_from
+                              ? `Scannable from ${formatDate(ticket.valid_from)}, ${formatTime(ticket.valid_from, ticket.event_timezone)}`
+                              : "Buy now"}
+                          </span>
                         ) : remaining !== null && remaining !== undefined ? (
                           <span className="text-xs text-white/40">{remaining} remaining</span>
                         ) : (
