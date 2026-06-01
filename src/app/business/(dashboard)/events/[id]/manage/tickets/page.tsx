@@ -256,7 +256,7 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">
-                Sales valid from <span className="text-gray-400 font-normal">(optional)</span>
+                Valid from <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <input
                 type="datetime-local"
@@ -267,7 +267,7 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
             </div>
             <div>
               <label className="block text-xs text-gray-600 mb-1">
-                Sales valid until <span className="text-gray-400 font-normal">(optional)</span>
+                Valid until <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <input
                 type="datetime-local"
@@ -278,7 +278,7 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
           <p className="text-xs text-gray-400 -mt-1">
-            Leave the window blank for no time limit. Outside it, this ticket can&apos;t be bought or scanned.
+            Redeemable / scan window — when this ticket can be scanned at the door. It can still be bought beforehand; sales just close when the window ends. Leave blank for no limit.
           </p>
 
           {saveError && <p className="text-xs text-red-500">{saveError}</p>}

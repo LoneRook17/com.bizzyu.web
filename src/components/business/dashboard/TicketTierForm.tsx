@@ -17,17 +17,17 @@ function ValidTimeInfo() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="What does ticket valid time do?"
+        aria-label="What does the redeemable / scan window do?"
         className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-semibold leading-none text-gray-500 hover:bg-gray-100"
       >
         i
       </button>
       {open && (
         <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-gray-200 bg-white p-3 text-[11px] leading-relaxed text-gray-600 shadow-lg">
-          <strong className="mb-1 block text-gray-800">Ticket valid time (optional)</strong>
-          Sets a window for when this ticket can be <strong>bought</strong> and <strong>scanned at the door</strong>. Outside the window it can&apos;t be purchased and won&apos;t scan in.
+          <strong className="mb-1 block text-gray-800">Redeemable / scan window (optional)</strong>
+          Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be <strong>bought beforehand</strong> — sales just <strong>close when the window ends</strong>.
           <span className="mt-2 block text-gray-500">
-            <strong>Example:</strong> For a &ldquo;Before 1 AM&rdquo; ticket, set <strong>Sales until</strong> to 1:00 AM. After 1:00 AM it stops selling and won&apos;t scan in. Leave both blank for no time limit.
+            <strong>Example:</strong> For a &ldquo;Before 1 AM&rdquo; ticket, set <strong>Valid until</strong> to 1:00 AM — people can buy any time before then, and it scans in up until 1:00 AM. Leave both blank for no limit.
           </span>
         </span>
       )}
@@ -126,13 +126,13 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
               </div>
             </div>
             <div className="flex items-center gap-1.5 mt-3">
-              <span className="text-xs font-medium text-gray-600">Ticket valid time</span>
+              <span className="text-xs font-medium text-gray-600">Redeemable / scan window</span>
               <span className="text-gray-400 text-xs font-normal">(optional)</span>
               <ValidTimeInfo />
             </div>
             <div className="grid grid-cols-2 gap-3 mt-1">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Sales from <span className="text-gray-400 font-normal">(optional)</span></label>
+                <label className="block text-xs text-gray-500 mb-1">Valid from <span className="text-gray-400 font-normal">(optional)</span></label>
                 <input
                   type="datetime-local"
                   value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
@@ -141,7 +141,7 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Sales until <span className="text-gray-400 font-normal">(optional)</span></label>
+                <label className="block text-xs text-gray-500 mb-1">Valid until <span className="text-gray-400 font-normal">(optional)</span></label>
                 <input
                   type="datetime-local"
                   value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
@@ -150,6 +150,9 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
                 />
               </div>
             </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
+              When this ticket can be scanned at the door. It can still be bought beforehand — sales just close when the window ends. Leave blank for no limit.
+            </p>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">
                 <label className="text-xs text-gray-500">Max per person:</label>
