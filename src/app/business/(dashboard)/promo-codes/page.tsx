@@ -173,7 +173,7 @@ export default function UniversalPromoCodesPage() {
                     type="text"
                     value={form.code}
                     onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-                    placeholder="e.g. BUFF10"
+                    placeholder="e.g. FREE"
                     disabled={!!editingId}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono disabled:bg-gray-100 disabled:text-gray-500"
                     autoFocus={!editingId}
