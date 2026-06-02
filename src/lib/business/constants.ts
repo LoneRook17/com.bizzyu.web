@@ -6,6 +6,7 @@ export const NAV_LINKS = [
   { label: 'Deals', href: '/business/deals', icon: 'tag' },
   { label: 'Analytics', href: '/business/analytics', icon: 'chart' },
   { label: 'Team', href: '/business/team', icon: 'users' },
+  { label: 'Universal Promo Codes', href: '/business/promo-codes', icon: 'tag' },
   { label: 'Settings', href: '/business/settings', icon: 'settings' },
 ] as const
 
@@ -45,6 +46,7 @@ export const ROLE_HIDDEN_ROUTES: Record<string, string[]> = {
   '/business/analytics': ['staff'],
   '/business/line-skips': ['promoter'],
   '/business/settings': ['promoter'],
+  '/business/promo-codes': ['staff', 'promoter'],
 }
 
 export const EVENT_TABS = [

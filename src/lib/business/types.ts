@@ -373,7 +373,10 @@ export interface EventTeamMember {
 
 export interface PromoCode {
   promo_code_id: number
-  event_id: number
+  /** Event-scoped code. null for universal (venue) codes. */
+  event_id: number | null
+  /** Venue-scoped (universal) code. null for event-scoped codes. */
+  venue_id: number | null
   code: string
   discount_type: 'percentage' | 'flat'
   discount_value: number
