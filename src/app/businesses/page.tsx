@@ -201,9 +201,13 @@ export default function BusinessesPage() {
                   <Button href="/business/signup" variant="primary" size="lg">
                     Get Started Free
                   </Button>
-                  <Button href={CALENDLY_DEMO_URL} variant="outline" size="lg" external>
-                    Or book a call
-                  </Button>
+                  <Link
+                    href="/discounts"
+                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full font-semibold text-base text-primary border-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
+                  >
+                    Learn more
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
 
                 <p className="mt-5 text-xs text-muted">
