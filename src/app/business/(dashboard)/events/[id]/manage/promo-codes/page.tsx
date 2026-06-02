@@ -12,6 +12,7 @@ function formatDate(dateStr: string) {
 export default function PromoCodesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [codes, setCodes] = useState<PromoCode[]>([])
+  const [universalCodes, setUniversalCodes] = useState<PromoCode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [showCreate, setShowCreate] = useState(false)
@@ -28,8 +29,11 @@ export default function PromoCodesPage({ params }: { params: Promise<{ id: strin
 
   const fetchCodes = () => {
     apiClient
-      .get<{ promo_codes: PromoCode[] }>(`/business/events/${id}/promo-codes`)
-      .then((data) => setCodes(data.promo_codes))
+      .get<{ promo_codes: PromoCode[]; universal_promo_codes?: PromoCode[] }>(`/business/events/${id}/promo-codes`)
+      .then((data) => {
+        setCodes(data.promo_codes)
+        setUniversalCodes(data.universal_promo_codes ?? [])
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load promo codes"))
       .finally(() => setLoading(false))
   }
@@ -246,6 +250,62 @@ export default function PromoCodesPage({ params }: { params: Promise<{ id: strin
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Universal (venue) promo codes — read-only here; managed per-venue */}
+      {universalCodes.length > 0 && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-ink">Universal Promo Codes</h2>
+            <Link href="/business/promo-codes" className="text-xs text-primary hover:underline">
+              Manage →
+            </Link>
+          </div>
+          <p className="text-xs text-gray-500 mb-3">
+            These apply to <span className="font-medium">every event at this venue</span>. They&apos;re managed under the Universal Promo Codes tab, not per-event.
+          </p>
+          <div className="rounded-xl border border-gray-200 bg-gray-50/40 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
+                  <th className="text-left px-5 py-3 font-medium">Code</th>
+                  <th className="text-left px-5 py-3 font-medium">Discount</th>
+                  <th className="text-right px-5 py-3 font-medium">Uses</th>
+                  <th className="text-left px-5 py-3 font-medium">Status</th>
+                  <th className="text-left px-5 py-3 font-medium">Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {universalCodes.map((code) => {
+                  const isExpired = code.expires_at && new Date(code.expires_at) < new Date()
+                  const isMaxed = code.max_redemptions && code.current_redemptions >= code.max_redemptions
+                  const status = !code.is_active ? "Inactive" : isExpired ? "Expired" : isMaxed ? "Maxed" : "Active"
+                  const statusColor = status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  return (
+                    <tr key={code.promo_code_id} className="border-b border-gray-50 last:border-0">
+                      <td className="px-5 py-3 font-mono text-xs font-medium text-ink">
+                        {code.code}
+                        <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary align-middle">VENUE</span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-600">
+                        {code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}
+                      </td>
+                      <td className="px-5 py-3 text-right text-gray-600">
+                        {code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusColor}`}>{status}</span>
+                      </td>
+                      <td className="px-5 py-3 text-xs text-gray-500">
+                        {code.expires_at ? formatDate(code.expires_at) : "Never"}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
