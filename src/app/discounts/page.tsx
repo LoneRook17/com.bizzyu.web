@@ -222,8 +222,8 @@ export default function DiscountsPage() {
                 </h1>
 
                 <p className="text-lg md:text-xl text-muted mb-9 max-w-xl leading-relaxed">
-                  List a student-only deal, set your redemption cap, and Bizzy puts it in front of thousands of students in your college town.{" "}
-                  <span className="text-ink font-semibold">Free to list. 0% commission. Live in minutes.</span>
+                  Set your deal and redemption cap. Bizzy puts it in front of thousands of students near campus.{" "}
+                  <span className="text-ink font-semibold">Free to list. 0% commission.</span>
                 </p>
 
                 <div className="flex flex-wrap gap-3">
