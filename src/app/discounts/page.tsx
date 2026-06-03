@@ -206,10 +206,10 @@ export default function DiscountsPage() {
             <div className="lg:col-span-7">
               <AnimatedSection>
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
-                  Post a discount in seconds.
+                  Post a discount.
                   <br />
                   <span className="font-display-italic font-normal text-ink">
-                    Reach more <span className="marker-underline">local students</span>.
+                    Reach <span className="marker-underline">local students</span>.
                   </span>
                 </h1>
 
