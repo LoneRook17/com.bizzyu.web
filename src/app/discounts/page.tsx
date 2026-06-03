@@ -265,7 +265,54 @@ export default function DiscountsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 2. How a redemption works ───────────────────────────────── */}
+      {/* ─── 2. You're in control + redemption ────────────────── */}
+      <section className="relative overflow-hidden bg-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
+        <SectionContainer className="relative !py-20 md:!py-28">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <AnimatedSection>
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">You set the rules</p>
+              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
+                Your deal.
+                <br />
+                <span className="font-display-italic font-normal text-muted">
+                  Your <span className="marker-underline">terms</span>.
+                </span>
+              </h2>
+              <p className="text-lg text-muted leading-relaxed mb-8 max-w-xl">
+                You decide what the offer is and exactly how it runs. The only rule: it has to be exclusive to Bizzy, a deal students can&apos;t get anywhere else.
+              </p>
+
+              <div className="space-y-5">
+                {CONTROLS.map((c) => (
+                  <div key={c.title} className="flex items-start gap-4">
+                    <div className="w-8 h-8 rounded-xl bg-primary-light flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckIcon className="text-primary w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-ink leading-snug">{c.title}</h3>
+                      <p className="text-sm text-muted leading-relaxed mt-0.5">{c.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.15} variant="fade-left">
+              <div className="relative flex justify-center">
+                <div className="absolute -inset-8 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+                <PhonePhoto
+                  src="/images/bizzy-taco-main.png"
+                  alt="A Bizzy deal open in the app with a Staff Member Tap Here button to verify the discount in store"
+                  className="relative [animation-delay:-2s]"
+                />
+              </div>
+            </AnimatedSection>
+          </div>
+        </SectionContainer>
+      </section>
+
+      {/* ─── 3. How a redemption works ───────────────────────────────── */}
       <section className="bg-gray-50" id="how-it-works">
         <SectionContainer className="!py-20 md:!py-28">
           <AnimatedSection>
@@ -331,53 +378,6 @@ export default function DiscountsPage() {
               </Button>
             </div>
           </AnimatedSection>
-        </SectionContainer>
-      </section>
-
-      {/* ─── 3. You're in control + redemption ────────────────── */}
-      <section className="relative overflow-hidden bg-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
-        <SectionContainer className="relative !py-20 md:!py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <AnimatedSection>
-              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">You set the rules</p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
-                Your deal.
-                <br />
-                <span className="font-display-italic font-normal text-muted">
-                  Your <span className="marker-underline">terms</span>.
-                </span>
-              </h2>
-              <p className="text-lg text-muted leading-relaxed mb-8 max-w-xl">
-                You decide what the offer is and exactly how it runs. The only rule: it has to be exclusive to Bizzy, a deal students can&apos;t get anywhere else.
-              </p>
-
-              <div className="space-y-5">
-                {CONTROLS.map((c) => (
-                  <div key={c.title} className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-xl bg-primary-light flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <CheckIcon className="text-primary w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-ink leading-snug">{c.title}</h3>
-                      <p className="text-sm text-muted leading-relaxed mt-0.5">{c.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </AnimatedSection>
-
-            <AnimatedSection delay={0.15} variant="fade-left">
-              <div className="relative flex justify-center">
-                <div className="absolute -inset-8 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
-                <PhonePhoto
-                  src="/images/bizzy-taco-main.png"
-                  alt="A Bizzy deal open in the app with a Staff Member Tap Here button to verify the discount in store"
-                  className="relative [animation-delay:-2s]"
-                />
-              </div>
-            </AnimatedSection>
-          </div>
         </SectionContainer>
       </section>
 
