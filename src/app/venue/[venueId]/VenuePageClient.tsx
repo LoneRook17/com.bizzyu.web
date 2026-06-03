@@ -68,6 +68,9 @@ interface VenuePageClientProps {
   venueId: string
   initialData: VenueData | null
   highlightLineSkip?: string
+  // Base for the Laravel event checkout (dev: http://3.80.143.224,
+  // prod: https://bizzy-deals.com). Resolved server-side in page.tsx.
+  checkoutBaseUrl: string
 }
 
 function formatDate(dateStr: string) {
@@ -122,6 +125,7 @@ export default function VenuePageClient({
   venueId,
   initialData,
   highlightLineSkip,
+  checkoutBaseUrl,
 }: VenuePageClientProps) {
   const lineSkipRef = useRef<HTMLDivElement>(null)
   const [data, setData] = useState<VenueData | null>(initialData)
@@ -318,9 +322,11 @@ export default function VenuePageClient({
                 const price =
                   event.min_ticket_price !== null ? Number(event.min_ticket_price) : null
                 return (
-                  <Link
+                  // Event checkout lives on the Laravel app, not Vercel (no
+                  // event page here yet) — external link, not a Next route.
+                  <a
                     key={event.event_id}
-                    href={`/checkout/${event.event_id}`}
+                    href={`${checkoutBaseUrl}/checkout/${event.event_id}`}
                     className="group overflow-hidden rounded-2xl border border-[#1e1e2e] bg-[#141420] transition-colors hover:border-[#05EB54]/50"
                   >
                     {event.flyer_image_url && (
@@ -344,7 +350,7 @@ export default function VenuePageClient({
                         </p>
                       )}
                     </div>
-                  </Link>
+                  </a>
                 )
               })}
             </div>

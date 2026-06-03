@@ -3,6 +3,14 @@ import VenuePageClient from "./VenuePageClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
+// Event ticket checkout still lives on the Laravel app (dev: http://3.80.143.224,
+// prod: https://bizzy-deals.com); the Vercel event checkout isn't built yet.
+// Reuses the same env convention as src/app/event/[id]/page.tsx.
+const CHECKOUT_BASE_URL =
+  process.env.CHECKOUT_REDIRECT_BASE_URL ||
+  process.env.LARAVEL_CHECKOUT_BASE_URL ||
+  "https://bizzy-deals.com"
+
 interface PageProps {
   params: Promise<{ venueId: string }>
   searchParams: Promise<{ line_skip?: string }>
@@ -57,6 +65,7 @@ export default async function VenuePage({ params, searchParams }: PageProps) {
       venueId={venueId}
       initialData={data}
       highlightLineSkip={line_skip}
+      checkoutBaseUrl={CHECKOUT_BASE_URL}
     />
   )
 }
