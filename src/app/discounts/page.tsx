@@ -165,10 +165,10 @@ export default function DiscountsPage() {
                 </div>
 
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
-                  Post a discount.
+                  Post a discount in seconds.
                   <br />
                   <span className="font-display-italic font-normal text-ink">
-                    Fill your <span className="marker-underline">slow hours</span>.
+                    Reach more <span className="marker-underline">local students</span>.
                   </span>
                 </h1>
 
