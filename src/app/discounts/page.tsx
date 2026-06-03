@@ -23,26 +23,30 @@ export const metadata: Metadata = {
   },
 };
 
-const FLOW_STEPS = [
+const REDEEM_STEPS = [
   {
     num: "1",
-    title: "Create your free account",
-    desc: "Business name, address, and the campus you want to reach. No card, no contract. Takes about 2 minutes.",
+    title: "Post your deal",
+    desc: "List your Bizzy-exclusive offer from your dashboard. It takes a couple of minutes.",
+    icon: "post",
   },
   {
     num: "2",
-    title: "Post your first deal",
-    desc: "Set the offer, the estimated savings, how often students can claim it, and an optional photo. Watch it preview live as you type.",
+    title: "Set the redemption frequency",
+    desc: "Once per day, week, or month — one-time or unlimited. You decide how often each student can claim it.",
+    icon: "frequency",
   },
   {
     num: "3",
-    title: "Go live to nearby students",
-    desc: "Your deal lands in the Bizzy app in front of students around your campus — exactly the crowd you want walking in.",
+    title: "A student redeems in store",
+    desc: "They find your deal on their phone, walk in, and show it at checkout.",
+    icon: "store",
   },
   {
     num: "4",
-    title: "They walk in and redeem",
-    desc: "A student shows the deal in-store and your staff taps Verify. That's it. No POS integration, no coupons, no extra equipment.",
+    title: "Staff taps to verify",
+    desc: "Your staff taps 'Staff member tap here.' It verifies on the spot, then locks for the window you set.",
+    icon: "verify",
   },
 ];
 
@@ -118,6 +122,51 @@ function ArrowRight({ className = "" }: { className?: string }) {
   );
 }
 
+function IconTag({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+      <circle cx="7" cy="7" r="1.4" />
+    </svg>
+  );
+}
+
+function IconRepeat({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m17 2 4 4-4 4" />
+      <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+      <path d="m7 22-4-4 4-4" />
+      <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+    </svg>
+  );
+}
+
+function IconPhone({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="6" y="2" width="12" height="20" rx="3" />
+      <path d="M11 18h2" />
+    </svg>
+  );
+}
+
+function IconLock({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function StepIcon({ name, className = "" }: { name: string; className?: string }) {
+  if (name === "post") return <IconTag className={className} />;
+  if (name === "frequency") return <IconRepeat className={className} />;
+  if (name === "store") return <IconPhone className={className} />;
+  return <CheckIcon className={className} />;
+}
+
 /* ─── Real app screenshots (device frame baked into each PNG) ─ */
 
 function PhonePhoto({
@@ -139,7 +188,7 @@ function PhonePhoto({
       height={3840}
       priority={priority}
       sizes="(max-width: 640px) 240px, (max-width: 768px) 270px, 320px"
-      className={`w-[240px] sm:w-[270px] md:w-[300px] lg:w-[320px] h-auto animate-float drop-shadow-[0_30px_45px_rgba(4,40,20,0.28)] ${className}`}
+      className={`w-[240px] sm:w-[270px] md:w-[300px] lg:w-[320px] h-auto animate-float ${className}`}
     />
   );
 }
@@ -224,39 +273,64 @@ export default function DiscountsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 2. The signup flow ───────────────────────────────── */}
+      {/* ─── 2. How a redemption works ───────────────────────────────── */}
       <section className="bg-gray-50" id="how-it-works">
         <SectionContainer className="!py-20 md:!py-28">
           <AnimatedSection>
-            <div className="text-center max-w-2xl mx-auto mb-14">
+            <div className="text-center max-w-2xl mx-auto mb-14 md:mb-16">
               <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-3">How it works</p>
               <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-                From signup to first redemption.
+                How a redemption works.
               </h2>
               <p className="text-lg text-muted">
-                Four steps, start to finish. No sales call required — you can do the whole thing yourself.
+                From posting your deal to a student walking back in — here&apos;s the whole loop.
               </p>
             </div>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto mb-12">
-            {FLOW_STEPS.map((step, i) => (
-              <AnimatedSection key={step.num} delay={i * 0.08}>
-                <div className="relative bg-white rounded-2xl p-7 border border-gray-100 h-full">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-emerald-500 text-white rounded-2xl flex items-center justify-center text-xl font-bold mb-4 shadow-lg shadow-primary/25">
-                    {step.num}
+          {/* Connected step diagram */}
+          <div className="relative max-w-6xl mx-auto">
+            <div className="hidden md:block absolute top-8 left-[12.5%] right-[12.5%] h-0.5 bg-primary/20" aria-hidden />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 md:gap-6 relative">
+              {REDEEM_STEPS.map((step, i) => (
+                <AnimatedSection key={step.num} delay={i * 0.08}>
+                  <div className="text-center">
+                    <div className="relative z-10 w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-white flex items-center justify-center mb-5 shadow-lg shadow-primary/25 ring-8 ring-gray-50">
+                      <StepIcon name={step.icon} className="w-7 h-7" />
+                    </div>
+                    <div className="text-[11px] font-bold text-primary uppercase tracking-widest mb-1.5">Step {step.num}</div>
+                    <h3 className="text-lg font-bold text-ink mb-2 leading-tight">{step.title}</h3>
+                    <p className="text-sm text-muted leading-relaxed max-w-[15rem] mx-auto">{step.desc}</p>
                   </div>
-                  <h3 className="text-lg font-bold text-ink mb-2 leading-tight">{step.title}</h3>
-                  <p className="text-sm text-muted leading-relaxed">{step.desc}</p>
-                </div>
-              </AnimatedSection>
-            ))}
+                </AnimatedSection>
+              ))}
+            </div>
           </div>
 
+          {/* Frequency lock + auto-notify callout */}
+          <AnimatedSection delay={0.2}>
+            <div className="mt-14 md:mt-16 max-w-4xl mx-auto">
+              <div className="relative overflow-hidden rounded-3xl bg-ink p-8 md:p-10 text-white">
+                <div className="absolute -right-24 -top-24 w-80 h-80 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative flex flex-col sm:flex-row items-start gap-5">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
+                    <IconLock className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl md:text-2xl font-bold mb-2 text-white">Your cap runs on autopilot.</h3>
+                    <p className="text-white/70 leading-relaxed">
+                      The redemption frequency you set is enforced for you. Run a once-a-month deal and it locks on each student&apos;s phone for 30 days after they redeem — then it unlocks and pings them that it&apos;s back. You stay protected from overuse, and the reminder pulls them right back through your door.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
+
           <AnimatedSection delay={0.3}>
-            <div className="text-center">
+            <div className="text-center mt-12">
               <Button href="/business/signup" variant="primary" size="lg">
-                Create your free account
+                Get Started Free
               </Button>
             </div>
           </AnimatedSection>
