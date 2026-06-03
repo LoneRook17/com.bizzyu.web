@@ -116,16 +116,16 @@ export const BUSINESS_FAQ = [
   {
     question: "Can I change or remove my deals after I list?",
     answer:
-      "Yes! Just contact us via email and we'll update or remove your deals right away.",
+      "Yes. Manage everything yourself from the Deals section of your business dashboard — edit a deal, pause it, or take it down anytime, and the change goes live right away.",
   },
   {
     question: "How will I know if my deal is working?",
     answer:
-      "We send you performance updates via email so you can see how your deals are doing. A full business dashboard with real-time analytics is coming soon.",
+      "Your business dashboard has a built-in Analytics tab. Track views, redemptions, and how each deal is performing in real time, broken down by location.",
   },
   {
     question: "How do I get started?",
     answer:
-      "Just reach out through our contact form or email us at Contact@BizzyU.com. We'll have you set up in under 5 minutes.",
+      "Create your free account and post your first deal right from your dashboard — about 5 minutes, no call needed. Just hit Get Started Free to sign up.",
   },
 ];

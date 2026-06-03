@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import ZeroFrictionBanner from "@/components/ui/ZeroFrictionBanner";
@@ -117,137 +118,29 @@ function ArrowRight({ className = "" }: { className?: string }) {
   );
 }
 
-/* ─── Phone mockup scaffolding ─────────────────────────────── */
+/* ─── Real app screenshots (device frame baked into each PNG) ─ */
 
-function PhoneFrame({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`relative mx-auto w-[280px] md:w-[300px] aspect-[9/19.5] rounded-[42px] bg-black p-[10px] shadow-2xl ${className}`}
-    >
-      <div className="absolute left-1/2 top-2 -translate-x-1/2 w-[100px] h-[28px] bg-black rounded-full z-10" />
-      <div className="relative w-full h-full rounded-[34px] overflow-hidden bg-white">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function StatusBar() {
-  return (
-    <div className="flex justify-between items-center px-6 pt-4 pb-1 text-[11px] font-semibold text-black">
-      <span>9:47</span>
-      <div className="flex gap-1 items-center">
-        <span>•••</span>
-        <span>📶</span>
-        <span>🔋</span>
-      </div>
-    </div>
-  );
-}
-
-function DealCard({
-  gradient,
-  emoji,
-  save,
-  title,
-  business,
-  freq,
+function PhonePhoto({
+  src,
+  alt,
+  priority = false,
+  className = "",
 }: {
-  gradient: string;
-  emoji: string;
-  save: string;
-  title: string;
-  business: string;
-  freq: string;
+  src: string;
+  alt: string;
+  priority?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-zinc-100">
-      <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-            <span className="text-white text-[9px] font-bold">{business.charAt(0)}</span>
-          </div>
-          <span className="text-[9px] text-zinc-500 font-medium">{freq}</span>
-        </div>
-        <span className="text-zinc-300 text-xs">♡</span>
-      </div>
-      <div className={`relative mx-3 rounded-xl aspect-[16/10] ${gradient} flex items-center justify-center`}>
-        <span className="text-3xl">{emoji}</span>
-        <div className="absolute top-1.5 right-1.5 bg-primary text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow">
-          Save {save}
-        </div>
-      </div>
-      <div className="px-3 py-2.5">
-        <p className="text-[12px] font-bold text-black leading-snug">{title}</p>
-        <p className="text-[10px] text-zinc-500 mt-0.5">{business}</p>
-      </div>
-    </div>
-  );
-}
-
-function DealsFeedMockup() {
-  return (
-    <PhoneFrame className="rotate-[-3deg]">
-      <div className="absolute inset-0 bg-zinc-50 flex flex-col">
-        <StatusBar />
-        <div className="px-4 pt-1 pb-2">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Deals near you</p>
-          <div className="flex items-center justify-between">
-            <p className="text-[17px] font-bold text-black leading-tight">Gainesville</p>
-            <span className="text-[10px] text-primary font-semibold">📍 0.3 mi</span>
-          </div>
-        </div>
-        <div className="flex-1 overflow-hidden px-3 space-y-2.5">
-          <DealCard
-            gradient="bg-gradient-to-br from-amber-200 to-orange-300"
-            emoji="🍸"
-            save="$9"
-            title="BOGO Espresso Martinis (21+)"
-            business="Maple & Vine Café"
-            freq="Once per day"
-          />
-          <DealCard
-            gradient="bg-gradient-to-br from-rose-200 to-red-300"
-            emoji="🌮"
-            save="$5"
-            title="$5 off any burrito"
-            business="Calle Tacos"
-            freq="Once per week"
-          />
-        </div>
-      </div>
-    </PhoneFrame>
-  );
-}
-
-function RedeemMockup() {
-  return (
-    <PhoneFrame className="rotate-[3deg]">
-      <div className="absolute inset-0 bg-white flex flex-col">
-        <StatusBar />
-        {/* Deal hero */}
-        <div className="relative mx-3 mt-1 rounded-2xl aspect-[16/11] bg-gradient-to-br from-amber-200 to-orange-300 flex items-center justify-center">
-          <span className="text-5xl">🍸</span>
-          <div className="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">
-            Save $9
-          </div>
-        </div>
-        <div className="px-4 pt-3">
-          <p className="text-[15px] font-bold text-black leading-snug">BOGO Espresso Martinis</p>
-          <p className="text-[11px] text-zinc-500 mt-0.5">Maple &amp; Vine Café · Once per day</p>
-        </div>
-        {/* Verified state */}
-        <div className="mt-auto mx-3 mb-4 rounded-2xl bg-primary/10 border border-primary/30 p-4 text-center">
-          <div className="w-11 h-11 mx-auto rounded-full bg-primary flex items-center justify-center mb-2">
-            <CheckIcon className="text-white w-6 h-6" />
-          </div>
-          <p className="text-[13px] font-bold text-black leading-tight">Verified by staff</p>
-          <p className="text-[10px] text-zinc-500 mt-1 leading-snug">
-            One tap at the counter. No POS, no codes.
-          </p>
-        </div>
-      </div>
-    </PhoneFrame>
+    <Image
+      src={src}
+      alt={alt}
+      width={2160}
+      height={3840}
+      priority={priority}
+      sizes="(max-width: 640px) 240px, (max-width: 768px) 270px, 320px"
+      className={`w-[240px] sm:w-[270px] md:w-[300px] lg:w-[320px] h-auto animate-float drop-shadow-[0_30px_45px_rgba(4,40,20,0.28)] ${className}`}
+    />
   );
 }
 
@@ -316,8 +209,14 @@ export default function DiscountsPage() {
 
             <div className="lg:col-span-5">
               <AnimatedSection delay={0.15} variant="fade-left">
-                <div className="flex justify-center">
-                  <DealsFeedMockup />
+                <div className="relative flex justify-center">
+                  <div className="absolute inset-0 -m-6 bg-gradient-to-tr from-primary/25 via-emerald-300/15 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
+                  <PhonePhoto
+                    src="/images/bizzy-deals-screen.png"
+                    alt="The Bizzy app showing a feed of student deals near campus"
+                    priority
+                    className="relative"
+                  />
                 </div>
               </AnimatedSection>
             </div>
@@ -399,10 +298,12 @@ export default function DiscountsPage() {
 
             <AnimatedSection delay={0.15} variant="fade-left">
               <div className="relative flex justify-center">
-                <div className="absolute -inset-10 bg-primary/10 rounded-full blur-3xl" />
-                <div className="relative">
-                  <RedeemMockup />
-                </div>
+                <div className="absolute -inset-8 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+                <PhonePhoto
+                  src="/images/bizzy-taco-main.png"
+                  alt="A Bizzy deal open in the app with a Staff Member Tap Here button to verify the discount in store"
+                  className="relative [animation-delay:-2s]"
+                />
               </div>
             </AnimatedSection>
           </div>
