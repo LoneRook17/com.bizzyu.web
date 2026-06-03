@@ -33,7 +33,7 @@ const REDEEM_STEPS = [
   {
     num: "2",
     title: "Set the redemption frequency",
-    desc: "Once per day, week, or month — one-time or unlimited. You decide how often each student can claim it.",
+    desc: "Once per day, week, month, one-time, or unlimited. You decide how often each student can claim it.",
     icon: "frequency",
   },
   {
@@ -53,7 +53,7 @@ const REDEEM_STEPS = [
 const CONTROLS = [
   {
     title: "Set the offer",
-    desc: "BOGO, dollars off, a free item, a percentage — whatever moves product for you. You write it, you own it.",
+    desc: "BOGO, dollars off, a free item, a percentage. Whatever moves product for you. You write it, you own it.",
   },
   {
     title: "Cap how often they claim",
@@ -81,10 +81,10 @@ const DEAL_TYPES = [
 const WHY_LIST = [
   "Reach thousands of students near your campus, for free",
   "Push product during slow hours and quiet days",
-  "0% commission — keep every dollar of every sale",
+  "0% commission, keep every dollar of every sale",
   "No POS integration, hardware, or coupon codes",
   "A Bizzy-exclusive audience you can't reach on other apps",
-  "Cancel anytime — no contracts, no lock-in",
+  "Cancel anytime, no contracts, no lock-in",
 ];
 
 function CheckIcon({ className = "" }: { className?: string }) {
@@ -275,7 +275,7 @@ export default function DiscountsPage() {
                 How a redemption works.
               </h2>
               <p className="text-lg text-muted">
-                From posting your deal to a student walking back in — here&apos;s the whole loop.
+                From posting your deal to a student walking back in. Here&apos;s the whole loop.
               </p>
             </div>
           </AnimatedSection>
@@ -316,7 +316,7 @@ export default function DiscountsPage() {
                   <div>
                     <h3 className="text-xl md:text-2xl font-bold mb-2 text-white">Your cap runs on autopilot.</h3>
                     <p className="text-white/70 leading-relaxed">
-                      The redemption frequency you set is enforced for you. Run a once-a-month deal and it locks on each student&apos;s phone for 30 days after they redeem — then it unlocks and pings them that it&apos;s back. You stay protected from overuse, and the reminder pulls them right back through your door.
+                      The redemption frequency you set is enforced for you. Run a once-a-month deal and it locks on each student&apos;s phone for 30 days after they redeem, then it unlocks and pings them that it&apos;s back. You stay protected from overuse, and the reminder pulls them right back through your door.
                     </p>
                   </div>
                 </div>
@@ -349,7 +349,7 @@ export default function DiscountsPage() {
                 </span>
               </h2>
               <p className="text-lg text-muted leading-relaxed mb-8 max-w-xl">
-                You decide what the offer is and exactly how it runs. The only rule: it has to be exclusive to Bizzy — a deal students can&apos;t get anywhere else.
+                You decide what the offer is and exactly how it runs. The only rule: it has to be exclusive to Bizzy, a deal students can&apos;t get anywhere else.
               </p>
 
               <div className="space-y-5">
@@ -423,7 +423,7 @@ export default function DiscountsPage() {
               </span>
             </h2>
             <p className="text-lg text-muted leading-relaxed max-w-xl">
-              Students near campus are already on Bizzy hunting for somewhere to eat, drink, and shop. A discount puts you at the top of that list — without paying a cut of every sale.
+              Students near campus are already on Bizzy hunting for somewhere to eat, drink, and shop. A discount puts you at the top of that list, without paying a cut of every sale.
             </p>
           </AnimatedSection>
 
