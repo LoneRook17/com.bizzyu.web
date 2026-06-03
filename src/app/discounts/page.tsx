@@ -202,7 +202,7 @@ export default function DiscountsPage() {
         <div className="absolute top-1/4 -right-20 w-[520px] h-[520px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
         <SectionContainer className="relative !py-16 md:!py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             <div className="lg:col-span-7">
               <AnimatedSection>
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
@@ -218,13 +218,13 @@ export default function DiscountsPage() {
                   <span className="text-ink font-semibold">Free to list. 0% commission.</span>
                 </p>
 
-                <div className="flex flex-wrap gap-3">
-                  <Button href="/business/signup" variant="primary" size="lg">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button href="/business/signup" variant="primary" size="lg" className="w-full sm:w-auto">
                     Get Started Free
                   </Button>
                   <Link
                     href="#how-it-works"
-                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full font-semibold text-base text-primary border-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full font-semibold text-base text-primary border-2 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
                   >
                     See how it works
                     <ArrowRight className="w-4 h-4" />
@@ -282,17 +282,22 @@ export default function DiscountsPage() {
 
           {/* Connected step diagram */}
           <div className="relative max-w-6xl mx-auto">
+            {/* horizontal connector (desktop) */}
             <div className="hidden md:block absolute top-8 left-[12.5%] right-[12.5%] h-0.5 bg-primary/20" aria-hidden />
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 md:gap-6 relative">
+            {/* vertical connector (mobile timeline) */}
+            <div className="md:hidden absolute top-8 bottom-8 left-8 w-0.5 bg-primary/20" aria-hidden />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-7 md:gap-6 relative">
               {REDEEM_STEPS.map((step, i) => (
                 <AnimatedSection key={step.num} delay={i * 0.08}>
-                  <div className="text-center">
-                    <div className="relative z-10 w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-white flex items-center justify-center mb-5 shadow-lg shadow-primary/25 ring-8 ring-gray-50">
+                  <div className="flex items-start gap-4 md:block md:text-center">
+                    <div className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-primary/25 ring-8 ring-gray-50 flex-shrink-0 md:mx-auto md:mb-5">
                       <StepIcon name={step.icon} className="w-7 h-7" />
                     </div>
-                    <div className="text-[11px] font-bold text-primary uppercase tracking-widest mb-1.5">Step {step.num}</div>
-                    <h3 className="text-lg font-bold text-ink mb-2 leading-tight">{step.title}</h3>
-                    <p className="text-sm text-muted leading-relaxed max-w-[15rem] mx-auto">{step.desc}</p>
+                    <div className="pt-1 md:pt-0">
+                      <div className="text-[11px] font-bold text-primary uppercase tracking-widest mb-1 md:mb-1.5">Step {step.num}</div>
+                      <h3 className="text-lg font-bold text-ink mb-1.5 md:mb-2 leading-tight">{step.title}</h3>
+                      <p className="text-sm text-muted leading-relaxed md:max-w-[15rem] md:mx-auto">{step.desc}</p>
+                    </div>
                   </div>
                 </AnimatedSection>
               ))}
