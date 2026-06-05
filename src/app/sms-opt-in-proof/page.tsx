@@ -3,15 +3,16 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "SMS Opt-In Proof",
+  title: "Bizzy SMS Marketing Opt-In",
   description:
-    "Documentation of Bizzy's SMS opt-in consent flow for A2P 10DLC carrier campaign verification, showing the phone number field, unchecked consent checkbox, consent language, and confirmation screen.",
+    "Documentation of Bizzy's SMS marketing opt-in consent flow for A2P 10DLC carrier campaign verification. Users opt in to receive recurring marketing texts from Bizzy about event offers, ticket offers, line-skip offers, and limited-time event promotions. Shows the phone number field, unchecked consent checkbox, exact consent language, and confirmation screen.",
   alternates: { canonical: "/sms-opt-in-proof" },
 };
 
 // Exact consent language as it appears next to the opt-in checkbox in the app.
+// Matches the Bizzy A2P 10DLC Marketing campaign submission word-for-word.
 const CONSENT_TEXT =
-  "I agree to receive recurring automated promotional and informational text messages from Bizzy at the phone number provided, including event alerts, ticket updates, student deals, local business promotions, and app updates. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe and HELP for help.";
+  "I agree to receive recurring marketing text messages from Bizzy about event offers, ticket offers, line-skip offers, and limited-time event promotions. Message frequency varies. Msg & data rates may apply. Reply STOP to unsubscribe and HELP for help. Consent is not required to make a purchase.";
 
 const SAMPLE_NUMBER = "(305) 555-0142";
 
@@ -146,18 +147,18 @@ function ScreenPhoneAndConsent() {
       <ProgressDots current={0} />
       <div className="pt-6">
         <h3 className="text-[22px] font-extrabold leading-tight text-ink">
-          What&apos;s your number?
+          Bizzy SMS Marketing Opt-In
         </h3>
         <p className="mt-1.5 text-[13px] leading-snug text-muted">
-          We&apos;ll text a code to verify your account and keep you posted on
-          deals near campus.
+          Enter your phone number and opt in to get Bizzy event offers, ticket
+          offers, and line-skip promotions by text.
         </p>
       </div>
 
       {/* Phone number field */}
       <div className="pt-5">
         <label className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-          Mobile number
+          Phone number
         </label>
         <div className="mt-1.5 flex h-[52px] items-center rounded-[14px] border-2 border-[#E5E7EB] px-4">
           <span className="text-base font-medium text-muted">🇺🇸 +1</span>
@@ -168,25 +169,28 @@ function ScreenPhoneAndConsent() {
         </div>
       </div>
 
-      {/* Unchecked SMS consent checkbox + consent language */}
+      {/* Unchecked SMS marketing consent checkbox + exact consent language */}
       <div className="mt-4 flex gap-2.5 rounded-[14px] bg-[#F7FAF8] p-3">
         <EmptyCheckbox />
         <p className="text-[10.5px] leading-[1.45] text-[#4A524D]">
-          I agree to receive recurring automated promotional and informational
-          text messages from <span className="font-semibold">Bizzy</span> at the
-          phone number provided, including event alerts, ticket updates, student
-          deals, local business promotions, and app updates. Consent is not a
-          condition of purchase. Message frequency varies. Message and data
-          rates may apply. Reply <span className="font-bold">STOP</span> to
-          unsubscribe and <span className="font-bold">HELP</span> for help. View{" "}
-          <span className="font-semibold text-[#05A33B] underline">Terms</span>{" "}
-          and{" "}
-          <span className="font-semibold text-[#05A33B] underline">
-            Privacy Policy
-          </span>
-          .
+          I agree to receive recurring marketing text messages from{" "}
+          <span className="font-semibold">Bizzy</span> about event offers, ticket
+          offers, line-skip offers, and limited-time event promotions. Message
+          frequency varies. Msg &amp; data rates may apply. Reply{" "}
+          <span className="font-bold">STOP</span> to unsubscribe and{" "}
+          <span className="font-bold">HELP</span> for help. Consent is not
+          required to make a purchase.
         </p>
       </div>
+
+      {/* Terms / Privacy links — shown beside the form, not burying consent */}
+      <p className="mt-2 pl-1 text-[10.5px] leading-snug text-muted">
+        <span className="font-semibold text-[#05A33B] underline">Terms</span>
+        {" · "}
+        <span className="font-semibold text-[#05A33B] underline">
+          Privacy Policy
+        </span>
+      </p>
 
       <div className="flex-1" />
 
@@ -266,18 +270,19 @@ function ScreenConfirmation() {
         <p className="mt-2 px-2 text-[13px] leading-relaxed text-muted">
           Your number{" "}
           <span className="font-semibold text-ink">{SAMPLE_NUMBER}</span> is
-          verified and you&apos;ve opted in to Bizzy texts.
+          verified and you&apos;ve opted in to Bizzy marketing texts.
         </p>
         <div className="mt-4 rounded-[14px] bg-[#F7FAF8] px-4 py-3">
           <p className="text-[11.5px] leading-relaxed text-[#4A524D]">
-            You&apos;ll receive deal alerts, event updates, and ticket info.
+            You&apos;ll receive recurring marketing texts about event offers,
+            ticket offers, line-skip offers, and limited-time event promotions.
             Reply <span className="font-bold">STOP</span> anytime to unsubscribe
             or <span className="font-bold">HELP</span> for help. Msg &amp; data
             rates may apply.
           </p>
         </div>
       </div>
-      <GreenButton>Start exploring deals</GreenButton>
+      <GreenButton>Continue to Bizzy</GreenButton>
     </>
   );
 }
@@ -291,17 +296,19 @@ export default function SmsOptInProofPage() {
       <section className="border-b border-[#ECECEC] bg-[#FAFCFB]">
         <div className="mx-auto max-w-5xl px-6 py-14 text-center">
           <span className="inline-block rounded-full border border-primary/30 bg-primary-light px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink">
-            SMS / A2P 10DLC Opt-In Documentation
+            SMS / A2P 10DLC Marketing Opt-In
           </span>
           <h1 className="mt-5 text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
-            Bizzy SMS Opt-In Proof
+            Bizzy SMS Marketing Opt-In
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted">
-            This page documents how users consent to receive text messages from{" "}
-            <span className="font-semibold text-ink">Bizzy</span>. It shows the
-            in-app opt-in flow: the phone number
-            field, the unchecked consent checkbox, the verbatim consent
-            language, the continue action, and the confirmation screen.
+            This page documents how users opt in to receive recurring{" "}
+            <span className="font-semibold text-ink">marketing</span> text
+            messages from <span className="font-semibold text-ink">Bizzy</span>{" "}
+            about event offers, ticket offers, line-skip offers, and limited-time
+            event promotions. It shows the in-app opt-in form: the phone number
+            field, the unchecked consent checkbox, the exact consent language,
+            the submit action, and the confirmation screen.
           </p>
         </div>
       </section>
@@ -312,13 +319,14 @@ export default function SmsOptInProofPage() {
           The opt-in flow, screen by screen
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-muted">
-          A new user enters their mobile number, reviews the consent disclosure
-          (checkbox is <span className="font-semibold">unchecked by default</span>
-          ), verifies via one-time passcode, and lands on a confirmation screen.
+          A new user enters their phone number, reviews the marketing consent
+          disclosure (checkbox is{" "}
+          <span className="font-semibold">unchecked by default</span>), verifies
+          via one-time passcode, and lands on a confirmation screen.
         </p>
 
         <div className="mt-12 flex flex-wrap items-start justify-center gap-10 lg:gap-12">
-          <PhoneFrame step="Step 1 of 3" label="Sign up: phone number field, unchecked SMS consent checkbox, consent language, and Continue button">
+          <PhoneFrame step="Step 1 of 3" label="Marketing opt-in: phone number field, unchecked SMS consent checkbox, exact consent language, and Continue button">
             <ScreenPhoneAndConsent />
           </PhoneFrame>
           <PhoneFrame step="Step 2 of 3" label="One-time passcode verification of the mobile number entered">
@@ -338,11 +346,11 @@ export default function SmsOptInProofPage() {
           </h2>
           <ul className="mt-6 space-y-3">
             {[
-              "Signup screen presents a dedicated mobile phone number field.",
-              "The SMS consent checkbox is unchecked by default — opt-in requires an affirmative action by the user.",
-              "Full consent language is shown next to the checkbox before the user proceeds.",
-              "A clear Continue / submit action follows the consent disclosure.",
-              "A confirmation screen verifies the number and confirms the opt-in, with STOP/HELP instructions.",
+              "The opt-in form presents a dedicated phone number field, branded with the Bizzy business name.",
+              "The SMS marketing consent checkbox is unchecked by default — opt-in requires an affirmative action by the user.",
+              "Consent applies only to Bizzy marketing texts (event offers, ticket offers, line-skip offers, and limited-time event promotions) — it is not shared with any other use case.",
+              "The full, exact consent language is shown next to the checkbox before the user proceeds — it is not buried inside the Terms or Privacy Policy.",
+              "A clear Continue / submit action follows the consent disclosure, and a confirmation screen confirms the opt-in with STOP/HELP instructions.",
             ].map((item) => (
               <li key={item} className="flex items-start gap-3">
                 <span
@@ -376,11 +384,11 @@ export default function SmsOptInProofPage() {
             </blockquote>
             <p className="mt-4 text-sm leading-relaxed text-muted">
               Program: <span className="font-semibold text-ink">Bizzy</span> —
-              student deals, local business promotions, event alerts, ticket
-              updates, and app updates. Message frequency varies.
-              Message and data rates may apply. Text{" "}
-              <span className="font-semibold text-ink">STOP</span> to cancel and{" "}
-              <span className="font-semibold text-ink">HELP</span> for help.
+              recurring marketing texts about event offers, ticket offers,
+              line-skip offers, and limited-time event promotions. Message
+              frequency varies. Msg &amp; data rates may apply. Reply{" "}
+              <span className="font-semibold text-ink">STOP</span> to unsubscribe
+              and <span className="font-semibold text-ink">HELP</span> for help.
               Full details are in our{" "}
               <Link href="/terms" className="font-semibold text-[#05A33B] underline">
                 Terms of Service
