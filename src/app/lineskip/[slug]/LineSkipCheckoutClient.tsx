@@ -150,6 +150,9 @@ export default function LineSkipCheckoutClient({
   const [hasAccount, setHasAccount] = useState(false)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // SMS marketing opt-in (default-checked, optional). Sent with the purchase so
+  // the backend sets business_followers.sms_enabled. Unchecking doesn't block.
+  const [smsOptIn, setSmsOptIn] = useState(true)
 
   // Fetch data if not provided by server
   const fetchData = useCallback(async () => {
@@ -440,6 +443,7 @@ export default function LineSkipCheckoutClient({
             phone_number: fullPhone,
             attendee_name: finalName,
             promo_code_id: promo?.id || null,
+            sms_opt_in: smsOptIn,
           }),
         })
         const data = await res.json()
@@ -464,6 +468,7 @@ export default function LineSkipCheckoutClient({
           phone_number: fullPhone,
           attendee_name: finalName,
           promo_code_id: promo?.id || null,
+          sms_opt_in: smsOptIn,
         }),
       })
       const data = await res.json()
@@ -1044,6 +1049,19 @@ export default function LineSkipCheckoutClient({
                 {checkoutError && (
                   <p className="mt-3 text-xs text-red-400">{checkoutError}</p>
                 )}
+
+                <label className="mt-4 flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={smsOptIn}
+                    onChange={(e) => setSmsOptIn(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer"
+                    style={{ accentColor: GOLD }}
+                  />
+                  <span className="text-xs text-white/50 leading-snug">
+                    Keep me posted by text — I agree to receive SMS marketing messages about this venue&apos;s events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out anytime. Unchecking won&apos;t affect your purchase.
+                  </span>
+                </label>
 
                 <button
                   onClick={sendCode}
