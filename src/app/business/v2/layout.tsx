@@ -1,0 +1,42 @@
+"use client"
+
+import { BusinessAuthProvider, useAuth } from "@/lib/business/auth-context"
+import { VenueProvider } from "@/lib/business/venue-context"
+import Sidebar from "@/components/business/v2/Sidebar"
+
+function Shell({ children }: { children: React.ReactNode }) {
+  const { isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-50">
+        <div className="flex flex-col items-center gap-3">
+          <svg className="size-7 animate-spin text-[#079455]" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-sm text-neutral-500">Loading dashboard…</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <VenueProvider>
+      <div className="flex min-h-screen bg-neutral-50 text-neutral-900 antialiased">
+        <Sidebar />
+        <main className="min-w-0 flex-1 overflow-x-hidden">
+          <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-8 py-8">{children}</div>
+        </main>
+      </div>
+    </VenueProvider>
+  )
+}
+
+export default function V2DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <BusinessAuthProvider>
+      <Shell>{children}</Shell>
+    </BusinessAuthProvider>
+  )
+}
