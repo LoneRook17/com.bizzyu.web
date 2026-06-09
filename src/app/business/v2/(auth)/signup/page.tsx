@@ -148,7 +148,8 @@ export default function SignupPage() {
         website_url: honeypot,
       })
 
-      router.push(`/business/v2/login?registered=1`)
+      // Session cookies are set by the signup response — straight into the trial dashboard
+      router.push("/business/v2")
     } catch (err) {
       if (err instanceof ApiError) {
         setServerError(err.message)

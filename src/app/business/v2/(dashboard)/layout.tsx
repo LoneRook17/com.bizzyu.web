@@ -3,10 +3,13 @@
 import { BusinessAuthProvider, useAuth } from "@/lib/business/auth-context"
 import { VenueProvider } from "@/lib/business/venue-context"
 import { ThemeProvider } from "@/lib/v2/theme"
+import { useDashboardMode } from "@/lib/v2/mode"
 import Sidebar from "@/components/business/v2/Sidebar"
+import OnboardingMode from "@/components/business/v2/OnboardingMode"
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuth()
+  const { needsOnboarding } = useDashboardMode()
 
   if (isLoading) {
     return (
@@ -20,6 +23,11 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     )
+  }
+
+  // First entry: one-question setup before anything else
+  if (needsOnboarding) {
+    return <OnboardingMode />
   }
 
   return (

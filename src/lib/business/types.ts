@@ -6,12 +6,15 @@ export interface BusinessUser {
   venue_id: number | null
 }
 
+export type DashboardMode = 'deals' | 'events' | 'hybrid'
+
 export interface Business {
   business_id: number
   name: string
   email: string
   status: 'pending' | 'pending_verification' | 'pending_approval' | 'approved' | 'rejected' | 'suspended'
   logo_url: string | null
+  dashboard_mode?: DashboardMode | null
 }
 
 export interface Venue {

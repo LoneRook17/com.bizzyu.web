@@ -15,6 +15,7 @@ import LogoUpload from "@/components/business/v2/settings/LogoUpload"
 import ProfileForm from "@/components/business/v2/settings/ProfileForm"
 import StripeConnectCard, { StripeReturnBanner } from "@/components/business/v2/settings/StripeConnectCard"
 import VenueManagementSection from "@/components/business/v2/settings/VenueManagementSection"
+import DashboardPreferences from "@/components/business/v2/settings/DashboardPreferences"
 
 function SectionHeading({ title, description }: { title: string; description?: string }) {
   return (
@@ -118,13 +119,32 @@ function SettingsContent() {
       <PageHeader title="Settings" description="Manage your business profile, venues, and payouts." />
 
       <div className="flex flex-col gap-6">
-        {/* Venues */}
-        <VenueManagementSection />
+        {/* Profile first — name, contact, description */}
+        <SectionHeading title="Profile" description="Your business details, shown to students in the app." />
+
+        <Card>
+          <CardContent className="py-5">
+            <h3 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Business information</h3>
+            <ProfileForm profile={profile} onSaved={handleProfileSaved} disabled={!canEdit} />
+          </CardContent>
+        </Card>
+
+        {/* Business photo */}
+        <Card>
+          <CardContent className="flex justify-center py-6">
+            <LogoUpload currentUrl={profile.logo_image_url} onUploaded={handleLogoUploaded} disabled={!canEdit} />
+          </CardContent>
+        </Card>
 
         <Separator />
 
-        {/* Business settings */}
-        <SectionHeading title="Business settings" description="These settings apply to your entire business across all venues." />
+        {/* Dashboard preferences — mode + appearance */}
+        <DashboardPreferences disabled={!canEdit} />
+
+        <Separator />
+
+        {/* Payments */}
+        <SectionHeading title="Payments" description="Stripe powers payouts for tickets and line skips." />
 
         {/* Stripe return banner */}
         {(stripeParam === "return" || stripeParam === "refresh") && (
@@ -145,20 +165,12 @@ function SettingsContent() {
           />
         </div>
 
-        {/* Business photo */}
-        <Card>
-          <CardContent className="flex justify-center py-6">
-            <LogoUpload currentUrl={profile.logo_image_url} onUploaded={handleLogoUploaded} disabled={!canEdit} />
-          </CardContent>
-        </Card>
+        <Separator />
 
-        {/* Business info */}
-        <Card>
-          <CardContent className="py-5">
-            <h3 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Business information</h3>
-            <ProfileForm profile={profile} onSaved={handleProfileSaved} disabled={!canEdit} />
-          </CardContent>
-        </Card>
+        {/* Venues */}
+        <VenueManagementSection />
+
+        <Separator />
 
         {/* Security */}
         <Card>

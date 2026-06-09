@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
-  Plus, ArrowUpRight, CalendarDays, TrendingUp, Ticket, Sparkles, ChevronRight,
+  Plus, ArrowUpRight, CalendarDays, TrendingUp, Ticket, Sparkles, ChevronRight, Tag,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
+import { useDashboardMode } from "@/lib/v2/mode"
 import { apiClient } from "@/lib/business/api-client"
 import type {
   DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem,
@@ -56,6 +57,7 @@ export default function V2HomePage() {
   const { user, isPending } = useAuth()
   const { selectedVenue, isAllVenues } = useVenue()
   const venueParam = useVenueParam()
+  const { config } = useDashboardMode()
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [stats, setStats] = useState<QuickStats | null>(null)
@@ -94,7 +96,7 @@ export default function V2HomePage() {
 
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
-  const nextEvent = events[0]
+  const nextEvent = config.showEvents ? events[0] : undefined
   if (nextEvent) {
     attention.push({
       icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
@@ -103,7 +105,7 @@ export default function V2HomePage() {
       href: `/business/v2/events/${nextEvent.event_id}/manage`, cta: "Manage",
     })
   }
-  if ((stats?.active_deals_count ?? 0) > 0) {
+  if (config.showDeals && (stats?.active_deals_count ?? 0) > 0) {
     attention.push({
       icon: Ticket, tint: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
       title: `${stats!.active_deals_count} deals live right now`,
@@ -118,22 +120,40 @@ export default function V2HomePage() {
         title={`Good to see you${firstName ? `, ${firstName}` : ""}`}
         description={`Here's what's happening at ${venueLabel}.`}
         actions={
-          <Button asChild>
-            <Link href="/business/v2/deals/new"><Plus /> New deal</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {config.showEvents && (
+              <Button variant={config.showDeals ? "secondary" : "primary"} asChild>
+                <Link href="/business/v2/events/new"><Plus /> New event</Link>
+              </Button>
+            )}
+            {config.showDeals && (
+              <Button asChild>
+                <Link href="/business/v2/deals/new"><Plus /> New deal</Link>
+              </Button>
+            )}
+          </div>
         }
       />
 
-      {/* metric tiles */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* metric tiles — filtered by dashboard mode */}
+      <div className={cn("grid grid-cols-2 gap-4", config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
         {loading ? (
-          [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
+          [0, 1, 2, 3].slice(0, config.showDeals && config.showEvents ? 4 : 3).map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
         ) : (
           <>
             <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />
-            <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
-            <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
-            <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
+            {config.showDeals && (
+              <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
+            )}
+            {config.showDeals && !config.showEvents && (
+              <MetricTile label="Claims this week" value={stats?.claims_this_week ?? 0} sub="Across all live deals" />
+            )}
+            {config.showEvents && (
+              <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
+            )}
+            {config.showEvents && (
+              <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
+            )}
           </>
         )}
       </div>
@@ -167,38 +187,66 @@ export default function V2HomePage() {
         </Card>
       )}
 
-      {/* bento */}
+      {/* bento — first card follows the dashboard mode */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* upcoming events */}
-        <Card className="overflow-hidden">
-          <div className="flex items-center px-5 py-4">
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Upcoming events</h2>
-            <Link href="/business/v2/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-              View all <ArrowUpRight className="size-3.5" />
-            </Link>
-          </div>
-          <div className="border-t border-neutral-100 dark:border-neutral-800">
-            {loading ? (
-              [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
-            ) : events.length === 0 ? (
-              <div className="p-5"><EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start selling tickets." action={<Button asChild size="sm"><Link href="/business/v2/events/new"><Plus /> Create event</Link></Button>} /></div>
-            ) : (
-              events.map((e, i) => {
-                const b = eventBadge(e.status)
-                return (
-                  <Link key={e.event_id} href={`/business/v2/events/${e.event_id}/manage`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+        {config.showEvents ? (
+          <Card className="overflow-hidden">
+            <div className="flex items-center px-5 py-4">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Upcoming events</h2>
+              <Link href="/business/v2/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+                View all <ArrowUpRight className="size-3.5" />
+              </Link>
+            </div>
+            <div className="border-t border-neutral-100 dark:border-neutral-800">
+              {loading ? (
+                [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
+              ) : events.length === 0 ? (
+                <div className="p-5"><EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start selling tickets." action={<Button asChild size="sm"><Link href="/business/v2/events/new"><Plus /> Create event</Link></Button>} /></div>
+              ) : (
+                events.map((e, i) => {
+                  const b = eventBadge(e.status)
+                  return (
+                    <Link key={e.event_id} href={`/business/v2/events/${e.event_id}/manage`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
+                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                      </span>
+                      <Badge variant={b.variant}>{b.label}</Badge>
+                      <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+                    </Link>
+                  )
+                })
+              )}
+            </div>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden">
+            <div className="flex items-center px-5 py-4">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Live deals</h2>
+              <Link href="/business/v2/deals" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+                View all <ArrowUpRight className="size-3.5" />
+              </Link>
+            </div>
+            <div className="border-t border-neutral-100 dark:border-neutral-800">
+              {loading ? (
+                [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
+              ) : deals.length === 0 ? (
+                <div className="p-5"><EmptyState icon={Tag} title="No live deals" description="Create a deal to start reaching students." action={<Button asChild size="sm"><Link href="/business/v2/deals/new"><Plus /> Create deal</Link></Button>} /></div>
+              ) : (
+                deals.map((d, i) => (
+                  <Link key={d.id} href={`/business/v2/deals/${d.id}`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
-                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{d.deal_title}</span>
+                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtDate(d.expired_date)}</span>
                     </span>
-                    <Badge variant={b.variant}>{b.label}</Badge>
+                    <Badge variant="success">Live</Badge>
                     <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
                   </Link>
-                )
-              })
-            )}
-          </div>
-        </Card>
+                ))
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* recent activity */}
         <Card className="overflow-hidden">

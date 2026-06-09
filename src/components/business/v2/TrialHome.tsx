@@ -4,6 +4,7 @@ import Link from "next/link"
 import { CheckCircle2, Circle, CircleDot, Eye, Plus, Lock, ArrowRight } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
+import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -21,19 +22,25 @@ type Step = {
 }
 
 export default function TrialHome() {
-  const { user, business } = useAuth()
+  const { user } = useAuth()
   const { venues } = useVenue()
+  const { mode } = useDashboardMode()
 
-  const emailVerified = business?.status !== "pending_verification"
   const hasVenue = venues.length > 0
   const firstName = user?.full_name?.split(" ")[0]
 
+  const hero =
+    mode === "events"
+      ? { title: "Create your first event", sub: "Takes about 2 minutes. It's queued and goes live the moment you're approved.", cta: { label: "Create event", href: "/business/v2/events/new" } }
+      : mode === "hybrid"
+        ? { title: "Build your first deal or event", sub: "Takes about 2 minutes. It's queued and goes live the moment you're approved.", cta: { label: "Build deal", href: "/business/v2/deals/new" } }
+        : { title: "Build your first deal", sub: "Takes about 2 minutes. It's queued and goes live the moment you're approved.", cta: { label: "Build deal", href: "/business/v2/deals/new" } }
+
   const steps: Step[] = [
     { title: "Create your account", sub: "Welcome to Bizzy", done: true },
-    { title: "Verify your email", sub: emailVerified ? "Verified" : "Check your inbox for the link", done: emailVerified, cta: emailVerified ? undefined : { label: "Resend", href: "/business/v2/settings" } },
-    { title: "Set up your venue", sub: hasVenue ? "Venue added" : "Add your location, hours, and logo", done: hasVenue, current: emailVerified && !hasVenue, cta: hasVenue ? undefined : { label: "Set up", href: "/business/v2/settings" } },
-    { title: "Build your first deal", sub: "Takes about 2 minutes. It's queued and goes live the moment you're approved.", done: false, hero: true, cta: { label: "Build deal", href: "/business/v2/deals/new" } },
-    { title: "Get approved & go live", sub: "Most venues are reviewed within 24 hours", done: false, locked: true },
+    { title: "Set up your venue", sub: hasVenue ? "Venue added" : "Add your location, hours, and logo", done: hasVenue, current: !hasVenue, cta: hasVenue ? undefined : { label: "Set up", href: "/business/v2/settings" } },
+    { title: hero.title, sub: hero.sub, done: false, hero: true, cta: hero.cta },
+    { title: "Get approved & go live", sub: "Most businesses are reviewed within 24 hours — we'll email you the moment you're live", done: false, locked: true },
   ]
 
   const doneCount = steps.filter((s) => s.done).length
@@ -112,7 +119,7 @@ export default function TrialHome() {
 
       {/* explore hint */}
       <p className="px-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-        Want to look around first? Use the sidebar to explore Events, Deals, and Line skips — anything you build is saved as a draft until you're approved.
+        Want to look around first? Use the sidebar to explore — anything you build is saved as a draft until you&apos;re approved.
       </p>
     </>
   )
