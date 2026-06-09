@@ -5,6 +5,7 @@ import { apiClient } from "@/lib/business/api-client"
 import type { BusinessProfile } from "@/lib/business/types"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EventForm } from "@/components/business/v2/events/EventForm"
+import RequireVenue from "@/components/business/v2/RequireVenue"
 
 export default function V2CreateEventPage() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
@@ -29,5 +30,9 @@ export default function V2CreateEventPage() {
     )
   }
 
-  return <EventForm stripeOnboarded={profile?.stripe_connect_onboarded ?? true} />
+  return (
+    <RequireVenue>
+      <EventForm stripeOnboarded={profile?.stripe_connect_onboarded ?? true} />
+    </RequireVenue>
+  )
 }

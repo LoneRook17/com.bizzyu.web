@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CheckCircle2, Circle, CircleDot, Eye, Plus, ArrowRight, PartyPopper } from "lucide-react"
+import { CheckCircle2, Circle, CircleDot, Eye, Plus, ArrowRight, PartyPopper, Lock } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { useDashboardMode } from "@/lib/v2/mode"
@@ -133,8 +133,9 @@ export default function TrialHome() {
         </div>
       </Card>
 
-      {/* optional: first deal/event — get a head start, not required */}
-      <Card className="overflow-hidden">
+      {/* optional: first deal/event — get a head start, not required.
+          Deals and events both require a venue, so the CTA stays locked until one exists. */}
+      <Card className={cn("overflow-hidden", !hasVenue && "opacity-80")}>
         <div className="flex items-center gap-3.5 px-6 py-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -142,12 +143,20 @@ export default function TrialHome() {
               <Badge variant="neutral" size="sm">Optional</Badge>
             </div>
             <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">
-              Get a head start while you wait — {heroQueueNote.charAt(0).toLowerCase() + heroQueueNote.slice(1)}
+              {hasVenue
+                ? `Get a head start — ${heroQueueNote.charAt(0).toLowerCase() + heroQueueNote.slice(1)}`
+                : "Needs a venue first — deals and events are always attached to a location."}
             </p>
           </div>
-          <Button variant="secondary" asChild>
-            <Link href={hero.cta.href}><Plus /> {hero.cta.label}</Link>
-          </Button>
+          {hasVenue ? (
+            <Button variant="secondary" asChild>
+              <Link href={hero.cta.href}><Plus /> {hero.cta.label}</Link>
+            </Button>
+          ) : (
+            <Button variant="secondary" asChild>
+              <Link href="/business/v2/settings"><Lock className="size-3.5" /> Add venue first</Link>
+            </Button>
+          )}
         </div>
       </Card>
 
