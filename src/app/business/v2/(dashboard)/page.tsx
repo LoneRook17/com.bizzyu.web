@@ -55,9 +55,13 @@ function MetricTile({ label, value, sub }: { label: string; value: string | numb
 
 export default function V2HomePage() {
   const { user, isPending } = useAuth()
-  const { selectedVenue, isAllVenues } = useVenue()
+  const { selectedVenue, isAllVenues, venues, isLoading: venuesLoading } = useVenue()
   const venueParam = useVenueParam()
   const { config } = useDashboardMode()
+
+  // The setup checklist owns Home until the business is BOTH approved and has a
+  // venue — a venue is the hard requirement for being visible to students.
+  const needsSetup = isPending || (!venuesLoading && venues.length === 0)
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [stats, setStats] = useState<QuickStats | null>(null)
@@ -67,7 +71,7 @@ export default function V2HomePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (isPending) return
+    if (needsSetup || venuesLoading) return
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -87,9 +91,9 @@ export default function V2HomePage() {
       setLoading(false)
     })()
     return () => { cancelled = true }
-  }, [venueParam, isPending])
+  }, [venueParam, needsSetup, venuesLoading])
 
-  if (isPending) return <TrialHome />
+  if (needsSetup) return <TrialHome />
 
   const firstName = user?.full_name?.split(" ")[0]
   const venueLabel = isAllVenues ? "all your venues" : selectedVenue?.name ?? "your venue"
