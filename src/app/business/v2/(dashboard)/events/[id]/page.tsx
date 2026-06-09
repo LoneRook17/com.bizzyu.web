@@ -117,17 +117,17 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
     <>
       <Link
         href="/business/v2/events"
-        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 transition-colors hover:text-neutral-900"
+        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
         <ArrowLeft className="size-3.5" /> Back to events
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">{event.name}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <Badge variant={badge.variant}>{badge.label}</Badge>
-            <span className="text-[13px] text-neutral-500">{event.type}</span>
+            <span className="text-[13px] text-neutral-500 dark:text-neutral-400">{event.type}</span>
             {event.is_21_plus && <Badge variant="outline">21+</Badge>}
           </div>
         </div>
@@ -147,7 +147,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {event.status === "pending_review" && event.moderation_reason && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           <span className="font-semibold">Under review:</span> {event.moderation_reason}
         </div>
       )}
@@ -166,7 +166,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardHeader><CardTitle>About</CardTitle></CardHeader>
               <CardContent className="pt-0">
-                <p className="whitespace-pre-wrap text-sm text-neutral-600">{event.description}</p>
+                <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{event.description}</p>
               </CardContent>
             </Card>
           )}
@@ -175,17 +175,17 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
             <Card>
               <CardHeader><CardTitle>Ticket tiers</CardTitle></CardHeader>
               <CardContent className="pt-0">
-                <div className="divide-y divide-neutral-100">
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                   {event.tickets.map((ticket, i) => (
                     <div key={ticket.ticket_id || i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-neutral-900">{ticket.name}</p>
-                        <p className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] text-neutral-500">
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{ticket.name}</p>
+                        <p className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">
                           <span>{ticket.ticket_type === "free" ? "Free" : usd(ticket.price_usd)}</span>
                           {ticket.ticket_type !== "free" && canEditPrice && (
                             <button
                               onClick={() => openPriceEdit(ticket)}
-                              className="inline-flex size-5 items-center justify-center rounded text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-[#079455]"
+                              className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
                               title="Edit price"
                             >
                               <Pencil className="size-3" />
@@ -195,8 +195,8 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-neutral-900">{ticket.sold_count ?? 0} / {ticket.quantity || "∞"}</p>
-                        <p className="text-xs text-neutral-400">sold</p>
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{ticket.sold_count ?? 0} / {ticket.quantity || "∞"}</p>
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500">sold</p>
                       </div>
                     </div>
                   ))}
@@ -211,15 +211,15 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
           <Card>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Date</p>
-                <p className="mt-1 text-sm text-neutral-900">{fmtLongDate(event.start_date_time)}</p>
-                <p className="text-[13px] text-neutral-500">{fmtTime(event.start_date_time)} – {fmtTime(event.end_date_time)}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Date</p>
+                <p className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{fmtLongDate(event.start_date_time)}</p>
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{fmtTime(event.start_date_time)} – {fmtTime(event.end_date_time)}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Venue</p>
-                <p className="mt-1 text-sm text-neutral-900">{event.venue_name}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Venue</p>
+                <p className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{event.venue_name}</p>
                 {event.venue_address && (
-                  <p className="inline-flex items-center gap-1 text-[13px] text-neutral-500">
+                  <p className="inline-flex items-center gap-1 text-[13px] text-neutral-500 dark:text-neutral-400">
                     <MapPin className="size-3" /> {event.venue_address}
                   </p>
                 )}
@@ -248,12 +248,12 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
             <DialogDescription>{editingTicket?.name}</DialogDescription>
           </DialogHeader>
           {priceError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{priceError}</div>
+            <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-400">{priceError}</div>
           )}
           <div>
             <Label htmlFor="new-price" className="mb-1.5 block">New price</Label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
               <Input
                 id="new-price"
                 type="number"
@@ -268,7 +268,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
               />
             </div>
           </div>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
             Applies to new purchases only. Existing orders are not affected.
           </div>
           <DialogFooter>
@@ -286,8 +286,8 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
 function Row({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className={cn("flex items-center justify-between", className)}>
-      <span className="text-sm text-neutral-600">{label}</span>
-      <span className="text-sm font-medium text-neutral-900">{value}</span>
+      <span className="text-sm text-neutral-600 dark:text-neutral-400">{label}</span>
+      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{value}</span>
     </div>
   )
 }

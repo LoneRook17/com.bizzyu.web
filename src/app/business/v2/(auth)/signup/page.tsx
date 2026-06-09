@@ -205,7 +205,7 @@ export default function SignupPage() {
         />
         <div className="mb-4">
           <Label htmlFor="address" className="mb-1.5 block">
-            Business Address<span className="ml-0.5 text-red-500">*</span>
+            Business Address<span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
           </Label>
           <AddressAutocomplete
             value={form.address}
@@ -216,11 +216,11 @@ export default function SignupPage() {
             }}
             placeholder="Start typing an address..."
             className={cn(
-              "flex h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none transition-colors placeholder:text-neutral-400 focus-visible:ring-2 focus-visible:ring-[#079455]/30 focus-visible:border-[#079455]",
+              "flex h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 shadow-sm outline-none transition-colors placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-[#05EB54]/30 focus-visible:border-[#05EB54]",
               errors.address && errorRing
             )}
           />
-          {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
+          {errors.address && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.address}</p>}
         </div>
         <AuthField
           label="Website"
@@ -239,7 +239,7 @@ export default function SignupPage() {
 
         <div className="mb-4">
           <Label htmlFor="description" className="mb-1.5 block">
-            Business Description<span className="ml-0.5 text-red-500">*</span>
+            Business Description<span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
           </Label>
           <Textarea
             id="description"
@@ -254,12 +254,12 @@ export default function SignupPage() {
             placeholder="Briefly describe your business and what you offer"
             className={cn("resize-none", errors.description && errorRing)}
           />
-          {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
+          {errors.description && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.description}</p>}
         </div>
 
         <div className="mb-4">
           <Label htmlFor="campus_id" className="mb-1.5 block">
-            Campus<span className="ml-0.5 text-red-500">*</span>
+            Campus<span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
           </Label>
           <Select
             id="campus_id"
@@ -275,7 +275,7 @@ export default function SignupPage() {
               </option>
             ))}
           </Select>
-          {errors.campus_id && <p className="mt-1 text-xs text-red-500">{errors.campus_id}</p>}
+          {errors.campus_id && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.campus_id}</p>}
         </div>
 
         <AuthPasswordField
@@ -329,7 +329,7 @@ export default function SignupPage() {
 
       <AuthFooterLink>
         Already have an account?{" "}
-        <Link href="/business/v2/login" className="font-medium text-[#079455] hover:underline">
+        <Link href="/business/v2/login" className="font-medium text-[#05EB54] hover:underline">
           Log in
         </Link>
       </AuthFooterLink>

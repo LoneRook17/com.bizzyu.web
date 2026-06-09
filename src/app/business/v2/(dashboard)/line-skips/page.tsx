@@ -99,25 +99,25 @@ export default function LineSkipsPage() {
           }
         />
       ) : (
-        <Card className="divide-y divide-neutral-100 overflow-hidden p-0">
+        <Card className="divide-y divide-neutral-100 dark:divide-neutral-800 overflow-hidden p-0">
           {lineSkips.map((ls) => (
             <Link
               key={ls.id}
               href={`/business/v2/line-skips/${ls.id}`}
-              className="flex items-center gap-3.5 px-5 py-4 transition-colors hover:bg-neutral-50"
+              className="flex items-center gap-3.5 px-5 py-4 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
             >
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
                 <Zap className="size-5" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-neutral-900">{ls.name}</span>
-                <span className="block text-[13px] text-neutral-500">
+                <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{ls.name}</span>
+                <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">
                   {formatDays(ls.days_of_week)} · {money(ls.default_price_cents)} ·{" "}
                   {ls.default_capacity ? `${ls.default_capacity} capacity` : "Unlimited"}
                 </span>
               </span>
               <Badge variant={ls.is_active ? "success" : "neutral"}>{ls.is_active ? "Active" : "Stopped"}</Badge>
-              <ChevronRight className="size-4 text-neutral-300" />
+              <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
             </Link>
           ))}
         </Card>
@@ -138,10 +138,10 @@ export default function LineSkipsPage() {
                   setShowVenueModal(false)
                   router.push("/business/v2/line-skips/new")
                 }}
-                className="flex w-full items-center justify-between rounded-lg border border-neutral-200 px-4 py-3 text-left text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+                className="flex w-full items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-left text-sm font-medium text-neutral-800 dark:text-neutral-200 transition-colors hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
               >
                 {v.name}
-                <ChevronRight className="size-4 text-neutral-300" />
+                <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
               </button>
             ))}
           </div>

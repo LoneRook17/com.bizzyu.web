@@ -15,11 +15,11 @@ export default function PromoterStatsView({ links }: { links: PromoterLink[] }) 
       <CardHeader>
         <CardTitle>Your tracking links</CardTitle>
       </CardHeader>
-      <CardContent className="border-t border-neutral-100 px-0 py-0">
+      <CardContent className="border-t border-neutral-100 dark:border-neutral-800 px-0 py-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-50/50 text-xs text-neutral-500">
+              <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
                 <th className="px-5 py-3 text-left font-medium">Event</th>
                 <th className="px-5 py-3 text-left font-medium">Code</th>
                 <th className="px-5 py-3 text-right font-medium">Clicks</th>
@@ -31,12 +31,12 @@ export default function PromoterStatsView({ links }: { links: PromoterLink[] }) 
               {links.map((link) => {
                 const ctr = link.clicks > 0 ? ((link.sales_count / link.clicks) * 100).toFixed(1) : "0.0"
                 return (
-                  <tr key={link.tracking_link_id} className="border-b border-neutral-50 last:border-0">
-                    <td className="px-5 py-3 text-neutral-900">{link.event_name}</td>
-                    <td className="px-5 py-3 font-mono text-xs text-neutral-500">{link.code}</td>
-                    <td className="px-5 py-3 text-right text-neutral-600">{link.clicks}</td>
-                    <td className="px-5 py-3 text-right font-medium text-neutral-900">{link.sales_count}</td>
-                    <td className="px-5 py-3 text-right text-neutral-600">{ctr}%</td>
+                  <tr key={link.tracking_link_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                    <td className="px-5 py-3 text-neutral-900 dark:text-neutral-100">{link.event_name}</td>
+                    <td className="px-5 py-3 font-mono text-xs text-neutral-500 dark:text-neutral-400">{link.code}</td>
+                    <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">{link.clicks}</td>
+                    <td className="px-5 py-3 text-right font-medium text-neutral-900 dark:text-neutral-100">{link.sales_count}</td>
+                    <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">{ctr}%</td>
                   </tr>
                 )
               })}

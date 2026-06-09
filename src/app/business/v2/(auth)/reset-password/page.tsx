@@ -114,7 +114,7 @@ function ResetPasswordContent() {
       </form>
 
       <AuthFooterLink>
-        <Link href="/business/v2/login" className="font-medium text-[#079455] hover:underline">
+        <Link href="/business/v2/login" className="font-medium text-[#05EB54] hover:underline">
           Back to Login
         </Link>
       </AuthFooterLink>

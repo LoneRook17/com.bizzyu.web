@@ -65,11 +65,11 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
 
   if (error) {
     return (
-      <Card className="border-red-200 bg-red-50">
+      <Card className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40">
         <CardContent>
-          <h3 className="text-sm font-semibold text-neutral-900">Door performance</h3>
-          <p className="mt-1 text-sm text-red-600">{error}</p>
-          <p className="mt-1 text-xs text-red-500">Refresh the page to retry.</p>
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Door performance</h3>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>
+          <p className="mt-1 text-xs text-red-500 dark:text-red-400">Refresh the page to retry.</p>
         </CardContent>
       </Card>
     )
@@ -79,12 +79,12 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
     return (
       <Card>
         <CardHeader><CardTitle>Door performance</CardTitle></CardHeader>
-        <CardContent className="pt-0"><p className="text-sm text-neutral-400">No door activity recorded yet.</p></CardContent>
+        <CardContent className="pt-0"><p className="text-sm text-neutral-400 dark:text-neutral-500">No door activity recorded yet.</p></CardContent>
       </Card>
     )
   }
 
-  const th = "py-2 text-xs font-medium text-neutral-500 cursor-pointer select-none hover:text-neutral-900"
+  const th = "py-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 cursor-pointer select-none hover:text-neutral-900 dark:hover:text-neutral-100"
 
   return (
     <Card>
@@ -93,7 +93,7 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-100">
+              <tr className="border-b border-neutral-100 dark:border-neutral-800">
                 <th className={`${th} text-left`} onClick={() => clickHeader("staff")}>Staff{arrow("staff")}</th>
                 <th className={`${th} text-left`} onClick={() => clickHeader("scanner_label")}>Scanner{arrow("scanner_label")}</th>
                 <th className={`${th} text-right`} onClick={() => clickHeader("valid_scans")}>Valid{arrow("valid_scans")}</th>
@@ -107,16 +107,16 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
             </thead>
             <tbody>
               {sorted.map((r, idx) => (
-                <tr key={`${r.staff_user_id ?? "null"}-${r.scanner_label ?? "null"}-${idx}`} className="border-b border-neutral-50 last:border-0">
-                  <td className="py-2 text-neutral-900">{staffLabel(r)}</td>
-                  <td className="py-2 text-neutral-600">{r.scanner_label ?? "—"}</td>
-                  <td className="py-2 text-right text-neutral-600">{r.valid_scans}</td>
-                  <td className="py-2 text-right text-neutral-600">{r.rejected_scans}</td>
-                  <td className="py-2 text-right text-neutral-600">{r.sold_count ?? 0}</td>
-                  <td className="py-2 text-right text-neutral-600">{usd(r.sold_revenue ?? 0)}</td>
-                  <td className="py-2 text-right font-medium text-neutral-900">{usd(totalRevenueOf(r))}</td>
-                  <td className="whitespace-nowrap py-2 text-right text-neutral-500">{fmtTime(r.first_scan_at)}</td>
-                  <td className="whitespace-nowrap py-2 text-right text-neutral-500">{fmtTime(r.last_scan_at)}</td>
+                <tr key={`${r.staff_user_id ?? "null"}-${r.scanner_label ?? "null"}-${idx}`} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{staffLabel(r)}</td>
+                  <td className="py-2 text-neutral-600 dark:text-neutral-400">{r.scanner_label ?? "—"}</td>
+                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.valid_scans}</td>
+                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.rejected_scans}</td>
+                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.sold_count ?? 0}</td>
+                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{usd(r.sold_revenue ?? 0)}</td>
+                  <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd(totalRevenueOf(r))}</td>
+                  <td className="whitespace-nowrap py-2 text-right text-neutral-500 dark:text-neutral-400">{fmtTime(r.first_scan_at)}</td>
+                  <td className="whitespace-nowrap py-2 text-right text-neutral-500 dark:text-neutral-400">{fmtTime(r.last_scan_at)}</td>
                 </tr>
               ))}
             </tbody>

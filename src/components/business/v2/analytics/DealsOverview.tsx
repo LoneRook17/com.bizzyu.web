@@ -20,27 +20,27 @@ function DealDetail({ data }: { data: DealAnalytics }) {
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-4">
         <Card className="p-5">
-          <p className="text-sm text-neutral-600">Total claims</p>
-          <p className="mt-1 text-2xl font-semibold text-neutral-900">{data.total_claims}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">Total claims</p>
+          <p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{data.total_claims}</p>
         </Card>
         <Card className="p-5">
-          <p className="text-sm text-neutral-600">Supply usage</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">Supply usage</p>
           {total ? (
             <>
-              <p className="mt-1 text-2xl font-semibold text-neutral-900">
+              <p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
                 {used} / {total}
               </p>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
                 <div
-                  className="h-full rounded-full bg-[#079455]"
+                  className="h-full rounded-full bg-[#05EB54]"
                   style={{ width: `${Math.min((used / total) * 100, 100)}%` }}
                 />
               </div>
             </>
           ) : (
             <>
-              <p className="mt-1 text-2xl font-semibold text-neutral-900">{used}</p>
-              <p className="mt-0.5 text-xs text-neutral-400">Unlimited supply</p>
+              <p className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{used}</p>
+              <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">Unlimited supply</p>
             </>
           )}
         </Card>
@@ -48,7 +48,7 @@ function DealDetail({ data }: { data: DealAnalytics }) {
 
       {claimsSorted.length > 0 && (
         <Card className="p-5">
-          <h4 className="mb-4 text-sm font-semibold text-neutral-900">Claims over time (last 30 days)</h4>
+          <h4 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Claims over time (last 30 days)</h4>
           <div className="space-y-1.5">
             {claimsSorted.map((period) => {
               const pct = (period.count / maxClaims) * 100
@@ -58,14 +58,14 @@ function DealDetail({ data }: { data: DealAnalytics }) {
               })
               return (
                 <div key={period.period} className="flex items-center gap-2">
-                  <span className="w-14 flex-shrink-0 text-xs text-neutral-500">{dateLabel}</span>
-                  <div className="h-5 flex-1 overflow-hidden rounded bg-neutral-50">
+                  <span className="w-14 flex-shrink-0 text-xs text-neutral-500 dark:text-neutral-400">{dateLabel}</span>
+                  <div className="h-5 flex-1 overflow-hidden rounded bg-neutral-50 dark:bg-neutral-800/50">
                     <div
-                      className="h-full rounded bg-[#079455]/70"
+                      className="h-full rounded bg-[#05EB54]/70"
                       style={{ width: `${Math.max(pct, period.count > 0 ? 2 : 0)}%` }}
                     />
                   </div>
-                  <span className="w-8 text-right text-xs text-neutral-600">{period.count}</span>
+                  <span className="w-8 text-right text-xs text-neutral-600 dark:text-neutral-400">{period.count}</span>
                 </div>
               )
             })}
@@ -106,21 +106,21 @@ function DealCard({
 
   return (
     <Card className="overflow-hidden">
-      <button type="button" onClick={handleToggle} className="w-full p-4 text-left transition-colors hover:bg-neutral-50">
+      <button type="button" onClick={handleToggle} className="w-full p-4 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
         <div className="flex items-center gap-4">
           {deal.deal_image_path ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={deal.deal_image_path} alt="" className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 object-cover" />
+            <img src={deal.deal_image_path} alt="" className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800 object-cover" />
           ) : (
-            <div className="size-12 flex-shrink-0 rounded-lg bg-neutral-100" />
+            <div className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800" />
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className={cn("size-2 flex-shrink-0 rounded-full", deal.is_active ? "bg-green-500" : "bg-neutral-400")} />
-              <p className="truncate text-sm font-semibold text-neutral-900">{deal.deal_title}</p>
+              <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{deal.deal_title}</p>
             </div>
-            <p className="mt-0.5 text-xs text-neutral-500">{supplyLabel}</p>
+            <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{supplyLabel}</p>
           </div>
 
           <div className="hidden flex-shrink-0 items-center gap-6 sm:flex">
@@ -131,12 +131,12 @@ function DealCard({
             <RowStat label="Claims" value={deal.total_claims} />
           </div>
 
-          <ChevronDown className={cn("size-4 flex-shrink-0 text-neutral-400 transition-transform", isExpanded && "rotate-180")} />
+          <ChevronDown className={cn("size-4 flex-shrink-0 text-neutral-400 dark:text-neutral-500 transition-transform", isExpanded && "rotate-180")} />
         </div>
       </button>
 
       {isExpanded && (
-        <div className="border-t border-neutral-100 bg-neutral-50/60 p-4">
+        <div className="border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-800/50 p-4">
           {detailLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-4 w-32" />
@@ -145,7 +145,7 @@ function DealCard({
           ) : detail ? (
             <DealDetail data={detail} />
           ) : (
-            <p className="py-4 text-center text-sm text-neutral-400">Unable to load detail.</p>
+            <p className="py-4 text-center text-sm text-neutral-400 dark:text-neutral-500">Unable to load detail.</p>
           )}
         </div>
       )}

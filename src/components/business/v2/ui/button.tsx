@@ -6,16 +6,16 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/v2/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#079455]/30 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-semibold transition-all outline-none focus-visible:ring-2 focus-visible:ring-[#05EB54]/40 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-neutral-950 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 cursor-pointer",
   {
     variants: {
       variant: {
-        primary: "bg-[#079455] text-white shadow-sm hover:bg-[#067a47]",
-        secondary: "bg-white text-neutral-700 border border-neutral-300 shadow-sm hover:bg-neutral-50",
-        ghost: "text-neutral-700 hover:bg-neutral-100",
+        primary: "bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white shadow-md shadow-[#05EB54]/25 hover:brightness-110",
+        secondary: "bg-white text-neutral-700 border border-neutral-300 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-700 dark:hover:bg-neutral-800",
+        ghost: "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
         danger: "bg-red-600 text-white shadow-sm hover:bg-red-700",
-        subtle: "bg-neutral-100 text-neutral-800 hover:bg-neutral-200",
-        link: "text-[#079455] underline-offset-4 hover:underline",
+        subtle: "bg-neutral-100 text-neutral-800 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700",
+        link: "text-[#05EB54] underline-offset-4 hover:underline dark:text-[#05EB54]",
       },
       size: {
         sm: "h-8 px-3 text-[13px]",

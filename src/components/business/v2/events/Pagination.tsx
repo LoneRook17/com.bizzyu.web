@@ -16,7 +16,7 @@ export function Pagination({ page, total, limit, onPageChange }: PaginationProps
 
   return (
     <div className="flex items-center justify-between pt-2">
-      <p className="text-[13px] text-neutral-500">
+      <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
         Page {page} of {totalPages} · {total} total
       </p>
       <div className="flex gap-2">

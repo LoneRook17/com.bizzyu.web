@@ -57,7 +57,7 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
   if (error || !initialData) {
     return (
       <div className="py-16 text-center">
-        <p className="mb-4 text-sm text-red-500">{error || "Deal not found"}</p>
+        <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error || "Deal not found"}</p>
         <Button variant="link" asChild>
           <Link href="/business/v2/deals">Back to deals</Link>
         </Button>

@@ -114,7 +114,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
         actions={<Button onClick={() => setShowCreate(true)}><Plus /> Create code</Button>}
       />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {codes.length === 0 ? (
         <EmptyState icon={Tag} title="No promo codes yet" description="Create a code to offer discounts on this event." />
@@ -122,7 +122,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 bg-neutral-50/50 text-xs text-neutral-500">
+              <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
                 <th className="px-5 py-3 text-left font-medium">Code</th>
                 <th className="px-5 py-3 text-left font-medium">Discount</th>
                 <th className="px-5 py-3 text-right font-medium">Uses</th>
@@ -135,15 +135,15 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
               {codes.map((code) => {
                 const status = codeStatus(code)
                 return (
-                  <tr key={code.promo_code_id} className="border-b border-neutral-50 last:border-0">
-                    <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900">{code.code}</td>
-                    <td className="px-5 py-3 text-neutral-600">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
-                    <td className="px-5 py-3 text-right text-neutral-600">{code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}</td>
+                  <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                    <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">{code.code}</td>
+                    <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
+                    <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">{code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}</td>
                     <td className="px-5 py-3"><Badge variant={status.variant} size="sm">{status.label}</Badge></td>
-                    <td className="px-5 py-3 text-xs text-neutral-500">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
+                    <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
                     <td className="px-5 py-3 text-right">
                       {code.is_active && (
-                        <button onClick={() => setDeactivateTarget(code)} className="text-xs font-medium text-red-600 hover:underline">Deactivate</button>
+                        <button onClick={() => setDeactivateTarget(code)} className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Deactivate</button>
                       )}
                     </td>
                   </tr>
@@ -158,18 +158,18 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
       {universalCodes.length > 0 && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-neutral-900">Universal promo codes</h2>
-            <Link href="/business/v2/promo-codes" className="inline-flex items-center gap-1 text-[13px] font-medium text-[#079455] hover:underline">
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Universal promo codes</h2>
+            <Link href="/business/v2/promo-codes" className="inline-flex items-center gap-1 text-[13px] font-medium text-[#05EB54] hover:underline">
               Manage <ArrowUpRight className="size-3.5" />
             </Link>
           </div>
-          <p className="-mt-1 text-[13px] text-neutral-500">
+          <p className="-mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
             These apply to <span className="font-medium">every event at this venue</span>. They&apos;re managed under Universal promo codes, not per-event.
           </p>
-          <Card className="overflow-hidden bg-neutral-50/40">
+          <Card className="overflow-hidden bg-neutral-50/40 dark:bg-neutral-800/40">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-neutral-100 bg-neutral-50/50 text-xs text-neutral-500">
+                <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
                   <th className="px-5 py-3 text-left font-medium">Code</th>
                   <th className="px-5 py-3 text-left font-medium">Discount</th>
                   <th className="px-5 py-3 text-right font-medium">Uses</th>
@@ -181,15 +181,15 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
                 {universalCodes.map((code) => {
                   const status = codeStatus(code)
                   return (
-                    <tr key={code.promo_code_id} className="border-b border-neutral-50 last:border-0">
-                      <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900">
+                    <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                      <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">
                         {code.code}
                         <Badge variant="brand" size="sm" className="ml-2 align-middle">Venue</Badge>
                       </td>
-                      <td className="px-5 py-3 text-neutral-600">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
-                      <td className="px-5 py-3 text-right text-neutral-600">{code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}</td>
+                      <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
+                      <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">{code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}</td>
                       <td className="px-5 py-3"><Badge variant={status.variant} size="sm">{status.label}</Badge></td>
-                      <td className="px-5 py-3 text-xs text-neutral-500">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
+                      <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
                     </tr>
                   )
                 })}
@@ -236,7 +236,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
                 <Input type="datetime-local" value={form.expires_at} onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))} />
               </div>
             </div>
-            {createError && <p className="text-xs text-red-600">{createError}</p>}
+            {createError && <p className="text-xs text-red-600 dark:text-red-400">{createError}</p>}
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => { setShowCreate(false); setCreateError("") }}>Cancel</Button>
               <Button type="submit" disabled={creating || !form.code.trim() || !form.discount_value}>

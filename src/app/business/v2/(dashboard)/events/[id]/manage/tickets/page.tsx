@@ -153,13 +153,13 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
         actions={!editing ? <Button onClick={() => { setSaveError(""); setEditing({ ...EMPTY_FORM }) }}><Plus /> Add ticket</Button> : undefined}
       />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {editing && (
         <Card>
           <form onSubmit={handleSave}>
             <CardContent className="space-y-3">
-              <h2 className="text-sm font-semibold text-neutral-900">{editing.ticket_id ? "Edit ticket" : "Add ticket"}</h2>
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{editing.ticket_id ? "Edit ticket" : "Add ticket"}</h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <Label className="mb-1 block text-xs">Name</Label>
@@ -190,18 +190,18 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
                   <Input type="number" min="1" value={editing.max_per_person} placeholder="No limit" onChange={(e) => setEditing({ ...editing, max_per_person: e.target.value })} />
                 </div>
                 <div>
-                  <Label className="mb-1 block text-xs">Valid from <span className="font-normal text-neutral-400">(optional)</span></Label>
+                  <Label className="mb-1 block text-xs">Valid from <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
                   <Input type="datetime-local" value={editing.valid_from} onChange={(e) => setEditing({ ...editing, valid_from: e.target.value })} />
                 </div>
                 <div>
-                  <Label className="mb-1 block text-xs">Valid until <span className="font-normal text-neutral-400">(optional)</span></Label>
+                  <Label className="mb-1 block text-xs">Valid until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
                   <Input type="datetime-local" value={editing.valid_until} onChange={(e) => setEditing({ ...editing, valid_until: e.target.value })} />
                 </div>
               </div>
-              <p className="-mt-1 text-xs text-neutral-400">
+              <p className="-mt-1 text-xs text-neutral-400 dark:text-neutral-500">
                 Redeemable / scan window — when this ticket can be scanned at the door. It can still be bought beforehand; sales just close when the window ends.
               </p>
-              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+              {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
               <div className="flex items-center gap-2 pt-1">
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="animate-spin" />} {editing.ticket_id ? "Save changes" : "Add ticket"}
@@ -244,10 +244,10 @@ function TicketSection({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-neutral-900">{title}</h2>
-      {note && <p className="-mt-1 text-xs text-neutral-500">{note}</p>}
+      <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
+      {note && <p className="-mt-1 text-xs text-neutral-500 dark:text-neutral-400">{note}</p>}
       {tickets.length === 0 ? (
-        <p className="text-sm text-neutral-500">{emptyText}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</p>
       ) : (
         tickets.map((t) => {
           const priceLabel = t.ticket_type === "free" || (t.price_usd ?? 0) === 0 ? "Free" : usd(t.price_usd)
@@ -257,10 +257,10 @@ function TicketSection({
               <div className="flex items-center justify-between p-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-neutral-900">{t.name}</p>
+                    <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t.name}</p>
                     <Badge variant="outline" size="sm">{t.ticket_type}</Badge>
                   </div>
-                  <p className="mt-0.5 text-[13px] text-neutral-500">{priceLabel} · {qtyLabel} · Sold {t.sold_count ?? 0}</p>
+                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{priceLabel} · {qtyLabel} · Sold {t.sold_count ?? 0}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <Button variant="secondary" size="sm" onClick={() => onEdit(t)}>Edit</Button>

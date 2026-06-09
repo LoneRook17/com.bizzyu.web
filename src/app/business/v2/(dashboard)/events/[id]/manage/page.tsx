@@ -31,16 +31,16 @@ function ManageTile({ href, icon: Icon, title, subtitle }: Omit<Tile, "show">) {
   return (
     <Link
       href={href}
-      className="group flex items-start gap-3.5 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm transition-all hover:border-[#079455]/40 hover:shadow-md"
+      className="group flex items-start gap-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm transition-all hover:border-[#05EB54]/40 hover:shadow-md"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500 transition-colors group-hover:bg-green-50 group-hover:text-[#079455]">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors group-hover:bg-green-50 dark:group-hover:bg-green-950/40 group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">
         <Icon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-neutral-900 transition-colors group-hover:text-[#079455]">{title}</span>
-        <span className="mt-0.5 block text-[13px] text-neutral-500">{subtitle}</span>
+        <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">{title}</span>
+        <span className="mt-0.5 block text-[13px] text-neutral-500 dark:text-neutral-400">{subtitle}</span>
       </span>
-      <ChevronRight className="mt-0.5 size-4 shrink-0 text-neutral-300" />
+      <ChevronRight className="mt-0.5 size-4 shrink-0 text-neutral-300 dark:text-neutral-600" />
     </Link>
   )
 }
@@ -108,7 +108,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     <>
       <Link
         href={`/business/v2/events/${id}`}
-        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 transition-colors hover:text-neutral-900"
+        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
         <ArrowLeft className="size-3.5" /> Back to event
       </Link>
@@ -116,10 +116,10 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">{event.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
             <Badge variant={badge.variant}>{badge.label}</Badge>
           </div>
-          <p className="mt-1 text-[15px] text-neutral-600">{fmtDate(event.start_date_time)} · {event.venue_name}</p>
+          <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">{fmtDate(event.start_date_time)} · {event.venue_name}</p>
         </div>
         <Button variant="secondary" asChild>
           <Link href={`/business/v2/events/${id}/manage/scanner`}><ScanLine /> Open scanner</Link>
@@ -134,34 +134,34 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
 
       {/* cancellation banners */}
       {cancellationStatus === "pending" && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
           <div className="flex items-center gap-2">
             <Badge variant="warning">Cancellation pending</Badge>
-            <span className="text-sm text-amber-700">Awaiting admin review</span>
+            <span className="text-sm text-amber-700 dark:text-amber-400">Awaiting admin review</span>
           </div>
-          {event.cancellation_reason && <p className="mt-2 text-xs text-amber-600">Reason: {event.cancellation_reason}</p>}
+          {event.cancellation_reason && <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Reason: {event.cancellation_reason}</p>}
         </div>
       )}
       {cancellationStatus === "denied" && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+        <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-4">
           <Badge variant="danger">Cancellation denied</Badge>
-          {event.cancellation_denial_reason && <p className="mt-2 text-xs text-red-600">Reason: {event.cancellation_denial_reason}</p>}
+          {event.cancellation_denial_reason && <p className="mt-2 text-xs text-red-600 dark:text-red-400">Reason: {event.cancellation_denial_reason}</p>}
         </div>
       )}
 
       {/* danger zone */}
       {canEdit && (
-        <Card className={cn("border-red-200 bg-red-50/30")}>
+        <Card className={cn("border-red-200 dark:border-red-900 bg-red-50/30 dark:bg-red-950/30")}>
           <div className="p-5">
-            <h2 className="text-sm font-semibold text-red-700">Danger zone</h2>
+            <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
             <div className="mt-3">
               {event.status !== "cancelled" && cancellationStatus === "none" && !isPastEvent && (
-                <Button variant="secondary" className="border-red-300 text-red-600 hover:bg-red-50" onClick={() => setShowCancel(true)}>
+                <Button variant="secondary" className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => setShowCancel(true)}>
                   Cancel event
                 </Button>
               )}
               {isPastEvent && event.status !== "cancelled" && (
-                <p className="text-xs text-neutral-400">Cannot cancel — event has already ended.</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">Cannot cancel — event has already ended.</p>
               )}
             </div>
           </div>

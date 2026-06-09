@@ -85,7 +85,7 @@ export default function InviteDialog({
         </DialogHeader>
 
         {success ? (
-          <div className="flex items-center gap-2.5 rounded-xl border border-green-200 bg-green-50 px-4 py-3.5 text-sm font-medium text-green-700">
+          <div className="flex items-center gap-2.5 rounded-xl border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 px-4 py-3.5 text-sm font-medium text-green-700 dark:text-green-400">
             <CheckCircle2 className="size-5 shrink-0" />
             Invite sent successfully.
           </div>
@@ -119,13 +119,13 @@ export default function InviteDialog({
                   <option key={v.id} value={String(v.id)}>{v.name}</option>
                 ))}
               </Select>
-              <p className="text-[13px] text-neutral-500">
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
                 Global members can access all venues. Venue-specific members only see their assigned venue.
               </p>
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">{error}</div>
+              <div className="rounded-lg bg-red-50 dark:bg-red-950/40 px-3 py-2.5 text-sm text-red-600 dark:text-red-400">{error}</div>
             )}
 
             <DialogFooter>

@@ -61,14 +61,14 @@ export default function V2AudiencePickerPage({ params }: { params: Promise<{ id:
         backLabel="Back to SMS blasts"
       />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      <h2 className="text-sm font-semibold text-neutral-900">Your events</h2>
+      <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Your events</h2>
 
       {loading ? (
         <div className="flex flex-col gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
       ) : events.length === 0 ? (
-        <p className="text-sm text-neutral-500">No events found.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">No events found.</p>
       ) : (
         <div className="flex flex-col gap-2 pb-2">
           {events.map((e) => {
@@ -78,7 +78,7 @@ export default function V2AudiencePickerPage({ params }: { params: Promise<{ id:
                 key={e.event_id}
                 className={cn(
                   "flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors",
-                  isChecked ? "border-[#079455] bg-green-50/60" : "border-neutral-200 bg-white hover:border-neutral-300"
+                  isChecked ? "border-[#05EB54] bg-green-50/60 dark:bg-green-950/40" : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-300 dark:hover:border-neutral-700"
                 )}
               >
                 <input
@@ -86,17 +86,17 @@ export default function V2AudiencePickerPage({ params }: { params: Promise<{ id:
                   name="sms-blast-event"
                   checked={isChecked}
                   onChange={() => setSelectedId(e.event_id)}
-                  className="size-4 border-neutral-300 text-[#079455] focus:ring-[#079455]"
+                  className="size-4 border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
                 />
                 {e.flyer_image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={e.flyer_image_url} alt="" className="size-12 rounded-lg object-cover" />
                 ) : (
-                  <span className="flex size-12 items-center justify-center rounded-lg bg-neutral-100 text-neutral-300"><CalendarDays className="size-5" /></span>
+                  <span className="flex size-12 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600"><CalendarDays className="size-5" /></span>
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-neutral-900">{e.name}</span>
-                  <span className="block truncate text-[13px] text-neutral-500">{fmtDate(e.start_date_time)} · {e.venue_name}</span>
+                  <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
+                  <span className="block truncate text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.venue_name}</span>
                 </span>
               </label>
             )
@@ -105,7 +105,7 @@ export default function V2AudiencePickerPage({ params }: { params: Promise<{ id:
       )}
 
       <Card className="sticky bottom-4 flex items-center justify-between gap-3 px-4 py-3">
-        <p className="text-[13px] text-neutral-500">
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
           {recipientCount !== null
             ? <>~{recipientCount} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in</>
             : <>1 event</>}

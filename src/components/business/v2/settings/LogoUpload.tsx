@@ -63,8 +63,8 @@ export default function LogoUpload({ currentUrl, onUploaded, disabled }: LogoUpl
         onClick={() => !disabled && inputRef.current?.click()}
         disabled={disabled || uploading}
         className={cn(
-          "group relative aspect-[16/9] w-full max-w-[340px] overflow-hidden rounded-xl border border-neutral-200 transition-colors",
-          !disabled && "cursor-pointer hover:border-[#079455]",
+          "group relative aspect-[16/9] w-full max-w-[340px] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 transition-colors",
+          !disabled && "cursor-pointer hover:border-[#05EB54]",
           (disabled || uploading) && "cursor-not-allowed opacity-70"
         )}
       >
@@ -72,7 +72,7 @@ export default function LogoUpload({ currentUrl, onUploaded, disabled }: LogoUpl
           // eslint-disable-next-line @next/next/no-img-element
           <img src={currentUrl} alt="Business photo" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-neutral-50 text-neutral-300">
+          <div className="flex h-full w-full items-center justify-center bg-neutral-50 dark:bg-neutral-800/50 text-neutral-300 dark:text-neutral-600">
             <ImageIcon className="size-10" />
           </div>
         )}
@@ -88,12 +88,12 @@ export default function LogoUpload({ currentUrl, onUploaded, disabled }: LogoUpl
         )}
       </button>
 
-      <p className="mt-2 text-[13px] text-neutral-500">
+      <p className="mt-2 text-[13px] text-neutral-500 dark:text-neutral-400">
         {disabled ? "Business photo" : "This image appears on your venue card in the student app."}
       </p>
 
       <input ref={inputRef} type="file" accept="image/*" onChange={handleInputChange} className="hidden" />
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{error}</p>}
     </div>
   )
 }

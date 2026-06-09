@@ -47,7 +47,7 @@ export default function V2CheckinsPage({ params }: { params: Promise<{ id: strin
     <>
       <ManageSubheader eventId={id} title="Check-in history" subtitle="Who scanned in, and who hasn't yet." />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <div className="grid grid-cols-3 gap-4">
         <StatTile value={String(summary.total)} label="Total tickets" />
@@ -76,8 +76,8 @@ export default function V2CheckinsPage({ params }: { params: Promise<{ id: strin
 function StatTile({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
   return (
     <Card className="p-4 text-center">
-      <p className={accent ? "text-2xl font-semibold tracking-tight text-[#079455]" : "text-2xl font-semibold tracking-tight text-neutral-900"}>{value}</p>
-      <p className="mt-0.5 text-[13px] text-neutral-500">{label}</p>
+      <p className={accent ? "text-2xl font-semibold tracking-tight text-[#05EB54]" : "text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"}>{value}</p>
+      <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{label}</p>
     </Card>
   )
 }
@@ -85,25 +85,25 @@ function StatTile({ value, label, accent }: { value: string; label: string; acce
 function CheckinGroup({ title, tint, rows }: { title: string; tint: "green" | "neutral"; rows: CheckinEntry[] }) {
   return (
     <Card className="overflow-hidden">
-      <div className={tint === "green" ? "border-b border-neutral-100 bg-green-50/50 px-5 py-3" : "border-b border-neutral-100 bg-neutral-50/50 px-5 py-3"}>
-        <h3 className={tint === "green" ? "text-sm font-semibold text-green-700" : "text-sm font-semibold text-neutral-600"}>{title}</h3>
+      <div className={tint === "green" ? "border-b border-neutral-100 dark:border-neutral-800 bg-green-50/50 dark:bg-green-950/40 px-5 py-3" : "border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 px-5 py-3"}>
+        <h3 className={tint === "green" ? "text-sm font-semibold text-green-700 dark:text-green-400" : "text-sm font-semibold text-neutral-600 dark:text-neutral-400"}>{title}</h3>
       </div>
       <CardContent className="p-0">
-        <div className="divide-y divide-neutral-50">
+        <div className="divide-y divide-neutral-50 dark:divide-neutral-800">
           {rows.map((c) => (
             <div key={c.ticket_instance_id} className="flex items-center justify-between px-5 py-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-neutral-900">{c.attendee_name || "Guest"}</p>
-                <p className="text-[13px] text-neutral-500">{c.ticket_name}</p>
+                <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{c.attendee_name || "Guest"}</p>
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{c.ticket_name}</p>
               </div>
               <div className="ml-4 shrink-0 text-right">
                 {c.is_redeemed ? (
                   <>
-                    <p className="inline-flex items-center gap-1 text-xs font-medium text-green-600"><CircleCheck className="size-3.5" /> Checked in</p>
-                    {c.redeemed_at && <p className="text-[11px] text-neutral-400">{fmtDateTime(c.redeemed_at)}</p>}
+                    <p className="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400"><CircleCheck className="size-3.5" /> Checked in</p>
+                    {c.redeemed_at && <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{fmtDateTime(c.redeemed_at)}</p>}
                   </>
                 ) : (
-                  <p className="text-xs text-neutral-400">Not scanned</p>
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500">Not scanned</p>
                 )}
               </div>
             </div>

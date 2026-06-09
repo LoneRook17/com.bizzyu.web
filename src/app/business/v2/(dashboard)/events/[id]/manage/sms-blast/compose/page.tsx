@@ -90,21 +90,21 @@ function V2ComposeSmsBlastInner({ params }: { params: Promise<{ id: string }> })
 
       <div>
         <Textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, MAX_LEN))} placeholder="Type your message…" rows={6} autoFocus />
-        <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
+        <div className="mt-2 flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
           <span>{message.length}/{MAX_LEN}</span>
-          {containsStop && <span className="text-red-600">Remove the word &quot;STOP&quot; — the opt-out line is appended automatically.</span>}
+          {containsStop && <span className="text-red-600 dark:text-red-400">Remove the word &quot;STOP&quot; — the opt-out line is appended automatically.</span>}
         </div>
       </div>
 
       {previewBody && (
         <div>
-          <p className="mb-2 text-xs font-semibold text-neutral-500">Preview (sent)</p>
-          <Card className="whitespace-pre-wrap bg-neutral-50 p-3 text-sm text-neutral-900">{previewBody}</Card>
-          <p className="mt-1 text-[11px] text-neutral-400">Opt-out suffix is required by SMS regulators and added automatically.</p>
+          <p className="mb-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400">Preview (sent)</p>
+          <Card className="whitespace-pre-wrap bg-neutral-50 dark:bg-neutral-800/50 p-3 text-sm text-neutral-900 dark:text-neutral-100">{previewBody}</Card>
+          <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">Opt-out suffix is required by SMS regulators and added automatically.</p>
         </div>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       <Card className="sticky bottom-4 px-4 py-3">
         <Button className="w-full" disabled={!isValid} onClick={() => setConfirming(true)}>

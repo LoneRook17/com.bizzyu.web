@@ -13,11 +13,11 @@ import FollowingTab from "@/components/business/v2/marketing/FollowingTab"
 /**
  * Marketing dashboard — two send-paths surface to owners and managers.
  *
- *   • Events    — pick one event, blast that event's audience via the
- *                 per-event composers under /business/v2/events/[id]/manage/.
- *   • Followers — blast everyone who follows the selected venue (May 2026
- *                 venue-scope update). "All venues" rolls up unique
- *                 followers across every venue.
+ *  • Events  — pick one event, blast that event's audience via the
+ *         per-event composers under /business/v2/events/[id]/manage/.
+ *  • Followers — blast everyone who follows the selected venue (May 2026
+ *         venue-scope update). "All venues" rolls up unique
+ *         followers across every venue.
  *
  * Venue scope comes from the global `useVenue()` context (sidebar switcher),
  * not a page-local dropdown.

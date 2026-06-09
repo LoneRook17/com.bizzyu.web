@@ -18,18 +18,18 @@ function matches(text: string, query: string) {
 
 function BlockView({ block }: { block: Block }) {
   if (block.kind === "p") {
-    return <p className="text-sm leading-relaxed text-neutral-600">{block.text}</p>
+    return <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{block.text}</p>
   }
   if (block.kind === "note") {
     return (
-      <p className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-900">
+      <p className="rounded-lg border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-3 py-2 text-sm leading-relaxed text-blue-900 dark:text-blue-300">
         {block.text}
       </p>
     )
   }
   const ListTag = block.kind === "ol" ? "ol" : "ul"
   return (
-    <ListTag className={cn("space-y-1 pl-5 text-sm leading-relaxed text-neutral-600", block.kind === "ol" ? "list-decimal" : "list-disc")}>
+    <ListTag className={cn("space-y-1 pl-5 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400", block.kind === "ol" ? "list-decimal" : "list-disc")}>
       {block.items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}
@@ -47,8 +47,8 @@ function SubSectionView({ sub, searching }: { sub: SubSection; searching: boolea
         onClick={() => setOpen((o) => !o)}
         className="group flex w-full items-center gap-2 py-2 text-left"
       >
-        <ChevronRight className={cn("size-4 shrink-0 text-neutral-400 transition-transform", expanded && "rotate-90")} />
-        <h3 className="text-sm font-semibold text-neutral-900 transition-colors group-hover:text-[#079455]">{sub.title}</h3>
+        <ChevronRight className={cn("size-4 shrink-0 text-neutral-400 dark:text-neutral-500 transition-transform", expanded && "rotate-90")} />
+        <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">{sub.title}</h3>
       </button>
       {expanded && (
         <div className="flex flex-col gap-2.5 pb-3 pl-6">
@@ -65,16 +65,16 @@ function FAQView({ faq, searching }: { faq: FAQ; searching: boolean }) {
   const [open, setOpen] = useState(false)
   const expanded = searching || open
   return (
-    <div className="border-b border-neutral-100 last:border-b-0">
+    <div className="border-b border-neutral-100 dark:border-neutral-800 last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="group flex w-full items-start gap-2.5 py-3.5 text-left"
       >
-        <ChevronRight className={cn("mt-0.5 size-4 shrink-0 text-neutral-400 transition-transform", expanded && "rotate-90")} />
-        <span className="text-sm font-medium text-neutral-900 transition-colors group-hover:text-[#079455]">{faq.q}</span>
+        <ChevronRight className={cn("mt-0.5 size-4 shrink-0 text-neutral-400 dark:text-neutral-500 transition-transform", expanded && "rotate-90")} />
+        <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100 transition-colors group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">{faq.q}</span>
       </button>
-      {expanded && <p className="pb-3.5 pl-[26px] text-sm leading-relaxed text-neutral-600">{faq.a}</p>}
+      {expanded && <p className="pb-3.5 pl-[26px] text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{faq.a}</p>}
     </div>
   )
 }
@@ -95,20 +95,20 @@ function SectionCard({ section, query }: { section: HelpSection; query: string }
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-neutral-50"
+        className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-green-50 text-[#079455]">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950/40 text-[#05EB54]">
           <Icon className="size-5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-base font-semibold text-neutral-900 transition-colors group-hover:text-[#079455]">{section.title}</span>
-          <span className="block text-[13px] text-neutral-500">{section.intro}</span>
+          <span className="block text-base font-semibold text-neutral-900 dark:text-neutral-100 transition-colors group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">{section.title}</span>
+          <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{section.intro}</span>
         </span>
-        <ChevronDown className={cn("size-5 shrink-0 text-neutral-400 transition-transform", expanded && "rotate-180")} />
+        <ChevronDown className={cn("size-5 shrink-0 text-neutral-400 dark:text-neutral-500 transition-transform", expanded && "rotate-180")} />
       </button>
 
       {expanded && (
-        <div className="space-y-1 border-t border-neutral-100 px-5 py-3">
+        <div className="space-y-1 border-t border-neutral-100 dark:border-neutral-800 px-5 py-3">
           {visibleSubs.map((sub) => (
             <SubSectionView key={sub.id} sub={sub} searching={searching} />
           ))}
@@ -148,7 +148,7 @@ export default function V2HelpPage() {
       {/* Search */}
       <div>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -159,14 +159,14 @@ export default function V2HelpPage() {
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
             >
               <X className="size-4" />
             </button>
           )}
         </div>
         {query && (
-          <p className="mt-2 text-xs text-neutral-400">
+          <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
             Showing {filtered.length} of {HELP_SECTIONS.length} sections matching “{query}”.
           </p>
         )}
@@ -190,13 +190,13 @@ export default function V2HelpPage() {
         {/* Table of contents — desktop */}
         <aside className="hidden w-56 shrink-0 lg:block">
           <div className="sticky top-8">
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">On this page</h3>
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">On this page</h3>
             <nav className="flex flex-col gap-0.5">
               {HELP_SECTIONS.map((section) => (
                 <a
                   key={section.id}
                   href={`#${section.id}`}
-                  className="truncate rounded-md px-2 py-1 text-sm text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                  className="truncate rounded-md px-2 py-1 text-sm text-neutral-500 dark:text-neutral-400 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-neutral-100"
                 >
                   {section.title}
                 </a>

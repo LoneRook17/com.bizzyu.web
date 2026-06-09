@@ -110,20 +110,20 @@ export default function V2EventsPage() {
 
       {/* Stripe Connect prompt */}
       {canCreate && !stripeOnboarded && !stripeBannerDismissed && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3.5">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">Stripe Connect not linked</p>
-            <p className="mt-0.5 text-[13px] text-amber-700">
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Stripe Connect not linked</p>
+            <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
               To sell paid tickets, finish Stripe Connect onboarding. Free events work without it.
             </p>
-            {stripeError && <p className="mt-2 text-xs text-red-600">{stripeError}</p>}
+            {stripeError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{stripeError}</p>}
             <Button size="sm" className="mt-2.5" disabled={stripeConnecting} onClick={handleConnectStripe}>
               {stripeConnecting ? <><Loader2 className="size-3.5 animate-spin" /> Connecting…</> : "Connect Stripe →"}
             </Button>
           </div>
           <button
             onClick={() => setStripeBannerDismissed(true)}
-            className="shrink-0 rounded-lg p-1 text-amber-600 transition-colors hover:bg-amber-100"
+            className="shrink-0 rounded-lg p-1 text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/40"
             aria-label="Dismiss"
           >
             <X className="size-4" />
@@ -178,12 +178,12 @@ export default function V2EventsPage() {
                   setShowVenueModal(false)
                   router.push("/business/v2/events/new")
                 }}
-                className="flex items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 text-left text-sm font-medium text-neutral-700 transition-colors hover:border-[#079455]/40 hover:bg-neutral-50"
+                className="flex items-center gap-2.5 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 text-left text-sm font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:border-[#05EB54]/40 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
               >
-                <CalendarDays className="size-4 text-neutral-400" />
+                <CalendarDays className="size-4 text-neutral-400 dark:text-neutral-500" />
                 <span className="min-w-0">
                   <span className="block truncate">{v.name}</span>
-                  {v.address && <span className="block truncate text-xs font-normal text-neutral-500">{v.address}</span>}
+                  {v.address && <span className="block truncate text-xs font-normal text-neutral-500 dark:text-neutral-400">{v.address}</span>}
                 </span>
               </button>
             ))}
@@ -191,8 +191,8 @@ export default function V2EventsPage() {
         </DialogContent>
       </Dialog>
 
-      <p className="text-[13px] text-neutral-500">
-        Need a hand? Visit <Link href="/business/v2/help" className="font-medium text-[#079455] hover:underline">Help &amp; tutorials</Link>.
+      <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+        Need a hand? Visit <Link href="/business/v2/help" className="font-medium text-[#05EB54] hover:underline">Help &amp; tutorials</Link>.
       </p>
     </>
   )

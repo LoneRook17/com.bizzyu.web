@@ -3,7 +3,7 @@ import { cn } from "@/lib/v2/utils"
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("rounded-xl border border-neutral-200 bg-white shadow-sm", className)} {...props} />
+    <div ref={ref} className={cn("rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900", className)} {...props} />
   )
 )
 Card.displayName = "Card"
@@ -17,7 +17,7 @@ CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-base font-semibold text-neutral-900", className)} {...props} />
+    <h3 ref={ref} className={cn("text-base font-semibold text-neutral-900 dark:text-neutral-100", className)} {...props} />
   )
 )
 CardTitle.displayName = "CardTitle"
@@ -29,7 +29,7 @@ CardContent.displayName = "CardContent"
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("flex items-center gap-2 px-5 py-4 border-t border-neutral-100", className)} {...props} />
+    <div ref={ref} className={cn("flex items-center gap-2 px-5 py-4 border-t border-neutral-100 dark:border-neutral-800", className)} {...props} />
   )
 )
 CardFooter.displayName = "CardFooter"

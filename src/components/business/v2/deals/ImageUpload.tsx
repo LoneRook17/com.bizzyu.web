@@ -58,13 +58,13 @@ export default function ImageUpload({ value, onChange, className }: ImageUploadP
   return (
     <div className={className}>
       {value ? (
-        <div className="relative overflow-hidden rounded-xl border border-neutral-200">
+        <div className="relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Upload preview" className="h-48 w-full object-cover" />
           <button
             type="button"
             onClick={() => onChange("")}
-            className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-neutral-600 shadow-sm transition-colors hover:bg-white hover:text-red-500"
+            className="absolute right-2 top-2 rounded-full bg-white/90 dark:bg-neutral-900/90 p-1.5 text-neutral-600 dark:text-neutral-400 shadow-sm transition-colors hover:bg-white dark:hover:bg-neutral-900 hover:text-red-500 dark:hover:text-red-400"
           >
             <X className="size-4" />
           </button>
@@ -81,16 +81,16 @@ export default function ImageUpload({ value, onChange, className }: ImageUploadP
           onDrop={handleDrop}
           className={cn(
             "flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors",
-            dragOver ? "border-[#079455] bg-green-50/60" : "border-neutral-300 hover:border-neutral-400"
+            dragOver ? "border-[#05EB54] bg-green-50/60 dark:bg-green-950/40" : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-600"
           )}
         >
           {uploading ? (
-            <Loader2 className="size-7 animate-spin text-[#079455]" />
+            <Loader2 className="size-7 animate-spin text-[#05EB54]" />
           ) : (
             <>
-              <ImagePlus className="mb-2 size-7 text-neutral-400" />
-              <p className="text-sm text-neutral-600">Drag and drop or click to upload</p>
-              <p className="mt-1 text-xs text-neutral-400">PNG, JPG, GIF up to 10MB</p>
+              <ImagePlus className="mb-2 size-7 text-neutral-400 dark:text-neutral-500" />
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">Drag and drop or click to upload</p>
+              <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">PNG, JPG, GIF up to 10MB</p>
             </>
           )}
         </button>
@@ -98,7 +98,7 @@ export default function ImageUpload({ value, onChange, className }: ImageUploadP
 
       <input ref={inputRef} type="file" accept="image/*" onChange={handleInputChange} className="hidden" />
 
-      {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">{error}</p>}
     </div>
   )
 }

@@ -81,10 +81,10 @@ export default function V2AnnouncementsPage({ params }: { params: Promise<{ id: 
         }
       />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {confirmCount !== null && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <div className="rounded-xl border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm text-green-700 dark:text-green-400">
           Sent to {confirmCount} guest{confirmCount === 1 ? "" : "s"}.
         </div>
       )}
@@ -102,8 +102,8 @@ export default function V2AnnouncementsPage({ params }: { params: Promise<{ id: 
         <div className="flex flex-col gap-3">
           {items.map((a) => (
             <Card key={a.id} className="p-4">
-              <p className="text-sm text-neutral-900">{a.message}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
+              <p className="text-sm text-neutral-900 dark:text-neutral-100">{a.message}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500 dark:text-neutral-400">
                 <span>{fmtDateTime(a.fired_at)}</span>
                 <span>·</span>
                 <span>{a.recipient_count} recipient{a.recipient_count === 1 ? "" : "s"}</span>
@@ -122,9 +122,9 @@ export default function V2AnnouncementsPage({ params }: { params: Promise<{ id: 
             <DialogDescription>Sends a push notification to all ticket holders.</DialogDescription>
           </DialogHeader>
           <Textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, MAX_LEN))} placeholder="Your message here" rows={5} autoFocus />
-          <div className="flex items-center justify-between text-xs text-neutral-500">
+          <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400">
             <span>{message.length}/{MAX_LEN}</span>
-            {sendError && <span className="text-red-600">{sendError}</span>}
+            {sendError && <span className="text-red-600 dark:text-red-400">{sendError}</span>}
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setShowCompose(false)} disabled={sending}>Cancel</Button>

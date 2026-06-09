@@ -50,9 +50,9 @@ function isUpcoming(s: string): boolean {
 function StatTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <Card className="p-4">
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold text-neutral-900">{value}</p>
-      {sub && <p className="text-xs text-neutral-400">{sub}</p>}
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">{label}</p>
+      <p className="mt-0.5 text-lg font-semibold text-neutral-900 dark:text-neutral-100">{value}</p>
+      {sub && <p className="text-xs text-neutral-400 dark:text-neutral-500">{sub}</p>}
     </Card>
   )
 }
@@ -149,7 +149,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
   if (error || !lineSkip) {
     return (
       <div className="py-16 text-center">
-        <p className="mb-4 text-sm text-red-500">{error || "Line skip not found"}</p>
+        <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error || "Line skip not found"}</p>
         <Button variant="link" asChild>
           <Link href="/business/v2/line-skips">Back to line skips</Link>
         </Button>
@@ -162,17 +162,17 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       {/* header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <Link href="/business/v2/line-skips" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900">
+          <Link href="/business/v2/line-skips" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
             <ArrowLeft className="size-4" /> Back to line skips
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">{lineSkip.name}</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-neutral-500">
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{lineSkip.name}</h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-neutral-500 dark:text-neutral-400">
             <Badge variant={lineSkip.is_active ? "success" : "neutral"}>{lineSkip.is_active ? "Active" : "Inactive"}</Badge>
             <span>{formatDays(lineSkip.days_of_week)}</span>
-            <span className="text-neutral-300">·</span>
+            <span className="text-neutral-300 dark:text-neutral-600">·</span>
             <span>{formatDateRange(lineSkip.date_range_start, lineSkip.date_range_end)}</span>
           </div>
-          {lineSkip.description && <p className="mt-2 text-sm text-neutral-500">{lineSkip.description}</p>}
+          {lineSkip.description && <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">{lineSkip.description}</p>}
         </div>
         {canEdit && (
           <div className="flex shrink-0 items-center gap-2">
@@ -217,7 +217,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       {analytics && analytics.revenue_trend.length > 1 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-900">Revenue trend</h3>
+            <h3 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Revenue trend</h3>
             <div className="flex h-32 items-end gap-1">
               {(() => {
                 const maxRev = Math.max(...analytics.revenue_trend.map((r) => r.revenue_cents), 1)
@@ -227,9 +227,9 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                     className="flex min-w-0 flex-1 flex-col items-center gap-1"
                     title={`${new Date(r.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}: ${money(r.revenue_cents)} (${r.tickets_sold} tickets)`}
                   >
-                    <div className="min-h-[2px] w-full rounded-t bg-[#079455]/80" style={{ height: `${(r.revenue_cents / maxRev) * 100}%` }} />
+                    <div className="min-h-[2px] w-full rounded-t bg-[#05EB54]/80" style={{ height: `${(r.revenue_cents / maxRev) * 100}%` }} />
                     {analytics.revenue_trend.length <= 20 && (
-                      <span className="w-full truncate text-center text-[9px] text-neutral-400">
+                      <span className="w-full truncate text-center text-[9px] text-neutral-400 dark:text-neutral-500">
                         {new Date(r.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                       </span>
                     )}
@@ -243,8 +243,8 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
 
       {/* rolling info */}
       {lineSkip.is_active && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
-          <p className="text-xs text-blue-600">
+        <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-2.5">
+          <p className="text-xs text-blue-600 dark:text-blue-400">
             Upcoming nights are generated automatically on a rolling 2-week basis. New nights appear as earlier ones pass.
           </p>
         </div>
@@ -261,7 +261,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       {/* instances */}
       {displayedInstances.length === 0 ? (
         <div className="py-12 text-center">
-          <p className="text-sm text-neutral-500">No {tab} nights.</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">No {tab} nights.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -277,24 +277,24 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">
                       {/* date badge */}
-                      <div className="flex min-w-[56px] flex-col items-center justify-center rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2">
-                        <span className="text-xs uppercase text-neutral-500">{day.toLocaleDateString("en-US", { weekday: "short" })}</span>
-                        <span className="text-lg font-bold leading-tight text-neutral-900">{day.getDate()}</span>
-                        <span className="text-xs text-neutral-400">{day.toLocaleDateString("en-US", { month: "short" })}</span>
+                      <div className="flex min-w-[56px] flex-col items-center justify-center rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-2">
+                        <span className="text-xs uppercase text-neutral-500 dark:text-neutral-400">{day.toLocaleDateString("en-US", { weekday: "short" })}</span>
+                        <span className="text-lg font-bold leading-tight text-neutral-900 dark:text-neutral-100">{day.getDate()}</span>
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500">{day.toLocaleDateString("en-US", { month: "short" })}</span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-neutral-900">{formatDate(instance.date)}</p>
-                        <p className="mt-0.5 text-xs text-neutral-500">{formatTime(instance.start_time)} – {formatTime(instance.end_time)}</p>
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{formatDate(instance.date)}</p>
+                        <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{formatTime(instance.start_time)} – {formatTime(instance.end_time)}</p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                          <span className="text-xs font-medium text-neutral-600">{money(instance.price_cents)}</span>
-                          <span className="text-xs text-neutral-500">
+                          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">{money(instance.price_cents)}</span>
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
                             {instance.capacity ? `${instance.tickets_sold} / ${instance.capacity} sold` : `${instance.tickets_sold} sold (unlimited)`}
                           </span>
                           {instance.tickets_sold > 0 && revenueCents > 0 && (
-                            <span className="text-xs text-neutral-400">{money(revenueCents)} revenue</span>
+                            <span className="text-xs text-neutral-400 dark:text-neutral-500">{money(revenueCents)} revenue</span>
                           )}
                           {checkinRate !== undefined && checkinRate > 0 && (
-                            <span className="text-xs text-neutral-400">{checkinRate.toFixed(0)}% checked in</span>
+                            <span className="text-xs text-neutral-400 dark:text-neutral-500">{checkinRate.toFixed(0)}% checked in</span>
                           )}
                         </div>
                       </div>
@@ -329,7 +329,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                   </div>
 
                   {instance.status === "cancelled" && instance.cancellation_reason && (
-                    <p className="ml-[68px] mt-2 text-xs text-red-500">Cancelled: {instance.cancellation_reason}</p>
+                    <p className="ml-[68px] mt-2 text-xs text-red-500 dark:text-red-400">Cancelled: {instance.cancellation_reason}</p>
                   )}
                 </CardContent>
               </Card>
@@ -347,14 +347,14 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
               This stops new nights from being generated for {lineSkip.name} and cancels any future nights with no paid tickets.
             </DialogDescription>
           </DialogHeader>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-neutral-400 dark:text-neutral-500">
             To deactivate a line skip with paid future tickets, cancel those nights individually first. Each individual cancellation goes through our refund policy.
           </p>
           {deactivateError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
-              <p className="text-xs font-medium text-red-700">{deactivateError.message}</p>
+            <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2">
+              <p className="text-xs font-medium text-red-700 dark:text-red-400">{deactivateError.message}</p>
               {deactivateError.blockingTicketCount !== undefined && deactivateError.blockingInstanceIds && (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                   {deactivateError.blockingTicketCount} paid ticket{deactivateError.blockingTicketCount === 1 ? "" : "s"} across{" "}
                   {deactivateError.blockingInstanceIds.length} night{deactivateError.blockingInstanceIds.length === 1 ? "" : "s"}.
                 </p>

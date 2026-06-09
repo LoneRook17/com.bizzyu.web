@@ -54,7 +54,7 @@ export default function V2SmsBlastHistoryPage({ params }: { params: Promise<{ id
         }
       />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {loading ? (
         <div className="flex flex-col gap-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
@@ -69,8 +69,8 @@ export default function V2SmsBlastHistoryPage({ params }: { params: Promise<{ id
         <div className="flex flex-col gap-3">
           {items.map((b) => (
             <Card key={b.id} className="p-4">
-              <p className="line-clamp-2 text-sm text-neutral-900">{b.message}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
+              <p className="line-clamp-2 text-sm text-neutral-900 dark:text-neutral-100">{b.message}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500 dark:text-neutral-400">
                 <span>{fmtDateTime(b.fired_at)}</span>
                 <span>·</span>
                 <span>{eventCount(b)} event{eventCount(b) === 1 ? "" : "s"}</span>

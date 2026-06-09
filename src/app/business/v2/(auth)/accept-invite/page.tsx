@@ -134,7 +134,7 @@ function AcceptInviteContent() {
 
       <AuthFooterLink>
         Already have an account?{" "}
-        <Link href="/business/v2/login" className="font-medium text-[#079455] hover:underline">
+        <Link href="/business/v2/login" className="font-medium text-[#05EB54] hover:underline">
           Log in
         </Link>
       </AuthFooterLink>

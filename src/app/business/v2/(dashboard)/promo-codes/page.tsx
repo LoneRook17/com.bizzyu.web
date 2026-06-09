@@ -163,7 +163,7 @@ export default function UniversalPromoCodesPage() {
         title="Universal promo codes"
         description={
           <>
-            Codes here apply to <span className="font-medium text-neutral-900">every event at {venueName}</span> — now and in
+            Codes here apply to <span className="font-medium text-neutral-900 dark:text-neutral-100">every event at {venueName}</span> — now and in
             the future. Usage limits count across all of those events.
           </>
         }
@@ -177,15 +177,15 @@ export default function UniversalPromoCodesPage() {
       />
 
       {!venueReady ? (
-        <Card className="flex items-start gap-3 border-amber-200 bg-amber-50 p-4">
-          <MapPin className="mt-0.5 size-5 shrink-0 text-amber-600" />
-          <p className="text-sm text-amber-800">
+        <Card className="flex items-start gap-3 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
+          <MapPin className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-sm text-amber-800 dark:text-amber-300">
             Select a specific venue (not “All venues”) in the sidebar to manage its universal promo codes.
           </p>
         </Card>
       ) : (
         <>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           {loading ? (
             <div className="space-y-3">
@@ -210,7 +210,7 @@ export default function UniversalPromoCodesPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-neutral-100 bg-neutral-50/50 text-xs text-neutral-500">
+                    <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 text-xs text-neutral-500 dark:text-neutral-400">
                       <th className="px-5 py-3 text-left font-medium">Code</th>
                       <th className="px-5 py-3 text-left font-medium">Discount</th>
                       <th className="px-5 py-3 text-right font-medium">Uses</th>
@@ -225,12 +225,12 @@ export default function UniversalPromoCodesPage() {
                       const isMaxed = code.max_redemptions && code.current_redemptions >= code.max_redemptions
                       const status = !code.is_active ? "Inactive" : isExpired ? "Expired" : isMaxed ? "Maxed" : "Active"
                       return (
-                        <tr key={code.promo_code_id} className="border-b border-neutral-50 last:border-0">
-                          <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900">{code.code}</td>
-                          <td className="px-5 py-3 text-neutral-600">
+                        <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800/60 last:border-0">
+                          <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">{code.code}</td>
+                          <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">
                             {code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}
                           </td>
-                          <td className="px-5 py-3 text-right text-neutral-600">
+                          <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">
                             {code.current_redemptions}
                             {code.max_redemptions ? ` / ${code.max_redemptions}` : ""}
                           </td>
@@ -239,7 +239,7 @@ export default function UniversalPromoCodesPage() {
                               {status}
                             </Badge>
                           </td>
-                          <td className="px-5 py-3 text-xs text-neutral-500">
+                          <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">
                             {code.expires_at ? formatDate(code.expires_at) : "Never"}
                           </td>
                           <td className="px-5 py-3 text-right whitespace-nowrap">
@@ -255,14 +255,14 @@ export default function UniversalPromoCodesPage() {
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                                    className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-300"
                                     onClick={() => setConfirm({ kind: "delete", code })}
                                   >
                                     Delete
                                   </Button>
                                 ) : (
                                   <span
-                                    className="px-3 text-[13px] font-semibold text-neutral-300"
+                                    className="px-3 text-[13px] font-semibold text-neutral-300 dark:text-neutral-600"
                                     title="Has redemptions — deactivate instead"
                                   >
                                     Delete
@@ -306,7 +306,7 @@ export default function UniversalPromoCodesPage() {
                 className="font-mono"
                 autoFocus={!editingId}
               />
-              {editingId && <p className="mt-1 text-[11px] text-neutral-400">Code can’t be changed after creation.</p>}
+              {editingId && <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">Code can’t be changed after creation.</p>}
             </div>
 
             <div>
@@ -369,7 +369,7 @@ export default function UniversalPromoCodesPage() {
               />
             </div>
 
-            {formError && <p className="text-sm text-red-600 sm:col-span-2">{formError}</p>}
+            {formError && <p className="text-sm text-red-600 dark:text-red-400 sm:col-span-2">{formError}</p>}
 
             <DialogFooter className="sm:col-span-2">
               <Button type="button" variant="secondary" onClick={() => setFormOpen(false)} disabled={saving}>
@@ -414,7 +414,7 @@ export default function UniversalPromoCodesPage() {
               </DialogHeader>
 
               {confirmError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{confirmError}</div>
+                <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-400">{confirmError}</div>
               )}
 
               <DialogFooter>

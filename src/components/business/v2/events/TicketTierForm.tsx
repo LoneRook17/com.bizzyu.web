@@ -38,13 +38,13 @@ function ValidTimeInfo() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="What does the redeemable / scan window do?"
-        className="inline-flex size-4 items-center justify-center rounded-full border border-neutral-300 text-neutral-500 hover:bg-neutral-100"
+        className="inline-flex size-4 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
       >
         <Info className="size-2.5" />
       </button>
       {open && (
-        <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-neutral-200 bg-white p-3 text-[11px] leading-relaxed text-neutral-600 shadow-lg">
-          <strong className="mb-1 block text-neutral-800">Redeemable / scan window (optional)</strong>
+        <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400 shadow-lg">
+          <strong className="mb-1 block text-neutral-800 dark:text-neutral-200">Redeemable / scan window (optional)</strong>
           Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be{" "}
           <strong>bought beforehand</strong> — sales just <strong>close when the window ends</strong>.
         </span>
@@ -69,10 +69,10 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
   return (
     <div className="space-y-3">
       {tiers.map((tier, i) => (
-        <div key={i} className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-4">
+        <div key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-800/50 p-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div className="col-span-2 md:col-span-1">
-              <Label className="mb-1 block text-xs text-neutral-600">Name</Label>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Name</Label>
               <Input
                 value={tier.name}
                 onChange={(e) => updateTier(i, "name", e.target.value)}
@@ -80,7 +80,7 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
               />
             </div>
             <div>
-              <Label className="mb-1 block text-xs text-neutral-600">Type</Label>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Type</Label>
               <Select value={tier.ticket_type} onChange={(e) => updateTier(i, "ticket_type", e.target.value)}>
                 {TICKET_TYPES.map((t) => (
                   <option key={t} value={t}>{TICKET_TYPE_LABELS[t] ?? t}</option>
@@ -88,7 +88,7 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
               </Select>
             </div>
             <div>
-              <Label className="mb-1 block text-xs text-neutral-600">Price ($)</Label>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Price ($)</Label>
               <Input
                 type="number"
                 min="0"
@@ -102,8 +102,8 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
               />
             </div>
             <div>
-              <Label className="mb-1 block text-xs text-neutral-600">
-                Quantity <span className="font-normal text-neutral-400">(0 = ∞)</span>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+                Quantity <span className="font-normal text-neutral-400 dark:text-neutral-500">(0 = ∞)</span>
               </Label>
               <Input
                 type="number"
@@ -119,13 +119,13 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
           </div>
 
           <div className="mt-3 flex items-center gap-1.5">
-            <span className="text-xs font-medium text-neutral-600">Redeemable / scan window</span>
-            <span className="text-xs font-normal text-neutral-400">(optional)</span>
+            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Redeemable / scan window</span>
+            <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
             <ValidTimeInfo />
           </div>
           <div className="mt-1 grid grid-cols-2 gap-3">
             <div>
-              <Label className="mb-1 block text-xs text-neutral-600">Valid from</Label>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid from</Label>
               <Input
                 type="datetime-local"
                 value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
@@ -133,7 +133,7 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
               />
             </div>
             <div>
-              <Label className="mb-1 block text-xs text-neutral-600">Valid until</Label>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid until</Label>
               <Input
                 type="datetime-local"
                 value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
@@ -141,13 +141,13 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
               />
             </div>
           </div>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
             When this ticket can be scanned at the door. It can still be bought beforehand — sales just close when the window ends. Leave blank for no limit.
           </p>
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Label className="text-xs text-neutral-600">Max per person</Label>
+              <Label className="text-xs text-neutral-600 dark:text-neutral-400">Max per person</Label>
               <Input
                 type="number"
                 min="0"
@@ -159,10 +159,10 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
                   if ((tier.max_per_person as unknown as string) === "" || isNaN(tier.max_per_person ?? 0)) updateTier(i, "max_per_person", 0)
                 }}
               />
-              <span className="text-xs text-neutral-400">(0 = unlimited)</span>
+              <span className="text-xs text-neutral-400 dark:text-neutral-500">(0 = unlimited)</span>
             </div>
             {tiers.length > 1 && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => removeTier(i)} className="text-red-600 hover:bg-red-50 hover:text-red-700">
+              <Button type="button" variant="ghost" size="sm" onClick={() => removeTier(i)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-400">
                 <Trash2 className="size-3.5" /> Remove
               </Button>
             )}

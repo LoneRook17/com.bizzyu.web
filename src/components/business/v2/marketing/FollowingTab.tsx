@@ -32,9 +32,9 @@ interface Props {
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
-      <p className="text-[11px] text-neutral-500">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold text-neutral-900">{value}</p>
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-3 py-2">
+      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</p>
+      <p className="mt-0.5 text-lg font-semibold text-neutral-900 dark:text-neutral-100">{value}</p>
     </div>
   )
 }
@@ -89,7 +89,7 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
   if (error) {
     return (
       <Card className="p-6 text-center">
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         <Button variant="secondary" size="sm" className="mt-3" onClick={load}>
           Retry
         </Button>
@@ -103,9 +103,9 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
 
   return (
     <div className="space-y-4">
-      <Card className="border-green-200 bg-green-50/60 p-5">
-        <p className="text-xs text-neutral-600">Followers of {venueLabel}</p>
-        <p className="mt-1 text-4xl font-semibold tracking-tight text-[#079455]">{total}</p>
+      <Card className="border-green-200 dark:border-green-900 bg-green-50/60 dark:bg-green-950/40 p-5">
+        <p className="text-xs text-neutral-600 dark:text-neutral-400">Followers of {venueLabel}</p>
+        <p className="mt-1 text-4xl font-semibold tracking-tight text-[#05EB54]">{total}</p>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <MiniStat label="Push reachable" value={pushReachable} />
           <MiniStat label="SMS reachable" value={phoneReachable} />
@@ -113,35 +113,35 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
       </Card>
 
       {mustPickVenue ? (
-        <Card className="border-green-200 bg-green-50/40 p-5">
-          <p className="text-sm font-semibold text-neutral-900">Pick a venue to send follower blasts.</p>
-          <p className="mt-1 text-xs text-neutral-600">
+        <Card className="border-green-200 dark:border-green-900 bg-green-50/40 dark:bg-green-950/30 p-5">
+          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Pick a venue to send follower blasts.</p>
+          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
             Followers are per-venue, so we send to one venue at a time. Use the venue switcher in the sidebar to choose a
             specific venue.
           </p>
         </Card>
       ) : total === 0 ? (
         <Card className="p-5 text-center">
-          <p className="text-sm font-semibold text-neutral-900">No followers yet.</p>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">No followers yet.</p>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             Users auto-follow when they buy a ticket at one of your venues, and can manually follow from the venue page.
           </p>
         </Card>
       ) : (
         <button
           onClick={() => setComposerChannel("sms")}
-          className="flex w-full items-center justify-between rounded-xl border border-neutral-200 bg-white px-4 py-3.5 text-left shadow-sm outline-none transition-colors hover:border-[#079455] hover:bg-green-50/40"
+          className="flex w-full items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3.5 text-left shadow-sm outline-none transition-colors hover:border-[#05EB54] hover:bg-green-50/40 dark:hover:bg-green-950/30"
         >
           <span className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-green-50 text-[#079455]">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950/40 text-[#05EB54]">
               <MessageSquare className="size-5" />
             </span>
             <span>
-              <span className="block text-sm font-semibold text-neutral-900">Send SMS</span>
-              <span className="block text-xs text-neutral-500">{phoneReachable} reachable via SMS</span>
+              <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100">Send SMS</span>
+              <span className="block text-xs text-neutral-500 dark:text-neutral-400">{phoneReachable} reachable via SMS</span>
             </span>
           </span>
-          <ArrowRight className="size-4 text-neutral-400" />
+          <ArrowRight className="size-4 text-neutral-400 dark:text-neutral-500" />
         </button>
       )}
 

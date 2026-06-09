@@ -67,15 +67,15 @@ const BUSINESS_PERMISSIONS: BizPerm[] = [
 ]
 
 function Yes() {
-  return <Check className="mx-auto size-4 text-[#079455]" />
+  return <Check className="mx-auto size-4 text-[#05EB54]" />
 }
 function No() {
-  return <Minus className="mx-auto size-3.5 text-neutral-300" />
+  return <Minus className="mx-auto size-3.5 text-neutral-300 dark:text-neutral-600" />
 }
 function CellValue({ value }: { value: string }) {
   if (value === "yes") return <Yes />
   if (value === "no" || value === "") return <No />
-  return <span className="text-[11px] font-medium text-neutral-500">{value}</span>
+  return <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{value}</span>
 }
 
 export default function RolePermissionsDialog({ variant }: RolePermissionsDialogProps) {
@@ -107,17 +107,17 @@ function EventTable() {
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-neutral-200">
-          <th className="w-1/2 py-2 text-left font-semibold text-neutral-900">Permission</th>
-          <th className="py-2 text-center font-semibold text-neutral-900">Owner</th>
-          <th className="py-2 text-center font-semibold text-neutral-900">Co-host</th>
-          <th className="py-2 text-center font-semibold text-neutral-900">Crew</th>
+        <tr className="border-b border-neutral-200 dark:border-neutral-800">
+          <th className="w-1/2 py-2 text-left font-semibold text-neutral-900 dark:text-neutral-100">Permission</th>
+          <th className="py-2 text-center font-semibold text-neutral-900 dark:text-neutral-100">Owner</th>
+          <th className="py-2 text-center font-semibold text-neutral-900 dark:text-neutral-100">Co-host</th>
+          <th className="py-2 text-center font-semibold text-neutral-900 dark:text-neutral-100">Crew</th>
         </tr>
       </thead>
       <tbody>
         {EVENT_PERMISSIONS.map((p) => (
-          <tr key={p.label} className="border-b border-neutral-100">
-            <td className="py-2.5 text-neutral-700">{p.label}</td>
+          <tr key={p.label} className="border-b border-neutral-100 dark:border-neutral-800">
+            <td className="py-2.5 text-neutral-700 dark:text-neutral-300">{p.label}</td>
             <td className="py-2.5 text-center">{p.owner ? <Yes /> : <No />}</td>
             <td className="py-2.5 text-center">{p.cohost ? <Yes /> : <No />}</td>
             <td className="py-2.5 text-center">{p.crew ? <Yes /> : <No />}</td>
@@ -132,11 +132,11 @@ function BusinessTable() {
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b border-neutral-200">
-          <th className="w-2/5 py-2 text-left font-semibold text-neutral-900">Permission</th>
-          <th className="py-2 text-center font-semibold text-neutral-900">Owner</th>
-          <th className="py-2 text-center font-semibold text-neutral-900">Manager</th>
-          <th className="py-2 text-center font-semibold text-neutral-900">Staff</th>
+        <tr className="border-b border-neutral-200 dark:border-neutral-800">
+          <th className="w-2/5 py-2 text-left font-semibold text-neutral-900 dark:text-neutral-100">Permission</th>
+          <th className="py-2 text-center font-semibold text-neutral-900 dark:text-neutral-100">Owner</th>
+          <th className="py-2 text-center font-semibold text-neutral-900 dark:text-neutral-100">Manager</th>
+          <th className="py-2 text-center font-semibold text-neutral-900 dark:text-neutral-100">Staff</th>
         </tr>
       </thead>
       <tbody>
@@ -144,15 +144,15 @@ function BusinessTable() {
           if (!p.owner && !p.manager && !p.staff) {
             return (
               <tr key={i}>
-                <td colSpan={4} className="pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                <td colSpan={4} className="pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                   {p.label}
                 </td>
               </tr>
             )
           }
           return (
-            <tr key={i} className="border-b border-neutral-100">
-              <td className="py-2.5 text-neutral-700">{p.label}</td>
+            <tr key={i} className="border-b border-neutral-100 dark:border-neutral-800">
+              <td className="py-2.5 text-neutral-700 dark:text-neutral-300">{p.label}</td>
               <td className="py-2.5 text-center"><CellValue value={p.owner} /></td>
               <td className="py-2.5 text-center"><CellValue value={p.manager} /></td>
               <td className="py-2.5 text-center"><CellValue value={p.staff} /></td>

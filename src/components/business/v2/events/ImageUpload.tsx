@@ -51,13 +51,13 @@ export function ImageUpload({ value, onChange, aspect = "video", className }: Im
   return (
     <div className={className}>
       {value ? (
-        <div className={cn("relative overflow-hidden rounded-xl border border-neutral-200", previewClass)}>
+        <div className={cn("relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800", previewClass)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Upload preview" className="h-full w-full object-cover" />
           <button
             type="button"
             onClick={() => onChange("")}
-            className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-neutral-600 shadow-sm transition-colors hover:bg-white hover:text-red-500"
+            className="absolute right-2 top-2 rounded-full bg-white/90 dark:bg-neutral-900/90 p-1.5 text-neutral-600 dark:text-neutral-400 shadow-sm transition-colors hover:bg-white dark:hover:bg-neutral-900 hover:text-red-500 dark:hover:text-red-400"
           >
             <X className="size-4" />
           </button>
@@ -80,18 +80,18 @@ export function ImageUpload({ value, onChange, aspect = "video", className }: Im
           className={cn(
             "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
             previewClass,
-            dragOver ? "border-[#079455] bg-green-50/60" : "border-neutral-300 bg-neutral-50/60 hover:border-neutral-400"
+            dragOver ? "border-[#05EB54] bg-green-50/60 dark:bg-green-950/40" : "border-neutral-300 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/50 hover:border-neutral-400 dark:hover:border-neutral-600"
           )}
         >
           {uploading ? (
-            <Loader2 className="size-7 animate-spin text-[#079455]" />
+            <Loader2 className="size-7 animate-spin text-[#05EB54]" />
           ) : (
             <>
-              <span className="flex size-11 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
+              <span className="flex size-11 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
                 <ImagePlus className="size-5" />
               </span>
-              <span className="text-sm font-medium text-neutral-700">Drag and drop or click to upload</span>
-              <span className="text-xs text-neutral-500">PNG, JPG, GIF up to 10MB</span>
+              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Drag and drop or click to upload</span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">PNG, JPG, GIF up to 10MB</span>
             </>
           )}
         </button>
@@ -103,7 +103,7 @@ export function ImageUpload({ value, onChange, aspect = "video", className }: Im
         e.target.value = ""
       }} />
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }

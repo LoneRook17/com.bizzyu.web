@@ -190,7 +190,7 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
               value={address}
               onChange={setAddress}
               placeholder="123 Main St, City, ST"
-              className="flex h-9 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none transition-colors placeholder:text-neutral-400 focus-visible:border-[#079455] focus-visible:ring-2 focus-visible:ring-[#079455]/30"
+              className="flex h-9 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 shadow-sm outline-none transition-colors placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:border-[#05EB54] focus-visible:ring-2 focus-visible:ring-[#05EB54]/30"
             />
           </div>
 
@@ -213,14 +213,14 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
           <div className="flex flex-col gap-1.5">
             <Label>Venue photo</Label>
             {photoPreview ? (
-              <div className="relative overflow-hidden rounded-xl border border-neutral-200">
+              <div className="relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={photoPreview} alt="Venue photo preview" className="h-40 w-full object-cover" />
                 <button
                   type="button"
                   onClick={clearPhoto}
                   disabled={photoDeleting}
-                  className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-neutral-600 shadow-sm transition-colors hover:bg-white hover:text-red-500 disabled:opacity-60"
+                  className="absolute right-2 top-2 rounded-full bg-white/90 dark:bg-neutral-900/90 p-1.5 text-neutral-600 dark:text-neutral-400 shadow-sm transition-colors hover:bg-white dark:hover:bg-neutral-900 hover:text-red-500 dark:hover:text-red-400 disabled:opacity-60"
                   aria-label={photoFile ? "Cancel new photo" : "Remove photo"}
                 >
                   <X className="size-4" />
@@ -234,12 +234,12 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handlePhotoSelect(f) }}
                 className={cn(
                   "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors",
-                  dragOver ? "border-[#079455] bg-green-50/60" : "border-neutral-300 hover:border-neutral-400"
+                  dragOver ? "border-[#05EB54] bg-green-50/60 dark:bg-green-950/40" : "border-neutral-300 dark:border-neutral-700 hover:border-neutral-400"
                 )}
               >
-                <ImageIcon className="mb-2 size-8 text-neutral-400" />
-                <p className="text-sm text-neutral-500">Drag and drop or click to upload</p>
-                <p className="mt-1 text-xs text-neutral-400">JPEG or PNG, max 5MB</p>
+                <ImageIcon className="mb-2 size-8 text-neutral-400 dark:text-neutral-500" />
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Drag and drop or click to upload</p>
+                <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">JPEG or PNG, max 5MB</p>
               </div>
             )}
             <input
@@ -249,10 +249,10 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoSelect(f); e.target.value = "" }}
               className="hidden"
             />
-            {photoError && <p className="text-xs text-red-500">{photoError}</p>}
+            {photoError && <p className="text-xs text-red-500 dark:text-red-400">{photoError}</p>}
           </div>
 
-          {error && <div className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">{error}</div>}
+          {error && <div className="rounded-lg bg-red-50 dark:bg-red-950/40 px-3 py-2.5 text-sm text-red-600 dark:text-red-400">{error}</div>}
 
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>

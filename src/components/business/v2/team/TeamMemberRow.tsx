@@ -18,10 +18,10 @@ interface TeamMemberRowProps {
 }
 
 const ROLE_BADGE: Record<string, { className: string }> = {
-  owner: { className: "bg-purple-50 text-purple-700" },
-  manager: { className: "bg-blue-50 text-blue-700" },
-  staff: { className: "bg-neutral-100 text-neutral-600" },
-  promoter: { className: "bg-green-50 text-green-700" },
+  owner: { className: "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400" },
+  manager: { className: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400" },
+  staff: { className: "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400" },
+  promoter: { className: "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400" },
 }
 
 const ASSIGNABLE_ROLES = ["manager", "staff"]
@@ -43,19 +43,19 @@ export default function TeamMemberRow({
     : "—"
 
   return (
-    <div className="flex flex-col gap-3 border-b border-neutral-100 py-3.5 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+    <div className="flex flex-col gap-3 border-b border-neutral-100 dark:border-neutral-800 py-3.5 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar className="size-9">
-          <AvatarFallback className="bg-neutral-100 text-neutral-600">{initials(member.email)}</AvatarFallback>
+          <AvatarFallback className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">{initials(member.email)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-neutral-900">{member.email}</p>
+          <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{member.email}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-2">
-            <Badge size="sm" className={cn(ROLE_BADGE[member.role]?.className ?? "bg-neutral-100 text-neutral-600")}>
+            <Badge size="sm" className={cn(ROLE_BADGE[member.role]?.className ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400")}>
               {ROLE_LABELS[member.role] ?? member.role}
             </Badge>
             {isPending && <Badge size="sm" variant="warning">Pending invite</Badge>}
-            <span className="text-xs text-neutral-400">{joinedDate}</span>
+            <span className="text-xs text-neutral-400 dark:text-neutral-500">{joinedDate}</span>
           </div>
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function TeamMemberRow({
             ))}
           </Select>
 
-          <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 hover:bg-red-50">
+          <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
             Remove
           </Button>
         </div>

@@ -10,8 +10,8 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 export function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
     <Card className="p-5">
-      <p className="text-sm font-medium text-neutral-600">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-neutral-900">{value}</p>
+      <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{label}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{value}</p>
     </Card>
   )
 }
@@ -46,12 +46,12 @@ export function Section({
         className="group flex items-center gap-2 outline-none"
       >
         {open ? (
-          <ChevronDown className="size-4 text-neutral-400" />
+          <ChevronDown className="size-4 text-neutral-400 dark:text-neutral-500" />
         ) : (
-          <ChevronRight className="size-4 text-neutral-400" />
+          <ChevronRight className="size-4 text-neutral-400 dark:text-neutral-500" />
         )}
-        <h3 className="text-sm font-semibold text-neutral-900 group-hover:text-[#079455]">{title}</h3>
-        <span className="inline-flex items-center justify-center rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-600">
+        <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">{title}</h3>
+        <span className="inline-flex items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-xs font-semibold text-neutral-600 dark:text-neutral-400">
           {count}
         </span>
       </button>
@@ -64,9 +64,9 @@ export function Section({
 export function VenueGroupLabel({ venue, count }: { venue: string; count: number }) {
   return (
     <div className="mb-2 ml-1 flex items-center gap-2">
-      <MapPin className="size-3.5 text-neutral-400" />
-      <span className="text-xs font-semibold text-neutral-600">{venue}</span>
-      <span className="text-xs text-neutral-400">({count})</span>
+      <MapPin className="size-3.5 text-neutral-400 dark:text-neutral-500" />
+      <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">{venue}</span>
+      <span className="text-xs text-neutral-400 dark:text-neutral-500">({count})</span>
     </div>
   )
 }
@@ -75,8 +75,8 @@ export function VenueGroupLabel({ venue, count }: { venue: string; count: number
 export function RowStat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="text-right">
-      <p className="text-xs text-neutral-500">{label}</p>
-      <p className="text-sm font-semibold text-neutral-900">{value}</p>
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">{label}</p>
+      <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{value}</p>
     </div>
   )
 }

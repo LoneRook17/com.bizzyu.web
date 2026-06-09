@@ -118,17 +118,17 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
       <div className="min-w-0">
         <Link
           href="/business/v2/deals"
-          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900"
+          className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
         >
           <ArrowLeft className="size-4" /> Back to deals
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
           {isEditing ? "Edit deal" : "Create deal"}
         </h1>
       </div>
 
       {moderationNotice && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           {moderationNotice}
         </div>
       )}
@@ -147,30 +147,30 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={business.logo_url} alt="Logo" className="size-7 rounded-full object-cover" />
                       ) : (
-                        <div className="flex size-7 items-center justify-center rounded-full bg-[#079455]">
+                        <div className="flex size-7 items-center justify-center rounded-full bg-[#05EB54]">
                           <span className="text-xs font-bold text-white">
                             {businessName.charAt(0).toUpperCase()}
                           </span>
                         </div>
                       )}
-                      <span className="text-xs font-medium text-neutral-500">{freqLabel}</span>
+                      <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{freqLabel}</span>
                     </div>
-                    <Heart className="size-5 text-neutral-300" />
+                    <Heart className="size-5 text-neutral-300 dark:text-neutral-600" />
                   </div>
 
                   {/* deal image */}
-                  <div className="relative mx-3 aspect-[16/10] overflow-hidden rounded-xl bg-neutral-100">
+                  <div className="relative mx-3 aspect-[16/10] overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
                     {hasImage ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={form.deal_image_path} alt="Deal preview" className="absolute inset-0 size-full object-cover" />
                     ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-neutral-300">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-neutral-300 dark:text-neutral-600">
                         <ImageIcon className="size-9" />
                         <span className="mt-2 text-xs">Deal image</span>
                       </div>
                     )}
                     {form.total_saving && (
-                      <div className="absolute right-2 top-2 rounded-full bg-[#079455] px-2.5 py-1 text-xs font-bold text-white shadow-md">
+                      <div className="absolute right-2 top-2 rounded-full bg-[#05EB54] px-2.5 py-1 text-xs font-bold text-white shadow-md">
                         Save {form.total_saving.startsWith("$") ? form.total_saving : `$${form.total_saving}`}
                       </div>
                     )}
@@ -178,15 +178,15 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
                   {/* deal info */}
                   <div className="px-4 py-3">
-                    <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-snug text-neutral-900">
+                    <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-snug text-neutral-900 dark:text-neutral-100">
                       {form.deal_title || "Your deal title"}
                     </h3>
-                    <p className="mt-1 truncate text-xs text-neutral-500">{businessName}</p>
+                    <p className="mt-1 truncate text-xs text-neutral-500 dark:text-neutral-400">{businessName}</p>
                   </div>
                 </Card>
 
-                <p className="mt-3 text-center text-xs text-neutral-500">
-                  This is how your <span className="font-semibold text-neutral-900">Bizzy-exclusive</span> deal will appear to students
+                <p className="mt-3 text-center text-xs text-neutral-500 dark:text-neutral-400">
+                  This is how your <span className="font-semibold text-neutral-900 dark:text-neutral-100">Bizzy-exclusive</span> deal will appear to students
                 </p>
               </div>
             </div>
@@ -197,12 +197,12 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
             <Card>
               <CardContent className="space-y-5 p-6">
                 <div>
-                  <h2 className="text-lg font-semibold text-neutral-900">Deal details</h2>
-                  <p className="mt-0.5 text-sm text-neutral-600">Describe the deal you want to offer students.</p>
+                  <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Deal details</h2>
+                  <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">Describe the deal you want to offer students.</p>
                 </div>
 
-                <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-                  <p className="text-sm font-medium text-blue-800">
+                <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
                     Your offer must be exclusive to Bizzy users and not available to the general public elsewhere.
                   </p>
                 </div>
@@ -211,7 +211,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                 {!isEditing && venues.length > 0 && (
                   <div className="space-y-1.5">
                     <Label htmlFor="venue_select">
-                      Venue <span className="text-[#079455]">*</span>
+                      Venue <span className="text-[#05EB54]">*</span>
                     </Label>
                     <Select
                       id="venue_select"
@@ -231,14 +231,14 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                         </option>
                       ))}
                     </Select>
-                    {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
+                    {errors.venue && <p className="text-xs text-red-500 dark:text-red-400">{errors.venue}</p>}
                   </div>
                 )}
 
                 {/* Title */}
                 <div className="space-y-1.5">
                   <Label htmlFor="deal_title">
-                    Deal title <span className="text-[#079455]">*</span>
+                    Deal title <span className="text-[#05EB54]">*</span>
                   </Label>
                   <Input
                     id="deal_title"
@@ -249,9 +249,9 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                     className={cn(errors.deal_title && "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/30")}
                   />
                   {errors.deal_title ? (
-                    <p className="text-xs text-red-500">{errors.deal_title}</p>
+                    <p className="text-xs text-red-500 dark:text-red-400">{errors.deal_title}</p>
                   ) : (
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
                       Keep it clear and compelling. Students should only be able to access this deal through Bizzy.
                     </p>
                   )}
@@ -260,7 +260,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                 {/* Description */}
                 <div className="space-y-1.5">
                   <Label htmlFor="description">
-                    Deal description <span className="text-[#079455]">*</span>
+                    Deal description <span className="text-[#05EB54]">*</span>
                   </Label>
                   <Textarea
                     id="description"
@@ -271,17 +271,17 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                     placeholder="e.g. Buy one espresso martini, get one free. Must be 21+. Show this deal at checkout."
                     className={cn("resize-none", errors.description && "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/30")}
                   />
-                  {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
+                  {errors.description && <p className="text-xs text-red-500 dark:text-red-400">{errors.description}</p>}
                 </div>
 
                 {/* Savings + Frequency */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="total_saving">
-                      Estimated savings <span className="text-[#079455]">*</span>
+                      Estimated savings <span className="text-[#05EB54]">*</span>
                     </Label>
                     <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
                       <Input
                         id="total_saving"
                         name="total_saving"
@@ -296,17 +296,17 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                         className={cn("pl-7", errors.total_saving && "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/30")}
                       />
                     </div>
-                    {errors.total_saving && <p className="text-xs text-red-500">{errors.total_saving}</p>}
+                    {errors.total_saving && <p className="text-xs text-red-500 dark:text-red-400">{errors.total_saving}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
                       <Label htmlFor="redemption_frequency">
-                        Redemption frequency <span className="text-[#079455]">*</span>
+                        Redemption frequency <span className="text-[#05EB54]">*</span>
                       </Label>
                       <button
                         type="button"
                         onClick={() => setShowFreqInfo(!showFreqInfo)}
-                        className="text-neutral-400 transition-colors hover:text-neutral-600"
+                        className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
                         aria-label="What is redemption frequency?"
                       >
                         <Info className="size-3.5" />
@@ -326,19 +326,19 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                         </option>
                       ))}
                     </Select>
-                    {errors.redemption_frequency && <p className="text-xs text-red-500">{errors.redemption_frequency}</p>}
+                    {errors.redemption_frequency && <p className="text-xs text-red-500 dark:text-red-400">{errors.redemption_frequency}</p>}
                   </div>
                 </div>
 
                 {/* Frequency info */}
                 {showFreqInfo && (
-                  <div className="space-y-1.5 rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-600">
+                  <div className="space-y-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3 text-xs text-neutral-600 dark:text-neutral-400">
                     {selectedFreqOption ? (
                       <p>{selectedFreqOption.info}</p>
                     ) : (
                       REDEMPTION_OPTIONS.map((opt) => (
                         <p key={opt.value}>
-                          <span className="font-semibold text-neutral-900">{opt.label}:</span> {opt.info}
+                          <span className="font-semibold text-neutral-900 dark:text-neutral-100">{opt.label}:</span> {opt.info}
                         </p>
                       ))
                     )}
@@ -354,9 +354,9 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                 {/* Image */}
                 <div className="space-y-1.5">
                   <Label>
-                    Deal image <span className="font-normal text-neutral-400">(optional)</span>
+                    Deal image <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
                   </Label>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
                     Recommended: 1600x1000px landscape (16:10). You can always add one later.
                   </p>
                   <ImageUpload
@@ -367,7 +367,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
                 {/* Submit */}
                 {serverError && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">{serverError}</div>
+                  <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-400">{serverError}</div>
                 )}
                 {isPending && (
                   <Badge variant="warning">Trial — saved as a draft until approved</Badge>

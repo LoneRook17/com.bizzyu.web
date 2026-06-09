@@ -103,7 +103,7 @@ function LoginPageInner() {
         <div className="mb-4 text-right">
           <Link
             href="/business/v2/forgot-password"
-            className="text-xs font-medium text-[#079455] hover:underline"
+            className="text-xs font-medium text-[#05EB54] hover:underline"
           >
             Forgot password?
           </Link>
@@ -120,7 +120,7 @@ function LoginPageInner() {
 
       <AuthFooterLink>
         Don&apos;t have an account?{" "}
-        <Link href="/business/v2/signup" className="font-medium text-[#079455] hover:underline">
+        <Link href="/business/v2/signup" className="font-medium text-[#05EB54] hover:underline">
           Sign up
         </Link>
       </AuthFooterLink>

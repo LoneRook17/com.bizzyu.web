@@ -90,7 +90,7 @@ function VerifyEmailContent() {
     return (
       <AuthCard title="Verification failed" subtitle={message}>
         <div className="space-y-4">
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
             The verification link may have expired. Enter your email to receive a new one.
           </p>
           <form
@@ -117,8 +117,8 @@ function VerifyEmailContent() {
               </AuthSubmit>
             )}
           </form>
-          <p className="text-center text-sm text-neutral-500">
-            <Link href="/business/v2/login" className="font-medium text-[#079455] hover:underline">
+          <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+            <Link href="/business/v2/login" className="font-medium text-[#05EB54] hover:underline">
               Back to Login
             </Link>
           </p>
@@ -139,7 +139,7 @@ function VerifyEmailContent() {
           "Please check your inbox for the verification link."
         )}
       </AuthAlert>
-      <p className="mb-4 text-sm text-neutral-500">
+      <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
         Didn&apos;t receive the email? Check your spam folder or resend it below.
       </p>
 
@@ -171,7 +171,7 @@ function VerifyEmailContent() {
       </form>
 
       <AuthFooterLink>
-        <Link href="/business/v2/login" className="font-medium text-[#079455] hover:underline">
+        <Link href="/business/v2/login" className="font-medium text-[#05EB54] hover:underline">
           Back to Login
         </Link>
       </AuthFooterLink>

@@ -19,8 +19,8 @@ import VenueManagementSection from "@/components/business/v2/settings/VenueManag
 function SectionHeading({ title, description }: { title: string; description?: string }) {
   return (
     <div>
-      <h2 className="text-base font-semibold text-neutral-900">{title}</h2>
-      {description && <p className="mt-0.5 text-[13px] text-neutral-500">{description}</p>}
+      <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
+      {description && <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{description}</p>}
     </div>
   )
 }
@@ -81,7 +81,7 @@ function SettingsContent() {
         <PageHeader title="Settings" description="Manage your business profile, venues, and payouts." />
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-sm text-neutral-600">Settings are available to owners and managers.</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">Settings are available to owners and managers.</p>
           </CardContent>
         </Card>
       </>
@@ -106,7 +106,7 @@ function SettingsContent() {
         <PageHeader title="Settings" description="Manage your business profile, venues, and payouts." />
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-sm text-red-600">Failed to load profile. Please refresh and try again.</p>
+            <p className="text-sm text-red-600 dark:text-red-400">Failed to load profile. Please refresh and try again.</p>
           </CardContent>
         </Card>
       </>
@@ -155,7 +155,7 @@ function SettingsContent() {
         {/* Business info */}
         <Card>
           <CardContent className="py-5">
-            <h3 className="mb-4 text-sm font-semibold text-neutral-900">Business information</h3>
+            <h3 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Business information</h3>
             <ProfileForm profile={profile} onSaved={handleProfileSaved} disabled={!canEdit} />
           </CardContent>
         </Card>
@@ -163,12 +163,12 @@ function SettingsContent() {
         {/* Security */}
         <Card>
           <CardContent className="py-5">
-            <h3 className="text-sm font-semibold text-neutral-900">Security</h3>
-            <p className="mt-1 text-[13px] text-neutral-500">
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Security</h3>
+            <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
               To change your password, we&apos;ll send a reset link to your email address.
             </p>
             {resetSent ? (
-              <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2.5 text-sm text-green-700">
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/40 px-3 py-2.5 text-sm text-green-700 dark:text-green-400">
                 <CheckCircle2 className="size-4" /> Password reset email sent to {business?.email}. Check your inbox.
               </div>
             ) : (
@@ -180,13 +180,13 @@ function SettingsContent() {
         </Card>
 
         {/* Danger zone */}
-        <Card className="border-red-200 bg-red-50/40">
+        <Card className="border-red-200 dark:border-red-900 bg-red-50/40 dark:bg-red-950/40">
           <CardContent className="py-5">
-            <h3 className="text-sm font-semibold text-red-700">Danger zone</h3>
-            <p className="mt-1 text-[13px] text-neutral-600">
+            <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h3>
+            <p className="mt-1 text-[13px] text-neutral-600 dark:text-neutral-400">
               Need to remove your business account? Contact our support team.
             </p>
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
               Account removal requests are reviewed within 48 hours. Your data is retained for 30 days before permanent deletion.
             </p>
           </CardContent>

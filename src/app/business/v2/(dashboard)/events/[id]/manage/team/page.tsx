@@ -97,13 +97,13 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
         actions={<Button onClick={() => setShowAdd(true)}><Plus /> Add member</Button>}
       />
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {members.length === 0 ? (
         <EmptyState icon={Users} title="No team members yet" description="Add co-hosts, crew, or promoters for this event." />
       ) : (
         <Card className="overflow-hidden">
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
             {members.map((member) => (
               <div key={member.id} className="flex items-center justify-between px-5 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
@@ -112,14 +112,14 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
                   </Avatar>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-neutral-900">{member.full_name || "Unknown"}</p>
+                      <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{member.full_name || "Unknown"}</p>
                       <Badge variant={ROLE_VARIANT[member.role] ?? "neutral"} size="sm">{ROLE_LABELS[member.role] ?? member.role}</Badge>
                     </div>
-                    <p className="truncate text-[13px] text-neutral-500">{member.email}</p>
+                    <p className="truncate text-[13px] text-neutral-500 dark:text-neutral-400">{member.email}</p>
                   </div>
                 </div>
                 {member.role !== "owner" && (
-                  <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => setRemoveTarget(member)}>
+                  <Button variant="ghost" size="sm" className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-400" onClick={() => setRemoveTarget(member)}>
                     Remove
                   </Button>
                 )}
@@ -146,7 +146,7 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
                 <option value="crew">Crew</option>
               </Select>
             </div>
-            {addError && <p className="text-xs text-red-600">{addError}</p>}
+            {addError && <p className="text-xs text-red-600 dark:text-red-400">{addError}</p>}
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => { setShowAdd(false); setEmail(""); setAddError("") }}>Cancel</Button>
               <Button type="submit" disabled={adding || !email.trim()}>

@@ -44,18 +44,18 @@ export default function TrialHome() {
       {/* greeting */}
       <div>
         <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
             Welcome to Bizzy{firstName ? `, ${firstName}` : ""}
           </h1>
           <Badge variant="warning">Trial</Badge>
         </div>
-        <p className="mt-1 text-[15px] text-neutral-600">Get your venue set up — you can explore everything while we review your account.</p>
+        <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">Get your venue set up — you can explore everything while we review your account.</p>
       </div>
 
       {/* trial banner */}
-      <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3.5">
-        <Eye className="mt-0.5 size-5 shrink-0 text-blue-600" />
-        <p className="text-sm leading-relaxed text-blue-900">
+      <div className="flex items-start gap-3 rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3.5">
+        <Eye className="mt-0.5 size-5 shrink-0 text-blue-600 dark:text-blue-400" />
+        <p className="text-sm leading-relaxed text-blue-900 dark:text-blue-300">
           <span className="font-semibold">Trial mode.</span> Look around the dashboard and build your first deal now —
           nothing goes live to students until your business is approved.
         </p>
@@ -65,8 +65,8 @@ export default function TrialHome() {
       <Card className="overflow-hidden">
         <div className="px-6 pt-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-[17px] font-semibold text-neutral-900">Your path to going live</h2>
-            <span className="text-sm font-medium text-neutral-500">{doneCount} of {steps.length} done</span>
+            <h2 className="text-[17px] font-semibold text-neutral-900 dark:text-neutral-100">Your path to going live</h2>
+            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{doneCount} of {steps.length} done</span>
           </div>
           <Progress value={pct} className="mt-3.5" />
         </div>
@@ -74,31 +74,31 @@ export default function TrialHome() {
         <div className="px-3 py-3">
           {steps.map((s, i) =>
             s.hero ? (
-              <div key={i} className="my-1 flex items-center gap-3.5 rounded-xl border border-green-200 bg-green-50/60 px-4 py-3.5">
-                <Circle className="size-5 shrink-0 text-neutral-300" />
+              <div key={i} className="my-1 flex items-center gap-3.5 rounded-xl border border-green-200 dark:border-green-900 bg-green-50/60 dark:bg-green-950/40 px-4 py-3.5">
+                <Circle className="size-5 shrink-0 text-neutral-300 dark:text-neutral-600" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-neutral-900">{s.title}</p>
-                  <p className="mt-0.5 text-[13px] text-neutral-600">{s.sub}</p>
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{s.title}</p>
+                  <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">{s.sub}</p>
                 </div>
                 <Button asChild><Link href={s.cta!.href}><Plus /> {s.cta!.label}</Link></Button>
               </div>
             ) : (
               <div key={i} className="flex items-center gap-3.5 px-4 py-3">
                 {s.done ? (
-                  <CheckCircle2 className="size-5 shrink-0 text-[#079455]" />
+                  <CheckCircle2 className="size-5 shrink-0 text-[#05EB54]" />
                 ) : s.current ? (
-                  <CircleDot className="size-5 shrink-0 text-neutral-900" />
+                  <CircleDot className="size-5 shrink-0 text-neutral-900 dark:text-neutral-100" />
                 ) : (
-                  <Circle className="size-5 shrink-0 text-neutral-300" />
+                  <Circle className="size-5 shrink-0 text-neutral-300 dark:text-neutral-600" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className={cn("text-sm font-medium", s.done ? "text-neutral-500" : s.locked ? "text-neutral-400" : "text-neutral-900")}>
+                  <p className={cn("text-sm font-medium", s.done ? "text-neutral-500 dark:text-neutral-400" : s.locked ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-900 dark:text-neutral-100")}>
                     {s.title}
                   </p>
-                  <p className="mt-0.5 text-[13px] text-neutral-500">{s.sub}</p>
+                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{s.sub}</p>
                 </div>
                 {s.locked ? (
-                  <Lock className="size-4 text-neutral-300" />
+                  <Lock className="size-4 text-neutral-300 dark:text-neutral-600" />
                 ) : s.cta ? (
                   <Button variant="secondary" size="sm" asChild>
                     <Link href={s.cta.href}>{s.cta.label} <ArrowRight className="size-3.5" /></Link>
@@ -111,7 +111,7 @@ export default function TrialHome() {
       </Card>
 
       {/* explore hint */}
-      <p className="px-1 text-[13px] text-neutral-500">
+      <p className="px-1 text-[13px] text-neutral-500 dark:text-neutral-400">
         Want to look around first? Use the sidebar to explore Events, Deals, and Line skips — anything you build is saved as a draft until you're approved.
       </p>
     </>

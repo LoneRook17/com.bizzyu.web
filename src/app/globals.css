@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* v2 dashboard dark mode — class-scoped, only ever applied by the /business/v2 ThemeProvider */
+@custom-variant dark (&:where(.v2-dark, .v2-dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #030303;

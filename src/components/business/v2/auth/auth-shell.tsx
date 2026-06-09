@@ -23,10 +23,10 @@ export function AuthCard({ title, subtitle, children }: AuthCardProps) {
           <img src="/images/bizzy-logo.png" alt="Bizzy" className="mx-auto h-14" />
         </Link>
       </div>
-      <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold tracking-tight text-neutral-900">{title}</h1>
+      <div className="rounded-xl border border-neutral-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <h1 className="mb-1 text-xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{title}</h1>
         {subtitle ? (
-          <p className="mb-6 text-sm text-neutral-500">{subtitle}</p>
+          <p className="mb-6 text-sm text-neutral-500 dark:text-neutral-400">{subtitle}</p>
         ) : (
           <div className="mb-6" />
         )}
@@ -99,7 +99,7 @@ export function AuthPasswordField({ label, name, error, required, className, ...
           tabIndex={-1}
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Hide password" : "Show password"}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-600"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
         >
           {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>
@@ -127,10 +127,10 @@ export function AuthSubmit({ loading, disabled, children }: AuthSubmitProps) {
 type AlertTone = "success" | "error" | "info" | "warning"
 
 const alertTones: Record<AlertTone, string> = {
-  success: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  error: "border-red-200 bg-red-50 text-red-700",
-  info: "border-blue-200 bg-blue-50 text-blue-800",
-  warning: "border-amber-200 bg-amber-50 text-amber-800",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300",
+  error: "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300",
+  info: "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300",
+  warning: "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300",
 }
 
 export function AuthAlert({
@@ -152,11 +152,11 @@ export function AuthAlert({
 export function AuthSpinner() {
   return (
     <div className="flex justify-center py-8">
-      <Loader2 className="size-7 animate-spin text-[#079455]" />
+      <Loader2 className="size-7 animate-spin text-[#05EB54]" />
     </div>
   )
 }
 
 export function AuthFooterLink({ children }: { children: React.ReactNode }) {
-  return <p className="mt-6 text-center text-sm text-neutral-500">{children}</p>
+  return <p className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">{children}</p>
 }

@@ -176,18 +176,18 @@ export default function V2TeamPage() {
               <div className="px-5 py-4">
                 <div className="flex items-center gap-2">
                   {group.venueId === null ? (
-                    <Globe className="size-4 text-neutral-400" />
+                    <Globe className="size-4 text-neutral-400 dark:text-neutral-500" />
                   ) : (
-                    <MapPin className="size-4 text-neutral-400" />
+                    <MapPin className="size-4 text-neutral-400 dark:text-neutral-500" />
                   )}
-                  <h2 className="text-sm font-semibold text-neutral-900">{group.venueName}</h2>
-                  <span className="text-xs text-neutral-400">{group.members.length}</span>
+                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{group.venueName}</h2>
+                  <span className="text-xs text-neutral-400 dark:text-neutral-500">{group.members.length}</span>
                 </div>
                 {group.venueId === null && (
-                  <p className="mt-0.5 text-[13px] text-neutral-500">These members have access to all venues.</p>
+                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">These members have access to all venues.</p>
                 )}
               </div>
-              <div className="border-t border-neutral-100 px-5">
+              <div className="border-t border-neutral-100 dark:border-neutral-800 px-5">
                 {group.members.map((member) => (
                   <TeamMemberRow
                     key={member.id}
@@ -219,7 +219,7 @@ export default function V2TeamPage() {
         onConfirm={handleRemove}
         title="Remove team member"
         description={
-          <>Remove <span className="font-medium text-neutral-700">{removeTarget?.email}</span>? They&apos;ll lose access to the dashboard immediately.</>
+          <>Remove <span className="font-medium text-neutral-700 dark:text-neutral-300">{removeTarget?.email}</span>? They&apos;ll lose access to the dashboard immediately.</>
         }
         confirmLabel="Remove"
         variant="danger"

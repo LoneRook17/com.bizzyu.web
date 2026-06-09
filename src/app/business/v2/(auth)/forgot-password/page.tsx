@@ -39,8 +39,8 @@ export default function ForgotPasswordPage() {
             If an account exists with this email, a password reset link has been sent. Please check
             your inbox.
           </AuthAlert>
-          <p className="text-center text-sm text-neutral-500">
-            <Link href="/business/v2/login" className="font-medium text-[#079455] hover:underline">
+          <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+            <Link href="/business/v2/login" className="font-medium text-[#05EB54] hover:underline">
               Back to Login
             </Link>
           </p>
@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
           <AuthSubmit loading={loading}>Send Reset Link</AuthSubmit>
 
           <AuthFooterLink>
-            <Link href="/business/v2/login" className="font-medium text-[#079455] hover:underline">
+            <Link href="/business/v2/login" className="font-medium text-[#05EB54] hover:underline">
               Back to Login
             </Link>
           </AuthFooterLink>

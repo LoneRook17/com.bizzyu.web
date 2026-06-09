@@ -204,17 +204,17 @@ export default function LineSkipInstanceModal({
         </DialogHeader>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">{error}</div>
+          <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-2.5 text-xs text-red-700 dark:text-red-400">{error}</div>
         )}
 
         {/* Edit price */}
         {mode === "edit_price" && (
           <>
             <div className="space-y-1.5">
-              <p className="text-xs text-neutral-500">Current price: ${(instance.price_cents / 100).toFixed(2)}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Current price: ${(instance.price_cents / 100).toFixed(2)}</p>
               <Label htmlFor="ls_price">New price</Label>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
                 <Input
                   id="ls_price"
                   type="text"
@@ -231,7 +231,7 @@ export default function LineSkipInstanceModal({
               </div>
             </div>
             {instance.tickets_sold > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
+              <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-2.5 text-xs text-amber-800 dark:text-amber-300">
                 This applies to new purchases only. {instance.tickets_sold} ticket{instance.tickets_sold !== 1 ? "s" : ""} already sold at current price.
               </div>
             )}
@@ -251,7 +251,7 @@ export default function LineSkipInstanceModal({
         {mode === "edit_quantity" && (
           <>
             <div className="space-y-1.5">
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 Current: {instance.capacity ? `${instance.tickets_sold} / ${instance.capacity}` : `${instance.tickets_sold} sold (unlimited)`}
               </p>
               <Label htmlFor="ls_qty">New quantity</Label>
@@ -264,7 +264,7 @@ export default function LineSkipInstanceModal({
                 placeholder="Leave blank for unlimited"
               />
               {instance.tickets_sold > 0 && (
-                <p className="text-xs text-neutral-400">Minimum: {instance.tickets_sold} (already sold)</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">Minimum: {instance.tickets_sold} (already sold)</p>
               )}
             </div>
             <DialogFooter>
@@ -285,7 +285,7 @@ export default function LineSkipInstanceModal({
             <div className="space-y-1.5">
               <Label htmlFor="ls_dprice">Price</Label>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
                 <Input
                   id="ls_dprice"
                   type="text"
@@ -312,7 +312,7 @@ export default function LineSkipInstanceModal({
                 placeholder="Leave blank for unlimited"
               />
               {instance.tickets_sold > 0 && (
-                <p className="text-xs text-neutral-400">Minimum: {instance.tickets_sold} (already sold)</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">Minimum: {instance.tickets_sold} (already sold)</p>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -341,47 +341,47 @@ export default function LineSkipInstanceModal({
         {mode === "cancel" && (
           <>
             {cancelResult ? (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{cancelResult}</div>
+              <div className="rounded-lg border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 p-3 text-sm text-green-700 dark:text-green-400">{cancelResult}</div>
             ) : (
               <>
                 {previewLoading ? (
                   <div className="space-y-2">
-                    <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-200" />
-                    <div className="h-4 w-1/2 animate-pulse rounded bg-neutral-200" />
-                    <div className="h-20 animate-pulse rounded bg-neutral-200" />
+                    <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
+                    <div className="h-4 w-1/2 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
+                    <div className="h-20 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700" />
                   </div>
                 ) : refundPreview && refundPreview.ticketCount > 0 ? (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-                    <p className="mb-2 font-semibold text-amber-800">
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm">
+                    <p className="mb-2 font-semibold text-amber-800 dark:text-amber-300">
                       This night has {refundPreview.ticketCount} paid ticket{refundPreview.ticketCount !== 1 ? "s" : ""}.
                     </p>
-                    <div className="flex justify-between text-sm text-amber-900">
+                    <div className="flex justify-between text-sm text-amber-900 dark:text-amber-300">
                       <span>Customer receives:</span>
                       <span>${(refundPreview.totalCustomerRefundCents / 100).toFixed(2)}</span>
                     </div>
-                    <div className="mb-1 flex justify-between text-sm font-bold text-amber-900">
+                    <div className="mb-1 flex justify-between text-sm font-bold text-amber-900 dark:text-amber-300">
                       <span>Your business pays:</span>
                       <span>${(refundPreview.totalBusinessCostCents / 100).toFixed(2)}</span>
                     </div>
-                    <p className="mb-2 text-xs text-amber-700">
+                    <p className="mb-2 text-xs text-amber-700 dark:text-amber-400">
                       Ticket price plus Stripe processing fee. Bizzy absorbs its platform fee.
                     </p>
                     {refundPreview.freeTicketCount > 0 && (
-                      <p className="mb-2 text-xs text-amber-600">
+                      <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">
                         Plus {refundPreview.freeTicketCount} free ticket{refundPreview.freeTicketCount !== 1 ? "s" : ""} that will be cancelled (no refund needed).
                       </p>
                     )}
-                    <p className="text-xs text-amber-600">Cancellation request will be submitted for admin approval.</p>
+                    <p className="text-xs text-amber-600 dark:text-amber-400">Cancellation request will be submitted for admin approval.</p>
                   </div>
                 ) : refundPreview && refundPreview.freeTicketCount > 0 ? (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-                    <p className="mb-1 font-semibold text-amber-800">
+                  <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm">
+                    <p className="mb-1 font-semibold text-amber-800 dark:text-amber-300">
                       This night has {refundPreview.freeTicketCount} ticket{refundPreview.freeTicketCount !== 1 ? "s" : ""}.
                     </p>
-                    <p className="text-xs text-amber-700">No paid tickets to refund. Tickets will be cancelled immediately.</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400">No paid tickets to refund. Tickets will be cancelled immediately.</p>
                   </div>
                 ) : (
-                  <p className="text-sm text-neutral-600">This night has no tickets sold. It will be cancelled immediately.</p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">This night has no tickets sold. It will be cancelled immediately.</p>
                 )}
 
                 <div className="space-y-1.5">

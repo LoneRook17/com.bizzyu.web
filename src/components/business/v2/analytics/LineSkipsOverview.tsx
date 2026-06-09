@@ -43,19 +43,19 @@ function InstanceCard({ instance }: { instance: LineSkipOverviewInstance }) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-4">
-        <div className="flex min-w-[52px] flex-col items-center justify-center rounded-lg border border-amber-100 bg-amber-50 px-3 py-2">
-          <span className="text-xs font-medium uppercase text-amber-600">
+        <div className="flex min-w-[52px] flex-col items-center justify-center rounded-lg border border-amber-100 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
+          <span className="text-xs font-medium uppercase text-amber-600 dark:text-amber-400">
             {dt.toLocaleDateString("en-US", { weekday: "short" })}
           </span>
-          <span className="text-lg font-bold leading-tight text-neutral-900">{dt.getDate()}</span>
+          <span className="text-lg font-bold leading-tight text-neutral-900 dark:text-neutral-100">{dt.getDate()}</span>
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-semibold text-neutral-900">{instance.line_skip_name}</p>
+            <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{instance.line_skip_name}</p>
             <Badge variant={b.variant} size="sm">{b.label}</Badge>
           </div>
-          <p className="mt-0.5 text-xs text-neutral-500">
+          <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
             {formatDate(instance.date)} · {formatTime(instance.start_time)} – {formatTime(instance.end_time)}
           </p>
         </div>

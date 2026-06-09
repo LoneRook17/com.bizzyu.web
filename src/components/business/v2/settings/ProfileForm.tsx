@@ -96,9 +96,9 @@ export default function ProfileForm({ profile, onSaved, disabled }: ProfileFormP
         </Field>
       </div>
 
-      {error && <div className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-red-600">{error}</div>}
+      {error && <div className="rounded-lg bg-red-50 dark:bg-red-950/40 px-3 py-2.5 text-sm text-red-600 dark:text-red-400">{error}</div>}
       {success && (
-        <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2.5 text-sm text-green-700">
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/40 px-3 py-2.5 text-sm text-green-700 dark:text-green-400">
           <CheckCircle2 className="size-4" /> Profile updated successfully.
         </div>
       )}

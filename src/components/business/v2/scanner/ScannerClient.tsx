@@ -269,9 +269,9 @@ export default function ScannerClient() {
   }
 
   const getLogStatusColor = (status: string, type?: string) => {
-    if (status === "redeemed_now") return type === "line_skip" ? "text-orange-600" : "text-green-600"
-    if (status === "already_redeemed") return "text-amber-600"
-    return "text-red-600"
+    if (status === "redeemed_now") return type === "line_skip" ? "text-orange-600 dark:text-orange-400" : "text-green-600 dark:text-green-400"
+    if (status === "already_redeemed") return "text-amber-600 dark:text-amber-400"
+    return "text-red-600 dark:text-red-400"
   }
   const logLabel = (status: string, type?: string) =>
     status === "redeemed_now"
@@ -281,7 +281,7 @@ export default function ScannerClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <svg className="size-7 animate-spin text-[#079455]" viewBox="0 0 24 24" fill="none">
+        <svg className="size-7 animate-spin text-[#05EB54]" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
         </svg>
@@ -332,7 +332,7 @@ export default function ScannerClient() {
       {urlEventId && (
         <Link
           href={`/business/v2/events/${urlEventId}/manage`}
-          className="-mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 hover:text-neutral-900"
+          className="-mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
         >
           <ArrowLeft className="size-3.5" /> Back to event
         </Link>
@@ -341,10 +341,10 @@ export default function ScannerClient() {
       {!selectedEventId ? (
         <Card className="mx-auto w-full max-w-md overflow-hidden">
           <div className="px-5 py-4">
-            <h2 className="text-base font-semibold text-neutral-900">Select an event</h2>
-            <p className="mt-0.5 text-[13px] text-neutral-500">Choose which event you&apos;re checking guests into.</p>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Select an event</h2>
+            <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">Choose which event you&apos;re checking guests into.</p>
           </div>
-          <div className="border-t border-neutral-100">
+          <div className="border-t border-neutral-100 dark:border-neutral-800">
             {events.length === 0 ? (
               <div className="p-5">
                 <EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start checking in attendees." />
@@ -355,23 +355,23 @@ export default function ScannerClient() {
                   key={event.event_id}
                   onClick={() => setSelectedEventId(event.event_id)}
                   className={cn(
-                    "flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-neutral-50",
-                    i > 0 && "border-t border-neutral-100"
+                    "flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60",
+                    i > 0 && "border-t border-neutral-100 dark:border-neutral-800"
                   )}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-neutral-900">{event.name}</span>
-                    <span className="block truncate text-[13px] text-neutral-500">
+                    <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{event.name}</span>
+                    <span className="block truncate text-[13px] text-neutral-500 dark:text-neutral-400">
                       {event.venue_name} ·{" "}
                       {new Date(event.start_date_time).toLocaleDateString("en-US", {
                         weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
                       })}
                     </span>
-                    <span className="mt-0.5 block text-xs text-neutral-400">
+                    <span className="mt-0.5 block text-xs text-neutral-400 dark:text-neutral-500">
                       {event.total_attendees} sold · {Math.round(event.checkin_rate)}% checked in
                     </span>
                   </span>
-                  <ChevronRight className="size-4 shrink-0 text-neutral-300" />
+                  <ChevronRight className="size-4 shrink-0 text-neutral-300 dark:text-neutral-600" />
                 </button>
               ))
             )}
@@ -382,8 +382,8 @@ export default function ScannerClient() {
           {/* Camera + controls */}
           <div className="lg:col-span-2">
             <Card className="overflow-hidden">
-              <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-3.5">
-                <p className="truncate text-sm font-semibold text-neutral-900">{selectedEvent?.name}</p>
+              <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-5 py-3.5">
+                <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{selectedEvent?.name}</p>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -404,12 +404,12 @@ export default function ScannerClient() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between border-t border-neutral-100 px-5 py-3.5">
+              <div className="flex items-center justify-between border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5">
                 <div className="flex items-center gap-2">
-                  <span className={cn("size-2 rounded-full", scanning ? "animate-pulse bg-green-500" : "bg-neutral-300")} />
-                  <span className="text-xs text-neutral-500">{scanning ? "Scanning…" : "Camera off"}</span>
+                  <span className={cn("size-2 rounded-full", scanning ? "animate-pulse bg-green-500" : "bg-neutral-300 dark:bg-neutral-600")} />
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{scanning ? "Scanning…" : "Camera off"}</span>
                 </div>
-                <span className="text-xs text-neutral-400">
+                <span className="text-xs text-neutral-400 dark:text-neutral-500">
                   {scanLog.length} scan{scanLog.length !== 1 ? "s" : ""} this session
                 </span>
               </div>
@@ -419,28 +419,28 @@ export default function ScannerClient() {
           {/* Scan feed */}
           <div className="lg:col-span-1">
             <Card className="overflow-hidden">
-              <div className="border-b border-neutral-100 px-5 py-3.5">
-                <h3 className="text-sm font-semibold text-neutral-900">Recent scans</h3>
+              <div className="border-b border-neutral-100 dark:border-neutral-800 px-5 py-3.5">
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Recent scans</h3>
               </div>
               <div className="max-h-[520px] overflow-y-auto">
                 {scanLog.length === 0 ? (
                   <div className="flex flex-col items-center px-5 py-10 text-center">
-                    <ScanLine className="mb-2 size-7 text-neutral-300" />
-                    <p className="text-sm text-neutral-500">No scans yet</p>
-                    <p className="mt-0.5 text-xs text-neutral-400">Point the camera at a ticket QR code.</p>
+                    <ScanLine className="mb-2 size-7 text-neutral-300 dark:text-neutral-600" />
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400">No scans yet</p>
+                    <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">Point the camera at a ticket QR code.</p>
                   </div>
                 ) : (
                   scanLog.map((entry, i) => (
-                    <div key={`${entry.uuid}-${i}`} className={cn("flex items-start justify-between gap-3 px-5 py-3", i > 0 && "border-t border-neutral-50")}>
+                    <div key={`${entry.uuid}-${i}`} className={cn("flex items-start justify-between gap-3 px-5 py-3", i > 0 && "border-t border-neutral-50 dark:border-neutral-800/60")}>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-neutral-900">{entry.name}</p>
-                        <p className="truncate text-xs text-neutral-500">{entry.ticket_name}</p>
+                        <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{entry.name}</p>
+                        <p className="truncate text-xs text-neutral-500 dark:text-neutral-400">{entry.ticket_name}</p>
                       </div>
                       <div className="shrink-0 text-right">
                         <p className={cn("text-xs font-semibold", getLogStatusColor(entry.status, entry.type))}>
                           {logLabel(entry.status, entry.type)}
                         </p>
-                        <p className="text-xs text-neutral-400">{entry.time}</p>
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500">{entry.time}</p>
                       </div>
                     </div>
                   ))

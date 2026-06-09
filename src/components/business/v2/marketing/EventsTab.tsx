@@ -97,11 +97,11 @@ export default function EventsTab({ venueId }: Props) {
           <Card className="p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-neutral-900">{e.name}</p>
-                <p className="mt-0.5 text-xs text-neutral-500">
+                <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</p>
+                <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                   {formatDate(e.start_date_time)} · {e.venue_name || "—"}
                 </p>
-                <p className="mt-1 text-xs text-neutral-500">{e.ticket_sales_count} tickets sold</p>
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{e.ticket_sales_count} tickets sold</p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button variant="secondary" size="sm" asChild>

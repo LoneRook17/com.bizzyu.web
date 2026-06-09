@@ -62,12 +62,12 @@ function DealRow({
   return (
     <div className="flex items-center gap-4 px-5 py-4">
       {/* image */}
-      <div className="size-14 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+      <div className="size-14 shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800">
         {deal.deal_image_path ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={deal.deal_image_path} alt={deal.deal_title} className="size-full object-cover" />
         ) : (
-          <div className="flex size-full items-center justify-center text-neutral-300">
+          <div className="flex size-full items-center justify-center text-neutral-300 dark:text-neutral-600">
             <ImageIcon className="size-6" />
           </div>
         )}
@@ -77,18 +77,18 @@ function DealRow({
       <div className="min-w-0 flex-1">
         <Link
           href={`/business/v2/deals/${deal.id}`}
-          className="block truncate text-sm font-semibold text-neutral-900 hover:text-[#079455]"
+          className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
         >
           {deal.deal_title}
         </Link>
         {showVenue && deal.venue_name && (
-          <p className="truncate text-xs text-neutral-400">{deal.venue_name}</p>
+          <p className="truncate text-xs text-neutral-400 dark:text-neutral-500">{deal.venue_name}</p>
         )}
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-neutral-500">
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
           <span>{deal.deal_category}</span>
-          <span className="text-neutral-300">·</span>
+          <span className="text-neutral-300 dark:text-neutral-600">·</span>
           <span>{deal.deal_type}</span>
-          <span className="text-neutral-300">·</span>
+          <span className="text-neutral-300 dark:text-neutral-600">·</span>
           <span>{deal.claim_count ?? 0} claims</span>
           {deal.supply_limit ? <span>{deal.claim_count ?? 0}/{deal.supply_limit} used</span> : null}
           {tab === "expired" && deal.expired_date ? (
@@ -123,7 +123,7 @@ function DealRow({
           </Button>
         )}
         <Link href={`/business/v2/deals/${deal.id}`} aria-label="View deal">
-          <ChevronRight className="size-4 text-neutral-300" />
+          <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
         </Link>
       </div>
     </div>
@@ -219,7 +219,7 @@ export default function DealsPage() {
                   <span
                     className={cn(
                       "ml-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-semibold leading-none",
-                      tab === t.value ? "bg-green-50 text-green-700" : "bg-neutral-200 text-neutral-500"
+                      tab === t.value ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400" : "bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
                     )}
                   >
                     {count}
@@ -251,7 +251,7 @@ export default function DealsPage() {
           }
         />
       ) : (
-        <Card className="divide-y divide-neutral-100 overflow-hidden p-0">
+        <Card className="divide-y divide-neutral-100 dark:divide-neutral-800 overflow-hidden p-0">
           {deals.map((deal) => (
             <DealRow
               key={deal.id}
@@ -279,10 +279,10 @@ export default function DealsPage() {
                   setShowVenueModal(false)
                   router.push("/business/v2/deals/new")
                 }}
-                className="flex w-full items-center justify-between rounded-lg border border-neutral-200 px-4 py-3 text-left text-sm font-medium text-neutral-800 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+                className="flex w-full items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-left text-sm font-medium text-neutral-800 dark:text-neutral-200 transition-colors hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
               >
                 {v.name}
-                <ChevronRight className="size-4 text-neutral-300" />
+                <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
               </button>
             ))}
           </div>

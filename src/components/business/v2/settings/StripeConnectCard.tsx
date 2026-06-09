@@ -31,27 +31,27 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
 
   return (
     <Card className="p-5">
-      <h3 className="text-sm font-semibold text-neutral-900">Business Stripe Connect</h3>
-      <p className="mt-1 text-[13px] text-neutral-500">
+      <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Business Stripe Connect</h3>
+      <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
         Ticket revenue lands here. Promoter commission (if anyone on your team also promotes events) pays to a
         separate personal Stripe — not this account.
       </p>
 
       {onboarded ? (
         <div className="mt-3.5 flex items-start gap-3">
-          <span className="mt-0.5 flex size-6 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2 className="size-4 text-green-600" />
+          <span className="mt-0.5 flex size-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
+            <CheckCircle2 className="size-4 text-green-600 dark:text-green-400" />
           </span>
           <div>
-            <p className="text-sm font-medium text-green-700">Business Stripe connected</p>
-            <p className="mt-0.5 text-[13px] text-neutral-500">
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">Business Stripe connected</p>
+            <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
               Your business Stripe account is connected and ready to accept ticket payments.
             </p>
             <a
               href="https://dashboard.stripe.com/express"
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-[#079455] hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-[#05EB54] hover:underline"
             >
               Open Stripe dashboard <ArrowUpRight className="size-3.5" />
             </a>
@@ -59,16 +59,16 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
         </div>
       ) : (
         <div className="mt-3.5 flex items-start gap-3">
-          <span className="mt-0.5 flex size-6 items-center justify-center rounded-full bg-amber-100">
-            <TriangleAlert className="size-3.5 text-amber-600" />
+          <span className="mt-0.5 flex size-6 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
+            <TriangleAlert className="size-3.5 text-amber-600 dark:text-amber-400" />
           </span>
           <div className="flex-1">
-            <p className="text-sm font-medium text-amber-700">Business Stripe not connected</p>
-            <p className="mt-0.5 text-[13px] text-neutral-500">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Business Stripe not connected</p>
+            <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
               Connecting your business Stripe account is required to create paid events. Ticket payments will pay
               into this business account.
             </p>
-            {error && <p className="mt-2 text-[13px] text-red-600">{error}</p>}
+            {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
             <Button onClick={handleStartOnboarding} disabled={loading} className="mt-3" size="sm">
               {loading ? (<><Loader2 className="animate-spin" /> Setting up…</>) : "Set up business Stripe"}
             </Button>
@@ -100,7 +100,7 @@ export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
 
   if (status === "verifying") {
     return (
-      <div className="mb-4 flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+      <div className="mb-4 flex items-center gap-2 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-700 dark:text-blue-400">
         <Loader2 className="size-4 animate-spin" /> Verifying your Stripe account setup…
       </div>
     )
@@ -108,18 +108,18 @@ export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
 
   if (status === "success") {
     return (
-      <div className="mb-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+      <div className="mb-4 flex items-center gap-2 rounded-xl border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 px-4 py-3 text-sm font-medium text-green-700 dark:text-green-400">
         <CheckCircle2 className="size-4" /> Stripe Connect setup complete. You can now create paid events.
       </div>
     )
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+    <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
       <p>Stripe onboarding isn&apos;t finished yet. Some steps may still be required.</p>
       <button
         onClick={() => { setChecked(false); setStatus("verifying") }}
-        className="mt-1.5 cursor-pointer text-[13px] font-semibold text-[#079455] hover:underline"
+        className="mt-1.5 cursor-pointer text-[13px] font-semibold text-[#05EB54] hover:underline"
       >
         Check again
       </button>

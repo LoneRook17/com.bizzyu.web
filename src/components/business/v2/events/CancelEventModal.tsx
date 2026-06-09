@@ -94,7 +94,7 @@ export function CancelEventModal({ open, onOpenChange, eventId, eventName, onCan
         </DialogHeader>
 
         {success ? (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm text-green-700">{success}</div>
+          <div className="rounded-lg border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 px-3 py-2.5 text-sm text-green-700 dark:text-green-400">{success}</div>
         ) : (
           <>
             {previewLoading ? (
@@ -103,25 +103,25 @@ export function CancelEventModal({ open, onOpenChange, eventId, eventName, onCan
                 <Skeleton className="h-4 w-1/2" />
               </div>
             ) : hasPaidOrders ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
-                <p className="mb-2 font-semibold text-amber-800">
+              <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm">
+                <p className="mb-2 font-semibold text-amber-800 dark:text-amber-300">
                   Cancelling a paid event requires reimbursing customers for the full ticket price plus processing fees.
                 </p>
-                <p className="mb-2 text-amber-900">
+                <p className="mb-2 text-amber-900 dark:text-amber-300">
                   This event has {preview!.orderCount} paid order{preview!.orderCount !== 1 ? "s" : ""} totaling{" "}
                   <span className="font-semibold">{usd(preview!.totalRefundAmount)}</span> including fees.
                 </p>
-                <ul className="mb-2 list-disc space-y-0.5 pl-5 text-amber-900">
+                <ul className="mb-2 list-disc space-y-0.5 pl-5 text-amber-900 dark:text-amber-300">
                   <li>All {preview!.orderCount} ticket holder{preview!.orderCount !== 1 ? "s" : ""} will receive full refunds</li>
                   <li>Your Stripe account will be debited (ticket revenue + processing fees, minus any clawed-back promoter commission)</li>
                   <li>This action cannot be undone</li>
                 </ul>
                 {preview!.freeOrderCount > 0 && (
-                  <p className="mb-2 text-xs text-amber-600">
+                  <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">
                     Plus {preview!.freeOrderCount} free order{preview!.freeOrderCount !== 1 ? "s" : ""} that will be cancelled (no refund needed).
                   </p>
                 )}
-                <p className="text-xs text-amber-600">Cancellation request will be submitted for admin approval.</p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">Cancellation request will be submitted for admin approval.</p>
               </div>
             ) : null}
 
@@ -136,7 +136,7 @@ export function CancelEventModal({ open, onOpenChange, eventId, eventName, onCan
               />
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
             <DialogFooter>
               <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={loading}>Keep event</Button>

@@ -55,14 +55,14 @@ function EventDetail({ data }: { data: EventAnalytics }) {
   return (
     <div className="space-y-5">
       <Card className="p-5">
-        <h4 className="mb-3 text-sm font-semibold text-neutral-900">Revenue</h4>
-        <p className="text-2xl font-semibold text-green-600">{usd(data.revenue?.revenue ?? 0)}</p>
-        <p className="mt-1 text-xs text-neutral-500">Your take-home — matches Stripe payout.</p>
+        <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Revenue</h4>
+        <p className="text-2xl font-semibold text-green-600 dark:text-green-400">{usd(data.revenue?.revenue ?? 0)}</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Your take-home — matches Stripe payout.</p>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card className="p-5">
-          <h4 className="mb-3 text-sm font-semibold text-neutral-900">Ticket access</h4>
+          <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Ticket access</h4>
           {ticketTotal > 0 ? (
             <>
               <ChannelBar
@@ -72,27 +72,27 @@ function EventDetail({ data }: { data: EventAnalytics }) {
                   { value: data.ticketAccess.guest, color: "bg-purple-500" },
                 ]}
               />
-              <div className="flex flex-wrap gap-4 text-xs text-neutral-600">
+              <div className="flex flex-wrap gap-4 text-xs text-neutral-600 dark:text-neutral-400">
                 <LegendDot color="bg-blue-500">Paid: {data.ticketAccess.paid}</LegendDot>
                 <LegendDot color="bg-green-500">Free: {data.ticketAccess.free}</LegendDot>
                 <LegendDot color="bg-purple-500">Guest: {data.ticketAccess.guest}</LegendDot>
               </div>
             </>
           ) : (
-            <p className="text-sm text-neutral-400">No ticket data</p>
+            <p className="text-sm text-neutral-400 dark:text-neutral-500">No ticket data</p>
           )}
         </Card>
 
         <Card className="p-5">
-          <h4 className="mb-3 text-sm font-semibold text-neutral-900">Check-in rate</h4>
-          <p className="mb-2 text-2xl font-semibold text-neutral-900">{data.checkIn.percent.toFixed(1)}%</p>
-          <div className="h-3 w-full overflow-hidden rounded-full bg-neutral-100">
+          <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Check-in rate</h4>
+          <p className="mb-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{data.checkIn.percent.toFixed(1)}%</p>
+          <div className="h-3 w-full overflow-hidden rounded-full bg-neutral-100 dark:bg-neutral-800">
             <div
-              className="h-full rounded-full bg-[#079455]"
+              className="h-full rounded-full bg-[#05EB54]"
               style={{ width: `${data.checkIn.total > 0 ? Math.min((data.checkIn.scanned / data.checkIn.total) * 100, 100) : 0}%` }}
             />
           </div>
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
             {data.checkIn.scanned} scanned / {data.checkIn.total} total
           </p>
         </Card>
@@ -100,14 +100,14 @@ function EventDetail({ data }: { data: EventAnalytics }) {
 
       {(data.doorSales.preSales > 0 || data.doorSales.doorSales > 0) && (
         <Card className="p-5">
-          <h4 className="mb-3 text-sm font-semibold text-neutral-900">Sales channel</h4>
+          <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Sales channel</h4>
           <ChannelBar
             segments={[
               { value: data.doorSales.preSales, color: "bg-blue-500" },
               { value: data.doorSales.doorSales, color: "bg-orange-500" },
             ]}
           />
-          <div className="flex flex-wrap gap-4 text-xs text-neutral-600">
+          <div className="flex flex-wrap gap-4 text-xs text-neutral-600 dark:text-neutral-400">
             <LegendDot color="bg-blue-500">Pre-sale: {usd(data.doorSales.preSales)}</LegendDot>
             <LegendDot color="bg-orange-500">Door: {usd(data.doorSales.doorSales)}</LegendDot>
           </div>
@@ -116,10 +116,10 @@ function EventDetail({ data }: { data: EventAnalytics }) {
 
       {data.tierBreakdown.length > 0 && (
         <Card className="p-5">
-          <h4 className="mb-3 text-sm font-semibold text-neutral-900">Revenue by tier</h4>
+          <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Revenue by tier</h4>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 text-xs text-neutral-500">
+              <tr className="border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
                 <th className="py-2 text-left font-medium">Tier</th>
                 <th className="py-2 text-right font-medium">Sold</th>
                 <th className="py-2 text-right font-medium">Revenue</th>
@@ -127,16 +127,16 @@ function EventDetail({ data }: { data: EventAnalytics }) {
             </thead>
             <tbody>
               {data.tierBreakdown.map((tier) => (
-                <tr key={tier.ticket_id} className="border-b border-neutral-50 last:border-0">
-                  <td className="py-2 text-neutral-900">{tier.tier_name}</td>
-                  <td className="py-2 text-right text-neutral-600">{tier.sold}</td>
-                  <td className="py-2 text-right font-medium text-neutral-900">{usd(tier.revenue)}</td>
+                <tr key={tier.ticket_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{tier.tier_name}</td>
+                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{tier.sold}</td>
+                  <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd(tier.revenue)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           {promoterTakeHome > 0 && (
-            <div className="mt-4 rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-xs text-purple-700">
+            <div className="mt-4 rounded-lg border border-purple-100 dark:border-purple-900 bg-purple-50 dark:bg-purple-950/40 px-3 py-2 text-xs text-purple-700 dark:text-purple-400">
               Of the {usd(tierTotal)} above, <span className="font-semibold">{usd(promoterTakeHome)}</span> was promoter-generated.
             </div>
           )}
@@ -145,10 +145,10 @@ function EventDetail({ data }: { data: EventAnalytics }) {
 
       {data.trackingLinks.length > 0 && (
         <Card className="p-5">
-          <h4 className="mb-3 text-sm font-semibold text-neutral-900">Promoter performance</h4>
+          <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promoter performance</h4>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-neutral-100 text-xs text-neutral-500">
+              <tr className="border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
                 <th className="py-2 text-left font-medium">Name</th>
                 <th className="py-2 text-right font-medium">Clicks</th>
                 <th className="py-2 text-right font-medium">Sales</th>
@@ -157,11 +157,11 @@ function EventDetail({ data }: { data: EventAnalytics }) {
             </thead>
             <tbody>
               {data.trackingLinks.map((link) => (
-                <tr key={link.tracking_link_id} className="border-b border-neutral-50 last:border-0">
-                  <td className="py-2 text-neutral-900">{link.promoter_name}</td>
-                  <td className="py-2 text-right text-neutral-600">{link.clicks}</td>
-                  <td className="py-2 text-right text-neutral-600">{link.sales_count}</td>
-                  <td className="py-2 text-right font-medium text-neutral-900">{usd((link.commission_cents ?? 0) / 100)}</td>
+                <tr key={link.tracking_link_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{link.promoter_name}</td>
+                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.clicks}</td>
+                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.sales_count}</td>
+                  <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd((link.commission_cents ?? 0) / 100)}</td>
                 </tr>
               ))}
             </tbody>
@@ -201,21 +201,21 @@ function EventCard({
 
   return (
     <Card className="overflow-hidden">
-      <button type="button" onClick={handleToggle} className="w-full p-4 text-left transition-colors hover:bg-neutral-50">
+      <button type="button" onClick={handleToggle} className="w-full p-4 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
         <div className="flex items-center gap-4">
           {event.flyer_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={event.flyer_image_url} alt="" className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 object-cover" />
+            <img src={event.flyer_image_url} alt="" className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800 object-cover" />
           ) : (
-            <div className="size-12 flex-shrink-0 rounded-lg bg-neutral-100" />
+            <div className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800" />
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-semibold text-neutral-900">{event.name}</p>
+              <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{event.name}</p>
               <Badge variant={b.variant} size="sm">{b.label}</Badge>
             </div>
-            <p className="mt-0.5 text-xs text-neutral-500">
+            <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
               {dateLabel}
               {event.venue_name ? ` · ${event.venue_name}` : ""}
             </p>
@@ -231,12 +231,12 @@ function EventCard({
             <RowStat label="Tickets" value={event.tickets_sold} />
           </div>
 
-          <ChevronDown className={cn("size-4 flex-shrink-0 text-neutral-400 transition-transform", isExpanded && "rotate-180")} />
+          <ChevronDown className={cn("size-4 flex-shrink-0 text-neutral-400 dark:text-neutral-500 transition-transform", isExpanded && "rotate-180")} />
         </div>
       </button>
 
       {isExpanded && (
-        <div className="border-t border-neutral-100 bg-neutral-50/60 p-4">
+        <div className="border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-800/50 p-4">
           {detailLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-4 w-32" />
@@ -245,7 +245,7 @@ function EventCard({
           ) : detail ? (
             <EventDetail data={detail} />
           ) : (
-            <p className="py-4 text-center text-sm text-neutral-400">Unable to load detail.</p>
+            <p className="py-4 text-center text-sm text-neutral-400 dark:text-neutral-500">Unable to load detail.</p>
           )}
         </div>
       )}

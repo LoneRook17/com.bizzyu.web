@@ -41,8 +41,8 @@ function formatDateTime(s: string): string {
 function StatTile({ label, value, children }: { label: string; value?: string | number; children?: React.ReactNode }) {
   return (
     <Card className="p-4">
-      <p className="text-xs text-neutral-500">{label}</p>
-      {children ?? <p className="mt-0.5 text-lg font-semibold text-neutral-900">{value}</p>}
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">{label}</p>
+      {children ?? <p className="mt-0.5 text-lg font-semibold text-neutral-900 dark:text-neutral-100">{value}</p>}
     </Card>
   )
 }
@@ -231,7 +231,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
   if (error || (canViewAnalytics && !analytics)) {
     return (
       <div className="py-16 text-center">
-        <p className="mb-4 text-sm text-red-500">{error || "Analytics not available"}</p>
+        <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error || "Analytics not available"}</p>
         <Button variant="link" asChild>
           <Link href="/business/v2/line-skips">Back to line skips</Link>
         </Button>
@@ -246,7 +246,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
   return (
     <>
       <PageHeader title="Night details" description={`Instance #${instanceId}`} />
-      <Link href="/business/v2/line-skips" className="-mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900">
+      <Link href="/business/v2/line-skips" className="-mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
         <ArrowLeft className="size-4" /> Back to line skips
       </Link>
 
@@ -259,25 +259,25 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
             {editingQuantity ? (
               <div className="mt-1">
                 <Input type="number" min="1" value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} placeholder="Unlimited" className="h-8" />
-                {quantityError && <p className="mt-1 text-xs text-red-500">{quantityError}</p>}
+                {quantityError && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{quantityError}</p>}
                 <div className="mt-1.5 flex gap-2">
-                  <button onClick={handleUpdateQuantity} disabled={quantityLoading} className="text-xs font-medium text-[#079455] hover:underline disabled:opacity-50">
+                  <button onClick={handleUpdateQuantity} disabled={quantityLoading} className="text-xs font-medium text-[#05EB54] hover:underline disabled:opacity-50">
                     {quantityLoading ? "Saving..." : "Save"}
                   </button>
-                  <button onClick={() => { setEditingQuantity(false); setQuantityError("") }} className="text-xs text-neutral-500 hover:underline">
+                  <button onClick={() => { setEditingQuantity(false); setQuantityError("") }} className="text-xs text-neutral-500 dark:text-neutral-400 hover:underline">
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
               <div className="mt-0.5 flex items-baseline gap-1.5">
-                <p className="text-lg font-semibold text-neutral-900">
+                <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                   {analytics.capacity !== null ? `${analytics.tickets_sold} / ${analytics.capacity}` : "Unlimited"}
                 </p>
                 {canEditPrice && (
                   <button
                     onClick={() => { setNewCapacity(analytics.capacity?.toString() ?? ""); setEditingQuantity(true) }}
-                    className="text-xs font-medium text-[#079455] hover:underline"
+                    className="text-xs font-medium text-[#05EB54] hover:underline"
                   >
                     Edit
                   </button>
@@ -299,14 +299,14 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card>
             <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-neutral-900">Purchase channel</h3>
+              <h3 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Purchase channel</h3>
               {totalTickets === 0 ? (
-                <p className="text-sm text-neutral-400">No purchases yet</p>
+                <p className="text-sm text-neutral-400 dark:text-neutral-500">No purchases yet</p>
               ) : (
                 <>
                   <div className="mb-3 flex h-6 overflow-hidden rounded-full">
                     {appPct > 0 && (
-                      <div className="flex items-center justify-center bg-[#079455] text-xs font-medium text-white" style={{ width: `${appPct}%` }}>
+                      <div className="flex items-center justify-center bg-[#05EB54] text-xs font-medium text-white" style={{ width: `${appPct}%` }}>
                         {appPct}%
                       </div>
                     )}
@@ -317,7 +317,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
                     )}
                   </div>
                   <div className="flex gap-4 text-xs">
-                    <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-[#079455]" /> App: {analytics.channel_split.app}</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-[#05EB54]" /> App: {analytics.channel_split.app}</span>
                     <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-full bg-blue-500" /> Web: {analytics.channel_split.web}</span>
                   </div>
                 </>
@@ -327,18 +327,18 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
 
           <Card>
             <CardContent className="p-4">
-              <h3 className="mb-3 text-sm font-semibold text-neutral-900">Purchase time</h3>
+              <h3 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Purchase time</h3>
               {analytics.purchase_by_hour.length === 0 ? (
-                <p className="text-sm text-neutral-400">No purchases yet</p>
+                <p className="text-sm text-neutral-400 dark:text-neutral-500">No purchases yet</p>
               ) : (
                 <div className="flex h-24 items-end gap-1">
                   {(() => {
                     const maxCount = Math.max(...analytics.purchase_by_hour.map((r) => r.count), 1)
                     return analytics.purchase_by_hour.map((r) => (
                       <div key={r.hour} className="flex min-w-0 flex-1 flex-col items-center gap-0.5" title={`${formatHour(r.hour)}: ${r.count} purchases`}>
-                        <span className="text-[9px] text-neutral-500">{r.count}</span>
-                        <div className="min-h-[2px] w-full rounded-t bg-[#079455]/70" style={{ height: `${(r.count / maxCount) * 100}%` }} />
-                        <span className="text-[9px] text-neutral-400">{formatHour(r.hour)}</span>
+                        <span className="text-[9px] text-neutral-500 dark:text-neutral-400">{r.count}</span>
+                        <div className="min-h-[2px] w-full rounded-t bg-[#05EB54]/70" style={{ height: `${(r.count / maxCount) * 100}%` }} />
+                        <span className="text-[9px] text-neutral-400 dark:text-neutral-500">{formatHour(r.hour)}</span>
                       </div>
                     ))
                   })()}
@@ -354,18 +354,18 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
         <Card>
           <CardContent className="p-4">
             <button onClick={() => setAttendeesExpanded(!attendeesExpanded)} className="flex w-full items-center justify-between">
-              <h3 className="text-sm font-semibold text-neutral-900">Attendees ({analytics.tickets.length})</h3>
-              <ChevronDown className={cn("size-5 text-neutral-400 transition-transform", attendeesExpanded && "rotate-180")} />
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Attendees ({analytics.tickets.length})</h3>
+              <ChevronDown className={cn("size-5 text-neutral-400 dark:text-neutral-500 transition-transform", attendeesExpanded && "rotate-180")} />
             </button>
             {attendeesExpanded && (
               <div className="mt-3">
                 {analytics.tickets.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-neutral-400">No tickets sold yet</p>
+                  <p className="py-4 text-center text-sm text-neutral-400 dark:text-neutral-500">No tickets sold yet</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-neutral-100 text-xs text-neutral-500">
+                        <tr className="border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
                           <th className="py-2 text-left font-medium">Name</th>
                           <th className="py-2 text-left font-medium">Phone</th>
                           <th className="py-2 text-left font-medium">Purchased</th>
@@ -378,17 +378,17 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
                       </thead>
                       <tbody>
                         {analytics.tickets.map((t) => (
-                          <tr key={t.id} className="border-b border-neutral-50">
-                            <td className="py-2 text-neutral-800">{t.attendee_name}</td>
-                            <td className="py-2 text-xs text-neutral-500">{t.phone_number || "—"}</td>
-                            <td className="py-2 text-xs text-neutral-500">{formatDateTime(t.created_at)}</td>
-                            <td className="py-2 text-right text-neutral-800">{money(t.price_paid_cents)}</td>
+                          <tr key={t.id} className="border-b border-neutral-50 dark:border-neutral-800/60">
+                            <td className="py-2 text-neutral-800 dark:text-neutral-200">{t.attendee_name}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.phone_number || "—"}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{formatDateTime(t.created_at)}</td>
+                            <td className="py-2 text-right text-neutral-800 dark:text-neutral-200">{money(t.price_paid_cents)}</td>
                             <td className="py-2 text-center">
                               <Badge variant={t.is_redeemed ? "success" : "neutral"}>{t.is_redeemed ? "Checked in" : "Active"}</Badge>
                             </td>
-                            <td className="py-2 text-xs text-neutral-500">{t.redeemed_at ? formatDateTime(t.redeemed_at) : "—"}</td>
-                            <td className="py-2 text-xs text-neutral-500">{t.promo_code || "—"}</td>
-                            <td className="py-2 text-xs text-neutral-500">{t.user_id ? "App" : "Web"}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.redeemed_at ? formatDateTime(t.redeemed_at) : "—"}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.promo_code || "—"}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.user_id ? "App" : "Web"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -406,8 +406,8 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <button onClick={() => setPromoExpanded(!promoExpanded)} className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-neutral-900">Promo codes ({promoCodes.length})</h3>
-              <ChevronDown className={cn("size-5 text-neutral-400 transition-transform", promoExpanded && "rotate-180")} />
+              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promo codes ({promoCodes.length})</h3>
+              <ChevronDown className={cn("size-5 text-neutral-400 dark:text-neutral-500 transition-transform", promoExpanded && "rotate-180")} />
             </button>
             {canEdit && (
               <Button variant="ghost" size="sm" onClick={() => { setShowPromoForm(true); setPromoExpanded(true) }}>
@@ -420,9 +420,9 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
             <div className="mt-3">
               {/* create form */}
               {showPromoForm && (
-                <form onSubmit={handleCreatePromo} className="mb-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-                  <h4 className="mb-3 text-sm font-medium text-neutral-900">New promo code</h4>
-                  {promoError && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{promoError}</div>}
+                <form onSubmit={handleCreatePromo} className="mb-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-4">
+                  <h4 className="mb-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">New promo code</h4>
+                  {promoError && <div className="mb-3 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-2 text-xs text-red-700 dark:text-red-400">{promoError}</div>}
                   <div className="mb-3 grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Code</Label>
@@ -475,7 +475,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
 
               {/* list */}
               {promoCodes.length === 0 && !showPromoForm ? (
-                <p className="py-4 text-center text-sm text-neutral-400">No promo codes yet</p>
+                <p className="py-4 text-center text-sm text-neutral-400 dark:text-neutral-500">No promo codes yet</p>
               ) : (
                 promoCodes.length > 0 && (
                   <div className="space-y-2">
@@ -487,30 +487,30 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
                       const statusVariant: "neutral" | "warning" | "success" = !p.is_active ? "neutral" : isExpired || isMaxedOut ? "warning" : "success"
 
                       return (
-                        <div key={p.id} className="rounded-xl border border-neutral-200 bg-white p-3">
+                        <div key={p.id} className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="rounded border border-neutral-200 bg-neutral-50 px-2 py-1 font-mono text-xs font-semibold">{p.code}</span>
-                              <span className="text-sm text-neutral-600">
+                              <span className="rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 px-2 py-1 font-mono text-xs font-semibold">{p.code}</span>
+                              <span className="text-sm text-neutral-600 dark:text-neutral-400">
                                 {p.discount_type === "percentage" ? `${p.discount_value}% off` : `${money(p.discount_value * 100)} off`}
                               </span>
                             </div>
                             <Badge variant={statusVariant}>{statusLabel}</Badge>
                           </div>
-                          <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500">
+                          <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
                             <span>{p.max_redemptions ? `${p.current_redemptions} / ${p.max_redemptions} used` : `${p.current_redemptions} used`}</span>
                             <span>{p.max_per_user} per user</span>
                             <span>{p.expires_at ? `Expires ${new Date(p.expires_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "No expiry"}</span>
                           </div>
                           {canEdit && isUsable && editingPromoId !== p.id && (
                             <div className="mt-2 flex gap-3">
-                              <button onClick={() => startEditPromo(p)} className="text-xs font-medium text-[#079455] hover:underline">Edit</button>
-                              <button onClick={() => handleDeactivatePromo(p.id)} className="text-xs font-medium text-red-500 hover:underline">Deactivate</button>
+                              <button onClick={() => startEditPromo(p)} className="text-xs font-medium text-[#05EB54] hover:underline">Edit</button>
+                              <button onClick={() => handleDeactivatePromo(p.id)} className="text-xs font-medium text-red-500 dark:text-red-400 hover:underline">Deactivate</button>
                             </div>
                           )}
                           {editingPromoId === p.id && (
-                            <div className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                              {editPromoError && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{editPromoError}</div>}
+                            <div className="mt-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3">
+                              {editPromoError && <div className="mb-3 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-2 text-xs text-red-700 dark:text-red-400">{editPromoError}</div>}
                               <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 <div className="space-y-1">
                                   <Label className="text-xs">Discount type</Label>
@@ -570,14 +570,14 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
       {analytics && analytics.promo_breakdown.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <h3 className="mb-3 text-sm font-semibold text-neutral-900">Promo code usage analytics</h3>
-            <div className="mb-3 flex items-center gap-4 text-xs text-neutral-500">
+            <h3 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promo code usage analytics</h3>
+            <div className="mb-3 flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
               <span>{analytics.promo_usage.tickets_with_promo} tickets used a promo</span>
               <span>{money(analytics.promo_usage.total_discount_cents)} total discount</span>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-neutral-100 text-xs text-neutral-500">
+                <tr className="border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
                   <th className="py-2 text-left font-medium">Code</th>
                   <th className="py-2 text-left font-medium">Discount</th>
                   <th className="py-2 text-right font-medium">Used</th>
@@ -586,9 +586,9 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
               </thead>
               <tbody>
                 {analytics.promo_breakdown.map((p) => (
-                  <tr key={p.promo_code_id} className="border-b border-neutral-50">
+                  <tr key={p.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800/60">
                     <td className="py-2 font-mono text-xs">{p.code}</td>
-                    <td className="py-2 text-neutral-600">{p.discount_type === "percentage" ? `${p.discount_value}%` : money(p.discount_value * 100)}</td>
+                    <td className="py-2 text-neutral-600 dark:text-neutral-400">{p.discount_type === "percentage" ? `${p.discount_value}%` : money(p.discount_value * 100)}</td>
                     <td className="py-2 text-right">{p.times_used}</td>
                     <td className="py-2 text-right">{money(p.total_discount_cents)}</td>
                   </tr>

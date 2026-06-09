@@ -51,8 +51,8 @@ export default function VenueManagementSection() {
     <section>
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-neutral-900">Your venues</h2>
-          <p className="mt-0.5 text-[13px] text-neutral-500">
+          <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Your venues</h2>
+          <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
             Manage your venue locations, photos, and details · {venues.length} venue{venues.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -69,12 +69,12 @@ export default function VenueManagementSection() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {venues.map((venue) => (
             <Card key={venue.id} className="overflow-hidden">
-              <div className="relative h-32 bg-neutral-100">
+              <div className="relative h-32 bg-neutral-100 dark:bg-neutral-800">
                 {venue.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={venue.photo_url} alt={venue.name} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-neutral-300">
+                  <div className="flex h-full items-center justify-center text-neutral-300 dark:text-neutral-600">
                     <ImageIcon className="size-10" />
                   </div>
                 )}
@@ -86,8 +86,8 @@ export default function VenueManagementSection() {
                 </Badge>
               </div>
               <div className="p-4">
-                <h3 className="truncate text-sm font-semibold text-neutral-900">{venue.name}</h3>
-                {venue.address && <p className="mt-0.5 truncate text-[13px] text-neutral-500">{venue.address}</p>}
+                <h3 className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{venue.name}</h3>
+                {venue.address && <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400">{venue.address}</p>}
                 {isOwner && (
                   <div className="mt-3 flex gap-2">
                     <Button variant="secondary" size="sm" className="flex-1" onClick={() => setEditVenue(venue)}>
@@ -96,7 +96,7 @@ export default function VenueManagementSection() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-red-600 hover:bg-red-50"
+                      className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40"
                       onClick={() => { setDeleteVenue(venue); setDeleteError(null) }}
                     >
                       Delete
@@ -118,7 +118,7 @@ export default function VenueManagementSection() {
         onConfirm={handleDelete}
         title="Delete venue"
         description={
-          <>This will hide <span className="font-medium text-neutral-700">{deleteVenue?.name}</span> and all its content. This action cannot be undone.</>
+          <>This will hide <span className="font-medium text-neutral-700 dark:text-neutral-300">{deleteVenue?.name}</span> and all its content. This action cannot be undone.</>
         }
         confirmLabel="Delete venue"
         variant="danger"

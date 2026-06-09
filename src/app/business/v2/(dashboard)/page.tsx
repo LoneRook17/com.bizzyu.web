@@ -45,9 +45,9 @@ function eventBadge(status: string): { variant: "success" | "neutral" | "warning
 function MetricTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <Card className="p-5">
-      <p className="text-sm font-medium text-neutral-600">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-neutral-900">{value}</p>
-      {sub && <p className="mt-1.5 text-[13px] text-neutral-500">{sub}</p>}
+      <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{label}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{value}</p>
+      {sub && <p className="mt-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">{sub}</p>}
     </Card>
   )
 }
@@ -97,7 +97,7 @@ export default function V2HomePage() {
   const nextEvent = events[0]
   if (nextEvent) {
     attention.push({
-      icon: TrendingUp, tint: "bg-green-50 text-green-600",
+      icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
       title: `${nextEvent.name} is coming up`,
       sub: `${fmtDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
       href: `/business/v2/events/${nextEvent.event_id}/manage`, cta: "Manage",
@@ -105,7 +105,7 @@ export default function V2HomePage() {
   }
   if ((stats?.active_deals_count ?? 0) > 0) {
     attention.push({
-      icon: Ticket, tint: "bg-blue-50 text-blue-600",
+      icon: Ticket, tint: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
       title: `${stats!.active_deals_count} deals live right now`,
       sub: `${stats?.claims_this_week ?? 0} claims this week`,
       href: "/business/v2/deals", cta: "View",
@@ -142,23 +142,23 @@ export default function V2HomePage() {
       {!loading && attention.length > 0 && (
         <Card className="overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-4">
-            <Sparkles className="size-4 text-[#079455]" />
-            <h2 className="text-base font-semibold text-neutral-900">Needs your attention</h2>
+            <Sparkles className="size-4 text-[#05EB54]" />
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Needs your attention</h2>
             <Badge variant="brand" className="ml-1">{attention.length}</Badge>
           </div>
-          <div className="border-t border-neutral-100">
+          <div className="border-t border-neutral-100 dark:border-neutral-800">
             {attention.map((a, i) => (
               <Link
                 key={i}
                 href={a.href}
-                className={cn("flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-neutral-50", i > 0 && "border-t border-neutral-100")}
+                className={cn("flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}
               >
                 <span className={cn("flex size-9 items-center justify-center rounded-lg", a.tint)}>
                   <a.icon className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-neutral-900">{a.title}</span>
-                  <span className="block text-[13px] text-neutral-500">{a.sub}</span>
+                  <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100">{a.title}</span>
+                  <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{a.sub}</span>
                 </span>
                 <Button variant="secondary" size="sm" asChild><span>{a.cta}</span></Button>
               </Link>
@@ -172,27 +172,27 @@ export default function V2HomePage() {
         {/* upcoming events */}
         <Card className="overflow-hidden">
           <div className="flex items-center px-5 py-4">
-            <h2 className="text-base font-semibold text-neutral-900">Upcoming events</h2>
-            <Link href="/business/v2/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 hover:text-neutral-900">
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Upcoming events</h2>
+            <Link href="/business/v2/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
               View all <ArrowUpRight className="size-3.5" />
             </Link>
           </div>
-          <div className="border-t border-neutral-100">
+          <div className="border-t border-neutral-100 dark:border-neutral-800">
             {loading ? (
-              [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
+              [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
             ) : events.length === 0 ? (
               <div className="p-5"><EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start selling tickets." action={<Button asChild size="sm"><Link href="/business/v2/events/new"><Plus /> Create event</Link></Button>} /></div>
             ) : (
               events.map((e, i) => {
                 const b = eventBadge(e.status)
                 return (
-                  <Link key={e.event_id} href={`/business/v2/events/${e.event_id}/manage`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50", i > 0 && "border-t border-neutral-100")}>
+                  <Link key={e.event_id} href={`/business/v2/events/${e.event_id}/manage`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-neutral-900">{e.name}</span>
-                      <span className="block text-[13px] text-neutral-500">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
+                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
                     </span>
                     <Badge variant={b.variant}>{b.label}</Badge>
-                    <ChevronRight className="size-4 text-neutral-300" />
+                    <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
                   </Link>
                 )
               })
@@ -203,20 +203,20 @@ export default function V2HomePage() {
         {/* recent activity */}
         <Card className="overflow-hidden">
           <div className="flex items-center px-5 py-4">
-            <h2 className="text-base font-semibold text-neutral-900">Recent activity</h2>
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Recent activity</h2>
           </div>
-          <div className="border-t border-neutral-100">
+          <div className="border-t border-neutral-100 dark:border-neutral-800">
             {loading ? (
-              [0, 1, 2, 3].map((i) => <div key={i} className="border-t border-neutral-100 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-48" /></div>)
+              [0, 1, 2, 3].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-48" /></div>)
             ) : activity.length === 0 ? (
               <div className="p-5"><EmptyState icon={Sparkles} title="No activity yet" description="Sales, claims, and check-ins will show up here." /></div>
             ) : (
               activity.map((a, i) => (
-                <div key={i} className={cn("flex items-start gap-3 px-5 py-3.5", i > 0 && "border-t border-neutral-100")}>
-                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[#079455]" />
+                <div key={i} className={cn("flex items-start gap-3 px-5 py-3.5", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[#05EB54]" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-neutral-800">{a.message}</span>
-                    <span className="block text-xs text-neutral-400">{fmtRelative(a.timestamp)} ago</span>
+                    <span className="block text-sm text-neutral-800 dark:text-neutral-200">{a.message}</span>
+                    <span className="block text-xs text-neutral-400 dark:text-neutral-500">{fmtRelative(a.timestamp)} ago</span>
                   </span>
                 </div>
               ))

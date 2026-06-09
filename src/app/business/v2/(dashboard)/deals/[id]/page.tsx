@@ -83,7 +83,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
   if (error || !deal) {
     return (
       <div className="py-16 text-center">
-        <p className="mb-4 text-sm text-red-500">{error || "Deal not found"}</p>
+        <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error || "Deal not found"}</p>
         <Button variant="link" asChild>
           <Link href="/business/v2/deals">Back to deals</Link>
         </Button>
@@ -102,14 +102,14 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
         <div className="min-w-0">
           <Link
             href="/business/v2/deals"
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
           >
             <ArrowLeft className="size-4" /> Back to deals
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">{deal.deal_title}</h1>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-neutral-500">
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{deal.deal_title}</h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-neutral-500 dark:text-neutral-400">
             <span>{deal.deal_category}</span>
-            <span className="text-neutral-300">·</span>
+            <span className="text-neutral-300 dark:text-neutral-600">·</span>
             <span>{deal.deal_type}</span>
             {deal.is_active ? <Badge variant="success">Active</Badge> : <Badge variant="neutral">Draft</Badge>}
             {deal.moderation_status === "pending_review" && <Badge variant="warning">In review</Badge>}
@@ -136,7 +136,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* moderation notice */}
       {deal.moderation_status === "pending_review" && deal.moderation_reason && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           <span className="font-semibold">Under review:</span> {deal.moderation_reason}
         </div>
       )}
@@ -152,8 +152,8 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
           )}
           <Card>
             <CardContent className="p-5">
-              <h2 className="mb-2 text-sm font-semibold text-neutral-900">Description</h2>
-              <p className="whitespace-pre-wrap text-sm text-neutral-600">{deal.description}</p>
+              <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Description</h2>
+              <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{deal.description}</p>
             </CardContent>
           </Card>
         </div>
@@ -163,37 +163,37 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
           <Card>
             <CardContent className="space-y-3 p-5">
               <div>
-                <p className="text-xs uppercase tracking-wide text-neutral-500">Dates</p>
-                <p className="text-sm text-neutral-900">
+                <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Dates</p>
+                <p className="text-sm text-neutral-900 dark:text-neutral-100">
                   {fmtDate(deal.start_date)} – {fmtDate(deal.expired_date)}
                 </p>
               </div>
               {deal.location && (
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-neutral-500">Location</p>
-                  <p className="text-sm text-neutral-900">{deal.location}</p>
+                  <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Location</p>
+                  <p className="text-sm text-neutral-900 dark:text-neutral-100">{deal.location}</p>
                 </div>
               )}
               <div>
-                <p className="text-xs uppercase tracking-wide text-neutral-500">Total saving</p>
-                <p className="text-sm text-neutral-900">{usd(deal.total_saving)}</p>
+                <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Total saving</p>
+                <p className="text-sm text-neutral-900 dark:text-neutral-100">{usd(deal.total_saving)}</p>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-5">
-              <h2 className="mb-3 text-xs uppercase tracking-wide text-neutral-500">Performance</h2>
+              <h2 className="mb-3 text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Performance</h2>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-neutral-600">Claims</span>
-                  <span className="text-sm font-medium text-neutral-900">{deal.claim_count ?? 0}</span>
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">Claims</span>
+                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{deal.claim_count ?? 0}</span>
                 </div>
                 {deal.supply_limit ? (
                   <div className="space-y-1.5">
                     <div className="flex justify-between">
-                      <span className="text-sm text-neutral-600">Supply</span>
-                      <span className="text-sm font-medium text-neutral-900">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">Supply</span>
+                      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
                         {deal.claim_count ?? 0} / {deal.supply_limit}
                       </span>
                     </div>
@@ -213,7 +213,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
             <DialogTitle>Deactivate deal</DialogTitle>
             <DialogDescription>This will hide the deal from students. You can reactivate it later.</DialogDescription>
           </DialogHeader>
-          {actionError && <p className="text-sm text-red-500">{actionError}</p>}
+          {actionError && <p className="text-sm text-red-500 dark:text-red-400">{actionError}</p>}
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="secondary" disabled={actionLoading}>Cancel</Button>
@@ -235,7 +235,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
               Are you sure you want to delete this deal? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          {actionError && <p className="text-sm text-red-500">{actionError}</p>}
+          {actionError && <p className="text-sm text-red-500 dark:text-red-400">{actionError}</p>}
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="secondary" disabled={actionLoading}>Cancel</Button>

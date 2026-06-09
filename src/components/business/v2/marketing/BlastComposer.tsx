@@ -104,7 +104,7 @@ export default function BlastComposer({ open, onClose, channel, audience, audien
           {audienceLabel && <DialogDescription>{audienceLabel}</DialogDescription>}
         </DialogHeader>
 
-        <div className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+        <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/50 px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300">
           {previewLoading && <span>Calculating audience…</span>}
           {!previewLoading && preview && (
             <span>
@@ -125,11 +125,11 @@ export default function BlastComposer({ open, onClose, channel, audience, audien
             placeholder={channel === "sms" ? "Hey! New event drop this weekend — link in bio." : "Tap to see what's new at our spot."}
           />
           <div className="mt-1.5 flex items-center justify-between text-xs">
-            <span className={cn(overLimit ? "text-red-600" : "text-neutral-500")}>
+            <span className={cn(overLimit ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400")}>
               {charCount} / {charLimit}
             </span>
             {channel === "sms" && (
-              <span className="text-neutral-400">
+              <span className="text-neutral-400 dark:text-neutral-500">
                 Auto-appended: <code>{SMS_SUFFIX.trim()}</code>
               </span>
             )}
@@ -137,7 +137,7 @@ export default function BlastComposer({ open, onClose, channel, audience, audien
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+          <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-400">{error}</div>
         )}
 
         <DialogFooter>

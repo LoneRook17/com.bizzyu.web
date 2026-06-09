@@ -285,19 +285,19 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   if (!isEdit && profile && !profile.stripe_connect_onboarded) {
     return (
       <div className="max-w-2xl">
-        <Link href="/business/v2/line-skips" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900">
+        <Link href="/business/v2/line-skips" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
           <ArrowLeft className="size-4" /> Back to line skips
         </Link>
-        <Card className="mt-4 border-amber-200 bg-amber-50">
+        <Card className="mt-4 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40">
           <CardContent className="p-6">
             <div className="flex items-start gap-3">
-              <TriangleAlert className="mt-0.5 size-6 shrink-0 text-amber-600" />
+              <TriangleAlert className="mt-0.5 size-6 shrink-0 text-amber-600 dark:text-amber-400" />
               <div>
-                <h2 className="mb-1 text-lg font-semibold text-neutral-900">Connect your Stripe account</h2>
-                <p className="mb-4 text-sm text-neutral-600">
+                <h2 className="mb-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100">Connect your Stripe account</h2>
+                <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
                   Line skips are paid products. You need to connect your Stripe account before you can start selling them.
                 </p>
-                {stripeError && <p className="mb-3 text-sm text-red-600">{stripeError}</p>}
+                {stripeError && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{stripeError}</p>}
                 <Button onClick={handleConnectStripe} disabled={stripeConnecting}>
                   {stripeConnecting && <Loader2 className="size-4 animate-spin" />}
                   {stripeConnecting ? "Connecting..." : "Connect Stripe"}
@@ -312,26 +312,26 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
 
   return (
     <div className="max-w-2xl">
-      <Link href={backHref} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 hover:text-neutral-900">
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
         <ArrowLeft className="size-4" /> {isEdit ? "Back to line skip" : "Back to line skips"}
       </Link>
-      <h1 className="mb-6 mt-2 text-2xl font-semibold tracking-tight text-neutral-900">
+      <h1 className="mb-6 mt-2 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
         {isEdit ? "Edit line skip" : "Create line skip"}
       </h1>
 
       {!isEdit && (
-        <div className="mb-5 space-y-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-          <p className="text-sm text-blue-700">
+        <div className="mb-5 space-y-2 rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3">
+          <p className="text-sm text-blue-700 dark:text-blue-400">
             Line skips include cover. Customers who purchase a line skip will skip the line and have their cover included in the price.
           </p>
-          <p className="text-sm text-blue-700">
+          <p className="text-sm text-blue-700 dark:text-blue-400">
             Line skip tickets are scanned using the universal scanner — customers simply show their QR code and staff scan it with any phone camera. No app or special equipment needed.
           </p>
         </div>
       )}
 
       {serverError && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{serverError}</div>
+        <div className="mb-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-700 dark:text-red-400">{serverError}</div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -353,7 +353,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
                 <option key={v.id} value={v.id}>{v.name}</option>
               ))}
             </Select>
-            {errors.venue && <p className="text-xs text-red-500">{errors.venue}</p>}
+            {errors.venue && <p className="text-xs text-red-500 dark:text-red-400">{errors.venue}</p>}
           </div>
         )}
 
@@ -368,13 +368,13 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
             placeholder={`Skip the line at ${selectedVenue?.name || "your venue"}`}
             className={cn(errors.name && errClass)}
           />
-          {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+          {errors.name && <p className="text-xs text-red-500 dark:text-red-400">{errors.name}</p>}
         </div>
 
         {/* Description */}
         <div className="space-y-1.5">
           <Label htmlFor="description">
-            Description <span className="font-normal text-neutral-400">(optional)</span>
+            Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
           </Label>
           <Textarea
             id="description"
@@ -401,8 +401,8 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
                   className={cn(
                     "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
                     active
-                      ? "border-[#079455] bg-[#079455] text-white"
-                      : "border-neutral-300 bg-white text-neutral-600 hover:border-neutral-400"
+                      ? "border-[#05EB54] bg-[#05EB54] text-white"
+                      : "border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-600"
                   )}
                 >
                   {day.label}
@@ -410,7 +410,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
               )
             })}
           </div>
-          {errors.days_of_week && <p className="text-xs text-red-500">{errors.days_of_week}</p>}
+          {errors.days_of_week && <p className="text-xs text-red-500 dark:text-red-400">{errors.days_of_week}</p>}
         </div>
 
         {/* Dates */}
@@ -419,19 +419,19 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
             <div className="space-y-1.5">
               <Label htmlFor="date_range_start">Start date</Label>
               <Input id="date_range_start" name="date_range_start" type="date" value={form.date_range_start} onChange={handleChange} className={cn(errors.date_range_start && errClass)} />
-              {errors.date_range_start && <p className="text-xs text-red-500">{errors.date_range_start}</p>}
+              {errors.date_range_start && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_start}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="date_range_end">End date</Label>
               <Input id="date_range_end" name="date_range_end" type="date" value={form.date_range_end} onChange={handleChange} className={cn(errors.date_range_end && errClass)} />
-              {errors.date_range_end && <p className="text-xs text-red-500">{errors.date_range_end}</p>}
+              {errors.date_range_end && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_end}</p>}
             </div>
           </div>
         ) : (
           <div className="space-y-1.5">
             <Label htmlFor="date_range_start">Start date</Label>
             <Input id="date_range_start" name="date_range_start" type="date" value={form.date_range_start} onChange={handleChange} className={cn(errors.date_range_start && errClass)} />
-            {errors.date_range_start && <p className="text-xs text-red-500">{errors.date_range_start}</p>}
+            {errors.date_range_start && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_start}</p>}
           </div>
         )}
 
@@ -440,12 +440,12 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           <div className="space-y-1.5">
             <Label htmlFor="default_start_time">Doors open</Label>
             <Input id="default_start_time" name="default_start_time" type="time" value={form.default_start_time} onChange={handleChange} className={cn(errors.default_start_time && errClass)} />
-            {errors.default_start_time && <p className="text-xs text-red-500">{errors.default_start_time}</p>}
+            {errors.default_start_time && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_start_time}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="default_end_time">Venue closes</Label>
             <Input id="default_end_time" name="default_end_time" type="time" value={form.default_end_time} onChange={handleChange} className={cn(errors.default_end_time && errClass)} />
-            {errors.default_end_time && <p className="text-xs text-red-500">{errors.default_end_time}</p>}
+            {errors.default_end_time && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_end_time}</p>}
           </div>
         </div>
 
@@ -454,7 +454,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           <div className="space-y-1.5">
             <Label htmlFor="price">Default price</Label>
             <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500">$</span>
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
               <Input
                 id="price"
                 type="text"
@@ -466,11 +466,11 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
                 className={cn("pl-7", errors.default_price_cents && errClass)}
               />
             </div>
-            {errors.default_price_cents && <p className="text-xs text-red-500">{errors.default_price_cents}</p>}
+            {errors.default_price_cents && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_price_cents}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="default_capacity">
-              Line skip quantity <span className="font-normal text-neutral-400">(optional)</span>
+              Line skip quantity <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
             </Label>
             <Input
               id="default_capacity"
@@ -482,24 +482,24 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
               placeholder="Leave blank for unlimited"
               className={cn(errors.default_capacity && errClass)}
             />
-            {errors.default_capacity && <p className="text-xs text-red-500">{errors.default_capacity}</p>}
+            {errors.default_capacity && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_capacity}</p>}
           </div>
         </div>
 
         {/* Regenerate (edit only) */}
         {isEdit && (
-          <Card className="bg-neutral-50">
+          <Card className="bg-neutral-50 dark:bg-neutral-800/50">
             <CardContent className="p-4">
               <label className="flex cursor-pointer items-start gap-3">
                 <input
                   type="checkbox"
                   checked={regenerate}
                   onChange={(e) => setRegenerate(e.target.checked)}
-                  className="mt-0.5 size-4 rounded border-neutral-300 text-[#079455] focus:ring-[#079455]"
+                  className="mt-0.5 size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
                 />
                 <div>
-                  <p className="text-sm font-medium text-neutral-900">Regenerate future instances with new defaults</p>
-                  <p className="mt-0.5 text-xs text-neutral-500">
+                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Regenerate future instances with new defaults</p>
+                  <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                     This will regenerate the next 2 weeks of nights using your new defaults. Past nights and nights with sold tickets will not be affected. Future nights beyond 2 weeks are added automatically on a rolling basis.
                   </p>
                 </div>
@@ -511,34 +511,34 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
         {/* Preview */}
         {isEdit ? (
           regenerate && previewDates.length > 0 ? (
-            <Card className="border-amber-200 bg-amber-50">
+            <Card className="border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40">
               <CardContent className="p-4">
-                <p className="mb-2 text-sm font-medium text-amber-800">Upcoming nights to regenerate (next 2 weeks):</p>
+                <p className="mb-2 text-sm font-medium text-amber-800 dark:text-amber-300">Upcoming nights to regenerate (next 2 weeks):</p>
                 <div className="max-h-32 space-y-1 overflow-y-auto">
                   {previewDates.map((d, i) => (
-                    <p key={i} className="text-xs text-amber-700">{d}</p>
+                    <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{d}</p>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-amber-600">
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
                   Only unsold future nights will be regenerated. Additional nights are added automatically on a rolling basis.
                 </p>
               </CardContent>
             </Card>
           ) : null
         ) : (
-          <Card className="bg-neutral-50">
+          <Card className="bg-neutral-50 dark:bg-neutral-800/50">
             <CardContent className="p-4">
               {form.days_of_week.length === 0 ? (
-                <p className="text-sm text-neutral-500">Select days of the week to see upcoming nights</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">Select days of the week to see upcoming nights</p>
               ) : (
                 <>
-                  <p className="mb-1 text-sm font-medium text-neutral-900">Upcoming nights (next 2 weeks):</p>
+                  <p className="mb-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">Upcoming nights (next 2 weeks):</p>
                   <div className="mb-2 max-h-40 space-y-1 overflow-y-auto">
                     {previewDates.map((d, i) => (
-                      <p key={i} className="text-xs text-neutral-600">{d}</p>
+                      <p key={i} className="text-xs text-neutral-600 dark:text-neutral-400">{d}</p>
                     ))}
                   </div>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500">
                     Nights are generated on a rolling 2-week basis and added automatically as time passes. You can stop this line skip at any time.
                   </p>
                 </>

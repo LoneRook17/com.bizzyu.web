@@ -294,22 +294,22 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <Link
         href="/business/v2/events"
-        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 transition-colors hover:text-neutral-900"
+        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
         <ArrowLeft className="size-3.5" /> Back to events
       </Link>
 
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
           {isEditing ? "Edit event" : "Create event"}
         </h1>
-        <p className="mt-1 text-[15px] text-neutral-600">
+        <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isEditing ? "Update details, tickets, and settings." : "Set up your event, tickets, and where it happens."}
         </p>
       </div>
 
       {moderationNotice && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           {moderationNotice}
         </div>
       )}
@@ -321,7 +321,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           <div>
             <Label htmlFor="name" className="mb-1.5 block">Event name</Label>
             <Input id="name" name="name" value={form.name} onChange={handleChange} placeholder="e.g. Spring Bash 2026" maxLength={100} />
-            {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
+            {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
           </div>
           <div>
             <Label htmlFor="description" className="mb-1.5 block">Description</Label>
@@ -339,12 +339,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               </Select>
               {!stripeOnboarded && (
                 <div className="mt-1.5">
-                  <p className="text-xs text-amber-600">Stripe Connect is required for paid events.</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">Stripe Connect is required for paid events.</p>
                   <button
                     type="button"
                     onClick={handleConnectStripe}
                     disabled={stripeConnecting}
-                    className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#079455] hover:underline disabled:opacity-60"
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#05EB54] hover:underline disabled:opacity-60"
                   >
                     {stripeConnecting ? "Connecting…" : "Connect Stripe →"}
                   </button>
@@ -358,9 +358,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   name="is_21_plus"
                   checked={form.is_21_plus}
                   onChange={handleChange}
-                  className="size-4 rounded border-neutral-300 text-[#079455] focus:ring-[#079455]"
+                  className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
                 />
-                <span className="text-sm text-neutral-700">21+ only</span>
+                <span className="text-sm text-neutral-700 dark:text-neutral-300">21+ only</span>
               </label>
             </div>
           </div>
@@ -374,12 +374,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           <div>
             <Label htmlFor="start_date_time" className="mb-1.5 block">Starts</Label>
             <Input id="start_date_time" name="start_date_time" type="datetime-local" value={form.start_date_time} onChange={handleChange} />
-            {errors.start_date_time && <p className="mt-1 text-xs text-red-600">{errors.start_date_time}</p>}
+            {errors.start_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.start_date_time}</p>}
           </div>
           <div>
             <Label htmlFor="end_date_time" className="mb-1.5 block">Ends</Label>
             <Input id="end_date_time" name="end_date_time" type="datetime-local" value={form.end_date_time} onChange={handleChange} />
-            {errors.end_date_time && <p className="mt-1 text-xs text-red-600">{errors.end_date_time}</p>}
+            {errors.end_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_date_time}</p>}
           </div>
         </CardContent>
       </Card>
@@ -404,7 +404,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   <option key={v.id} value={v.id}>{v.name}</option>
                 ))}
               </Select>
-              {errors.venue_name && !selectedVenue && <p className="mt-1 text-xs text-red-600">{errors.venue_name}</p>}
+              {errors.venue_name && !selectedVenue && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>}
             </div>
           )}
           <div>
@@ -417,7 +417,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               placeholder="e.g. The Main Stage"
               disabled={!isEditing && !!selectedVenue}
             />
-            {!selectedVenue && errors.venue_name && <p className="mt-1 text-xs text-red-600">{errors.venue_name}</p>}
+            {!selectedVenue && errors.venue_name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>}
           </div>
           <div className="relative" ref={addressWrapperRef}>
             <Label htmlFor="venue_address" className="mb-1.5 block">Address</Label>
@@ -433,11 +433,11 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               placeholder="Start typing an address…"
             />
             {showPredictions && addressPredictions.length > 0 && (
-              <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-neutral-200 bg-white shadow-lg">
+              <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-lg">
                 {addressPredictions.map((p) => (
                   <li
                     key={p.place_id}
-                    className="flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm hover:bg-neutral-50"
+                    className="flex cursor-pointer items-center gap-2 px-3 py-2.5 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
                     onMouseDown={() => {
                       setForm((prev) => ({ ...prev, venue_address: p.description }))
                       setAddressPredictions([])
@@ -452,8 +452,8 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                         .catch(() => {})
                     }}
                   >
-                    <MapPin className="size-4 shrink-0 text-neutral-400" />
-                    <span className="truncate text-neutral-700">{p.description}</span>
+                    <MapPin className="size-4 shrink-0 text-neutral-400 dark:text-neutral-500" />
+                    <span className="truncate text-neutral-700 dark:text-neutral-300">{p.description}</span>
                   </li>
                 ))}
               </ul>
@@ -476,7 +476,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           <CardHeader><CardTitle>Tickets</CardTitle></CardHeader>
           <CardContent className="pt-0">
             <TicketTierForm tiers={form.tickets} onChange={(tiers) => setForm((prev) => ({ ...prev, tickets: tiers }))} />
-            {errors.tickets && <p className="mt-2 text-xs text-red-600">{errors.tickets}</p>}
+            {errors.tickets && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tickets}</p>}
           </CardContent>
         </Card>
       )}
@@ -486,7 +486,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Promoter program</CardTitle>
-            <p className="text-[13px] text-neutral-500">Promoters share your event link and earn this on each sale.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share your event link and earn this on each sale.</p>
           </CardHeader>
           <CardContent className="pt-0">
             <label
@@ -501,16 +501,16 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   setForm((prev) => ({ ...prev, promotion_enabled: e.target.checked }))
                   setErrors((prev) => ({ ...prev, promotion_commission_value: "" }))
                 }}
-                className="size-4 rounded border-neutral-300 text-[#079455] focus:ring-[#079455]"
+                className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
               />
-              <span className="text-sm text-neutral-700">Enable promoter program</span>
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">Enable promoter program</span>
             </label>
-            {promoToggleDisabled && <p className="mt-1 text-xs text-amber-600">{promoDisabledReason}</p>}
+            {promoToggleDisabled && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoDisabledReason}</p>}
 
             {form.promotion_enabled && !promoToggleDisabled && (
               <div className="mt-4 space-y-3">
                 <div>
-                  <p className="mb-1.5 text-sm font-medium text-neutral-700">Commission type</p>
+                  <p className="mb-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">Commission type</p>
                   <div className="flex flex-wrap gap-4">
                     <label className="flex cursor-pointer items-center gap-2">
                       <input
@@ -522,9 +522,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                           setPromotionValueInput("")
                           setErrors((prev) => ({ ...prev, promotion_commission_value: "" }))
                         }}
-                        className="text-[#079455] focus:ring-[#079455]"
+                        className="text-[#05EB54] focus:ring-[#05EB54]"
                       />
-                      <span className="text-sm text-neutral-700">Percent of ticket price</span>
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Percent of ticket price</span>
                     </label>
                     <label className="flex cursor-pointer items-center gap-2">
                       <input
@@ -536,9 +536,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                           setPromotionValueInput("")
                           setErrors((prev) => ({ ...prev, promotion_commission_value: "" }))
                         }}
-                        className="text-[#079455] focus:ring-[#079455]"
+                        className="text-[#05EB54] focus:ring-[#05EB54]"
                       />
-                      <span className="text-sm text-neutral-700">Fixed amount per ticket</span>
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Fixed amount per ticket</span>
                     </label>
                   </div>
                 </div>
@@ -561,7 +561,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                     }}
                   />
                   {errors.promotion_commission_value && (
-                    <p className="mt-1 text-xs text-red-600">{errors.promotion_commission_value}</p>
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.promotion_commission_value}</p>
                   )}
                 </div>
               </div>
@@ -572,7 +572,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
       {/* Submit */}
       {serverError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
           <p>{serverError}</p>
           {/Stripe Connect/i.test(serverError) && (
             <Button type="button" variant="primary" size="sm" className="mt-2" disabled={stripeConnecting} onClick={handleConnectStripe}>
