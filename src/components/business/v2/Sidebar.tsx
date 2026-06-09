@@ -49,11 +49,9 @@ export default function Sidebar() {
   return (
     <aside className="flex w-[264px] shrink-0 flex-col gap-1 border-r border-neutral-200 bg-white px-4 pb-4 pt-5">
       {/* brand */}
-      <Link href="/business/v2" className="mb-1 flex items-center gap-2.5 px-1.5">
-        <span className="flex size-7 items-center justify-center rounded-lg bg-[#05EB54] text-[#06351D]">
-          <Zap className="size-4 fill-current" strokeWidth={0} />
-        </span>
-        <span className="text-[19px] font-bold tracking-tight text-neutral-900">bizzy</span>
+      <Link href="/business/v2" className="mb-1 flex items-center px-1.5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-8 w-auto" />
       </Link>
 
       {/* venue switcher */}
