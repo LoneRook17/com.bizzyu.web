@@ -1,0 +1,109 @@
+"use client"
+
+import { useRef, useState } from "react"
+import { ImagePlus, Loader2, X } from "lucide-react"
+import { apiClient } from "@/lib/business/api-client"
+import { cn } from "@/lib/v2/utils"
+
+interface ImageUploadProps {
+  value: string
+  onChange: (url: string) => void
+  /** Visual aspect of the preview; flyers are portrait-ish, banners wide. */
+  aspect?: "video" | "square"
+  className?: string
+}
+
+/**
+ * v2-styled image uploader. Mirrors the legacy dashboard ImageUpload behaviour
+ * (POST /business/upload/image, 10MB cap, image-only) with the v2 surface look.
+ */
+export function ImageUpload({ value, onChange, aspect = "video", className }: ImageUploadProps) {
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState("")
+  const [dragOver, setDragOver] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Only image files are allowed")
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File must be under 10MB")
+      return
+    }
+    setError("")
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("image", file)
+      const data = await apiClient.upload<{ url: string }>("/business/upload/image", formData)
+      onChange(data.url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const previewClass = aspect === "square" ? "aspect-square" : "aspect-video"
+
+  return (
+    <div className={className}>
+      {value ? (
+        <div className={cn("relative overflow-hidden rounded-xl border border-neutral-200", previewClass)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt="Upload preview" className="h-full w-full object-cover" />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-neutral-600 shadow-sm transition-colors hover:bg-white hover:text-red-500"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault()
+            setDragOver(true)
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setDragOver(false)
+            const file = e.dataTransfer.files[0]
+            if (file) handleFile(file)
+          }}
+          className={cn(
+            "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
+            previewClass,
+            dragOver ? "border-[#079455] bg-green-50/60" : "border-neutral-300 bg-neutral-50/60 hover:border-neutral-400"
+          )}
+        >
+          {uploading ? (
+            <Loader2 className="size-7 animate-spin text-[#079455]" />
+          ) : (
+            <>
+              <span className="flex size-11 items-center justify-center rounded-full bg-neutral-100 text-neutral-500">
+                <ImagePlus className="size-5" />
+              </span>
+              <span className="text-sm font-medium text-neutral-700">Drag and drop or click to upload</span>
+              <span className="text-xs text-neutral-500">PNG, JPG, GIF up to 10MB</span>
+            </>
+          )}
+        </button>
+      )}
+
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+        const file = e.target.files?.[0]
+        if (file) handleFile(file)
+        e.target.value = ""
+      }} />
+
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
