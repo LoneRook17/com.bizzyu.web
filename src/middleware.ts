@@ -7,6 +7,13 @@ const AUTH_PAGES = [
   "/business/forgot-password",
   "/business/reset-password",
   "/business/accept-invite",
+  // v2 (isolated dashboard redesign) auth pages
+  "/business/v2/login",
+  "/business/v2/signup",
+  "/business/v2/verify-email",
+  "/business/v2/forgot-password",
+  "/business/v2/reset-password",
+  "/business/v2/accept-invite",
 ]
 
 export function middleware(request: NextRequest) {
@@ -25,9 +32,12 @@ export function middleware(request: NextRequest) {
     (page) => pathname === page || pathname.startsWith(page + "/")
   )
 
+  // Keep v2 traffic inside v2 (auth ↔ dashboard redirects stay in the same world)
+  const isV2 = pathname.startsWith("/business/v2")
+
   // Authenticated user visiting auth pages → redirect to dashboard
   if (isAuthPage && hasSession) {
-    return NextResponse.redirect(new URL("/business", request.url))
+    return NextResponse.redirect(new URL(isV2 ? "/business/v2" : "/business", request.url))
   }
 
   // Skip auth for deep link interstitial pages (numeric business IDs)
@@ -37,7 +47,7 @@ export function middleware(request: NextRequest) {
 
   // Unauthenticated user visiting dashboard pages → redirect to login
   if (!isAuthPage && !hasSession) {
-    return NextResponse.redirect(new URL("/business/login", request.url))
+    return NextResponse.redirect(new URL(isV2 ? "/business/v2/login" : "/business/login", request.url))
   }
 
   return NextResponse.next()
