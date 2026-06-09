@@ -32,14 +32,14 @@ export const MODE_CONFIG: Record<
     showLineSkips: false,
   },
   events: {
-    label: "Events & tickets",
+    label: "Events only",
     description: "Sell tickets, scan, and promote events",
     showDeals: false,
     showEvents: true,
     showLineSkips: true,
   },
   hybrid: {
-    label: "Deals + events",
+    label: "Both (Events & Deals)",
     description: "Run deals and events together",
     showDeals: true,
     showEvents: true,

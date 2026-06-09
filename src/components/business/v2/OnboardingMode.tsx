@@ -56,22 +56,23 @@ export default function OnboardingMode() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-50 px-4 py-12 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
-      <div className="w-full max-w-3xl">
-        <div className="mb-10 text-center">
+      <div className="w-full max-w-4xl">
+        <div className="mb-12 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/bizzy-logo.png" alt="Bizzy" className="mx-auto mb-6 h-12" />
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+          <img src="/images/bizzy-logo.png" alt="Bizzy" className="mx-auto mb-8 h-16" />
+          <h1 className="text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 sm:text-4xl">
             Welcome{firstName ? `, ${firstName}` : ""}! What will you use Bizzy for?
           </h1>
-          <p className="mt-2 text-[15px] text-neutral-600 dark:text-neutral-400">
+          <p className="mt-3 text-base text-neutral-600 dark:text-neutral-400 sm:text-lg">
             We&apos;ll set up your dashboard around it. You can change this anytime in Settings.
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2">
           {OPTIONS.map(({ mode, icon: Icon, bullets }) => {
             const cfg = MODE_CONFIG[mode]
             const isSelected = selected === mode
+            const isHybrid = mode === "hybrid"
             return (
               <button
                 key={mode}
@@ -79,22 +80,23 @@ export default function OnboardingMode() {
                 disabled={saving}
                 onClick={() => choose(mode)}
                 className={cn(
-                  "relative flex flex-col items-start rounded-xl border bg-white p-5 text-left shadow-sm outline-none transition-all dark:bg-neutral-900",
+                  "relative flex flex-col items-start rounded-2xl border bg-white p-7 text-left shadow-sm outline-none transition-all dark:bg-neutral-900",
                   "hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#05EB54]/40",
+                  isHybrid && "sm:col-span-2 sm:items-center sm:text-center",
                   isSelected
                     ? "border-[#05EB54] ring-2 ring-[#05EB54]/40"
                     : "border-neutral-200 hover:border-neutral-300 dark:border-neutral-800 dark:hover:border-neutral-700",
                   saving && !isSelected && "opacity-50"
                 )}
               >
-                <span className="mb-3 flex size-10 items-center justify-center rounded-lg bg-green-50 text-[#05EB54] dark:bg-green-950/40">
-                  {isSelected && saving ? <Loader2 className="size-5 animate-spin" /> : <Icon className="size-5" />}
+                <span className={cn("mb-4 flex size-14 items-center justify-center rounded-xl bg-green-50 text-[#05EB54] dark:bg-green-950/40", isHybrid && "sm:mx-auto")}>
+                  {isSelected && saving ? <Loader2 className="size-7 animate-spin" /> : <Icon className="size-7" />}
                 </span>
-                <span className="text-[15px] font-semibold text-neutral-900 dark:text-neutral-100">{cfg.label}</span>
-                <ul className="mt-2 flex flex-col gap-1.5">
+                <span className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{cfg.label}</span>
+                <ul className={cn("mt-3 flex flex-col gap-2", isHybrid && "sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6")}>
                   {bullets.map((b) => (
-                    <li key={b} className="flex items-start gap-1.5 text-[13px] leading-snug text-neutral-500 dark:text-neutral-400">
-                      <Check className="mt-0.5 size-3.5 shrink-0 text-[#05EB54]" />
+                    <li key={b} className="flex items-start gap-2 text-[15px] leading-snug text-neutral-500 dark:text-neutral-400">
+                      <Check className="mt-0.5 size-4 shrink-0 text-[#05EB54]" />
                       {b}
                     </li>
                   ))}
