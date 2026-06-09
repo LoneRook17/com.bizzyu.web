@@ -8,11 +8,10 @@ import { MODE_CONFIG } from "@/lib/v2/mode"
 import type { DashboardMode } from "@/lib/business/types"
 import { cn } from "@/lib/v2/utils"
 
-const OPTIONS: { mode: DashboardMode; icon: React.ElementType; popular?: boolean; bullets: string[] }[] = [
+const OPTIONS: { mode: DashboardMode; icon: React.ElementType; bullets: string[] }[] = [
   {
     mode: "deals",
     icon: Tag,
-    popular: true,
     bullets: ["Post exclusive student deals", "Track claims & redemptions", "Reach students near campus"],
   },
   {
@@ -70,7 +69,7 @@ export default function OnboardingMode() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          {OPTIONS.map(({ mode, icon: Icon, popular, bullets }) => {
+          {OPTIONS.map(({ mode, icon: Icon, bullets }) => {
             const cfg = MODE_CONFIG[mode]
             const isSelected = selected === mode
             return (
@@ -88,11 +87,6 @@ export default function OnboardingMode() {
                   saving && !isSelected && "opacity-50"
                 )}
               >
-                {popular && (
-                  <span className="absolute -top-2.5 right-4 rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-                    Most popular
-                  </span>
-                )}
                 <span className="mb-3 flex size-10 items-center justify-center rounded-lg bg-green-50 text-[#05EB54] dark:bg-green-950/40">
                   {isSelected && saving ? <Loader2 className="size-5 animate-spin" /> : <Icon className="size-5" />}
                 </span>
