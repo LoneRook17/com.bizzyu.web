@@ -3,10 +3,10 @@
 import { Suspense, useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ChevronRight, ImageIcon, Pencil, Plus, RotateCcw, Tag } from "lucide-react"
+import { ChevronRight, Clock, ImageIcon, Pencil, Plus, RotateCcw, Tag } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
-import { apiClient } from "@/lib/business/api-client"
+import { apiClient, ApiError } from "@/lib/business/api-client"
 import { DEAL_TABS } from "@/lib/business/constants"
 import { cn } from "@/lib/v2/utils"
 import type { DealListItem } from "@/lib/business/types"
@@ -131,7 +131,7 @@ function DealRow({
 }
 
 function DealsContent() {
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { venues, isAllVenues, setSelectedVenue } = useVenue()
@@ -145,6 +145,10 @@ function DealsContent() {
   const [deals, setDeals] = useState<DealListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [counts, setCounts] = useState<DealCounts>({ live: 0, expired: 0, deactivated: 0 })
+  const [reactivateNotice, setReactivateNotice] = useState("")
+
+  // Stale notices don't follow you across tabs
+  useEffect(() => setReactivateNotice(""), [tab])
 
   const canCreate =
     user?.business_role === "owner" || user?.business_role === "manager" || user?.business_role === "staff"
@@ -188,12 +192,23 @@ function DealsContent() {
   }, [fetchDeals, fetchCounts])
 
   const handleReactivate = async (dealId: number) => {
+    // Publishing is approval-gated server-side (403) — explain instead of
+    // firing a request that silently fails.
+    if (isPending) {
+      setReactivateNotice(
+        "This deal is saved and ready. Once your business is approved, come back and hit Reactivate to take it live."
+      )
+      return
+    }
     try {
       await apiClient.patch(`/business/deals/${dealId}/toggle`)
+      setReactivateNotice("")
       fetchDeals()
       fetchCounts()
-    } catch {
-      // ignore
+    } catch (err) {
+      setReactivateNotice(
+        err instanceof ApiError ? err.message : "Couldn't reactivate this deal. Please try again."
+      )
     }
   }
 
@@ -235,6 +250,13 @@ function DealsContent() {
           })}
         </TabsList>
       </Tabs>
+
+      {reactivateNotice && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3.5">
+          <Clock className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-sm leading-relaxed text-amber-900 dark:text-amber-300">{reactivateNotice}</p>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">
