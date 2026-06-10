@@ -89,13 +89,16 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
         await apiClient.put(`/business/deals/${dealId}`, payload)
         router.push(`/business/v2/deals/${dealId}`)
       } else {
-        const data = await apiClient.post<{ deal_id: number; moderation_status: string | null }>(
+        const data = await apiClient.post<{ deal_id: number; moderation_status: string | null; saved_as_draft?: boolean }>(
           "/business/deals",
           payload
         )
         if (data.moderation_status === "pending_review") {
           setModerationNotice("Your deal has been created but is under review due to content moderation.")
           setTimeout(() => router.push("/business/v2/deals"), 3000)
+        } else if (data.saved_as_draft) {
+          setModerationNotice("Saved as a draft — it can go live as soon as your business is approved.")
+          setTimeout(() => router.push("/business/v2/deals?tab=deactivated"), 3000)
         } else {
           router.push("/business/v2/deals")
         }

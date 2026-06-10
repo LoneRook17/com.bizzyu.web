@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { Suspense, useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ChevronRight, ImageIcon, Pencil, Plus, RotateCcw, Tag } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
@@ -130,13 +130,18 @@ function DealRow({
   )
 }
 
-export default function DealsPage() {
+function DealsContent() {
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { venues, isAllVenues, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
   const [showVenueModal, setShowVenueModal] = useState(false)
-  const [tab, setTab] = useState("live")
+  // ?tab= deep link (e.g. DealForm sends trial users to their saved draft)
+  const [tab, setTab] = useState(() => {
+    const t = searchParams.get("tab")
+    return DEAL_TABS.some((d) => d.value === t) ? (t as string) : "live"
+  })
   const [deals, setDeals] = useState<DealListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [counts, setCounts] = useState<DealCounts>({ live: 0, expired: 0, deactivated: 0 })
@@ -289,5 +294,13 @@ export default function DealsPage() {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+export default function DealsPage() {
+  return (
+    <Suspense fallback={<PageHeader title="Deals" description="Loading…" />}>
+      <DealsContent />
+    </Suspense>
   )
 }
