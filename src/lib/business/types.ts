@@ -555,5 +555,7 @@ export interface BusinessProfile {
   logo_image_url: string | null
   status: string
   stripe_connect_onboarded: boolean
+  /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
+  stripe_reconnect_required?: boolean
   created_at: string
 }

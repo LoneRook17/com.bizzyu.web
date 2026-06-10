@@ -8,10 +8,12 @@ import { Button } from "@/components/business/v2/ui/button"
 
 interface StripeConnectCardProps {
   onboarded: boolean
+  /** Stored Stripe account is no longer valid (deauthorized/deleted) — prompt a reconnect. */
+  reconnectRequired?: boolean
   onOnboardingComplete?: () => void
 }
 
-export default function StripeConnectCard({ onboarded, onOnboardingComplete }: StripeConnectCardProps) {
+export default function StripeConnectCard({ onboarded, reconnectRequired = false, onOnboardingComplete }: StripeConnectCardProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -63,14 +65,19 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
             <TriangleAlert className="size-3.5 text-amber-600 dark:text-amber-400" />
           </span>
           <div className="flex-1">
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Business Stripe not connected</p>
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+              {reconnectRequired ? "Stripe connection needs attention" : "Business Stripe not connected"}
+            </p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-              Connecting your business Stripe account is required to create paid events. Ticket payments will pay
-              into this business account.
+              {reconnectRequired
+                ? "Your business Stripe account is no longer valid — it may have been disconnected or deleted. Reconnect to keep accepting ticket payments."
+                : "Connecting your business Stripe account is required to create paid events. Ticket payments will pay into this business account."}
             </p>
             {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
             <Button onClick={handleStartOnboarding} disabled={loading} className="mt-3" size="sm">
-              {loading ? (<><Loader2 className="animate-spin" /> Setting up…</>) : "Set up business Stripe"}
+              {loading
+                ? (<><Loader2 className="animate-spin" /> Setting up…</>)
+                : reconnectRequired ? "Reconnect Stripe" : "Set up business Stripe"}
             </Button>
           </div>
         </div>
