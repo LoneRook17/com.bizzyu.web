@@ -88,12 +88,9 @@ export default function LogoUpload({ currentUrl, onUploaded, disabled }: LogoUpl
         )}
       </button>
 
-      <p className="mt-2 text-[13px] text-neutral-500 dark:text-neutral-400">
-        {disabled ? "Business logo" : "Shown next to your business name across Bizzy."}
-      </p>
       {!disabled && (
-        <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">
-          Looking for venue photos? Each venue has its own, under Venues below.
+        <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
+          Looking for venue photos? Each venue has its own, in the Venues tab.
         </p>
       )}
 

@@ -29,7 +29,7 @@ export default function VenueManagementSection() {
     if (searchParams.get("action") !== "add-venue") return
     sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
     if (isOwner) setCreateOpen(true)
-    router.replace("/business/v2/settings", { scroll: false })
+    router.replace("/business/v2/settings?tab=venues", { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, isOwner])
   const [editVenue, setEditVenue] = useState<Venue | null>(null)
