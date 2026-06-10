@@ -16,6 +16,19 @@ const AUTH_PAGES = [
   "/business/v2/accept-invite",
 ]
 
+// The v2 redesign is the default dashboard on this branch: v1 entry points
+// land on their v2 counterparts. Legacy deep routes (/business/events, …)
+// stay reachable for surfaces v2 doesn't cover yet.
+const V1_TO_V2_REDIRECTS: Record<string, string> = {
+  "/business": "/business/v2",
+  "/business/login": "/business/v2/login",
+  "/business/signup": "/business/v2/signup",
+  "/business/verify-email": "/business/v2/verify-email",
+  "/business/forgot-password": "/business/v2/forgot-password",
+  "/business/reset-password": "/business/v2/reset-password",
+  "/business/accept-invite": "/business/v2/accept-invite",
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   // The Node backend sets biz_token (httpOnly) on login; middleware runs server-side
@@ -26,6 +39,13 @@ export function middleware(request: NextRequest) {
   // Only handle /business/* routes
   if (!pathname.startsWith("/business")) {
     return NextResponse.next()
+  }
+
+  const v2Target = V1_TO_V2_REDIRECTS[pathname]
+  if (v2Target) {
+    const url = request.nextUrl.clone()
+    url.pathname = v2Target // clone keeps the query string (invite/reset tokens)
+    return NextResponse.redirect(url)
   }
 
   const isAuthPage = AUTH_PAGES.some(
