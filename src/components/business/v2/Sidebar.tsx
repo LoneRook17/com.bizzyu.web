@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon,
+  Sun, Moon, TicketPercent,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -33,6 +33,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
   { items: [
     { label: "Home", href: "/business/v2", icon: Home },
     { label: "Events", href: "/business/v2/events", icon: CalendarDays, feature: "showEvents" },
+    { label: "Universal promo codes", href: "/business/v2/promo-codes", icon: TicketPercent, feature: "showEvents" },
     { label: "Deals", href: "/business/v2/deals", icon: Tag, feature: "showDeals" },
     { label: "Line skips", href: "/business/v2/line-skips", icon: Zap, feature: "showLineSkips" },
   ] },
