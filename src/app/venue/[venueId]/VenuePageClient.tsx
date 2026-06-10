@@ -174,7 +174,8 @@ export default function VenuePageClient({
   }
 
   const { venue, business, events, deals, line_skips } = data
-  const heroImage = venue.venuePhotoUrl || business.logo_image_url
+  // Venue photo only — the business logo is intentionally not used on this page.
+  const heroImage = venue.venuePhotoUrl
   const resolvedInstagram = venue.instagram || business.instagram
   const resolvedWebsite = venue.website || business.website
   const mapsUrl = venue.address
@@ -205,14 +206,6 @@ export default function VenuePageClient({
       {/* Sticky header */}
       <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0f]/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-5 py-3">
-          {business.logo_image_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={business.logo_image_url}
-              alt={business.name}
-              className="h-9 w-9 rounded-full object-cover ring-1 ring-white/10"
-            />
-          ) : null}
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-bold leading-tight text-white">{venue.name}</p>
             {venue.address && <p className="truncate text-xs text-gray-400">{venue.address}</p>}
@@ -246,15 +239,7 @@ export default function VenuePageClient({
         )}
 
         <div className="absolute inset-x-0 bottom-0 px-5 pb-8">
-          <div className="vp-rise mx-auto flex max-w-5xl flex-col items-start gap-4 sm:flex-row sm:items-end">
-            {business.logo_image_url && (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={business.logo_image_url}
-                alt={business.name}
-                className="h-20 w-20 rounded-2xl object-cover shadow-2xl ring-2 ring-[#05EB54]/70 sm:h-24 sm:w-24"
-              />
-            )}
+          <div className="vp-rise mx-auto max-w-5xl">
             <div className="min-w-0">
               {business.name !== venue.name && (
                 <p className="mb-1 text-sm font-bold uppercase tracking-widest text-[#05EB54]">{business.name}</p>
