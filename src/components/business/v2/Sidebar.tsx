@@ -77,14 +77,20 @@ export default function Sidebar() {
       {/* venue switcher */}
       <DropdownMenu>
         <DropdownMenuTrigger className="mt-1 flex items-center gap-2.5 rounded-lg border border-neutral-200 p-2 text-left outline-none transition-colors hover:bg-neutral-50 data-[state=open]:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-800/60 dark:data-[state=open]:bg-neutral-800/60">
-          <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-green-100 text-sm font-bold text-green-700 dark:bg-green-950/60 dark:text-green-400">
-            {business?.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={business.logo_url} alt={business.name} className="h-full w-full object-cover" />
-            ) : (
-              initials(isAllVenues ? "All" : venueName)
-            )}
-          </span>
+          {/* Selected venue's own photo; business logo for "All venues" or photo-less venues */}
+          {(() => {
+            const switcherImg = (!isAllVenues && selectedVenue?.photo_url) || business?.logo_url || null
+            return (
+              <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-green-100 text-sm font-bold text-green-700 dark:bg-green-950/60 dark:text-green-400">
+                {switcherImg ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={switcherImg} alt={venueName} className="h-full w-full object-cover" />
+                ) : (
+                  initials(isAllVenues ? "All" : venueName)
+                )}
+              </span>
+            )
+          })()}
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{venueName}</span>
             {business?.name && business.name !== venueName && (

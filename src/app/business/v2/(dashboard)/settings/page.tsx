@@ -15,6 +15,7 @@ import LogoUpload from "@/components/business/v2/settings/LogoUpload"
 import ProfileForm from "@/components/business/v2/settings/ProfileForm"
 import StripeConnectCard, { StripeReturnBanner } from "@/components/business/v2/settings/StripeConnectCard"
 import VenueManagementSection from "@/components/business/v2/settings/VenueManagementSection"
+import VenuePageSection from "@/components/business/v2/settings/VenuePageSection"
 import DashboardPreferences from "@/components/business/v2/settings/DashboardPreferences"
 
 function SectionHeading({ title, description }: { title: string; description?: string }) {
@@ -173,6 +174,11 @@ function SettingsContent() {
 
         {/* Venues */}
         <VenueManagementSection />
+
+        <Separator />
+
+        {/* Public venue pages — shareable link + printable QR per venue */}
+        <VenuePageSection />
 
         <Separator />
 
