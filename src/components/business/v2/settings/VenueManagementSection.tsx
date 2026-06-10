@@ -1,15 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ImageIcon, MapPin, Plus } from "lucide-react"
 import { useVenue } from "@/lib/business/venue-context"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient } from "@/lib/business/api-client"
 import type { Venue } from "@/lib/business/types"
-import { Card } from "@/components/business/v2/ui/card"
+import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Badge } from "@/components/business/v2/ui/badge"
-import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import VenueDialog from "./VenueDialog"
 import ConfirmDialog from "@/components/business/v2/ConfirmDialog"
 
@@ -17,8 +17,21 @@ export default function VenueManagementSection() {
   const { venues, refreshVenues, selectedVenueId, setSelectedVenue } = useVenue()
   const { user } = useAuth()
   const isOwner = user?.business_role === "owner"
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const sectionRef = useRef<HTMLElement>(null)
 
   const [createOpen, setCreateOpen] = useState(false)
+
+  // ?action=add-venue (TrialHome / sidebar deep link): scroll here and open
+  // the create dialog, then strip the param so refresh doesn't re-trigger.
+  useEffect(() => {
+    if (searchParams.get("action") !== "add-venue") return
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    if (isOwner) setCreateOpen(true)
+    router.replace("/business/v2/settings", { scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isOwner])
   const [editVenue, setEditVenue] = useState<Venue | null>(null)
   const [deleteVenue, setDeleteVenue] = useState<Venue | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -48,7 +61,7 @@ export default function VenueManagementSection() {
   }
 
   return (
-    <section>
+    <section ref={sectionRef} id="venues" className="scroll-mt-20">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Your venues</h2>
@@ -64,7 +77,29 @@ export default function VenueManagementSection() {
       </div>
 
       {venues.length === 0 ? (
-        <EmptyState icon={MapPin} title="No venues yet" description="Add your first venue to start creating events and deals." />
+        <Card>
+          <CardContent className="flex flex-col items-center px-6 py-10 text-center">
+            <span className="flex size-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-950/60">
+              <MapPin className="size-6 text-green-700 dark:text-green-400" />
+            </span>
+            <h3 className="mt-4 text-base font-semibold text-neutral-900 dark:text-neutral-100">
+              Add your first venue
+            </h3>
+            <p className="mt-1.5 max-w-md text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+              Your venue is your home on Bizzy — the location, photo, and hours students see in the app.
+              Every deal and event you post lives at a venue, so this is step one.
+            </p>
+            {isOwner ? (
+              <Button className="mt-5" onClick={() => setCreateOpen(true)}>
+                <Plus /> Add your first venue
+              </Button>
+            ) : (
+              <p className="mt-4 text-xs text-neutral-400 dark:text-neutral-500">
+                Only the business owner can add venues.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {venues.map((venue) => (

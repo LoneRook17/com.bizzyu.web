@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
@@ -54,6 +54,7 @@ function initials(s?: string) {
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, business, isPending, logout } = useAuth()
   const { venues, selectedVenue, selectedVenueId, isAllVenues, setSelectedVenue } = useVenue()
   const { resolvedTheme, setTheme } = useTheme()
@@ -112,7 +113,10 @@ export default function Sidebar() {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-[#05EB54] focus:bg-green-50 [&_svg]:text-[#05EB54] dark:focus:bg-green-950/40">
+          <DropdownMenuItem
+            className="text-[#05EB54] focus:bg-green-50 [&_svg]:text-[#05EB54] dark:focus:bg-green-950/40"
+            onSelect={() => router.push("/business/v2/settings?action=add-venue")}
+          >
             <Plus /> Add venue
           </DropdownMenuItem>
         </DropdownMenuContent>

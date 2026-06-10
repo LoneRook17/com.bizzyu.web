@@ -47,7 +47,7 @@ export default function TrialHome() {
       sub: hasVenue ? "Venue added" : "Add your location, hours, and logo — students can't see you without a venue",
       done: hasVenue,
       current: !hasVenue,
-      cta: hasVenue ? undefined : { label: "Set up", href: "/business/v2/settings" },
+      cta: hasVenue ? undefined : { label: "Add venue", href: "/business/v2/settings?action=add-venue" },
     },
     {
       title: "Get approved",
@@ -154,7 +154,7 @@ export default function TrialHome() {
             </Button>
           ) : (
             <Button variant="secondary" asChild>
-              <Link href="/business/v2/settings"><Lock className="size-3.5" /> Add venue first</Link>
+              <Link href="/business/v2/settings?action=add-venue"><Lock className="size-3.5" /> Add venue first</Link>
             </Button>
           )}
         </div>
