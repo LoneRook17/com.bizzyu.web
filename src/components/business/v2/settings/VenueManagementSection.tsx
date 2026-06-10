@@ -53,7 +53,7 @@ export default function VenueManagementSection() {
         <div>
           <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Your venues</h2>
           <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-            Manage your venue locations, photos, and details · {venues.length} venue{venues.length !== 1 ? "s" : ""}
+            Your physical locations — each venue has its own photo, address, and details students see in the app · {venues.length} venue{venues.length !== 1 ? "s" : ""}
           </p>
         </div>
         {isOwner && (

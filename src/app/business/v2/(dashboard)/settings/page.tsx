@@ -129,10 +129,13 @@ function SettingsContent() {
           </CardContent>
         </Card>
 
-        {/* Business photo */}
+        {/* Business logo */}
         <Card>
-          <CardContent className="flex justify-center py-6">
-            <LogoUpload currentUrl={profile.logo_image_url} onUploaded={handleLogoUploaded} disabled={!canEdit} />
+          <CardContent className="py-5">
+            <h3 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Business logo</h3>
+            <div className="flex justify-center">
+              <LogoUpload currentUrl={profile.logo_image_url} onUploaded={handleLogoUploaded} disabled={!canEdit} />
+            </div>
           </CardContent>
         </Card>
 
@@ -161,6 +164,7 @@ function SettingsContent() {
         <div id="stripe-connect" className="scroll-mt-20">
           <StripeConnectCard
             onboarded={profile.stripe_connect_onboarded}
+            reconnectRequired={profile.stripe_reconnect_required ?? false}
             onOnboardingComplete={() => { fetchProfile(); refreshProfile() }}
           />
         </div>

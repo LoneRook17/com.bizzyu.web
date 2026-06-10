@@ -70,7 +70,7 @@ export default function LogoUpload({ currentUrl, onUploaded, disabled }: LogoUpl
       >
         {currentUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={currentUrl} alt="Business photo" className="h-full w-full object-cover" />
+          <img src={currentUrl} alt="Business logo" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-neutral-50 dark:bg-neutral-800/50 text-neutral-300 dark:text-neutral-600">
             <ImageIcon className="size-10" />
@@ -89,8 +89,13 @@ export default function LogoUpload({ currentUrl, onUploaded, disabled }: LogoUpl
       </button>
 
       <p className="mt-2 text-[13px] text-neutral-500 dark:text-neutral-400">
-        {disabled ? "Business photo" : "This image appears on your venue card in the student app."}
+        {disabled ? "Business logo" : "Shown next to your business name across Bizzy."}
       </p>
+      {!disabled && (
+        <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">
+          Looking for venue photos? Each venue has its own, under Venues below.
+        </p>
+      )}
 
       <input ref={inputRef} type="file" accept="image/*" onChange={handleInputChange} className="hidden" />
       {error && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{error}</p>}
