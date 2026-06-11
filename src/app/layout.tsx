@@ -28,6 +28,9 @@ const fredoka = Fredoka({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://bizzyu.com"),
+  // Smart App Banner (was a raw <meta> in <head>; moved into the metadata API so
+  // individual routes like /setup-password can opt out with `itunes: null`)
+  itunes: { appId: "6683306360" },
   title: {
     default: "Bizzy — Student Deals & Discounts at Your College Campus",
     template: "%s | Bizzy",
@@ -156,7 +159,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="apple-itunes-app" content="app-id=6683306360" />
         <JsonLd data={organizationJsonLd} />
         <JsonLd data={appJsonLd} />
       </head>

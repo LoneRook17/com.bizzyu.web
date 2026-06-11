@@ -8,10 +8,11 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const isBusinessRoute = pathname.startsWith("/business/") || pathname === "/business"
   const isCheckoutRoute = pathname.startsWith("/checkout")
+  const isSetupPassword = pathname.startsWith("/setup-password")
   const isAppInterstitial =
     /^\/(event|deal)\/\d+(\/|$)/.test(pathname)
 
-  if (isBusinessRoute || isCheckoutRoute || isAppInterstitial) {
+  if (isBusinessRoute || isCheckoutRoute || isSetupPassword || isAppInterstitial) {
     return <>{children}</>
   }
 
