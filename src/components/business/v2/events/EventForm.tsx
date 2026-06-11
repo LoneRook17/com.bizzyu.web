@@ -191,6 +191,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           errs.tickets = "All ticket tiers must have a name"
           break
         }
+        if (tier.valid_from && tier.valid_until && tier.valid_from >= tier.valid_until) {
+          errs.tickets = `"${tier.name}": the scan window must end after it starts`
+          break
+        }
       }
     }
     if (form.promotion_enabled) {
@@ -246,6 +250,8 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           quantity: t.quantity || null,
           max_per_person: t.max_per_person || undefined,
           ticket_type: t.ticket_type,
+          valid_from: t.valid_from || null,
+          valid_until: t.valid_until || null,
         }))
       }
 
