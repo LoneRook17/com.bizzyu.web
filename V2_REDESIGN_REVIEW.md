@@ -57,3 +57,27 @@ shadcn/Radix primitives in `src/components/business/v2/ui/` (Button, Card, Badge
 ## Before merging to production
 
 Run `npm run build` once — tsc passes with 0 errors; a build confirms prerender. (Dev mode `npm run dev` works regardless.)
+
+---
+
+## Prod cutover checklist (do NOT forget)
+
+Items that exist on `feature/dashboard-redesign` / dev but need explicit action
+when promoting to prod:
+
+- [ ] **Public page redesigns ride this branch**: `/venue/[venueId]` and
+      `/lineskip/[slug]` (gold-accent line-skip checkout, marketing chrome
+      stripped via `LayoutShell`). Merging this branch to prod ships them —
+      review them on the dev preview BEFORE merging.
+- [ ] **`TURNSTILE_SECRET_KEY`** must be set in the prod services task-def —
+      dev fails open (no captcha) without it; prod must not.
+- [ ] **`businesses.dashboard_mode` migration** must run on prod RDS BEFORE the
+      prod services image that reads/writes it (see notes/pending-migrations.md).
+- [ ] **Signup auto-login + no email verification** (services `48c9784`+) and
+      pending-business login: prod admin workflow must be ready for trial-mode
+      businesses before these hit prod.
+- [ ] **Checkout success pages** (Laravel): logo now links to bizzyu.com and
+      has a "Buy more tickets" button — deploy core to prod EC2 + `view:clear`.
+- [ ] **Env sanity on prod Vercel project**: `CHECKOUT_REDIRECT_BASE_URL` /
+      `LARAVEL_CHECKOUT_BASE_URL` → https://bizzy-deals.com, `INTERNAL_API_URL`
+      → prod API, `NEXT_PUBLIC_WEB_BASE_URL` → https://bizzyu.com.
