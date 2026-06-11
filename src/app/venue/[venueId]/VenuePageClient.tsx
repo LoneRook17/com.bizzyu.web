@@ -397,7 +397,7 @@ export default function VenuePageClient({
                 return (
                   <Link
                     key={ls.id}
-                    href={soldOut ? "#" : `/lineskip/${business.business_id}`}
+                    href={soldOut ? "#" : `/lineskip/${venue.id}`}
                     aria-disabled={soldOut}
                     className={`group block rounded-3xl border bg-[#141420] p-6 transition-all duration-300 ${
                       isHighlighted
