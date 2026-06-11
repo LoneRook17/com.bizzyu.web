@@ -3,25 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
-import { APP_STORE_URL } from "@/lib/constants"
-
-/**
- * Try to open the Bizzy app via its custom scheme; fall back to the App
- * Store when the app isn't installed (page still visible after the grace
- * period). Desktop goes straight to the App Store page.
- */
-function openInApp(deepLink: string) {
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-  if (!isMobile) {
-    window.open(APP_STORE_URL, "_blank")
-    return
-  }
-  const fallback = setTimeout(() => {
-    if (!document.hidden) window.location.href = APP_STORE_URL
-  }, 1600)
-  window.addEventListener("pagehide", () => clearTimeout(fallback), { once: true })
-  window.location.href = deepLink
-}
+import { openInApp } from "@/lib/open-in-app"
 
 // How often the board silently re-fetches so newly-added events / tickets /
 // line skips appear on the mounted screen without a manual reload.
