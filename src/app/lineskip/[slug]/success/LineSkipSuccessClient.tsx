@@ -264,9 +264,11 @@ function AppleWalletLineSkipButton({
 
 function ShareVenueButton({ title, venueId }: { title: string; venueId: string }) {
   const [copied, setCopied] = useState(false)
-  const shareUrl = `${WEB_BASE_URL}/venue/${venueId}?utm_source=web_share`
+  // Share the line-skip purchase page itself (mirrors how event success pages
+  // share the event), not the venue profile page.
+  const shareUrl = `${WEB_BASE_URL}/lineskip/${venueId}?utm_source=web_share`
   const onClick = async () => {
-    const outcome = await nativeShare({ title: title || "Bizzy", url: shareUrl })
+    const outcome = await nativeShare({ title: title ? `Skip the line at ${title}` : "Bizzy", url: shareUrl })
     if (outcome === "copied") {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
