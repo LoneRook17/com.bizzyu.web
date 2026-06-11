@@ -17,7 +17,7 @@ export default function PromoterStatsView({ links }: { links: PromoterLink[] }) 
       </CardHeader>
       <CardContent className="border-t border-neutral-100 dark:border-neutral-800 px-0 py-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[520px] text-sm">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
                 <th className="px-5 py-3 text-left font-medium">Event</th>

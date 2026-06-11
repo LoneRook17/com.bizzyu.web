@@ -4,7 +4,7 @@ import { BusinessAuthProvider, useAuth } from "@/lib/business/auth-context"
 import { VenueProvider } from "@/lib/business/venue-context"
 import { ThemeProvider } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
-import Sidebar from "@/components/business/v2/Sidebar"
+import Sidebar, { MobileTopBar } from "@/components/business/v2/Sidebar"
 import OnboardingMode from "@/components/business/v2/OnboardingMode"
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -34,9 +34,12 @@ function Shell({ children }: { children: React.ReactNode }) {
     <VenueProvider>
       <div className="flex min-h-screen bg-neutral-50 text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100">
         <Sidebar />
-        <main className="min-w-0 flex-1 overflow-x-hidden">
-          <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-8 py-8">{children}</div>
-        </main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MobileTopBar />
+          <main className="min-w-0 flex-1 overflow-x-hidden">
+            <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
+          </main>
+        </div>
       </div>
     </VenueProvider>
   )

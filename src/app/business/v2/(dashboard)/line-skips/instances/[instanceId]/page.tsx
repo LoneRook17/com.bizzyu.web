@@ -363,7 +363,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
                   <p className="py-4 text-center text-sm text-neutral-400 dark:text-neutral-500">No tickets sold yet</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[760px] text-sm">
                       <thead>
                         <tr className="border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
                           <th className="py-2 text-left font-medium">Name</th>

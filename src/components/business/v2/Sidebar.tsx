@@ -1,11 +1,13 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent,
+  Sun, Moon, TicketPercent, Menu, X,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -52,7 +54,11 @@ function initials(s?: string) {
   return s.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")
 }
 
-export default function Sidebar() {
+/**
+ * Inner sidebar UI, shared between the static desktop rail and the mobile
+ * drawer. `onNavigate` lets the drawer close itself when a link is followed.
+ */
+export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, business, isPending, logout } = useAuth()
@@ -68,9 +74,9 @@ export default function Sidebar() {
   })).filter((group) => group.items.length > 0)
 
   return (
-    <aside className="flex w-[264px] shrink-0 flex-col gap-1 border-r border-neutral-200 bg-white px-4 pb-4 pt-5 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="flex min-h-full flex-col gap-1 px-4 pb-4 pt-5">
       {/* brand */}
-      <Link href="/business/v2" className="mb-1 flex items-center px-1.5">
+      <Link href="/business/v2" onClick={onNavigate} className="mb-1 flex items-center px-1.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-8 w-auto" />
       </Link>
@@ -115,7 +121,7 @@ export default function Sidebar() {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-[#05EB54] focus:bg-green-50 [&_svg]:text-[#05EB54] dark:focus:bg-green-950/40"
-            onSelect={() => router.push("/business/v2/settings?action=add-venue")}
+            onSelect={() => { onNavigate?.(); router.push("/business/v2/settings?action=add-venue") }}
           >
             <Plus /> Add venue
           </DropdownMenuItem>
@@ -145,6 +151,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={locked ? "#" : item.href}
+                  onClick={locked ? undefined : onNavigate}
                   aria-disabled={locked}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
@@ -165,7 +172,7 @@ export default function Sidebar() {
       </nav>
 
       {/* help */}
-      <Link href="/business/v2/help" className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60">
+      <Link href="/business/v2/help" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60">
         <LifeBuoy className="size-5 text-neutral-500" /> Help & tutorials
       </Link>
 
@@ -173,6 +180,7 @@ export default function Sidebar() {
       <div className="mt-1 flex items-center gap-1 border-t border-neutral-100 pt-3 dark:border-neutral-800">
         <Link
           href="/business/v2/settings"
+          onClick={onNavigate}
           title="Profile & settings"
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 outline-none transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
         >
@@ -203,6 +211,64 @@ export default function Sidebar() {
           <LogOut className="size-[18px]" />
         </button>
       </div>
+    </div>
+  )
+}
+
+/** Static desktop rail — hidden below lg, where MobileTopBar takes over. */
+export default function Sidebar() {
+  return (
+    <aside className="hidden w-[264px] shrink-0 border-r border-neutral-200 bg-white lg:block dark:border-neutral-800 dark:bg-neutral-900">
+      <SidebarContent />
     </aside>
+  )
+}
+
+/** Mobile-only sticky top bar with a hamburger that opens the sidebar as a slide-in drawer. */
+export function MobileTopBar() {
+  const [open, setOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Safety net: close on any route change (covers navigations that bypass onNavigate)
+  const [lastPathname, setLastPathname] = useState(pathname)
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname)
+    if (open) setOpen(false)
+  }
+
+  return (
+    <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-neutral-200 bg-white/95 px-3 py-2.5 backdrop-blur lg:hidden dark:border-neutral-800 dark:bg-neutral-900/95">
+      <button
+        type="button"
+        aria-label="Open menu"
+        onClick={() => setOpen(true)}
+        className="flex size-9 items-center justify-center rounded-lg text-neutral-600 outline-none transition-colors hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      >
+        <Menu className="size-5" />
+      </button>
+      <Link href="/business/v2" className="flex items-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-7 w-auto" />
+      </Link>
+
+      <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-neutral-950/40 backdrop-blur-[1px] animate-[v2-fade-in_150ms_ease-out] dark:bg-neutral-950/70" />
+          <DialogPrimitive.Content
+            aria-describedby={undefined}
+            className="fixed inset-y-0 left-0 z-50 w-[290px] max-w-[85vw] overflow-y-auto bg-white shadow-xl outline-none animate-[v2-drawer-in_200ms_ease-out] dark:bg-neutral-900"
+          >
+            <DialogPrimitive.Title className="sr-only">Navigation menu</DialogPrimitive.Title>
+            <DialogPrimitive.Close
+              aria-label="Close menu"
+              className="absolute right-2 top-4 flex size-9 items-center justify-center rounded-lg text-neutral-500 outline-none transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            >
+              <X className="size-5" />
+            </DialogPrimitive.Close>
+            <SidebarContent onNavigate={() => setOpen(false)} />
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    </header>
   )
 }

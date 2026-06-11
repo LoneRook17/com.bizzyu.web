@@ -91,7 +91,7 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
       <CardHeader><CardTitle>Door performance</CardTitle></CardHeader>
       <CardContent className="pt-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800">
                 <th className={`${th} text-left`} onClick={() => clickHeader("staff")}>Staff{arrow("staff")}</th>

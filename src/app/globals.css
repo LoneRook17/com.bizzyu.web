@@ -62,6 +62,17 @@ body {
   animation: float 4s ease-in-out infinite;
 }
 
+/* v2 dashboard mobile nav drawer */
+@keyframes v2-drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes v2-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .green-glow {
   background: radial-gradient(ellipse at center, rgba(5, 235, 84, 0.12) 0%, transparent 70%);
 }

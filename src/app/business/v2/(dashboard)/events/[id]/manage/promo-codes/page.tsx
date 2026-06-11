@@ -120,7 +120,8 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
         <EmptyState icon={Tag} title="No promo codes yet" description="Create a code to offer discounts on this event." />
       ) : (
         <Card className="overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
                 <th className="px-5 py-3 text-left font-medium">Code</th>
@@ -151,6 +152,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
               })}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 
@@ -167,7 +169,8 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
             These apply to <span className="font-medium">every event at this venue</span>. They&apos;re managed under Universal promo codes, not per-event.
           </p>
           <Card className="overflow-hidden bg-neutral-50/40 dark:bg-neutral-800/40">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
               <thead>
                 <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
                   <th className="px-5 py-3 text-left font-medium">Code</th>
@@ -195,6 +198,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
                 })}
               </tbody>
             </table>
+            </div>
           </Card>
         </div>
       )}
