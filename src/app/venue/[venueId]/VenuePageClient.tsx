@@ -3,6 +3,25 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
+import { APP_STORE_URL } from "@/lib/constants"
+
+/**
+ * Try to open the Bizzy app via its custom scheme; fall back to the App
+ * Store when the app isn't installed (page still visible after the grace
+ * period). Desktop goes straight to the App Store page.
+ */
+function openInApp(deepLink: string) {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  if (!isMobile) {
+    window.open(APP_STORE_URL, "_blank")
+    return
+  }
+  const fallback = setTimeout(() => {
+    if (!document.hidden) window.location.href = APP_STORE_URL
+  }, 1600)
+  window.addEventListener("pagehide", () => clearTimeout(fallback), { once: true })
+  window.location.href = deepLink
+}
 
 // How often the board silently re-fetches so newly-added events / tickets /
 // line skips appear on the mounted screen without a manual reload.
@@ -130,6 +149,12 @@ export default function VenuePageClient({
 }: VenuePageClientProps) {
   const lineSkipRef = useRef<HTMLDivElement>(null)
   const [data, setData] = useState<VenueData | null>(initialData)
+  // Mobile-only affordances (open-in-app pill); the page doubles as an
+  // in-bar sign board on big screens, which shouldn't get app nags.
+  const [isMobileUA, setIsMobileUA] = useState(false)
+  useEffect(() => {
+    setIsMobileUA(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
+  }, [])
 
   // Scroll a shared line skip into view (deep link ?line_skip=<id>).
   useEffect(() => {
@@ -464,7 +489,11 @@ export default function VenuePageClient({
               {deals.map((deal) => (
                 <div
                   key={deal.id}
-                  className="flex items-start gap-4 rounded-3xl border border-[#1e1e2e] bg-[#141420] p-6 transition-colors hover:border-[#05EB54]/40"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openInApp(`bizzy://deal/${deal.id}`)}
+                  onKeyDown={(e) => { if (e.key === "Enter") openInApp(`bizzy://deal/${deal.id}`) }}
+                  className="flex cursor-pointer items-start gap-4 rounded-3xl border border-[#1e1e2e] bg-[#141420] p-6 transition-colors hover:border-[#05EB54]/40 active:scale-[0.99]"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#05EB54]/15 text-[#05EB54]">
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -478,7 +507,7 @@ export default function VenuePageClient({
                     )}
                     <div className="mt-3 flex items-center gap-2">
                       <span className="rounded-full bg-[#05EB54]/15 px-3 py-1 text-xs font-bold text-[#05EB54]">{deal.deal_type}</span>
-                      <span className="text-xs font-semibold text-gray-500">Claim it in the Bizzy app</span>
+                      <span className="text-xs font-semibold text-gray-500">Tap to claim in the Bizzy app</span>
                     </div>
                   </div>
                   {deal.deal_image_path && (
@@ -491,6 +520,20 @@ export default function VenuePageClient({
               ))}
             </div>
           </section>
+        )}
+
+        {/* Open-in-app pill — mobile browsers only. Tries bizzy://venue/:id,
+            falls back to the App Store when the app isn't installed. */}
+        {isMobileUA && (
+          <div className="fixed inset-x-0 bottom-5 z-50 flex justify-center px-5">
+            <button
+              onClick={() => openInApp(`bizzy://venue/${venue.id}`)}
+              className="flex items-center gap-2.5 rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-6 py-3.5 text-base font-extrabold text-black shadow-2xl shadow-[#05EB54]/40 ring-1 ring-black/10 transition active:scale-[0.97]"
+            >
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+              Open in the Bizzy app
+            </button>
+          </div>
         )}
 
         {/* Footer */}

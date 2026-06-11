@@ -38,6 +38,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${venueName} | Bizzy`,
     description,
+    // iOS Safari Smart App Banner — "Open" deep-links straight to this venue
+    // in the app (the app routes /venue/:id universal links); "Get" goes to
+    // the App Store. app-argument uses the canonical prod domain so the app
+    // can route it regardless of which deployment served the page.
+    itunes: {
+      appId: "6683306360",
+      appArgument: `https://bizzyu.com/venue/${venueId}`,
+    },
     openGraph: {
       title: `${venueName} | Bizzy`,
       description,
