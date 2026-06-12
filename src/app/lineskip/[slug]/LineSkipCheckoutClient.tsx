@@ -735,6 +735,10 @@ export default function LineSkipCheckoutClient({
       {/* Sticky header */}
       <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0f]/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-5 py-3">
+          <a href="https://bizzyu.com" className="flex shrink-0 items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-10 w-auto" />
+          </a>
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-bold leading-tight text-white">{displayName}</p>
             {displayAddress && <p className="truncate text-xs text-gray-400">{displayAddress}</p>}
