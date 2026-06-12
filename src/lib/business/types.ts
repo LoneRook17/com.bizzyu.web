@@ -177,6 +177,12 @@ export interface EventFormData {
 }
 
 // Deal types
+export interface DealAvailabilityWindow {
+  day_of_week: number // 0=Sun, 1=Mon ... 6=Sat
+  start_time: string // "HH:MM:SS" or "HH:MM"
+  end_time: string
+}
+
 export interface DealListItem {
   id: number
   deal_title: string
@@ -197,6 +203,7 @@ export interface DealListItem {
   moderation_status?: string | null
   moderation_reason?: string | null
   claim_count?: number
+  availability_windows?: DealAvailabilityWindow[]
 }
 
 export interface DealFormData {
@@ -207,6 +214,7 @@ export interface DealFormData {
   start_date: string
   expired_date: string
   deal_image_path: string
+  availability_windows?: DealAvailabilityWindow[]
 }
 
 // Team types

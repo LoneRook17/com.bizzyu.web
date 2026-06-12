@@ -34,6 +34,7 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
           start_date: toDateInput(deal.start_date),
           expired_date: expiredForForm,
           deal_image_path: deal.deal_image_path || "",
+          availability_windows: deal.availability_windows || [],
         })
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load deal")
