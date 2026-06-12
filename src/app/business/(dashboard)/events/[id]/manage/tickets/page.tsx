@@ -216,7 +216,6 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
               >
                 <option value="paid">Paid</option>
                 <option value="free">Free</option>
-                <option value="guest">Guest list</option>
               </select>
             </div>
             <div>

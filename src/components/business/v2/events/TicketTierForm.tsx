@@ -27,7 +27,6 @@ const EMPTY_TIER: TicketTier = {
 const TICKET_TYPE_LABELS: Record<string, string> = {
   paid: "Paid",
   free: "Free",
-  guest: "Guest list",
 }
 
 function ValidTimeInfo() {

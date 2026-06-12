@@ -174,7 +174,6 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
                   <Select value={editing.ticket_type} onChange={(e) => setEditing({ ...editing, ticket_type: e.target.value as FormState["ticket_type"] })}>
                     <option value="paid">Paid</option>
                     <option value="free">Free</option>
-                    <option value="guest">Guest list</option>
                   </Select>
                 </div>
                 <div>

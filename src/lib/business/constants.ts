@@ -63,7 +63,9 @@ export const DEAL_TABS = [
 ] as const
 
 export const EVENT_TYPES = ['Ticketed', 'Free'] as const
-export const TICKET_TYPES = ['paid', 'free', 'guest'] as const
+// 'guest' (Guest list) removed 2026-06-12 — not an implemented feature.
+// Legacy rows may still carry ticket_type='guest'; types keep accepting it.
+export const TICKET_TYPES = ['paid', 'free'] as const
 
 export const DEAL_CATEGORIES = [
   'Food', 'Drinks', 'Things to Do', 'BOGO', 'Shopping', 'Services', 'Other',
