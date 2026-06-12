@@ -61,11 +61,18 @@ function V2ComposeSmsBlastInner({ params }: { params: Promise<{ id: string }> })
     setSending(true)
     setError("")
     try {
-      const res = await apiClient.post<{ recipient_count: number; sms_sent: number }>(`/business/sms-blasts`, {
+      const res = await apiClient.post<{
+        recipient_count: number
+        sms_sent: number
+        sms_failed: number
+        sms_blocked: number
+      }>(`/business/sms-blasts`, {
         message: trimmed,
         event_ids: eventIds,
       })
-      router.push(`/business/v2/events/${id}/manage/sms-blast?sent=${res.sms_sent}&recipients=${res.recipient_count}`)
+      router.push(
+        `/business/v2/events/${id}/manage/sms-blast?sent=${res.sms_sent}&recipients=${res.recipient_count}&failed=${res.sms_failed ?? 0}&blocked=${res.sms_blocked ?? 0}`
+      )
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to send")
       setConfirming(false)

@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { Suspense, useEffect, useState, use } from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { MessagesSquare, Plus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { money } from "@/lib/v2/utils"
@@ -28,10 +29,28 @@ function eventCount(b: Blast): number {
 }
 
 export default function V2SmsBlastHistoryPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense>
+      <SmsBlastHistory params={params} />
+    </Suspense>
+  )
+}
+
+function SmsBlastHistory({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [items, setItems] = useState<Blast[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
+  // Post-send result handoff from the compose page (?sent=&recipients=&failed=&blocked=).
+  // Without this banner a blast whose every send failed (e.g. no opted-in
+  // recipients with valid phones) looks like nothing happened at all.
+  const search = useSearchParams()
+  const justSent = search.get("sent") !== null
+  const sentN = Number(search.get("sent") ?? 0)
+  const recipientsN = Number(search.get("recipients") ?? 0)
+  const failedN = Number(search.get("failed") ?? 0)
+  const blockedN = Number(search.get("blocked") ?? 0)
 
   useEffect(() => {
     apiClient
@@ -53,6 +72,22 @@ export default function V2SmsBlastHistoryPage({ params }: { params: Promise<{ id
           </Button>
         }
       />
+
+      {justSent && (
+        sentN > 0 ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+            Blast sent — {sentN} of {recipientsN} text{recipientsN === 1 ? "" : "s"} delivered to Twilio
+            {failedN > 0 && <> · {failedN} failed</>}
+            {blockedN > 0 && <> · {blockedN} opted out (texted STOP)</>}.
+          </div>
+        ) : (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            Blast fired, but 0 of {recipientsN} text{recipientsN === 1 ? "" : "s"} went through
+            {blockedN > 0 && <> ({blockedN} recipient{blockedN === 1 ? "" : "s"} opted out by texting STOP)</>}.
+            Recipients must have bought a ticket, have a valid phone number, and have SMS enabled for your venue.
+          </div>
+        )
+      )}
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
