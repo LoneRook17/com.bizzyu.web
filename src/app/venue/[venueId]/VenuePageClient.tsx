@@ -248,9 +248,8 @@ export default function VenuePageClient({
         <div className="absolute inset-x-0 bottom-0 px-5 pb-8">
           <div className="vp-rise mx-auto max-w-5xl">
             <div className="min-w-0">
-              {business.name !== venue.name && (
-                <p className="mb-1 text-sm font-bold uppercase tracking-widest text-[#05EB54]">{business.name}</p>
-              )}
+              {/* Venue name only — the parent business is often a legal name
+                  (e.g. "XXX LLC") customers shouldn't see. */}
               <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">
                 {venue.name}
               </h1>

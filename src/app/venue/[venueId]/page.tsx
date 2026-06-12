@@ -32,7 +32,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { venueId } = await params
   const data = await getVenueData(venueId)
   const venueName = data?.venue?.name || "Venue"
-  const businessName = data?.business?.name || ""
   const description = data?.venue?.description || `Check out events, line skips, and deals at ${venueName} on Bizzy.`
 
   return {
