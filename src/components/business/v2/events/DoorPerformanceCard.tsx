@@ -7,12 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/
 
 type SortKey =
   | "staff" | "scanner_label" | "valid_scans" | "rejected_scans"
-  | "sold_count" | "sold_revenue" | "revenue" | "first_scan_at" | "last_scan_at"
+  | "sold_count" | "sold_revenue" | "first_scan_at" | "last_scan_at"
 type SortDir = "asc" | "desc"
-
-function totalRevenueOf(r: PerScannerRow): number {
-  return r.total_revenue ?? r.revenue
-}
 
 function fmtTime(iso: string | null) {
   if (!iso) return "—"
@@ -22,13 +18,16 @@ function fmtTime(iso: string | null) {
 }
 
 function staffLabel(row: PerScannerRow) {
+  // Scanner-link rows have no user — the name IS the link's label.
+  if (row.staff_name) return row.staff_name
   if (row.staff_user_id == null) return "Unknown"
-  if (!row.staff_name) return "Removed staff"
-  return row.staff_name
+  return "Removed staff"
 }
 
 export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; error?: string | null }) {
-  const [sortKey, setSortKey] = useState<SortKey>("revenue")
+  // Door Performance money = door sales only (tap-to-pay / numpad); scanned
+  // pre-sold ticket value is deliberately not shown as money here.
+  const [sortKey, setSortKey] = useState<SortKey>("sold_revenue")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
 
   const sorted = useMemo(() => {
@@ -42,7 +41,6 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
         case "rejected_scans": return (a.rejected_scans - b.rejected_scans) * dir
         case "sold_count": return ((a.sold_count ?? 0) - (b.sold_count ?? 0)) * dir
         case "sold_revenue": return ((a.sold_revenue ?? 0) - (b.sold_revenue ?? 0)) * dir
-        case "revenue": return (totalRevenueOf(a) - totalRevenueOf(b)) * dir
         case "first_scan_at": return (a.first_scan_at ?? "").localeCompare(b.first_scan_at ?? "") * dir
         case "last_scan_at": return (a.last_scan_at ?? "").localeCompare(b.last_scan_at ?? "") * dir
       }
@@ -99,8 +97,7 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
                 <th className={`${th} text-right`} onClick={() => clickHeader("valid_scans")}>Valid{arrow("valid_scans")}</th>
                 <th className={`${th} text-right`} onClick={() => clickHeader("rejected_scans")}>Rejected{arrow("rejected_scans")}</th>
                 <th className={`${th} text-right`} onClick={() => clickHeader("sold_count")}>Sold{arrow("sold_count")}</th>
-                <th className={`${th} text-right`} onClick={() => clickHeader("sold_revenue")}>Sales{arrow("sold_revenue")}</th>
-                <th className={`${th} text-right`} onClick={() => clickHeader("revenue")}>Revenue{arrow("revenue")}</th>
+                <th className={`${th} text-right`} onClick={() => clickHeader("sold_revenue")}>Door sales{arrow("sold_revenue")}</th>
                 <th className={`${th} text-right`} onClick={() => clickHeader("first_scan_at")}>First{arrow("first_scan_at")}</th>
                 <th className={`${th} text-right`} onClick={() => clickHeader("last_scan_at")}>Last{arrow("last_scan_at")}</th>
               </tr>
@@ -113,8 +110,7 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.valid_scans}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.rejected_scans}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.sold_count ?? 0}</td>
-                  <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{usd(r.sold_revenue ?? 0)}</td>
-                  <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd(totalRevenueOf(r))}</td>
+                  <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd(r.sold_revenue ?? 0)}</td>
                   <td className="whitespace-nowrap py-2 text-right text-neutral-500 dark:text-neutral-400">{fmtTime(r.first_scan_at)}</td>
                   <td className="whitespace-nowrap py-2 text-right text-neutral-500 dark:text-neutral-400">{fmtTime(r.last_scan_at)}</td>
                 </tr>
