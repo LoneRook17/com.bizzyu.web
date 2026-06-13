@@ -4,6 +4,7 @@ import { useState } from "react"
 import { QRCodeCanvas } from "qrcode.react"
 import { Check, Copy, Download, ExternalLink } from "lucide-react"
 import { useVenue } from "@/lib/business/venue-context"
+import { useAuth } from "@/lib/business/auth-context"
 import type { Venue } from "@/lib/business/types"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -71,6 +72,7 @@ function VenueQrCard({ venue }: { venue: Venue }) {
 
 export default function VenuePageSection() {
   const { venues } = useVenue()
+  const { isPending } = useAuth()
 
   if (venues.length === 0) return null
 
@@ -82,11 +84,27 @@ export default function VenuePageSection() {
           Every venue gets a public page with its upcoming events. Share the link anywhere, or print the QR code for tables, posters, and the bar.
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {venues.map((v) => (
-          <VenueQrCard key={v.id} venue={v} />
-        ))}
-      </div>
+      {/* Public venue pages (and their shareable link/QR) stay dormant until the
+          business is approved — matches the Node venue endpoint, which 404s an
+          unapproved business's venue. Don't hand out a link that 404s. */}
+      {isPending ? (
+        <Card>
+          <CardContent className="py-5">
+            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              Your venue page links unlock once your business is approved.
+            </p>
+            <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+              We&apos;ll generate a shareable link and printable QR code for each venue as soon as you&apos;re live. Until then your venue pages stay private.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {venues.map((v) => (
+            <VenueQrCard key={v.id} venue={v} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }
