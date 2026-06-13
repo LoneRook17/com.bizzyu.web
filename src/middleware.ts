@@ -7,7 +7,27 @@ const AUTH_PAGES = [
   "/business/forgot-password",
   "/business/reset-password",
   "/business/accept-invite",
+  // v2 (isolated dashboard redesign) auth pages
+  "/business/v2/login",
+  "/business/v2/signup",
+  "/business/v2/verify-email",
+  "/business/v2/forgot-password",
+  "/business/v2/reset-password",
+  "/business/v2/accept-invite",
 ]
+
+// The v2 redesign is the default dashboard on this branch: v1 entry points
+// land on their v2 counterparts. Legacy deep routes (/business/events, …)
+// stay reachable for surfaces v2 doesn't cover yet.
+const V1_TO_V2_REDIRECTS: Record<string, string> = {
+  "/business": "/business/v2",
+  "/business/login": "/business/v2/login",
+  "/business/signup": "/business/v2/signup",
+  "/business/verify-email": "/business/v2/verify-email",
+  "/business/forgot-password": "/business/v2/forgot-password",
+  "/business/reset-password": "/business/v2/reset-password",
+  "/business/accept-invite": "/business/v2/accept-invite",
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -21,13 +41,23 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  const v2Target = V1_TO_V2_REDIRECTS[pathname]
+  if (v2Target) {
+    const url = request.nextUrl.clone()
+    url.pathname = v2Target // clone keeps the query string (invite/reset tokens)
+    return NextResponse.redirect(url)
+  }
+
   const isAuthPage = AUTH_PAGES.some(
     (page) => pathname === page || pathname.startsWith(page + "/")
   )
 
+  // Keep v2 traffic inside v2 (auth ↔ dashboard redirects stay in the same world)
+  const isV2 = pathname.startsWith("/business/v2")
+
   // Authenticated user visiting auth pages → redirect to dashboard
   if (isAuthPage && hasSession) {
-    return NextResponse.redirect(new URL("/business", request.url))
+    return NextResponse.redirect(new URL(isV2 ? "/business/v2" : "/business", request.url))
   }
 
   // Skip auth for deep link interstitial pages (numeric business IDs)
@@ -37,7 +67,7 @@ export function middleware(request: NextRequest) {
 
   // Unauthenticated user visiting dashboard pages → redirect to login
   if (!isAuthPage && !hasSession) {
-    return NextResponse.redirect(new URL("/business/login", request.url))
+    return NextResponse.redirect(new URL(isV2 ? "/business/v2/login" : "/business/login", request.url))
   }
 
   return NextResponse.next()

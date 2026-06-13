@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { TICKET_TYPES } from "@/lib/business/constants"
 import type { TicketTier } from "@/lib/business/types"
 
@@ -8,12 +9,40 @@ interface TicketTierFormProps {
   onChange: (tiers: TicketTier[]) => void
 }
 
+// Small (i) button with a click-to-open plain-language explanation of timed tickets.
+function ValidTimeInfo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="What does the redeemable / scan window do?"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-semibold leading-none text-gray-500 hover:bg-gray-100"
+      >
+        i
+      </button>
+      {open && (
+        <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-gray-200 bg-white p-3 text-[11px] leading-relaxed text-gray-600 shadow-lg">
+          <strong className="mb-1 block text-gray-800">Redeemable / scan window (optional)</strong>
+          Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be <strong>bought beforehand</strong> — sales just <strong>close when the window ends</strong>.
+          <span className="mt-2 block text-gray-500">
+            <strong>Example:</strong> For a &ldquo;Before 1 AM&rdquo; ticket, set <strong>Valid until</strong> to 1:00 AM — people can buy any time before then, and it scans in up until 1:00 AM. Leave both blank for no limit.
+          </span>
+        </span>
+      )}
+    </span>
+  )
+}
+
 const EMPTY_TIER: TicketTier = {
   name: "",
   price_usd: 0,
   quantity: 0,
   max_per_person: 0,
   ticket_type: "paid",
+  valid_from: "",
+  valid_until: "",
 }
 
 const TICKET_TYPE_LABELS: Record<string, string> = {
@@ -96,6 +125,34 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
                 />
               </div>
             </div>
+            <div className="flex items-center gap-1.5 mt-3">
+              <span className="text-xs font-medium text-gray-600">Redeemable / scan window</span>
+              <span className="text-gray-400 text-xs font-normal">(optional)</span>
+              <ValidTimeInfo />
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-1">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Valid from <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  type="datetime-local"
+                  value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
+                  onChange={(e) => updateTier(i, "valid_from", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Valid until <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  type="datetime-local"
+                  value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
+                  onChange={(e) => updateTier(i, "valid_until", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
+              When this ticket can be scanned at the door. It can still be bought beforehand — sales just close when the window ends. Leave blank for no limit.
+            </p>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">
                 <label className="text-xs text-gray-500">Max per person:</label>

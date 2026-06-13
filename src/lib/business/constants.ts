@@ -6,6 +6,7 @@ export const NAV_LINKS = [
   { label: 'Deals', href: '/business/deals', icon: 'tag' },
   { label: 'Analytics', href: '/business/analytics', icon: 'chart' },
   { label: 'Team', href: '/business/team', icon: 'users' },
+  { label: 'Universal Promo Codes', href: '/business/promo-codes', icon: 'tag' },
   { label: 'Settings', href: '/business/settings', icon: 'settings' },
 ] as const
 
@@ -45,6 +46,7 @@ export const ROLE_HIDDEN_ROUTES: Record<string, string[]> = {
   '/business/analytics': ['staff'],
   '/business/line-skips': ['promoter'],
   '/business/settings': ['promoter'],
+  '/business/promo-codes': ['staff', 'promoter'],
 }
 
 export const EVENT_TABS = [
@@ -61,7 +63,9 @@ export const DEAL_TABS = [
 ] as const
 
 export const EVENT_TYPES = ['Ticketed', 'Free'] as const
-export const TICKET_TYPES = ['paid', 'free', 'guest'] as const
+// 'guest' (Guest list) removed 2026-06-12 — not an implemented feature.
+// Legacy rows may still carry ticket_type='guest'; types keep accepting it.
+export const TICKET_TYPES = ['paid', 'free'] as const
 
 export const DEAL_CATEGORIES = [
   'Food', 'Drinks', 'Things to Do', 'BOGO', 'Shopping', 'Services', 'Other',

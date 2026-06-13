@@ -6,12 +6,15 @@ export interface BusinessUser {
   venue_id: number | null
 }
 
+export type DashboardMode = 'deals' | 'events' | 'hybrid'
+
 export interface Business {
   business_id: number
   name: string
   email: string
   status: 'pending' | 'pending_verification' | 'pending_approval' | 'approved' | 'rejected' | 'suspended'
   logo_url: string | null
+  dashboard_mode?: DashboardMode | null
 }
 
 export interface Venue {
@@ -127,6 +130,10 @@ export interface TicketTier {
   sold_count?: number
   max_per_person?: number
   ticket_type: 'paid' | 'free' | 'guest'
+  is_hidden?: boolean
+  // Scheduled tickets: optional sales/scan window (datetime-local strings, US/Eastern wall-clock). Empty/null = no limit.
+  valid_from?: string | null
+  valid_until?: string | null
 }
 
 export interface EventDetail extends EventListItem {
@@ -379,7 +386,10 @@ export interface EventTeamMember {
 
 export interface PromoCode {
   promo_code_id: number
-  event_id: number
+  /** Event-scoped code. null for universal (venue) codes. */
+  event_id: number | null
+  /** Venue-scoped (universal) code. null for event-scoped codes. */
+  venue_id: number | null
   code: string
   discount_type: 'percentage' | 'flat'
   discount_value: number
@@ -555,5 +565,7 @@ export interface BusinessProfile {
   logo_image_url: string | null
   status: string
   stripe_connect_onboarded: boolean
+  /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
+  stripe_reconnect_required?: boolean
   created_at: string
 }

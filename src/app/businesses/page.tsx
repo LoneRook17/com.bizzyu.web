@@ -208,6 +208,9 @@ export default function BusinessesPage() {
                     Learn more
                     <ArrowRight className="w-4 h-4" />
                   </Link>
+                  <Button href={CALENDLY_DEMO_URL} variant="outline" size="lg" external>
+                    Or book a call
+                  </Button>
                 </div>
 
                 <p className="mt-5 text-xs text-muted">

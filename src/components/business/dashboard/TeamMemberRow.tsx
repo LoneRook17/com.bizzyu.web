@@ -33,14 +33,14 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
       : "—"
 
   return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+    <div className="flex flex-col gap-3 py-3 border-b border-gray-100 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
       <div className="flex items-center gap-3 min-w-0">
         {/* Avatar */}
         <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-medium text-gray-500 flex-shrink-0">
           {member.email.charAt(0).toUpperCase()}
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-ink truncate">{member.email}</p>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[member.role] || "bg-gray-100 text-gray-600"}`}>
@@ -58,7 +58,7 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
 
       {/* Actions — owner only */}
       {isOwnerViewing && !isOwnerMember && (
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-wrap pl-12 sm:pl-0 sm:flex-nowrap sm:flex-shrink-0">
           {/* Venue assignment */}
           <select
             value={member.venue_id ?? ""}
@@ -66,7 +66,7 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
               const val = e.target.value
               onVenueChange(member.id, val === "" ? null : Number(val))
             }}
-            className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer max-w-[120px]"
+            className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer flex-1 min-w-0 sm:flex-none sm:max-w-[120px]"
             title="Venue assignment"
           >
             <option value="">Global</option>
@@ -79,7 +79,7 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
           <select
             value={member.role}
             onChange={(e) => onRoleChange(member.id, e.target.value)}
-            className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer"
+            className="rounded-lg border border-gray-300 px-2 py-1 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink cursor-pointer flex-1 min-w-0 sm:flex-none"
           >
             {ASSIGNABLE_ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_LABELS[r]}</option>
@@ -89,7 +89,7 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
           {/* Remove */}
           <button
             onClick={() => onRemove(member)}
-            className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+            className="rounded-lg border border-red-300 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer flex-shrink-0"
           >
             Remove
           </button>

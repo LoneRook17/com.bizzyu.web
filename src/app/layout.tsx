@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Fredoka } from "next/font/google";
+import { Geist, Geist_Mono, Fredoka, Fira_Sans } from "next/font/google";
 import LayoutShell from "@/components/layout/LayoutShell";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_STORE_URL } from "@/lib/constants";
@@ -23,6 +23,17 @@ const fredoka = Fredoka({
   variable: "--font-fredoka",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Fira Sans powers the public venue "sign board" (/venue/[venueId]), which
+// mirrors the Laravel event-checkout theme. Exposed as a CSS variable only —
+// the venue page opts in via font-[family-name:var(--font-fira)]; every other
+// page stays on Geist.
+const firaSans = Fira_Sans({
+  variable: "--font-fira",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -163,7 +174,7 @@ export default function RootLayout({
         <JsonLd data={appJsonLd} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fredoka.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${fredoka.variable} ${firaSans.variable} antialiased`}
       >
         <LayoutShell>{children}</LayoutShell>
       </body>

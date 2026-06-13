@@ -3,10 +3,12 @@ import { clearBizSession } from './cookies'
 
 export class ApiError extends Error {
   status: number
-  constructor(message: string, status: number) {
+  body: Record<string, unknown>
+  constructor(message: string, status: number, body: Record<string, unknown> = {}) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.body = body
   }
 }
 
@@ -47,7 +49,7 @@ class BusinessApiClient {
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}))
-      throw new ApiError(body.message || body.error || 'Request failed', response.status)
+      throw new ApiError(body.message || body.error || 'Request failed', response.status, body)
     }
 
     return response.json()

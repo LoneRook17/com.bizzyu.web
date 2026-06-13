@@ -72,8 +72,9 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
   const [modalMode, setModalMode] = useState<ModalMode>("edit_price")
   const [selectedInstance, setSelectedInstance] = useState<LineSkipInstance | null>(null)
 
-  const [deleting, setDeleting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deactivating, setDeactivating] = useState(false)
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false)
+  const [deactivateError, setDeactivateError] = useState<{ message: string; blockingTicketCount?: number; blockingInstanceIds?: number[] } | null>(null)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
   const canEditPrice = canEdit || user?.business_role === "staff"
@@ -105,15 +106,24 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
     fetchAnalytics()
   }, [fetchLineSkip, fetchAnalytics])
 
-  const handleDelete = async () => {
-    setDeleting(true)
+  const handleDeactivate = async () => {
+    setDeactivating(true)
+    setDeactivateError(null)
     try {
       await apiClient.delete(`/business/line-skips/${id}`)
       router.push("/business/line-skips")
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to delete Line Skip")
-      setDeleting(false)
-      setShowDeleteConfirm(false)
+      if (err instanceof ApiError) {
+        const body = err.body as { blocking_instance_ids?: number[]; blocking_ticket_count?: number }
+        setDeactivateError({
+          message: err.message,
+          blockingTicketCount: body?.blocking_ticket_count,
+          blockingInstanceIds: body?.blocking_instance_ids,
+        })
+      } else {
+        setDeactivateError({ message: "Failed to deactivate Line Skip" })
+      }
+      setDeactivating(false)
     }
   }
 
@@ -184,12 +194,17 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
             >
               Edit Schedule
             </Link>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-            >
-              Delete
-            </button>
+            {lineSkip.is_active && (
+              <button
+                onClick={() => {
+                  setDeactivateError(null)
+                  setShowDeactivateConfirm(true)
+                }}
+                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              >
+                Deactivate
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -415,31 +430,41 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
         </div>
       )}
 
-      {/* Delete confirmation */}
-      {showDeleteConfirm && (
+      {/* Deactivate confirmation */}
+      {showDeactivateConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 className="text-lg font-bold text-ink mb-2">Delete Line Skip?</h3>
+            <h3 className="text-lg font-bold text-ink mb-2">Deactivate this line skip?</h3>
             <p className="text-sm text-gray-600 mb-1">
-              This will deactivate <strong>{lineSkip.name}</strong> and cancel all future nights.
+              This stops new nights from being generated for <strong>{lineSkip.name}</strong> and cancels any future nights with no paid tickets.
             </p>
-            <p className="text-xs text-gray-400 mb-5">
-              Past nights and sold tickets are preserved. This cannot be undone.
+            <p className="text-xs text-gray-400 mb-4">
+              To deactivate a line skip with paid future tickets, cancel those nights individually first. Each individual cancellation goes through our refund policy.
             </p>
+            {deactivateError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 mb-4">
+                <p className="text-xs font-medium text-red-700">{deactivateError.message}</p>
+                {deactivateError.blockingTicketCount !== undefined && deactivateError.blockingInstanceIds && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {deactivateError.blockingTicketCount} paid ticket{deactivateError.blockingTicketCount === 1 ? "" : "s"} across {deactivateError.blockingInstanceIds.length} night{deactivateError.blockingInstanceIds.length === 1 ? "" : "s"}.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="flex gap-3 justify-end">
               <button
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={deleting}
+                onClick={() => setShowDeactivateConfirm(false)}
+                disabled={deactivating}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
-                onClick={handleDelete}
-                disabled={deleting}
+                onClick={handleDeactivate}
+                disabled={deactivating}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-60 cursor-pointer"
               >
-                {deleting ? "Deleting..." : "Delete"}
+                {deactivating ? "Deactivating..." : "Deactivate"}
               </button>
             </div>
           </div>
