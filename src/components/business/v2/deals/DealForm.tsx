@@ -22,6 +22,9 @@ interface DealFormProps {
   dealId?: number
 }
 
+const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+type DayWindow = { enabled: boolean; start: string; end: string }
+
 export default function DealForm({ initialData, dealId }: DealFormProps) {
   const router = useRouter()
   const { business, isPending } = useAuth()
@@ -34,8 +37,29 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     total_saving: initialData?.total_saving || "",
     redemption_frequency: initialData?.redemption_frequency || "",
     start_date: initialData?.start_date || "",
+    expired_date: initialData?.expired_date || "",
     deal_image_path: initialData?.deal_image_path || "",
   })
+
+  // Per-day availability windows. Seed 7 slots from initialData, trimming the
+  // server's "HH:MM:SS" to "HH:MM" for <input type="time">.
+  const [availabilityLimited, setAvailabilityLimited] = useState<boolean>(
+    (initialData?.availability_windows?.length ?? 0) > 0
+  )
+  const [windows, setWindows] = useState<DayWindow[]>(() => {
+    const slots: DayWindow[] = DAY_LABELS.map(() => ({ enabled: false, start: "", end: "" }))
+    for (const w of initialData?.availability_windows ?? []) {
+      const d = Number(w.day_of_week)
+      if (d >= 0 && d <= 6) {
+        slots[d] = { enabled: true, start: (w.start_time || "").slice(0, 5), end: (w.end_time || "").slice(0, 5) }
+      }
+    }
+    return slots
+  })
+
+  const updateWindow = (day: number, patch: Partial<DayWindow>) => {
+    setWindows((prev) => prev.map((w, i) => (i === day ? { ...w, ...patch } : w)))
+  }
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
@@ -75,14 +99,26 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
       const dealType = selectedOption?.dealType || "Daily"
       const savingsNum = parseFloat(form.total_saving.replace(/[$,]/g, "")) || 0
 
+      // Only enabled days with both times become windows; empty array = always
+      // available (and, on edit, clears any previously-set windows).
+      const availability_windows = availabilityLimited
+        ? windows.flatMap((w, day) =>
+            w.enabled && w.start && w.end
+              ? [{ day_of_week: day, start_time: w.start, end_time: w.end }]
+              : []
+          )
+        : []
+
       const payload = {
         deal_title: form.deal_title,
         description: form.description,
         deal_type: dealType,
         deal_image_path: form.deal_image_path || undefined,
         start_date: form.start_date || undefined,
+        expired_date: form.expired_date || undefined,
         total_saving: savingsNum,
         venue_id: selectedVenue?.id,
+        availability_windows,
       }
 
       if (isEditing) {
@@ -348,10 +384,90 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                   </div>
                 )}
 
-                {/* Start date */}
+                {/* Start + end date */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="start_date">Start date</Label>
+                    <Input id="start_date" name="start_date" type="date" value={form.start_date} onChange={handleChange} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="expired_date">
+                      End date <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+                    </Label>
+                    <Input id="expired_date" name="expired_date" type="date" value={form.expired_date} onChange={handleChange} />
+                  </div>
+                </div>
+
+                {/* Availability windows */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="start_date">Start date</Label>
-                  <Input id="start_date" name="start_date" type="date" value={form.start_date} onChange={handleChange} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Label>
+                        Limit to specific times <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+                      </Label>
+                      <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                        By default the deal is always available. Turn this on to offer it only during set
+                        hours each day — outside those hours it shows dimmed and lower in the app.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={availabilityLimited}
+                      onClick={() => setAvailabilityLimited((v) => !v)}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                        availabilityLimited ? "bg-[#05EB54]" : "bg-neutral-300 dark:bg-neutral-700"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block size-5 transform rounded-full bg-white shadow transition-transform",
+                          availabilityLimited ? "translate-x-5" : "translate-x-0.5"
+                        )}
+                      />
+                    </button>
+                  </div>
+
+                  {availabilityLimited && (
+                    <div className="mt-2 space-y-2 rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
+                      {DAY_LABELS.map((label, day) => {
+                        const w = windows[day]
+                        return (
+                          <div key={day} className="flex items-center gap-3">
+                            <label className="flex w-28 shrink-0 cursor-pointer items-center gap-2 sm:w-32">
+                              <input
+                                type="checkbox"
+                                checked={w.enabled}
+                                onChange={(e) => updateWindow(day, { enabled: e.target.checked })}
+                                className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54]/30"
+                              />
+                              <span className="text-sm text-neutral-900 dark:text-neutral-100">{label}</span>
+                            </label>
+                            <Input
+                              type="time"
+                              value={w.start}
+                              disabled={!w.enabled}
+                              onChange={(e) => updateWindow(day, { start: e.target.value })}
+                              className="flex-1 disabled:opacity-50"
+                            />
+                            <span className="text-sm text-neutral-500 dark:text-neutral-400">to</span>
+                            <Input
+                              type="time"
+                              value={w.end}
+                              disabled={!w.enabled}
+                              onChange={(e) => updateWindow(day, { end: e.target.value })}
+                              className="flex-1 disabled:opacity-50"
+                            />
+                          </div>
+                        )
+                      })}
+                      <p className="pt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                        Enable each day the deal runs and set its hours. Unchecked days are unavailable.
+                        Overnight ranges (e.g. 10:00pm–2:00am) are supported.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Image */}
