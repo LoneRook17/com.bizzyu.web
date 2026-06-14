@@ -71,6 +71,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   const [form, setForm] = useState<EventFormData>({
     name: initialData?.name || "",
     description: initialData?.description || "",
+    venue_id: initialData?.venue_id ?? null,
     venue_name: initialData?.venue_name || "",
     venue_address: initialData?.venue_address || "",
     latitude: initialData?.latitude ?? null,
@@ -86,6 +87,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     promotion_enabled: !!initialData?.promotion_enabled,
     promotion_commission_type: initialData?.promotion_commission_type || "percent",
     promotion_commission_value: initialData?.promotion_commission_value ?? null,
+    notify_followers_on_publish: !!initialData?.notify_followers_on_publish,
   })
 
   const [promotionValueInput, setPromotionValueInput] = useState<string>(
@@ -113,12 +115,23 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // Sync venue name/address from selected venue (locked when a venue is selected on create)
+  // The venue the form is currently pointed at. On edit this is seeded from the
+  // event's own venue_id (so the dropdown shows what it was created with, not a
+  // blank); on create it follows the globally-selected venue.
+  const currentVenue = venues.find((v) => v.id === form.venue_id) ?? null
+
+  // On create only, default the form's venue to the globally-selected one and
+  // sync the locked location fields. Editing keeps the event's saved venue.
   useEffect(() => {
-    if (!isEditing && selectedVenue) {
-      setForm((prev) => ({ ...prev, venue_name: selectedVenue.name, venue_address: selectedVenue.address || "" }))
+    if (!isEditing && selectedVenue && form.venue_id == null) {
+      setForm((prev) => ({
+        ...prev,
+        venue_id: selectedVenue.id,
+        venue_name: selectedVenue.name,
+        venue_address: selectedVenue.address || "",
+      }))
     }
-  }, [selectedVenue, isEditing])
+  }, [selectedVenue, isEditing, form.venue_id])
 
   const handleConnectStripe = async () => {
     setStripeConnecting(true)
@@ -170,7 +183,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     const errs: Record<string, string> = {}
     if (!form.name.trim()) errs.name = "Event name is required"
     else if (form.name.length > 100) errs.name = "Event name must be 100 characters or less"
-    if (!isEditing && !selectedVenue) errs.venue_name = "Please select a venue before creating an event"
+    if (!isEditing && !form.venue_id) errs.venue_name = "Please select a venue before creating an event"
     else if (!form.venue_name.trim()) errs.venue_name = "Location name is required"
     if (!form.is_recurring) {
       if (!form.start_date_time) errs.start_date_time = "Start date is required"
@@ -228,7 +241,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       const payload: Record<string, unknown> = {
         name: form.name,
         description: form.description,
-        venue_id: selectedVenue?.id,
+        venue_id: form.venue_id ?? selectedVenue?.id,
         venue_name: form.venue_name,
         venue_address: form.venue_address,
         latitude: form.latitude,
@@ -264,6 +277,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       } else {
         payload.promotion_enabled = false
       }
+
+      // Opt-in announcement to venue followers on publish.
+      payload.notify_followers_on_publish = !!form.notify_followers_on_publish
 
       if (isEditing) {
         await apiClient.put(`/business/events/${eventId}`, payload)
@@ -403,15 +419,26 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       <Card>
         <CardHeader><CardTitle>Location</CardTitle></CardHeader>
         <CardContent className="space-y-4 pt-0">
-          {!isEditing && venues.length > 0 && (
+          {venues.length > 0 && (
             <div>
               <Label htmlFor="venue_select" className="mb-1.5 block">Venue</Label>
               <Select
                 id="venue_select"
-                value={selectedVenue?.id ?? ""}
+                value={form.venue_id ?? ""}
                 onChange={(e) => {
                   const venueId = Number(e.target.value)
-                  if (venueId) setSelectedVenue(venueId)
+                  if (!venueId) return
+                  const v = venues.find((vv) => vv.id === venueId)
+                  setForm((prev) => ({
+                    ...prev,
+                    venue_id: venueId,
+                    venue_name: v?.name ?? prev.venue_name,
+                    venue_address: v?.address ?? prev.venue_address,
+                  }))
+                  // Keep the dashboard-wide venue context in sync on create only;
+                  // editing one event shouldn't change which venue you're browsing.
+                  if (!isEditing) setSelectedVenue(venueId)
+                  setErrors((prev) => ({ ...prev, venue_name: "" }))
                 }}
               >
                 <option value="" disabled>Select a venue</option>
@@ -419,7 +446,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   <option key={v.id} value={v.id}>{v.name}</option>
                 ))}
               </Select>
-              {errors.venue_name && !selectedVenue && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>}
+              {errors.venue_name && !currentVenue && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>}
             </div>
           )}
           <div>
@@ -430,9 +457,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               value={form.venue_name}
               onChange={handleChange}
               placeholder="e.g. The Main Stage"
-              disabled={!isEditing && !!selectedVenue}
+              disabled={!!currentVenue}
             />
-            {!selectedVenue && errors.venue_name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>}
+            {!currentVenue && errors.venue_name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>}
           </div>
           <div className="relative" ref={addressWrapperRef}>
             <Label htmlFor="venue_address" className="mb-1.5 block">Address</Label>
@@ -442,9 +469,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               type="text"
               value={form.venue_address}
               autoComplete="off"
-              disabled={!isEditing && !!selectedVenue}
+              disabled={!!currentVenue}
               onChange={(e) => onVenueAddressChange(e.target.value)}
-              onFocus={() => !selectedVenue && addressPredictions.length > 0 && setShowPredictions(true)}
+              onFocus={() => !currentVenue && addressPredictions.length > 0 && setShowPredictions(true)}
               placeholder="Start typing an address…"
             />
             {showPredictions && addressPredictions.length > 0 && (
@@ -495,6 +522,25 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           </CardContent>
         </Card>
       )}
+
+      {/* Notify followers — opt-in announcement on publish (any event type) */}
+      <Card>
+        <CardHeader className="flex-col items-start gap-1">
+          <CardTitle>Notify followers</CardTitle>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Send a push to followers of this venue when the event goes live.</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!form.notify_followers_on_publish}
+              onChange={(e) => setForm((prev) => ({ ...prev, notify_followers_on_publish: e.target.checked }))}
+              className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+            />
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">Announce to venue followers</span>
+          </label>
+        </CardContent>
+      </Card>
 
       {/* Promoter program */}
       {form.type === "Ticketed" && (

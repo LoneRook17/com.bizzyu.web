@@ -137,6 +137,7 @@ export interface TicketTier {
 }
 
 export interface EventDetail extends EventListItem {
+  venue_id: number | null
   university_id: number
   school: string
   fee: number
@@ -166,6 +167,7 @@ export interface RecurringEventConfig {
 export interface EventFormData {
   name: string
   description: string
+  venue_id?: number | null
   venue_name: string
   venue_address: string
   latitude: number | null
@@ -181,6 +183,7 @@ export interface EventFormData {
   promotion_enabled?: boolean
   promotion_commission_type?: 'percent' | 'fixed'
   promotion_commission_value?: number | null
+  notify_followers_on_publish?: boolean
 }
 
 // Deal types
@@ -465,8 +468,20 @@ export interface LineSkipInstance {
   updated_at: string
 }
 
+// Per-weekday recurring settings for a line skip program (0=Sun..6=Sat). Each
+// selected day may carry its own price/time/limit; days without an override row
+// fall back to the program's default_* values.
+export interface LineSkipDayOverride {
+  day_of_week: number
+  start_time: string // HH:MM[:SS]
+  end_time: string // HH:MM[:SS]
+  price_cents: number
+  capacity: number | null
+}
+
 export interface LineSkipDetail extends LineSkip {
   instances: LineSkipInstance[]
+  day_overrides?: LineSkipDayOverride[]
 }
 
 export interface LineSkipFormData {
@@ -483,6 +498,16 @@ export interface LineSkipFormData {
 
 // Line Skip Analytics types
 export interface LineSkipInstanceAnalytics {
+  // Core instance fields — echoed by the API so the night-detail page can render
+  // the configured price/time/date and drive the edit modal without a 2nd fetch.
+  id: number
+  line_skip_id: number
+  business_id: number
+  date: string // YYYY-MM-DD
+  start_time: string // HH:MM[:SS]
+  end_time: string // HH:MM[:SS]
+  price_cents: number
+  status: 'active' | 'cancelled' | 'sold_out'
   tickets_sold: number
   total_revenue_cents: number
   capacity: number | null

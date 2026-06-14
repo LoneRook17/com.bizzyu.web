@@ -100,6 +100,13 @@ function formatDate(dateStr: string): string {
   })
 }
 
+// Compact date ("Jun 14") for the inline ticket scan-window label, where the
+// full weekday/year of formatDate reads as clutter.
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr.replace(" ", "T"))
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
 function formatTime(dateStr: string, timezone?: string | null): string {
   const d = new Date(dateStr.replace(" ", "T"))
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
@@ -651,11 +658,13 @@ export default function EventCheckoutClient({
                           <span className="text-xs font-semibold text-amber-400">Sales closed</span>
                         ) : salesNotOpen ? (
                           // Still buyable — the window only gates when it can be SCANNED.
-                          <span className="text-xs text-white/40">
-                            {ticket.valid_from
-                              ? `Scannable from ${formatDate(ticket.valid_from)}, ${formatTime(ticket.valid_from, ticket.event_timezone)}`
-                              : "Buy now"}
-                          </span>
+                          ticket.valid_from ? (
+                            <span className="text-xs font-semibold text-primary">
+                              {`Scannable from ${formatShortDate(ticket.valid_from)}, ${formatTime(ticket.valid_from, ticket.event_timezone)}`}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-white/40">Buy now</span>
+                          )
                         ) : remaining !== null && remaining !== undefined ? (
                           <span className="text-xs text-white/40">{remaining} remaining</span>
                         ) : (

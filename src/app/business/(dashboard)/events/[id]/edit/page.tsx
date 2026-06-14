@@ -25,6 +25,7 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
         setInitialData({
           name: event.name,
           description: event.description,
+          venue_id: event.venue_id,
           venue_name: event.venue_name,
           venue_address: event.venue_address,
           start_date_time: toDatetimeLocal(event.start_date_time),
