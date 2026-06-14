@@ -245,7 +245,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
 
   return (
     <>
-      <PageHeader title="Night details" description={`Instance #${instanceId}`} />
+      <PageHeader title="Night details" description="Sales, attendees & promo codes for this night" />
       <Link href="/business/line-skips" className="-mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
         <ArrowLeft className="size-4" /> Back to line skips
       </Link>

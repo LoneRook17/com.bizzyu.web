@@ -183,7 +183,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
             </Button>
             {lineSkip.is_active && (
               <Button variant="subtle" onClick={() => { setDeactivateError(null); setShowDeactivateConfirm(true) }}>
-                Deactivate
+                Turn off line skip
               </Button>
             )}
           </div>
@@ -239,15 +239,6 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* rolling info */}
-      {lineSkip.is_active && (
-        <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-2.5">
-          <p className="text-xs text-blue-600 dark:text-blue-400">
-            Upcoming nights are generated automatically on a rolling 2-week basis. New nights appear as earlier ones pass.
-          </p>
-        </div>
       )}
 
       {/* tabs */}
@@ -322,7 +313,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                       )}
                       {tab === "upcoming" && instance.status !== "cancelled" && instance.cancellation_status !== "pending" && canEdit && (
                         <Button variant="subtle" size="sm" onClick={() => openCancel(instance)}>
-                          Cancel
+                          Close night
                         </Button>
                       )}
                     </div>
@@ -342,13 +333,13 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       <Dialog open={showDeactivateConfirm} onOpenChange={(o) => !o && setShowDeactivateConfirm(false)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Deactivate this line skip?</DialogTitle>
+            <DialogTitle>Turn off this line skip?</DialogTitle>
             <DialogDescription>
-              This stops new nights from being generated for {lineSkip.name} and cancels any future nights with no paid tickets.
+              This stops {lineSkip.name} from running and closes any future nights with no paid tickets.
             </DialogDescription>
           </DialogHeader>
           <p className="text-xs text-neutral-400 dark:text-neutral-500">
-            To deactivate a line skip with paid future tickets, cancel those nights individually first. Each individual cancellation goes through our refund policy.
+            To turn off a line skip that has paid future tickets, close those nights individually first. Each individual cancellation goes through our refund policy.
           </p>
           {deactivateError && (
             <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2">
@@ -367,7 +358,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
             </DialogClose>
             <Button variant="danger" onClick={handleDeactivate} disabled={deactivating}>
               {deactivating && <Loader2 className="size-4 animate-spin" />}
-              Deactivate
+              Turn it off
             </Button>
           </DialogFooter>
         </DialogContent>

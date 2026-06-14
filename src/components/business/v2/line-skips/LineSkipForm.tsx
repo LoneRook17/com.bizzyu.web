@@ -81,7 +81,6 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
   const [priceDisplay, setPriceDisplay] = useState("15.00")
-  const [regenerate, setRegenerate] = useState(false)
 
   const [form, setForm] = useState<LineSkipFormData>({
     name: "",
@@ -207,18 +206,14 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
     const errs: Record<string, string> = {}
     if (!isEdit && !selectedVenue) errs.venue = "Please select a venue"
     if (!form.name.trim()) errs.name = "Name is required"
-    if (form.days_of_week.length === 0) errs.days_of_week = "Select at least one day"
-    if (!form.date_range_start) errs.date_range_start = "Start date is required"
-    if (isEdit) {
-      if (!form.date_range_end) errs.date_range_end = "End date is required"
-      if (form.date_range_start && form.date_range_end && form.date_range_start > form.date_range_end)
-        errs.date_range_end = "End date must be after start date"
-    }
+    if (form.days_of_week.length === 0) errs.days_of_week = "Select at least one night"
+    if (form.date_range_end && form.date_range_start && form.date_range_end < form.date_range_start)
+      errs.date_range_end = "End date must be after the start"
     if (!form.default_start_time) errs.default_start_time = "Start time is required"
     if (!form.default_end_time) errs.default_end_time = "End time is required"
     if (cents <= 0) errs.default_price_cents = "Price must be greater than $0"
     if (form.default_capacity && parseInt(form.default_capacity) <= 0)
-      errs.default_capacity = "Capacity must be a positive number"
+      errs.default_capacity = "Limit must be a positive number"
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -230,6 +225,8 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
     setForm((prev) => ({ ...prev, default_price_cents: cents }))
     if (!validate(cents)) return
 
+    // Open-ended by default: start today, run until the optional end date (or far future).
+    const todayStr = new Date().toLocaleDateString("en-CA")
     setLoading(true)
     setServerError("")
     try {
@@ -238,13 +235,12 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           name: form.name.trim(),
           description: form.description.trim() || null,
           days_of_week: form.days_of_week,
-          date_range_start: form.date_range_start,
-          date_range_end: form.date_range_end,
+          date_range_start: form.date_range_start || todayStr,
+          date_range_end: form.date_range_end || "2099-12-31",
           default_start_time: form.default_start_time,
           default_end_time: form.default_end_time,
           default_price_cents: cents,
           default_capacity: form.default_capacity ? parseInt(form.default_capacity) : null,
-          regenerate_instances: regenerate,
           venue_id: selectedVenue?.id,
         })
         router.push(`/business/line-skips/${lineSkipId}`)
@@ -253,8 +249,8 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           name: form.name.trim(),
           description: form.description.trim() || null,
           days_of_week: form.days_of_week,
-          date_range_start: form.date_range_start,
-          date_range_end: "2099-12-31",
+          date_range_start: todayStr,
+          date_range_end: form.date_range_end || "2099-12-31",
           default_start_time: form.default_start_time,
           default_end_time: form.default_end_time,
           default_price_cents: cents,
@@ -413,27 +409,21 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           {errors.days_of_week && <p className="text-xs text-red-500 dark:text-red-400">{errors.days_of_week}</p>}
         </div>
 
-        {/* Dates */}
-        {isEdit ? (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="date_range_start">Start date</Label>
-              <Input id="date_range_start" name="date_range_start" type="date" value={form.date_range_start} onChange={handleChange} className={cn(errors.date_range_start && errClass)} />
-              {errors.date_range_start && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_start}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="date_range_end">End date</Label>
-              <Input id="date_range_end" name="date_range_end" type="date" value={form.date_range_end} onChange={handleChange} className={cn(errors.date_range_end && errClass)} />
-              {errors.date_range_end && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_end}</p>}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            <Label htmlFor="date_range_start">Start date</Label>
-            <Input id="date_range_start" name="date_range_start" type="date" value={form.date_range_start} onChange={handleChange} className={cn(errors.date_range_start && errClass)} />
-            {errors.date_range_start && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_start}</p>}
-          </div>
-        )}
+        {/* Runs until (optional) — open-ended by default */}
+        <div className="space-y-1.5">
+          <Label htmlFor="date_range_end">
+            Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional — leave blank to run until you turn it off)</span>
+          </Label>
+          <Input
+            id="date_range_end"
+            name="date_range_end"
+            type="date"
+            value={form.date_range_end && form.date_range_end < "2099-01-01" ? form.date_range_end : ""}
+            onChange={handleChange}
+            className={cn(errors.date_range_end && errClass)}
+          />
+          {errors.date_range_end && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_end}</p>}
+        </div>
 
         {/* Time range */}
         <div className="grid grid-cols-2 gap-4">
@@ -470,7 +460,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="default_capacity">
-              Line skip quantity <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+              Limit per night <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
             </Label>
             <Input
               id="default_capacity"
@@ -486,66 +476,26 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           </div>
         </div>
 
-        {/* Regenerate (edit only) */}
-        {isEdit && (
-          <Card className="bg-neutral-50 dark:bg-neutral-800/50">
-            <CardContent className="p-4">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={regenerate}
-                  onChange={(e) => setRegenerate(e.target.checked)}
-                  className="mt-0.5 size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
-                />
-                <div>
-                  <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">Regenerate future instances with new defaults</p>
-                  <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                    This will regenerate the next 2 weeks of nights using your new defaults. Past nights and nights with sold tickets will not be affected. Future nights beyond 2 weeks are added automatically on a rolling basis.
-                  </p>
-                </div>
-              </label>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Preview */}
-        {isEdit ? (
-          regenerate && previewDates.length > 0 ? (
-            <Card className="border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40">
-              <CardContent className="p-4">
-                <p className="mb-2 text-sm font-medium text-amber-800 dark:text-amber-300">Upcoming nights to regenerate (next 2 weeks):</p>
-                <div className="max-h-32 space-y-1 overflow-y-auto">
+        {/* Preview — the upcoming nights this schedule will run */}
+        <Card className="bg-neutral-50 dark:bg-neutral-800/50">
+          <CardContent className="p-4">
+            {form.days_of_week.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">Pick your nights to preview the schedule.</p>
+            ) : (
+              <>
+                <p className="mb-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">Next few nights</p>
+                <div className="mb-2 max-h-40 space-y-1 overflow-y-auto">
                   {previewDates.map((d, i) => (
-                    <p key={i} className="text-xs text-amber-700 dark:text-amber-400">{d}</p>
+                    <p key={i} className="text-xs text-neutral-600 dark:text-neutral-400">{d}</p>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                  Only unsold future nights will be regenerated. Additional nights are added automatically on a rolling basis.
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">
+                  Runs every selected night{form.date_range_end && form.date_range_end < "2099-01-01" ? " until your end date" : " until you turn it off"}. You can edit or close individual nights anytime.
                 </p>
-              </CardContent>
-            </Card>
-          ) : null
-        ) : (
-          <Card className="bg-neutral-50 dark:bg-neutral-800/50">
-            <CardContent className="p-4">
-              {form.days_of_week.length === 0 ? (
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">Select days of the week to see upcoming nights</p>
-              ) : (
-                <>
-                  <p className="mb-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">Upcoming nights (next 2 weeks):</p>
-                  <div className="mb-2 max-h-40 space-y-1 overflow-y-auto">
-                    {previewDates.map((d, i) => (
-                      <p key={i} className="text-xs text-neutral-600 dark:text-neutral-400">{d}</p>
-                    ))}
-                  </div>
-                  <p className="text-xs text-neutral-400 dark:text-neutral-500">
-                    Nights are generated on a rolling 2-week basis and added automatically as time passes. You can stop this line skip at any time.
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Submit */}
         <div className="flex items-center gap-3 pt-2">

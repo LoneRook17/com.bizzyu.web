@@ -46,7 +46,7 @@ const TITLES: Record<ModalMode, string> = {
   edit_price: "Edit price",
   edit_quantity: "Edit quantity",
   edit_details: "Edit details",
-  cancel: "Cancel this night?",
+  cancel: "Close this night?",
 }
 
 export default function LineSkipInstanceModal({
@@ -401,7 +401,7 @@ export default function LineSkipInstanceModal({
                   </DialogClose>
                   <Button variant="danger" onClick={handleCancel} disabled={loading || !cancellationReason.trim()}>
                     {loading && <Loader2 className="size-4 animate-spin" />}
-                    {refundPreview && refundPreview.ticketCount > 0 ? "Submit cancellation request" : "Cancel night"}
+                    {refundPreview && refundPreview.ticketCount > 0 ? "Submit cancellation request" : "Close night"}
                   </Button>
                 </DialogFooter>
               </>
