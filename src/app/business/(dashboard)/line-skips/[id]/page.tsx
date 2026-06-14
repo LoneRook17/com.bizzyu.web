@@ -3,29 +3,25 @@
 import { useState, useEffect, useCallback, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, BarChart3, Loader2, Pencil } from "lucide-react"
+import { ArrowLeft, Loader2, Pencil } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
-import { cn, money } from "@/lib/v2/utils"
+import { money } from "@/lib/v2/utils"
 import type { LineSkipDetail, LineSkipInstance, LineSkipAggregateAnalytics } from "@/lib/business/types"
-import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
-import { Tabs, TabsList, TabsTrigger } from "@/components/business/v2/ui/tabs"
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose,
 } from "@/components/business/v2/ui/dialog"
 import LineSkipInstanceModal from "@/components/business/v2/line-skips/LineSkipInstanceModal"
+import LineSkipCalendar from "@/components/business/v2/line-skips/LineSkipCalendar"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 function formatDays(days: number[]): string {
   return days.slice().sort((a, b) => a - b).map((d) => DAY_LABELS[d]).join(", ")
-}
-function formatDate(s: string): string {
-  return new Date(s + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
 }
 function formatDateRange(start: string, end: string): string {
   const s = new Date(start + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -64,7 +60,6 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
   const [lineSkip, setLineSkip] = useState<LineSkipDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
-  const [tab, setTab] = useState<"upcoming" | "past">("upcoming")
   const [analytics, setAnalytics] = useState<LineSkipAggregateAnalytics | null>(null)
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -75,7 +70,6 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
   const [deactivateError, setDeactivateError] = useState<{ message: string; blockingTicketCount?: number; blockingInstanceIds?: number[] } | null>(null)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
-  const canEditPrice = canEdit || user?.business_role === "staff"
   const canViewAnalytics = user?.business_role === "owner" || user?.business_role === "manager"
 
   const fetchLineSkip = useCallback(async () => {
@@ -130,9 +124,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
     setModalOpen(true)
   }
 
-  const upcomingInstances = lineSkip?.instances?.filter((i) => isUpcoming(i.date)).sort((a, b) => a.date.localeCompare(b.date)) ?? []
-  const pastInstances = lineSkip?.instances?.filter((i) => !isUpcoming(i.date)).sort((a, b) => b.date.localeCompare(a.date)) ?? []
-  const displayedInstances = tab === "upcoming" ? upcomingInstances : pastInstances
+  const upcomingInstances = lineSkip?.instances?.filter((i) => isUpcoming(i.date)) ?? []
 
   if (loading) {
     return (
@@ -206,7 +198,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
         ) : (
           <>
             <StatTile label="Default price" value={money(lineSkip.default_price_cents)} />
-            <StatTile label="Line skip quantity" value={lineSkip.default_capacity ?? "Unlimited"} />
+            <StatTile label="Limit per night" value={lineSkip.default_capacity ?? "Unlimited"} />
             <StatTile label="Upcoming nights" value={upcomingInstances.length} />
             <StatTile label="Time" value={`${formatTime(lineSkip.default_start_time)} – ${formatTime(lineSkip.default_end_time)}`} />
           </>
@@ -241,93 +233,14 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
         </Card>
       )}
 
-      {/* tabs */}
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "upcoming" | "past")}>
-        <TabsList>
-          <TabsTrigger value="upcoming">Upcoming ({upcomingInstances.length})</TabsTrigger>
-          <TabsTrigger value="past">Past ({pastInstances.length})</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* instances */}
-      {displayedInstances.length === 0 ? (
-        <div className="py-12 text-center">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">No {tab} nights.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {displayedInstances.map((instance) => {
-            const trendData = analytics?.revenue_trend.find((r) => r.instance_id === instance.id)
-            const revenueCents = instance.revenue ?? trendData?.revenue_cents ?? 0
-            const checkinRate = instance.checkin_rate
-            const day = new Date(instance.date + "T00:00:00")
-
-            return (
-              <Card key={instance.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      {/* date badge */}
-                      <div className="flex min-w-[56px] flex-col items-center justify-center rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-2">
-                        <span className="text-xs uppercase text-neutral-500 dark:text-neutral-400">{day.toLocaleDateString("en-US", { weekday: "short" })}</span>
-                        <span className="text-lg font-bold leading-tight text-neutral-900 dark:text-neutral-100">{day.getDate()}</span>
-                        <span className="text-xs text-neutral-400 dark:text-neutral-500">{day.toLocaleDateString("en-US", { month: "short" })}</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{formatDate(instance.date)}</p>
-                        <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{formatTime(instance.start_time)} – {formatTime(instance.end_time)}</p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">{money(instance.price_cents)}</span>
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                            {instance.capacity ? `${instance.tickets_sold} / ${instance.capacity} sold` : `${instance.tickets_sold} sold (unlimited)`}
-                          </span>
-                          {instance.tickets_sold > 0 && revenueCents > 0 && (
-                            <span className="text-xs text-neutral-400 dark:text-neutral-500">{money(revenueCents)} revenue</span>
-                          )}
-                          {checkinRate !== undefined && checkinRate > 0 && (
-                            <span className="text-xs text-neutral-400 dark:text-neutral-500">{checkinRate.toFixed(0)}% checked in</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                      <Badge
-                        variant={instance.status === "active" ? "success" : instance.status === "cancelled" ? "danger" : "warning"}
-                      >
-                        {instance.status === "sold_out" ? "Sold out" : instance.status.charAt(0).toUpperCase() + instance.status.slice(1)}
-                      </Badge>
-                      {instance.cancellation_status === "pending" && <Badge variant="warning">Pending cancellation</Badge>}
-
-                      {instance.status !== "cancelled" && (canEditPrice || canEdit) && (
-                        <Button size="sm" asChild>
-                          <Link href={`/business/line-skips/instances/${instance.id}`}>Manage</Link>
-                        </Button>
-                      )}
-                      {canViewAnalytics && instance.tickets_sold > 0 && (
-                        <Button variant="secondary" size="sm" asChild>
-                          <Link href={`/business/line-skips/instances/${instance.id}?tab=analytics`}>
-                            <BarChart3 className="size-3.5" /> Analytics
-                          </Link>
-                        </Button>
-                      )}
-                      {tab === "upcoming" && instance.status !== "cancelled" && instance.cancellation_status !== "pending" && canEdit && (
-                        <Button variant="subtle" size="sm" onClick={() => openCancel(instance)}>
-                          Close night
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {instance.status === "cancelled" && instance.cancellation_reason && (
-                    <p className="ml-[68px] mt-2 text-xs text-red-500 dark:text-red-400">Cancelled: {instance.cancellation_reason}</p>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+      {/* calendar */}
+      <LineSkipCalendar
+        lineSkip={lineSkip}
+        instances={lineSkip.instances ?? []}
+        canEdit={canEdit}
+        canViewAnalytics={canViewAnalytics}
+        onCloseNight={openCancel}
+      />
 
       {/* deactivate confirm */}
       <Dialog open={showDeactivateConfirm} onOpenChange={(o) => !o && setShowDeactivateConfirm(false)}>
