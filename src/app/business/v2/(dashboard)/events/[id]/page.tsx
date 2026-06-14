@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, CalendarOff, Copy, MapPin, Pencil, ScanLine, Settings2, Loader2 } from "lucide-react"
+import { ArrowLeft, CalendarOff, Copy, MapPin, Pencil, Rocket, ScanLine, Settings2, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { EventDetail, TicketTier } from "@/lib/business/types"
@@ -23,7 +23,7 @@ import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -33,6 +33,10 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceError, setPriceError] = useState("")
   const [duplicating, setDuplicating] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState("")
+  const [publishNeedsStripe, setPublishNeedsStripe] = useState(false)
+  const [stripeConnecting, setStripeConnecting] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
   const canEditPrice = canEdit || user?.business_role === "staff"
@@ -73,6 +77,38 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
       setPriceError(err instanceof ApiError ? err.message : "Failed to update price")
     } finally {
       setPriceLoading(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    setPublishing(true)
+    setPublishError("")
+    setPublishNeedsStripe(false)
+    try {
+      await apiClient.post<{ event_id: number; status: string; moderation_status: string | null }>(
+        `/business/events/${id}/publish`
+      )
+      // Re-fetch so the status badge + banners reflect published / pending_review.
+      await fetchEvent()
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to publish event"
+      setPublishError(message)
+      if (/stripe/i.test(message)) setPublishNeedsStripe(true)
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true)
+    try {
+      const data = await apiClient.post<{ url: string; stripe_connect_id: string }>(
+        "/business/profile/stripe-onboard?platform=web"
+      )
+      window.location.href = data.url
+    } catch (err) {
+      setPublishError(err instanceof ApiError ? err.message : "Failed to start Stripe onboarding")
+      setStripeConnecting(false)
     }
   }
 
@@ -150,6 +186,38 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
         <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           <span className="font-semibold">Under review:</span> {event.moderation_reason}
         </div>
+      )}
+
+      {event.status === "draft" && canEdit && (
+        <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">This event is a draft</p>
+              <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
+                {isPending
+                  ? "It goes live once Bizzy approves your business. You can keep editing in the meantime."
+                  : "Publish it when you're ready. Paid events need Stripe Connect first — free events don't."}
+              </p>
+              {publishError && (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">{publishError}</p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button variant="secondary" asChild>
+                <Link href={`/business/v2/events/${event.event_id}/edit`}><Pencil /> Edit</Link>
+              </Button>
+              {publishNeedsStripe ? (
+                <Button onClick={handleConnectStripe} disabled={stripeConnecting}>
+                  {stripeConnecting ? <Loader2 className="animate-spin" /> : null} Connect Stripe →
+                </Button>
+              ) : (
+                <Button onClick={handlePublish} disabled={publishing || isPending}>
+                  {publishing ? <Loader2 className="animate-spin" /> : <Rocket />} Publish
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

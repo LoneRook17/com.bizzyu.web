@@ -269,11 +269,18 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         await apiClient.put(`/business/events/${eventId}`, payload)
         router.push(`/business/v2/events/${eventId}`)
       } else {
-        const data = await apiClient.post<{ event_id: number; moderation_status: string | null }>(
-          "/business/events",
-          payload
-        )
-        if (data.moderation_status === "pending_review") {
+        const data = await apiClient.post<{
+          event_id: number
+          status: string
+          moderation_status: string | null
+          requires_stripe_to_publish?: boolean
+          requires_approval_to_publish?: boolean
+        }>("/business/events", payload)
+        if (data.status === "draft") {
+          // Saved, but not live yet (pending approval and/or Stripe). Land on the
+          // event so the draft banner there explains why + offers Publish.
+          router.push(`/business/v2/events/${data.event_id}`)
+        } else if (data.moderation_status === "pending_review") {
           setModerationNotice("Your event has been created but is under review due to content moderation.")
           setTimeout(() => router.push("/business/v2/events"), 3000)
         } else {
@@ -338,14 +345,16 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               <Label htmlFor="type" className="mb-1.5 block">Event type</Label>
               <Select id="type" name="type" value={form.type} onChange={handleChange}>
                 {EVENT_TYPES.map((t) => (
-                  <option key={t} value={t} disabled={t === "Ticketed" && !stripeOnboarded}>
-                    {t}{t === "Ticketed" && !stripeOnboarded ? " (Stripe required)" : ""}
-                  </option>
+                  <option key={t} value={t}>{t}</option>
                 ))}
               </Select>
-              {!stripeOnboarded && (
+              {/* Stripe is no longer required to BUILD a paid event — only to
+                  publish one. Show a non-blocking nudge for paid + no Stripe. */}
+              {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
                 <div className="mt-1.5">
-                  <p className="text-xs text-amber-600 dark:text-amber-400">Stripe Connect is required for paid events.</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    You can build this now and save it as a draft. Connect Stripe before a paid event can go live — free events don&apos;t need it.
+                  </p>
                   <button
                     type="button"
                     onClick={handleConnectStripe}
@@ -589,12 +598,19 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       )}
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        {isPending && (
+        {!isEditing && isPending && (
           <Badge variant="warning">Trial — saved as a draft until you&apos;re approved</Badge>
+        )}
+        {!isEditing && !isPending && hasPaidTicket && !stripeOnboarded && (
+          <Badge variant="warning">Saved as a draft — connect Stripe to publish</Badge>
         )}
         <Button type="submit" size="lg" disabled={loading}>
           {loading && <Loader2 className="animate-spin" />}
-          {isEditing ? "Save changes" : "Create event"}
+          {isEditing
+            ? "Save changes"
+            : isPending || (hasPaidTicket && !stripeOnboarded)
+              ? "Save draft"
+              : "Create event"}
         </Button>
       </div>
     </form>
