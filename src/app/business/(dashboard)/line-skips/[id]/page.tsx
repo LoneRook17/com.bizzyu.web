@@ -236,10 +236,12 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       {/* calendar */}
       <LineSkipCalendar
         lineSkip={lineSkip}
+        venueId={(lineSkip as { venue_id?: number | null }).venue_id ?? null}
         instances={lineSkip.instances ?? []}
         canEdit={canEdit}
         canViewAnalytics={canViewAnalytics}
         onCloseNight={openCancel}
+        onChanged={() => { fetchLineSkip(); fetchAnalytics() }}
       />
 
       {/* deactivate confirm */}
