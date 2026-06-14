@@ -68,6 +68,17 @@ export default function LineSkipCalendar({
     end: lineSkip?.default_end_time ?? "02:00",
     cap: lineSkip?.default_capacity ?? null,
   }
+  // Per-weekday recurring settings. A night that runs "by rule" but isn't
+  // materialized yet should preview ITS weekday's price/hours, not the program
+  // default. Falls back to `def` for weekdays without an override.
+  const overrideByDay = useMemo(() => {
+    const m: Record<number, { price: number; start: string; end: string; cap: number | null }> = {}
+    for (const o of lineSkip?.day_overrides ?? []) {
+      m[o.day_of_week] = { price: o.price_cents, start: o.start_time, end: o.end_time, cap: o.capacity }
+    }
+    return m
+  }, [lineSkip])
+  const defFor = (ds: string) => overrideByDay[weekdayOf(ds)] ?? def
   const [addPrice, setAddPrice] = useState("")
   const [addStart, setAddStart] = useState("22:00")
   const [addEnd, setAddEnd] = useState("02:00")
@@ -104,11 +115,12 @@ export default function LineSkipCalendar({
   }
 
   function openAdd(ds: string) {
+    const d = defFor(ds)
     setAddDate(ds)
-    setAddPrice((def.price / 100).toFixed(2))
-    setAddStart(def.start.slice(0, 5))
-    setAddEnd(def.end.slice(0, 5))
-    setAddLimit(def.cap ? String(def.cap) : "")
+    setAddPrice((d.price / 100).toFixed(2))
+    setAddStart(d.start.slice(0, 5))
+    setAddEnd(d.end.slice(0, 5))
+    setAddLimit(d.cap ? String(d.cap) : "")
     setAddRepeat(false)
     setAddError("")
   }
@@ -190,9 +202,10 @@ export default function LineSkipCalendar({
           const running = (inst && !cancelled) || (!inst && runsByRule)
           const empty = !inst && !runsByRule
           const addable = canEdit && empty && !isPast
-          const price = inst ? inst.price_cents : def.price
-          const priceOverridden = !!inst && !!lineSkip && inst.price_cents !== lineSkip.default_price_cents
-          const cap = inst ? inst.capacity : def.cap
+          const dayDef = defFor(c.date)
+          const price = inst ? inst.price_cents : dayDef.price
+          const priceOverridden = !!inst && inst.price_cents !== dayDef.price
+          const cap = inst ? inst.capacity : dayDef.cap
           const sold = inst ? inst.tickets_sold : 0
           const clickable = !!inst || (runsByRule && !isPast) || addable
 
@@ -254,8 +267,9 @@ export default function LineSkipCalendar({
           {selected && (() => {
             const inst = selected.instance
             const isPast = selected.date < todayStr
-            const cap = inst ? inst.capacity : def.cap
-            const price = inst ? inst.price_cents : def.price
+            const dayDef = defFor(selected.date)
+            const cap = inst ? inst.capacity : dayDef.cap
+            const price = inst ? inst.price_cents : dayDef.price
             return (
               <>
                 <DialogHeader>

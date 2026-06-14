@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useRef, use, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, ChevronDown, Loader2, Plus } from "lucide-react"
+import { ArrowLeft, ChevronDown, Loader2, Plus, Pencil, Ban } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import { cn, money } from "@/lib/v2/utils"
-import type { LineSkipInstanceAnalytics } from "@/lib/business/types"
+import type { LineSkipInstanceAnalytics, LineSkipInstance } from "@/lib/business/types"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -15,6 +15,9 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { Input, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
+import LineSkipInstanceModal from "@/components/business/v2/line-skips/LineSkipInstanceModal"
+
+type InstanceModalMode = "edit_price" | "edit_quantity" | "edit_details" | "cancel"
 
 interface PromoCode {
   id: number
@@ -91,10 +94,9 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
   const [editPromoLoading, setEditPromoLoading] = useState(false)
   const [editPromoError, setEditPromoError] = useState("")
 
-  const [editingQuantity, setEditingQuantity] = useState(false)
-  const [newCapacity, setNewCapacity] = useState("")
-  const [quantityLoading, setQuantityLoading] = useState(false)
-  const [quantityError, setQuantityError] = useState("")
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState<InstanceModalMode>("edit_details")
+  const openModal = (mode: InstanceModalMode) => { setModalMode(mode); setModalOpen(true) }
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
   const canViewAnalytics = canEdit
@@ -196,25 +198,26 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
     }
   }
 
-  const handleUpdateQuantity = async () => {
-    setQuantityLoading(true)
-    setQuantityError("")
-    try {
-      const cap = newCapacity ? parseInt(newCapacity) : null
-      if (cap !== null && analytics && cap < analytics.tickets_sold) {
-        setQuantityError(`Cannot be less than ${analytics.tickets_sold} (already sold)`)
-        setQuantityLoading(false)
-        return
+  // The detail page reuses the same instance edit modal as the calendar. We
+  // synthesize a LineSkipInstance from the analytics payload (which now echoes
+  // the night's core fields) so no extra fetch is needed.
+  const instance: LineSkipInstance | null = analytics
+    ? {
+        id: analytics.id,
+        line_skip_id: analytics.line_skip_id,
+        business_id: analytics.business_id,
+        date: analytics.date,
+        start_time: analytics.start_time,
+        end_time: analytics.end_time,
+        price_cents: analytics.price_cents,
+        capacity: analytics.capacity,
+        status: analytics.status,
+        cancellation_reason: null,
+        tickets_sold: analytics.tickets_sold,
+        created_at: "",
+        updated_at: "",
       }
-      await apiClient.patch(`/business/line-skips/instances/${instanceId}`, { capacity: cap })
-      setEditingQuantity(false)
-      fetchData()
-    } catch (err) {
-      setQuantityError(err instanceof ApiError ? err.message : "Failed to update quantity")
-    } finally {
-      setQuantityLoading(false)
-    }
-  }
+    : null
 
   if (loading) {
     return (
@@ -245,7 +248,22 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
 
   return (
     <>
-      <PageHeader title="Night details" description="Sales, attendees & promo codes for this night" />
+      <PageHeader
+        title="Night details"
+        description="Sales, attendees & promo codes for this night"
+        actions={
+          canEdit && instance && instance.status !== "cancelled" ? (
+            <>
+              <Button variant="secondary" onClick={() => openModal("cancel")}>
+                <Ban className="size-4" /> Close night
+              </Button>
+              <Button onClick={() => openModal("edit_details")}>
+                <Pencil className="size-4" /> Edit night
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
       <Link href="/business/line-skips" className="-mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
         <ArrowLeft className="size-4" /> Back to line skips
       </Link>
@@ -256,41 +274,29 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
           <StatTile label="Revenue" value={money(analytics.total_revenue_cents)} />
           <StatTile label="Tickets sold" value={analytics.tickets_sold} />
           <StatTile label="Line skip quantity">
-            {editingQuantity ? (
-              <div className="mt-1">
-                <Input type="number" min="1" value={newCapacity} onChange={(e) => setNewCapacity(e.target.value)} placeholder="Unlimited" className="h-8" />
-                {quantityError && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{quantityError}</p>}
-                <div className="mt-1.5 flex gap-2">
-                  <button onClick={handleUpdateQuantity} disabled={quantityLoading} className="text-xs font-medium text-[#05EB54] hover:underline disabled:opacity-50">
-                    {quantityLoading ? "Saving..." : "Save"}
-                  </button>
-                  <button onClick={() => { setEditingQuantity(false); setQuantityError("") }} className="text-xs text-neutral-500 dark:text-neutral-400 hover:underline">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-0.5 flex items-baseline gap-1.5">
-                <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                  {analytics.capacity !== null ? `${analytics.tickets_sold} / ${analytics.capacity}` : "Unlimited"}
-                </p>
-                {canEditPrice && (
-                  <button
-                    onClick={() => { setNewCapacity(analytics.capacity?.toString() ?? ""); setEditingQuantity(true) }}
-                    className="text-xs font-medium text-[#05EB54] hover:underline"
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="mt-0.5 flex items-baseline gap-1.5">
+              <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                {analytics.capacity !== null ? `${analytics.tickets_sold} / ${analytics.capacity}` : "Unlimited"}
+              </p>
+              {canEditPrice && instance && instance.status !== "cancelled" && (
+                <button onClick={() => openModal("edit_quantity")} className="text-xs font-medium text-[#05EB54] hover:underline">
+                  Edit
+                </button>
+              )}
+            </div>
           </StatTile>
           <StatTile label="Check-in rate" value={`${analytics.check_in_rate}%`} />
           <StatTile label="Checked in" value={analytics.checked_in} />
-          <StatTile
-            label="Current price"
-            value={analytics.tickets.length > 0 ? money(analytics.tickets[analytics.tickets.length - 1]?.price_paid_cents ?? 0) : "—"}
-          />
+          <StatTile label="Current price">
+            <div className="mt-0.5 flex items-baseline gap-1.5">
+              <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{money(analytics.price_cents)}</p>
+              {canEditPrice && instance && instance.status !== "cancelled" && (
+                <button onClick={() => openModal("edit_price")} className="text-xs font-medium text-[#05EB54] hover:underline">
+                  Edit
+                </button>
+              )}
+            </div>
+          </StatTile>
         </div>
       )}
 
@@ -598,6 +604,14 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
           </CardContent>
         </Card>
       )}
+
+      <LineSkipInstanceModal
+        open={modalOpen}
+        mode={modalMode}
+        instance={instance}
+        onClose={() => setModalOpen(false)}
+        onUpdated={fetchData}
+      />
     </>
   )
 }

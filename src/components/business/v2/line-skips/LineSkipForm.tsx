@@ -3,28 +3,40 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Loader2, TriangleAlert } from "lucide-react"
+import { ArrowLeft, Loader2, TriangleAlert, X, CopyPlus, Plus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { useVenue } from "@/lib/business/venue-context"
-import { useAuth } from "@/lib/business/auth-context"
 import { cn } from "@/lib/v2/utils"
-import type { BusinessProfile, LineSkipDetail, LineSkipFormData } from "@/lib/business/types"
+import type { BusinessProfile, LineSkipDetail } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
-import { Badge } from "@/components/business/v2/ui/badge"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 
+// Mon-first display order; value is JS getDay() (0=Sun..6=Sat).
 const DAYS = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 0, label: "Sun" },
+  { value: 1, label: "Mon", full: "Monday" },
+  { value: 2, label: "Tue", full: "Tuesday" },
+  { value: 3, label: "Wed", full: "Wednesday" },
+  { value: 4, label: "Thu", full: "Thursday" },
+  { value: 5, label: "Fri", full: "Friday" },
+  { value: 6, label: "Sat", full: "Saturday" },
+  { value: 0, label: "Sun", full: "Sunday" },
 ]
+const ORDER = (d: number) => (d + 6) % 7 // Mon=0 .. Sun=6
+const fullName = (d: number) => DAYS.find((x) => x.value === d)?.full ?? ""
+
+// One editable night-of-the-week row. Values are kept as strings for the inputs.
+interface DayRow {
+  day: number
+  priceDisplay: string
+  start_time: string
+  end_time: string
+  capacity: string
+}
+
+const NEW_DAY_DEFAULTS = { priceDisplay: "15.00", start_time: "22:00", end_time: "02:00", capacity: "" }
 
 /** Dates matching the selected days within a rolling 2-week window. */
 function matchingDates(daysOfWeek: number[], start?: string, end?: string): string[] {
@@ -50,16 +62,17 @@ function matchingDates(daysOfWeek: number[], start?: string, end?: string): stri
     if (endDate < twoWeeksOut) effectiveEnd = endDate
   }
 
-  const dates: string[] = []
+  const dates: { label: string; day: number }[] = []
   while (current <= effectiveEnd) {
     if (daysOfWeek.includes(current.getDay())) {
-      dates.push(
-        current.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
-      )
+      dates.push({
+        label: current.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
+        day: current.getDay(),
+      })
     }
     current.setDate(current.getDate() + 1)
   }
-  return dates
+  return dates.map((d) => d.label)
 }
 
 interface LineSkipFormProps {
@@ -70,29 +83,21 @@ interface LineSkipFormProps {
 export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   const router = useRouter()
   const { venues, selectedVenue, setSelectedVenue } = useVenue()
-  const { business } = useAuth()
   const isEdit = mode === "edit"
 
-  const backHref = isEdit && lineSkipId ? `/business/line-skips/${lineSkipId}` : "/business/line-skips"
+  // Single destination now: the line-skips calendar (no per-id detail page).
+  const backHref = "/business/line-skips"
 
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [pageLoading, setPageLoading] = useState(true)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
-  const [priceDisplay, setPriceDisplay] = useState("15.00")
 
-  const [form, setForm] = useState<LineSkipFormData>({
-    name: "",
-    description: "",
-    days_of_week: [],
-    date_range_start: "",
-    date_range_end: "",
-    default_start_time: "22:00",
-    default_end_time: "02:00",
-    default_price_cents: 1500,
-    default_capacity: "",
-  })
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [dateRangeEnd, setDateRangeEnd] = useState("")
+  const [days, setDays] = useState<DayRow[]>([])
 
   const [stripeConnecting, setStripeConnecting] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
@@ -107,18 +112,27 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
             `/business/line-skips/${lineSkipId}`
           )
           if (cancelled) return
-          setForm({
-            name: line_skip.name,
-            description: line_skip.description || "",
-            days_of_week: line_skip.days_of_week,
-            date_range_start: line_skip.date_range_start,
-            date_range_end: line_skip.date_range_end,
-            default_start_time: line_skip.default_start_time,
-            default_end_time: line_skip.default_end_time,
-            default_price_cents: line_skip.default_price_cents,
-            default_capacity: line_skip.default_capacity?.toString() ?? "",
-          })
-          setPriceDisplay((line_skip.default_price_cents / 100).toFixed(2))
+          setName(line_skip.name)
+          setDescription(line_skip.description || "")
+          setDateRangeEnd(line_skip.date_range_end && line_skip.date_range_end < "2099-01-01" ? line_skip.date_range_end : "")
+
+          // Build a row per selected day, preferring its per-day override and
+          // falling back to the program defaults for days without one.
+          const overrideByDay = new Map((line_skip.day_overrides ?? []).map((o) => [o.day_of_week, o]))
+          const rows: DayRow[] = line_skip.days_of_week
+            .slice()
+            .sort((a, b) => ORDER(a) - ORDER(b))
+            .map((day) => {
+              const o = overrideByDay.get(day)
+              return {
+                day,
+                priceDisplay: ((o?.price_cents ?? line_skip.default_price_cents) / 100).toFixed(2),
+                start_time: (o?.start_time ?? line_skip.default_start_time).slice(0, 5),
+                end_time: (o?.end_time ?? line_skip.default_end_time).slice(0, 5),
+                capacity: (o?.capacity ?? line_skip.default_capacity)?.toString() ?? "",
+              }
+            })
+          setDays(rows)
         } catch (err) {
           if (!cancelled) setServerError(err instanceof ApiError ? err.message : "Failed to load line skip")
         } finally {
@@ -129,7 +143,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           const p = await apiClient.get<BusinessProfile>("/business/profile")
           if (cancelled) return
           setProfile(p)
-          setForm((prev) => ({ ...prev, name: `Skip the line at ${selectedVenue?.name || p.name}` }))
+          setName(`Skip the line at ${selectedVenue?.name || p.name}`)
         } catch {
           // non-critical
         } finally {
@@ -146,48 +160,56 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   // Keep create default name in sync with venue
   useEffect(() => {
     if (!isEdit && selectedVenue?.name) {
-      setForm((prev) => ({ ...prev, name: `Skip the line at ${selectedVenue.name}` }))
+      setName(`Skip the line at ${selectedVenue.name}`)
     }
   }, [selectedVenue, isEdit])
 
-  const previewDates = useMemo(() => {
-    if (isEdit) return matchingDates(form.days_of_week, form.date_range_start, form.date_range_end)
-    return matchingDates(form.days_of_week)
-  }, [isEdit, form.days_of_week, form.date_range_start, form.date_range_end])
+  const selectedDays = useMemo(() => days.map((d) => d.day), [days])
+  const previewDates = useMemo(() => matchingDates(selectedDays, undefined, dateRangeEnd || undefined), [selectedDays, dateRangeEnd])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
-    setErrors((prev) => ({ ...prev, [name]: "" }))
-    setServerError("")
-  }
-
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPriceDisplay(e.target.value)
-    setErrors((prev) => ({ ...prev, default_price_cents: "" }))
-    setServerError("")
-  }
-
-  const handlePriceBlur = () => {
-    const dollars = parseFloat(priceDisplay)
-    if (!isNaN(dollars) && dollars > 0) {
-      const cents = Math.round(dollars * 100)
-      setForm((prev) => ({ ...prev, default_price_cents: cents }))
-      setPriceDisplay((cents / 100).toFixed(2))
-    } else {
-      setForm((prev) => ({ ...prev, default_price_cents: 0 }))
-      setPriceDisplay("")
-    }
-  }
-
+  // Add/remove a night-of-the-week. New rows copy the last edited day's
+  // settings so "all nights the same" stays one edit, while differing nights
+  // are just a couple of taps.
   const toggleDay = (day: number) => {
-    setForm((prev) => ({
-      ...prev,
-      days_of_week: prev.days_of_week.includes(day)
-        ? prev.days_of_week.filter((d) => d !== day)
-        : [...prev.days_of_week, day],
-    }))
-    setErrors((prev) => ({ ...prev, days_of_week: "" }))
+    setErrors((prev) => ({ ...prev, days: "" }))
+    setDays((prev) => {
+      if (prev.some((d) => d.day === day)) {
+        return prev.filter((d) => d.day !== day)
+      }
+      const template = prev.length ? prev[prev.length - 1] : null
+      const row: DayRow = {
+        day,
+        priceDisplay: template?.priceDisplay || NEW_DAY_DEFAULTS.priceDisplay,
+        start_time: template?.start_time || NEW_DAY_DEFAULTS.start_time,
+        end_time: template?.end_time || NEW_DAY_DEFAULTS.end_time,
+        capacity: template?.capacity ?? NEW_DAY_DEFAULTS.capacity,
+      }
+      return [...prev, row].sort((a, b) => ORDER(a.day) - ORDER(b.day))
+    })
+  }
+
+  const updateDay = (day: number, patch: Partial<DayRow>) => {
+    setDays((prev) => prev.map((d) => (d.day === day ? { ...d, ...patch } : d)))
+    setServerError("")
+  }
+
+  const normalizePrice = (day: number) => {
+    setDays((prev) =>
+      prev.map((d) => {
+        if (d.day !== day) return d
+        const dollars = parseFloat(d.priceDisplay)
+        return { ...d, priceDisplay: !isNaN(dollars) && dollars > 0 ? (Math.round(dollars * 100) / 100).toFixed(2) : "" }
+      })
+    )
+  }
+
+  // Copy one day's price/time/limit onto every other selected day.
+  const applyToAll = (day: number) => {
+    setDays((prev) => {
+      const src = prev.find((d) => d.day === day)
+      if (!src) return prev
+      return prev.map((d) => (d.day === day ? d : { ...d, priceDisplay: src.priceDisplay, start_time: src.start_time, end_time: src.end_time, capacity: src.capacity }))
+    })
   }
 
   const handleConnectStripe = async () => {
@@ -202,63 +224,62 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
     }
   }
 
-  const validate = (cents: number): boolean => {
+  const validate = (): boolean => {
     const errs: Record<string, string> = {}
     if (!isEdit && !selectedVenue) errs.venue = "Please select a venue"
-    if (!form.name.trim()) errs.name = "Name is required"
-    if (form.days_of_week.length === 0) errs.days_of_week = "Select at least one night"
-    if (form.date_range_end && form.date_range_start && form.date_range_end < form.date_range_start)
-      errs.date_range_end = "End date must be after the start"
-    if (!form.default_start_time) errs.default_start_time = "Start time is required"
-    if (!form.default_end_time) errs.default_end_time = "End time is required"
-    if (cents <= 0) errs.default_price_cents = "Price must be greater than $0"
-    if (form.default_capacity && parseInt(form.default_capacity) <= 0)
-      errs.default_capacity = "Limit must be a positive number"
+    if (!name.trim()) errs.name = "Name is required"
+    if (days.length === 0) errs.days = "Add at least one night"
+    for (const d of days) {
+      const dollars = parseFloat(d.priceDisplay)
+      if (isNaN(dollars) || dollars <= 0) errs[`price_${d.day}`] = "Price must be greater than $0"
+      if (!d.start_time) errs[`start_${d.day}`] = "Required"
+      if (!d.end_time) errs[`end_${d.day}`] = "Required"
+      if (d.capacity && parseInt(d.capacity) <= 0) errs[`cap_${d.day}`] = "Must be positive"
+    }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const dollars = parseFloat(priceDisplay)
-    const cents = !isNaN(dollars) ? Math.round(dollars * 100) : 0
-    setForm((prev) => ({ ...prev, default_price_cents: cents }))
-    if (!validate(cents)) return
+    if (!validate()) return
 
-    // Open-ended by default: start today, run until the optional end date (or far future).
+    const sorted = days.slice().sort((a, b) => ORDER(a.day) - ORDER(b.day))
+    const day_overrides = sorted.map((d) => ({
+      day_of_week: d.day,
+      start_time: d.start_time,
+      end_time: d.end_time,
+      price_cents: Math.round(parseFloat(d.priceDisplay) * 100),
+      capacity: d.capacity ? parseInt(d.capacity) : null,
+    }))
+    // default_* representative = first (Mon-first) day; backend recomputes the
+    // same value but the create endpoint requires these fields present.
+    const rep = day_overrides[0]
     const todayStr = new Date().toLocaleDateString("en-CA")
+
+    const payload = {
+      name: name.trim(),
+      description: description.trim() || null,
+      days_of_week: sorted.map((d) => d.day),
+      date_range_start: todayStr,
+      date_range_end: dateRangeEnd || "2099-12-31",
+      default_start_time: rep.start_time,
+      default_end_time: rep.end_time,
+      default_price_cents: rep.price_cents,
+      default_capacity: rep.capacity,
+      day_overrides,
+      venue_id: selectedVenue?.id,
+    }
+
     setLoading(true)
     setServerError("")
     try {
       if (isEdit && lineSkipId) {
-        await apiClient.put(`/business/line-skips/${lineSkipId}`, {
-          name: form.name.trim(),
-          description: form.description.trim() || null,
-          days_of_week: form.days_of_week,
-          date_range_start: form.date_range_start || todayStr,
-          date_range_end: form.date_range_end || "2099-12-31",
-          default_start_time: form.default_start_time,
-          default_end_time: form.default_end_time,
-          default_price_cents: cents,
-          default_capacity: form.default_capacity ? parseInt(form.default_capacity) : null,
-          venue_id: selectedVenue?.id,
-        })
-        router.push(`/business/line-skips/${lineSkipId}`)
+        await apiClient.put(`/business/line-skips/${lineSkipId}`, payload)
       } else {
-        const data = await apiClient.post<{ line_skip: { id: number } }>("/business/line-skips", {
-          name: form.name.trim(),
-          description: form.description.trim() || null,
-          days_of_week: form.days_of_week,
-          date_range_start: todayStr,
-          date_range_end: form.date_range_end || "2099-12-31",
-          default_start_time: form.default_start_time,
-          default_end_time: form.default_end_time,
-          default_price_cents: cents,
-          default_capacity: form.default_capacity ? parseInt(form.default_capacity) : null,
-          venue_id: selectedVenue?.id,
-        })
-        router.push(`/business/line-skips/${data.line_skip.id}`)
+        await apiClient.post("/business/line-skips", payload)
       }
+      router.push("/business/line-skips")
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : "Failed to save line skip")
     } finally {
@@ -267,6 +288,9 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   }
 
   const errClass = "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/30"
+  const allSame = days.length > 1 && days.every(
+    (d) => d.priceDisplay === days[0].priceDisplay && d.start_time === days[0].start_time && d.end_time === days[0].end_time && d.capacity === days[0].capacity
+  )
 
   if (pageLoading) {
     return (
@@ -309,7 +333,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   return (
     <div className="max-w-2xl">
       <Link href={backHref} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-        <ArrowLeft className="size-4" /> {isEdit ? "Back to line skip" : "Back to line skips"}
+        <ArrowLeft className="size-4" /> Back to line skips
       </Link>
       <h1 className="mb-6 mt-2 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
         {isEdit ? "Edit line skip" : "Create line skip"}
@@ -358,9 +382,8 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           <Label htmlFor="name">Name</Label>
           <Input
             id="name"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
+            value={name}
+            onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: "" })) }}
             placeholder={`Skip the line at ${selectedVenue?.name || "your venue"}`}
             className={cn(errors.name && errClass)}
           />
@@ -374,26 +397,33 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           </Label>
           <Textarea
             id="description"
-            name="description"
-            value={form.description}
-            onChange={handleChange}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="Skip the line with cover included. VIP entry, no wait..."
             className="resize-none"
           />
         </div>
 
-        {/* Days */}
-        <div className="space-y-2">
-          <Label>Days of week</Label>
+        {/* Per-night schedule */}
+        <div className="space-y-3">
+          <div>
+            <Label>Nights it runs</Label>
+            <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+              Tap the nights this line skip runs. Each night has its own price &amp; hours — set them all the same, or charge more on busy nights.
+            </p>
+          </div>
+
+          {/* Day toggles */}
           <div className="flex flex-wrap gap-2">
             {DAYS.map((day) => {
-              const active = form.days_of_week.includes(day.value)
+              const active = selectedDays.includes(day.value)
               return (
                 <button
                   key={day.value}
                   type="button"
                   onClick={() => toggleDay(day.value)}
+                  aria-pressed={active}
                   className={cn(
                     "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
                     active
@@ -406,7 +436,90 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
               )
             })}
           </div>
-          {errors.days_of_week && <p className="text-xs text-red-500 dark:text-red-400">{errors.days_of_week}</p>}
+          {errors.days && <p className="text-xs text-red-500 dark:text-red-400">{errors.days}</p>}
+
+          {/* Per-day setting cards */}
+          {days.length === 0 ? (
+            <Card className="border-dashed bg-neutral-50 dark:bg-neutral-800/40">
+              <CardContent className="flex items-center gap-2 p-4 text-sm text-neutral-500 dark:text-neutral-400">
+                <Plus className="size-4" /> Pick a night above to set its price and hours.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2.5">
+              {allSame && (
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">Every night is set the same. Change any single night to charge differently.</p>
+              )}
+              {days.map((d) => (
+                <Card key={d.day} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{fullName(d.day)}</h4>
+                      <div className="flex items-center gap-3">
+                        {days.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => applyToAll(d.day)}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-[#05EB54] hover:underline"
+                            title="Copy this night's settings to every selected night"
+                          >
+                            <CopyPlus className="size-3.5" /> Apply to all
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => toggleDay(d.day)}
+                          className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200"
+                          aria-label={`Remove ${fullName(d.day)}`}
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Price</Label>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={d.priceDisplay}
+                            onChange={(e) => updateDay(d.day, { priceDisplay: e.target.value })}
+                            onBlur={() => normalizePrice(d.day)}
+                            placeholder="0.00"
+                            className={cn("pl-7", errors[`price_${d.day}`] && errClass)}
+                          />
+                        </div>
+                        {errors[`price_${d.day}`] && <p className="text-xs text-red-500 dark:text-red-400">{errors[`price_${d.day}`]}</p>}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Limit <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={d.capacity}
+                          onChange={(e) => updateDay(d.day, { capacity: e.target.value })}
+                          placeholder="Unlimited"
+                          className={cn(errors[`cap_${d.day}`] && errClass)}
+                        />
+                        {errors[`cap_${d.day}`] && <p className="text-xs text-red-500 dark:text-red-400">{errors[`cap_${d.day}`]}</p>}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Doors open</Label>
+                        <Input type="time" value={d.start_time} onChange={(e) => updateDay(d.day, { start_time: e.target.value })} className={cn(errors[`start_${d.day}`] && errClass)} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Closes</Label>
+                        <Input type="time" value={d.end_time} onChange={(e) => updateDay(d.day, { end_time: e.target.value })} className={cn(errors[`end_${d.day}`] && errClass)} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Runs until (optional) — open-ended by default */}
@@ -416,81 +529,27 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           </Label>
           <Input
             id="date_range_end"
-            name="date_range_end"
             type="date"
-            value={form.date_range_end && form.date_range_end < "2099-01-01" ? form.date_range_end : ""}
-            onChange={handleChange}
-            className={cn(errors.date_range_end && errClass)}
+            value={dateRangeEnd}
+            onChange={(e) => setDateRangeEnd(e.target.value)}
           />
-          {errors.date_range_end && <p className="text-xs text-red-500 dark:text-red-400">{errors.date_range_end}</p>}
-        </div>
-
-        {/* Time range */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="default_start_time">Doors open</Label>
-            <Input id="default_start_time" name="default_start_time" type="time" value={form.default_start_time} onChange={handleChange} className={cn(errors.default_start_time && errClass)} />
-            {errors.default_start_time && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_start_time}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="default_end_time">Venue closes</Label>
-            <Input id="default_end_time" name="default_end_time" type="time" value={form.default_end_time} onChange={handleChange} className={cn(errors.default_end_time && errClass)} />
-            {errors.default_end_time && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_end_time}</p>}
-          </div>
-        </div>
-
-        {/* Price + Capacity */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="price">Default price</Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
-              <Input
-                id="price"
-                type="text"
-                inputMode="decimal"
-                value={priceDisplay}
-                onChange={handlePriceChange}
-                onBlur={handlePriceBlur}
-                placeholder="0.00"
-                className={cn("pl-7", errors.default_price_cents && errClass)}
-              />
-            </div>
-            {errors.default_price_cents && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_price_cents}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="default_capacity">
-              Limit per night <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
-            </Label>
-            <Input
-              id="default_capacity"
-              name="default_capacity"
-              type="number"
-              min="1"
-              value={form.default_capacity}
-              onChange={handleChange}
-              placeholder="Leave blank for unlimited"
-              className={cn(errors.default_capacity && errClass)}
-            />
-            {errors.default_capacity && <p className="text-xs text-red-500 dark:text-red-400">{errors.default_capacity}</p>}
-          </div>
         </div>
 
         {/* Preview — the upcoming nights this schedule will run */}
         <Card className="bg-neutral-50 dark:bg-neutral-800/50">
           <CardContent className="p-4">
-            {form.days_of_week.length === 0 ? (
+            {days.length === 0 ? (
               <p className="text-sm text-neutral-500 dark:text-neutral-400">Pick your nights to preview the schedule.</p>
             ) : (
               <>
                 <p className="mb-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">Next few nights</p>
                 <div className="mb-2 max-h-40 space-y-1 overflow-y-auto">
-                  {previewDates.map((d, i) => (
-                    <p key={i} className="text-xs text-neutral-600 dark:text-neutral-400">{d}</p>
+                  {previewDates.map((dStr, i) => (
+                    <p key={i} className="text-xs text-neutral-600 dark:text-neutral-400">{dStr}</p>
                   ))}
                 </div>
                 <p className="text-xs text-neutral-400 dark:text-neutral-500">
-                  Runs every selected night{form.date_range_end && form.date_range_end < "2099-01-01" ? " until your end date" : " until you turn it off"}. You can edit or close individual nights anytime.
+                  Runs every selected night{dateRangeEnd ? " until your end date" : " until you turn it off"}. You can edit or close individual nights anytime on the calendar.
                 </p>
               </>
             )}
