@@ -1,9 +1,17 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import Link from "next/link"
+import { Eye, EyeOff, Loader2, Plus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { TicketTier } from "@/lib/business/types"
+import { usd } from "@/lib/v2/utils"
+import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { Button } from "@/components/business/v2/ui/button"
+import { Input, Select } from "@/components/business/v2/ui/input"
+import { Label } from "@/components/business/v2/ui/label"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
 
 type FormState = {
   ticket_id?: number
@@ -28,8 +36,6 @@ const EMPTY_FORM: FormState = {
   valid_until: "",
 }
 
-// Normalize a stored DATETIME ("2026-06-14 01:00:00" or ISO) into the
-// "YYYY-MM-DDTHH:MM" shape a datetime-local input expects. Empty stays empty.
 function toLocalInput(v?: string | null): string {
   if (!v) return ""
   return v.replace(" ", "T").slice(0, 16)
@@ -49,7 +55,7 @@ function tierToForm(t: TicketTier): FormState {
   }
 }
 
-export default function ManageTicketsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [tickets, setTickets] = useState<TicketTier[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,16 +81,6 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const startCreate = () => {
-    setSaveError("")
-    setEditing({ ...EMPTY_FORM })
-  }
-
-  const startEdit = (t: TicketTier) => {
-    setSaveError("")
-    setEditing(tierToForm(t))
-  }
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editing) return
@@ -93,12 +89,11 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
       return
     }
     if (editing.valid_from && editing.valid_until && editing.valid_from >= editing.valid_until) {
-      setSaveError('"Sales valid from" must be before "valid until"')
+      setSaveError('"Valid from" must be before "valid until"')
       return
     }
     setSaving(true)
     setSaveError("")
-
     const body = {
       name: editing.name.trim(),
       description: editing.description.trim() || null,
@@ -109,7 +104,6 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
       valid_from: editing.valid_from || null,
       valid_until: editing.valid_until || null,
     }
-
     try {
       if (editing.ticket_id) {
         await apiClient.put(`/business/events/${id}/tickets/${editing.ticket_id}`, body)
@@ -127,15 +121,12 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
 
   const handleToggleHidden = async (t: TicketTier) => {
     if (!t.ticket_id) return
-    const next = !t.is_hidden
     setTogglingId(t.ticket_id)
     try {
-      await apiClient.put(`/business/events/${id}/tickets/${t.ticket_id}`, {
-        is_hidden: next,
-      })
+      await apiClient.put(`/business/events/${id}/tickets/${t.ticket_id}`, { is_hidden: !t.is_hidden })
       await fetchTickets()
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to update visibility")
+      setError(err instanceof ApiError ? err.message : "Failed to update visibility")
     } finally {
       setTogglingId(null)
     }
@@ -143,9 +134,10 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="max-w-3xl animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-48" />
-        <div className="h-48 bg-gray-200 rounded-xl" />
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     )
   }
@@ -154,253 +146,133 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
   const hidden = tickets.filter((t) => t.is_hidden)
 
   return (
-    <div className="max-w-3xl">
-      <Link
-        href={`/business/events/${id}/manage`}
-        className="text-xs text-gray-500 hover:text-primary mb-2 inline-block"
-      >
-        &larr; Back to Manage
-      </Link>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-ink">Manage Tickets</h1>
-        <button
-          type="button"
-          onClick={startCreate}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer"
-        >
-          Add Ticket
-        </button>
-      </div>
+    <>
+      <ManageSubheader
+        eventId={id}
+        title="Manage tickets"
+        actions={!editing ? <Button onClick={() => { setSaveError(""); setEditing({ ...EMPTY_FORM }) }}><Plus /> Add ticket</Button> : undefined}
+      />
 
-      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {editing && (
-        <form
-          onSubmit={handleSave}
-          className="mb-6 rounded-xl border border-gray-200 bg-white p-5 space-y-3"
-        >
-          <h2 className="text-sm font-semibold text-ink">
-            {editing.ticket_id ? "Edit Ticket" : "Add Ticket"}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="sm:col-span-2">
-              <label className="block text-xs text-gray-600 mb-1">Name</label>
-              <input
-                value={editing.name}
-                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                placeholder="e.g. General Admission, VIP"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                required
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-xs text-gray-600 mb-1">Description</label>
-              <input
-                value={editing.description}
-                onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                placeholder="Optional"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Type</label>
-              <select
-                value={editing.ticket_type}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    ticket_type: e.target.value as FormState["ticket_type"],
-                  })
-                }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              >
-                <option value="paid">Paid</option>
-                <option value="free">Free</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Price (USD)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                disabled={editing.ticket_type !== "paid"}
-                value={editing.price_usd}
-                onChange={(e) => setEditing({ ...editing, price_usd: e.target.value })}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm disabled:bg-gray-50"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Quantity (0 = unlimited)</label>
-              <input
-                type="number"
-                min="0"
-                value={editing.quantity}
-                onChange={(e) => setEditing({ ...editing, quantity: e.target.value })}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Max per person</label>
-              <input
-                type="number"
-                min="1"
-                value={editing.max_per_person}
-                onChange={(e) =>
-                  setEditing({ ...editing, max_per_person: e.target.value })
-                }
-                placeholder="No limit"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">
-                Valid from <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={editing.valid_from}
-                onChange={(e) => setEditing({ ...editing, valid_from: e.target.value })}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">
-                Valid until <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={editing.valid_until}
-                onChange={(e) => setEditing({ ...editing, valid_until: e.target.value })}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 -mt-1">
-            Redeemable / scan window — when this ticket can be scanned at the door. It can still be bought beforehand; sales just close when the window ends. Leave blank for no limit.
-          </p>
-
-          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
-
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-60"
-            >
-              {saving ? "Saving…" : editing.ticket_id ? "Save Changes" : "Add Ticket"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing(null)}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+        <Card>
+          <form onSubmit={handleSave}>
+            <CardContent className="space-y-3">
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{editing.ticket_id ? "Edit ticket" : "Add ticket"}</h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <Label className="mb-1 block text-xs">Name</Label>
+                  <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="e.g. General Admission, VIP" />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label className="mb-1 block text-xs">Description</Label>
+                  <Input value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} placeholder="Optional" />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs">Type</Label>
+                  <Select value={editing.ticket_type} onChange={(e) => setEditing({ ...editing, ticket_type: e.target.value as FormState["ticket_type"] })}>
+                    <option value="paid">Paid</option>
+                    <option value="free">Free</option>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs">Price (USD)</Label>
+                  <Input type="number" step="0.01" min="0" disabled={editing.ticket_type !== "paid"} value={editing.price_usd} onChange={(e) => setEditing({ ...editing, price_usd: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs">Quantity (0 = unlimited)</Label>
+                  <Input type="number" min="0" value={editing.quantity} onChange={(e) => setEditing({ ...editing, quantity: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs">Max per person</Label>
+                  <Input type="number" min="1" value={editing.max_per_person} placeholder="No limit" onChange={(e) => setEditing({ ...editing, max_per_person: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs">Valid from <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
+                  <Input type="datetime-local" value={editing.valid_from} onChange={(e) => setEditing({ ...editing, valid_from: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs">Valid until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
+                  <Input type="datetime-local" value={editing.valid_until} onChange={(e) => setEditing({ ...editing, valid_until: e.target.value })} />
+                </div>
+              </div>
+              <p className="-mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+                Redeemable / scan window — when this ticket can be scanned at the door. It can still be bought beforehand; sales just close when the window ends.
+              </p>
+              {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
+              <div className="flex items-center gap-2 pt-1">
+                <Button type="submit" disabled={saving}>
+                  {saving && <Loader2 className="animate-spin" />} {editing.ticket_id ? "Save changes" : "Add ticket"}
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => setEditing(null)}>Cancel</Button>
+              </div>
+            </CardContent>
+          </form>
+        </Card>
       )}
 
-      <Section title="Active Tickets">
-        {active.length === 0 ? (
-          <p className="text-sm text-gray-500">No active tickets yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {active.map((t) => (
-              <TicketRow
-                key={t.ticket_id ?? t.name}
-                t={t}
-                onEdit={() => startEdit(t)}
-                onToggleHidden={() => handleToggleHidden(t)}
-                isToggling={togglingId === t.ticket_id}
-              />
-            ))}
-          </ul>
-        )}
-      </Section>
+      <TicketSection title="Active tickets" tickets={active} onEdit={(t) => { setSaveError(""); setEditing(tierToForm(t)) }} onToggle={handleToggleHidden} togglingId={togglingId} emptyText="No active tickets yet." />
 
       {hidden.length > 0 && (
-        <div className="mt-8">
-          <Section title="Hidden Tickets">
-            <p className="text-xs text-gray-500 mb-3">
-              Hidden tickets cannot be purchased. Existing ticket holders can still scan in.
-            </p>
-            <ul className="space-y-3">
-              {hidden.map((t) => (
-                <TicketRow
-                  key={t.ticket_id ?? t.name}
-                  t={t}
-                  onEdit={() => startEdit(t)}
-                  onToggleHidden={() => handleToggleHidden(t)}
-                  isToggling={togglingId === t.ticket_id}
-                  dimmed
-                />
-              ))}
-            </ul>
-          </Section>
-        </div>
+        <TicketSection
+          title="Hidden tickets"
+          tickets={hidden}
+          onEdit={(t) => { setSaveError(""); setEditing(tierToForm(t)) }}
+          onToggle={handleToggleHidden}
+          togglingId={togglingId}
+          note="Hidden tickets cannot be purchased. Existing ticket holders can still scan in."
+          dimmed
+        />
       )}
-    </div>
+    </>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h2 className="text-sm font-semibold text-ink mb-3">{title}</h2>
-      {children}
-    </div>
-  )
-}
-
-function TicketRow({
-  t,
-  onEdit,
-  onToggleHidden,
-  isToggling,
-  dimmed,
+function TicketSection({
+  title, tickets, onEdit, onToggle, togglingId, emptyText, note, dimmed,
 }: {
-  t: TicketTier
-  onEdit: () => void
-  onToggleHidden: () => void
-  isToggling: boolean
+  title: string
+  tickets: TicketTier[]
+  onEdit: (t: TicketTier) => void
+  onToggle: (t: TicketTier) => void
+  togglingId: number | null
+  emptyText?: string
+  note?: string
   dimmed?: boolean
 }) {
-  const priceLabel =
-    t.ticket_type === "free" || (t.price_usd ?? 0) === 0
-      ? "Free"
-      : `$${Number(t.price_usd).toFixed(2)}`
-  const qtyLabel = t.quantity === 0 || t.quantity == null ? "Unlimited" : `${t.quantity} qty`
-
   return (
-    <li
-      className={`flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 ${
-        dimmed ? "opacity-70" : ""
-      }`}
-    >
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink truncate">{t.name}</p>
-        <p className="text-xs text-gray-500 mt-0.5">
-          {priceLabel} &middot; {qtyLabel} &middot; Sold {t.sold_count ?? 0}
-        </p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          type="button"
-          onClick={onEdit}
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={onToggleHidden}
-          disabled={isToggling}
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-60"
-        >
-          {isToggling ? "…" : t.is_hidden ? "Unhide" : "Hide"}
-        </button>
-      </div>
-    </li>
+    <div className="flex flex-col gap-3">
+      <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
+      {note && <p className="-mt-1 text-xs text-neutral-500 dark:text-neutral-400">{note}</p>}
+      {tickets.length === 0 ? (
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</p>
+      ) : (
+        tickets.map((t) => {
+          const priceLabel = t.ticket_type === "free" || (t.price_usd ?? 0) === 0 ? "Free" : usd(t.price_usd)
+          const qtyLabel = t.quantity === 0 || t.quantity == null ? "Unlimited" : `${t.quantity} qty`
+          return (
+            <Card key={t.ticket_id ?? t.name} className={dimmed ? "opacity-70" : undefined}>
+              <div className="flex items-center justify-between p-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t.name}</p>
+                    <Badge variant="outline" size="sm">{t.ticket_type}</Badge>
+                  </div>
+                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{priceLabel} · {qtyLabel} · Sold {t.sold_count ?? 0}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => onEdit(t)}>Edit</Button>
+                  <Button variant="secondary" size="sm" disabled={togglingId === t.ticket_id} onClick={() => onToggle(t)}>
+                    {togglingId === t.ticket_id ? <Loader2 className="size-3.5 animate-spin" /> : t.is_hidden ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                    {t.is_hidden ? "Unhide" : "Hide"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )
+        })
+      )}
+    </div>
   )
 }

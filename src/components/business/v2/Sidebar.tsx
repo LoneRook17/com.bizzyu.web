@@ -33,19 +33,19 @@ type Item = {
 
 const GROUPS: { label?: string; items: Item[] }[] = [
   { items: [
-    { label: "Home", href: "/business/v2", icon: Home },
-    { label: "Events", href: "/business/v2/events", icon: CalendarDays, feature: "showEvents" },
-    { label: "Universal promo codes", href: "/business/v2/promo-codes", icon: TicketPercent, feature: "showEvents" },
-    { label: "Deals", href: "/business/v2/deals", icon: Tag, feature: "showDeals" },
-    { label: "Line skips", href: "/business/v2/line-skips", icon: Zap, feature: "showLineSkips" },
+    { label: "Home", href: "/business", icon: Home },
+    { label: "Events", href: "/business/events", icon: CalendarDays, feature: "showEvents" },
+    { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
+    { label: "Deals", href: "/business/deals", icon: Tag, feature: "showDeals" },
+    { label: "Line skips", href: "/business/line-skips", icon: Zap, feature: "showLineSkips" },
   ] },
   { label: "Grow", items: [
-    { label: "Marketing", href: "/business/v2/marketing", icon: Megaphone, lockWhenPending: true },
-    { label: "Analytics", href: "/business/v2/analytics", icon: BarChart3, lockWhenPending: true },
+    { label: "Marketing", href: "/business/marketing", icon: Megaphone, lockWhenPending: true },
+    { label: "Analytics", href: "/business/analytics", icon: BarChart3, lockWhenPending: true },
   ] },
   { label: "Workspace", items: [
-    { label: "Team", href: "/business/v2/team", icon: Users },
-    { label: "Settings", href: "/business/v2/settings", icon: Settings },
+    { label: "Team", href: "/business/team", icon: Users },
+    { label: "Settings", href: "/business/settings", icon: Settings },
   ] },
 ]
 
@@ -76,7 +76,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex min-h-full flex-col gap-1 px-4 pb-4 pt-5">
       {/* brand */}
-      <Link href="/business/v2" onClick={onNavigate} className="mb-1 flex items-center px-1.5">
+      <Link href="/business" onClick={onNavigate} className="mb-1 flex items-center px-1.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-8 w-auto" />
       </Link>
@@ -121,7 +121,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-[#05EB54] focus:bg-green-50 [&_svg]:text-[#05EB54] dark:focus:bg-green-950/40"
-            onSelect={() => { onNavigate?.(); router.push("/business/v2/settings?action=add-venue") }}
+            onSelect={() => { onNavigate?.(); router.push("/business/settings?action=add-venue") }}
           >
             <Plus /> Add venue
           </DropdownMenuItem>
@@ -145,7 +145,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               </div>
             )}
             {group.items.map((item) => {
-              const active = item.href === "/business/v2" ? pathname === "/business/v2" : pathname.startsWith(item.href)
+              const active = item.href === "/business" ? pathname === "/business" : pathname.startsWith(item.href)
               const locked = isPending && item.lockWhenPending
               return (
                 <Link
@@ -172,14 +172,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {/* help */}
-      <Link href="/business/v2/help" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60">
+      <Link href="/business/help" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60">
         <LifeBuoy className="size-5 text-neutral-500" /> Help & tutorials
       </Link>
 
       {/* footer: profile → settings, theme toggle, log out */}
       <div className="mt-1 flex items-center gap-1 border-t border-neutral-100 pt-3 dark:border-neutral-800">
         <Link
-          href="/business/v2/settings"
+          href="/business/settings"
           onClick={onNavigate}
           title="Profile & settings"
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 outline-none transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
@@ -246,7 +246,7 @@ export function MobileTopBar() {
       >
         <Menu className="size-5" />
       </button>
-      <Link href="/business/v2" className="flex items-center">
+      <Link href="/business" className="flex items-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-7 w-auto" />
       </Link>

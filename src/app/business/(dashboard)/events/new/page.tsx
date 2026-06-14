@@ -2,34 +2,37 @@
 
 import { useState, useEffect } from "react"
 import { apiClient } from "@/lib/business/api-client"
-import EventForm from "@/components/business/dashboard/EventForm"
 import type { BusinessProfile } from "@/lib/business/types"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EventForm } from "@/components/business/v2/events/EventForm"
+import RequireVenue from "@/components/business/v2/RequireVenue"
 
-export default function CreateEventPage() {
+export default function V2CreateEventPage() {
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    apiClient.get<BusinessProfile>("/business/profile")
-      .then((p) => setProfile(p))
+    apiClient
+      .get<BusinessProfile>("/business/profile")
+      .then(setProfile)
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4 max-w-2xl">
-        <div className="h-6 bg-gray-200 rounded w-32" />
-        <div className="h-64 bg-gray-200 rounded-xl" />
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-48 rounded-xl" />
       </div>
     )
   }
 
   return (
-    <EventForm
-      stripeOnboarded={profile?.stripe_connect_onboarded ?? true}
-      businessName={profile?.name || ""}
-      businessAddress={profile?.address || ""}
-    />
+    <RequireVenue>
+      <EventForm stripeOnboarded={profile?.stripe_connect_onboarded ?? true} />
+    </RequireVenue>
   )
 }

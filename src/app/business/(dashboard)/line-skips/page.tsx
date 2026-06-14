@@ -3,13 +3,21 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { ChevronRight, Plus, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
-import EmptyState from "@/components/business/dashboard/EmptyState"
-import HowLineSkipsWorkSection from "@/components/business/dashboard/HowLineSkipsWorkSection"
-import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
+import { money } from "@/lib/v2/utils"
 import type { LineSkip } from "@/lib/business/types"
+import { PageHeader } from "@/components/business/v2/PageHeader"
+import { Card } from "@/components/business/v2/ui/card"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Button } from "@/components/business/v2/ui/button"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/business/v2/ui/dialog"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
@@ -19,10 +27,6 @@ function formatDays(days: number[]): string {
     .sort((a, b) => a - b)
     .map((d) => DAY_LABELS[d])
     .join(", ")
-}
-
-function formatPrice(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`
 }
 
 export default function LineSkipsPage() {
@@ -40,9 +44,7 @@ export default function LineSkipsPage() {
     if (isAllVenues && venues.length > 1) {
       setShowVenueModal(true)
     } else {
-      if (isAllVenues && venues.length === 1) {
-        setSelectedVenue(venues[0].id)
-      }
+      if (isAllVenues && venues.length === 1) setSelectedVenue(venues[0].id)
       router.push("/business/line-skips/new")
     }
   }
@@ -64,102 +66,87 @@ export default function LineSkipsPage() {
   }, [fetchLineSkips])
 
   return (
-    <div>
-      <HowLineSkipsWorkSection />
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-ink">Line Skips</h1>
-        {canCreate && (
-          <button
-            onClick={handleCreate}
-            className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer"
-          >
-            Create Line Skip
-          </button>
-        )}
-      </div>
+    <>
+      <PageHeader
+        title="Line skips"
+        description="Let customers skip the line and pay cover in advance."
+        actions={
+          canCreate ? (
+            <Button onClick={handleCreate}>
+              <Plus /> Create line skip
+            </Button>
+          ) : undefined
+        }
+      />
 
-      {/* Content */}
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 animate-pulse">
-              <div className="flex gap-4">
-                <div className="h-12 w-12 rounded-lg bg-gray-200" />
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-48 mb-2" />
-                  <div className="h-3 bg-gray-200 rounded w-32 mb-1" />
-                  <div className="h-3 bg-gray-200 rounded w-24" />
-                </div>
-              </div>
-            </div>
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-[72px] rounded-xl" />
           ))}
         </div>
       ) : lineSkips.length === 0 ? (
         <EmptyState
-          title="No Line Skips yet"
-          message="Line Skips let students pay to skip the line at your venue during peak hours. You set the price, capacity, and nights — students claim through Bizzy and show a QR code at the door."
-          actionLabel={canCreate ? "Create Line Skip" : undefined}
-          onAction={canCreate ? handleCreate : undefined}
-          learnMoreHref="/business/help#line-skips"
-          learnMoreLabel="How line skips work"
+          icon={Zap}
+          title="No line skips yet"
+          description="Set up line skips to let customers skip the line at your venue."
+          action={
+            canCreate ? (
+              <Button onClick={handleCreate} size="sm">
+                <Plus /> Create line skip
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
-        <div className="space-y-3">
+        <Card className="divide-y divide-neutral-100 dark:divide-neutral-800 overflow-hidden p-0">
           {lineSkips.map((ls) => (
-            <div
+            <Link
               key={ls.id}
-              className="rounded-xl border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+              href={`/business/line-skips/${ls.id}`}
+              className="flex items-center gap-3.5 px-5 py-4 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
             >
-              <div className="flex items-start justify-between">
-                <Link href={`/business/line-skips/${ls.id}`} className="flex items-start gap-3 flex-1 min-w-0">
-                  {/* Icon */}
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 flex-shrink-0">
-                    <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-ink">{ls.name}</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {formatDays(ls.days_of_week)} &middot; {formatPrice(ls.default_price_cents)} &middot;{" "}
-                      {ls.default_capacity ? `${ls.default_capacity} capacity` : "Unlimited"}
-                    </p>
-                  </div>
-                </Link>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                      ls.is_active
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {ls.is_active ? "Active" : "Stopped"}
-                  </span>
-                  <Link href={`/business/line-skips/${ls.id}`}>
-                    <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </Link>
-                </div>
-              </div>
-            </div>
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                <Zap className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{ls.name}</span>
+                <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">
+                  {formatDays(ls.days_of_week)} · {money(ls.default_price_cents)} ·{" "}
+                  {ls.default_capacity ? `${ls.default_capacity} capacity` : "Unlimited"}
+                </span>
+              </span>
+              <Badge variant={ls.is_active ? "success" : "neutral"}>{ls.is_active ? "Active" : "Stopped"}</Badge>
+              <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+            </Link>
           ))}
-        </div>
+        </Card>
       )}
 
-      {showVenueModal && (
-        <VenueSelectModal
-          venues={venues}
-          onSelect={(venue) => {
-            setSelectedVenue(venue.id)
-            setShowVenueModal(false)
-            router.push("/business/line-skips/new")
-          }}
-          onClose={() => setShowVenueModal(false)}
-        />
-      )}
-    </div>
+      <Dialog open={showVenueModal} onOpenChange={setShowVenueModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Choose a venue</DialogTitle>
+            <DialogDescription>Which venue is this line skip for?</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {venues.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => {
+                  setSelectedVenue(v.id)
+                  setShowVenueModal(false)
+                  router.push("/business/line-skips/new")
+                }}
+                className="flex w-full items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-left text-sm font-medium text-neutral-800 dark:text-neutral-200 transition-colors hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+              >
+                {v.name}
+                <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

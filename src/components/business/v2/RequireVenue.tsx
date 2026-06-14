@@ -32,7 +32,7 @@ export default function RequireVenue({ children }: { children: React.ReactNode }
         description="Deals and events are always attached to a location — set up your venue and you'll be back here in a minute."
         action={
           <Button asChild>
-            <Link href="/business/v2/settings?action=add-venue">Set up venue</Link>
+            <Link href="/business/settings?action=add-venue">Set up venue</Link>
           </Button>
         }
       />

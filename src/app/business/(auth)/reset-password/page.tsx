@@ -3,9 +3,14 @@
 import { useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
-import AuthCard from "@/components/business/auth/AuthCard"
-import FormPasswordInput from "@/components/business/auth/FormPasswordInput"
-import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
+import { Button } from "@/components/business/v2/ui/button"
+import {
+  AuthAlert,
+  AuthCard,
+  AuthFooterLink,
+  AuthPasswordField,
+  AuthSubmit,
+} from "@/components/business/v2/auth/auth-shell"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 
 function ResetPasswordContent() {
@@ -27,12 +32,9 @@ function ResetPasswordContent() {
   if (!token) {
     return (
       <AuthCard title="Invalid link" subtitle="This password reset link is invalid or has expired.">
-        <Link
-          href="/business/forgot-password"
-          className="block w-full rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:brightness-110"
-        >
-          Request a New Reset Link
-        </Link>
+        <Button asChild size="lg" className="w-full">
+          <Link href="/business/forgot-password">Request a New Reset Link</Link>
+        </Button>
       </AuthCard>
     )
   }
@@ -40,12 +42,9 @@ function ResetPasswordContent() {
   if (success) {
     return (
       <AuthCard title="Password reset!" subtitle="Your password has been updated successfully.">
-        <Link
-          href="/business/login"
-          className="block w-full rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:brightness-110"
-        >
-          Go to Login
-        </Link>
+        <Button asChild size="lg" className="w-full">
+          <Link href="/business/login">Go to Login</Link>
+        </Button>
       </AuthCard>
     )
   }
@@ -84,7 +83,7 @@ function ResetPasswordContent() {
   return (
     <AuthCard title="Set new password" subtitle="Enter your new password below.">
       <form onSubmit={handleSubmit}>
-        <FormPasswordInput
+        <AuthPasswordField
           label="New Password"
           name="password"
           value={form.password}
@@ -94,7 +93,7 @@ function ResetPasswordContent() {
           autoComplete="new-password"
           error={errors.password}
         />
-        <FormPasswordInput
+        <AuthPasswordField
           label="Confirm Password"
           name="confirm_password"
           value={form.confirm_password}
@@ -106,17 +105,19 @@ function ResetPasswordContent() {
         />
 
         {serverError && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{serverError}</div>
+          <AuthAlert tone="error" className="mb-4">
+            {serverError}
+          </AuthAlert>
         )}
 
-        <AuthSubmitButton loading={loading}>Reset Password</AuthSubmitButton>
+        <AuthSubmit loading={loading}>Reset Password</AuthSubmit>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
-        <Link href="/business/login" className="text-primary hover:underline">
+      <AuthFooterLink>
+        <Link href="/business/login" className="font-medium text-[#05EB54] hover:underline">
           Back to Login
         </Link>
-      </p>
+      </AuthFooterLink>
     </AuthCard>
   )
 }

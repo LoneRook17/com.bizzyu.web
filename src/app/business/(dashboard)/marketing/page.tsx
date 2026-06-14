@@ -1,26 +1,26 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
+import { Lock } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
-import EventsTab from "@/components/business/dashboard/marketing/EventsTab"
-import FollowingTab from "@/components/business/dashboard/marketing/FollowingTab"
-
-type TabKey = "events" | "followers"
+import { PageHeader } from "@/components/business/v2/PageHeader"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import EventsTab from "@/components/business/v2/marketing/EventsTab"
+import FollowingTab from "@/components/business/v2/marketing/FollowingTab"
 
 /**
  * Marketing dashboard — two send-paths surface to owners and managers.
  *
- *   • Events    — pick one event, blast that event's audience via the
- *                 existing per-event composers under /business/events/[id]/manage/.
- *   • Followers — blast everyone who follows the selected venue (May 2026
- *                 venue-scope update). Multi-venue businesses use the global
- *                 venue switcher in the sidebar to scope; "All Venues"
- *                 rolls up unique followers across every venue.
+ *  • Events  — pick one event, blast that event's audience via the
+ *         per-event composers under /business/v2/events/[id]/manage/.
+ *  • Followers — blast everyone who follows the selected venue (May 2026
+ *         venue-scope update). "All venues" rolls up unique
+ *         followers across every venue.
  *
- * The venue scope comes from the global `useVenue()` context (the
- * sidebar's venue switcher), NOT a page-local dropdown — keeps the
- * Marketing tab consistent with Line Skips / Team / etc.
+ * Venue scope comes from the global `useVenue()` context (sidebar switcher),
+ * not a page-local dropdown.
  */
 export default function MarketingPage() {
   const { user } = useAuth()
@@ -29,11 +29,7 @@ export default function MarketingPage() {
 
   const { venues, selectedVenueId, selectedVenue, isAllVenues } = useVenue()
 
-  const [tab, setTab] = useState<TabKey>("events")
-
-  // Single venue id (null when "All Venues" is active). Followers tab uses
-  // venueIds for the All-Venues rollup; EventsTab passes venueId through to
-  // /business/events?venue_id=.
+  // Single venue id (null when "All venues" is active).
   const scopedVenueId = useMemo(() => {
     if (isAllVenues || selectedVenueId === null || selectedVenueId === "all") return null
     return typeof selectedVenueId === "number" ? selectedVenueId : null
@@ -44,63 +40,34 @@ export default function MarketingPage() {
 
   if (!canSend) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
-        <p className="text-sm text-gray-600">
-          Only owners and managers can send marketing blasts.
-        </p>
-      </div>
+      <>
+        <PageHeader title="Marketing" description="Reach your attendees and followers." />
+        <EmptyState
+          icon={Lock}
+          title="Marketing is owner & manager only"
+          description="Ask an owner or manager on your team to send announcements and SMS blasts."
+        />
+      </>
     )
   }
 
   return (
-    <div>
-      <h1 className="mb-3 text-xl font-bold text-ink">Event Marketing</h1>
+    <>
+      <PageHeader title="Marketing" description="Send announcements and SMS blasts to your audience." />
 
-      <div role="tablist" className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1">
-        <TabPill active={tab === "events"} onClick={() => setTab("events")}>
-          Events
-        </TabPill>
-        <TabPill
-          active={tab === "followers"}
-          onClick={() => setTab("followers")}
-        >
-          Followers
-        </TabPill>
-      </div>
-      {tab === "events" ? (
-        <EventsTab venueId={scopedVenueId} />
-      ) : (
-        <FollowingTab
-          venueId={scopedVenueId}
-          venueIds={allVenueIds}
-          venueLabel={venueLabel}
-        />
-      )}
-    </div>
-  )
-}
+      <Tabs defaultValue="events">
+        <TabsList>
+          <TabsTrigger value="events">Events</TabsTrigger>
+          <TabsTrigger value="followers">Followers</TabsTrigger>
+        </TabsList>
 
-function TabPill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`flex-1 rounded-md px-4 py-1.5 text-sm font-semibold transition-colors ${
-        active
-          ? "bg-white text-primary shadow-sm"
-          : "text-gray-600 hover:text-ink"
-      }`}
-    >
-      {children}
-    </button>
+        <TabsContent value="events">
+          <EventsTab venueId={scopedVenueId} />
+        </TabsContent>
+        <TabsContent value="followers">
+          <FollowingTab venueId={scopedVenueId} venueIds={allVenueIds} venueLabel={venueLabel} />
+        </TabsContent>
+      </Tabs>
+    </>
   )
 }

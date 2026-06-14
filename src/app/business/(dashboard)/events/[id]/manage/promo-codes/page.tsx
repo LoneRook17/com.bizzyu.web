@@ -2,14 +2,32 @@
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
+import { ArrowUpRight, Loader2, Plus, Tag } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { PromoCode } from "@/lib/business/types"
+import { Card } from "@/components/business/v2/ui/card"
+import { Button } from "@/components/business/v2/ui/button"
+import { Input, Select } from "@/components/business/v2/ui/input"
+import { Label } from "@/components/business/v2/ui/label"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
+} from "@/components/business/v2/ui/dialog"
+import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
+import { fmtDate } from "@/components/business/v2/events/eventStatus"
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+function codeStatus(code: PromoCode): { label: string; variant: "success" | "neutral" } {
+  const isExpired = code.expires_at && new Date(code.expires_at) < new Date()
+  const isMaxed = code.max_redemptions != null && code.current_redemptions >= code.max_redemptions
+  if (!code.is_active) return { label: "Inactive", variant: "neutral" }
+  if (isExpired) return { label: "Expired", variant: "neutral" }
+  if (isMaxed) return { label: "Maxed", variant: "neutral" }
+  return { label: "Active", variant: "success" }
 }
 
-export default function PromoCodesPage({ params }: { params: Promise<{ id: string }> }) {
+export default function V2PromoCodesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [codes, setCodes] = useState<PromoCode[]>([])
   const [universalCodes, setUniversalCodes] = useState<PromoCode[]>([])
@@ -17,6 +35,8 @@ export default function PromoCodesPage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState("")
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState("")
+  const [deactivateTarget, setDeactivateTarget] = useState<PromoCode | null>(null)
   const [form, setForm] = useState({
     code: "",
     discount_type: "percentage" as "percentage" | "flat",
@@ -25,7 +45,6 @@ export default function PromoCodesPage({ params }: { params: Promise<{ id: strin
     max_per_user: "1",
     expires_at: "",
   })
-  const [createError, setCreateError] = useState("")
 
   const fetchCodes = () => {
     apiClient
@@ -64,185 +83,68 @@ export default function PromoCodesPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const handleDeactivate = async (promoId: number) => {
-    if (!confirm("Deactivate this promo code?")) return
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return
     try {
-      await apiClient.delete(`/business/events/${id}/promo-codes/${promoId}`)
+      await apiClient.delete(`/business/events/${id}/promo-codes/${deactivateTarget.promo_code_id}`)
       fetchCodes()
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to deactivate")
+      setError(err instanceof ApiError ? err.message : "Failed to deactivate")
+    } finally {
+      setDeactivateTarget(null)
     }
   }
 
   if (loading) {
     return (
-      <div className="max-w-3xl animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-48" />
-        <div className="h-48 bg-gray-200 rounded-xl" />
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-9 w-44" />
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl">
-      <Link href={`/business/events/${id}/manage`} className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-        &larr; Back to Manage
-      </Link>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-ink">Promo Codes</h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer"
-        >
-          Create Code
-        </button>
-      </div>
+    <>
+      <ManageSubheader
+        eventId={id}
+        title="Promo codes"
+        subtitle="Offer discounts on this event."
+        actions={<Button onClick={() => setShowCreate(true)}><Plus /> Create code</Button>}
+      />
 
-      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      {/* Create form */}
-      {showCreate && (
-        <form onSubmit={handleCreate} className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-          <h3 className="text-sm font-semibold text-ink mb-3">New Promo Code</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Code</label>
-              <input
-                type="text"
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-                placeholder="e.g. EARLYBIRD"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary font-mono"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Discount Type</label>
-              <select
-                value={form.discount_type}
-                onChange={(e) => setForm((f) => ({ ...f, discount_type: e.target.value as "percentage" | "flat" }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white"
-              >
-                <option value="percentage">Percentage (%)</option>
-                <option value="flat">Flat ($)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                Discount Value {form.discount_type === "percentage" ? "(%)" : "($)"}
-              </label>
-              <input
-                type="number"
-                min="0"
-                max={form.discount_type === "percentage" ? "100" : undefined}
-                step="0.01"
-                value={form.discount_value}
-                onChange={(e) => setForm((f) => ({ ...f, discount_value: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Max Redemptions</label>
-              <input
-                type="number"
-                min="0"
-                value={form.max_redemptions}
-                onChange={(e) => setForm((f) => ({ ...f, max_redemptions: e.target.value }))}
-                placeholder="Unlimited"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Max Per User</label>
-              <input
-                type="number"
-                min="1"
-                value={form.max_per_user}
-                onChange={(e) => setForm((f) => ({ ...f, max_per_user: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Expires At</label>
-              <input
-                type="datetime-local"
-                value={form.expires_at}
-                onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          </div>
-          {createError && <p className="text-xs text-red-500 mb-3">{createError}</p>}
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={creating || !form.code.trim() || !form.discount_value}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-60"
-            >
-              {creating ? "Creating..." : "Create"}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowCreate(false); setCreateError("") }}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Promo codes list */}
       {codes.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-          <p className="text-sm text-gray-500">No promo codes yet.</p>
-          <p className="text-xs text-gray-400 mt-1">Create a code to offer discounts on this event.</p>
-        </div>
+        <EmptyState icon={Tag} title="No promo codes yet" description="Create a code to offer discounts on this event." />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <table className="w-full text-sm">
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr className="text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left px-5 py-3 font-medium">Code</th>
-                <th className="text-left px-5 py-3 font-medium">Discount</th>
-                <th className="text-right px-5 py-3 font-medium">Uses</th>
-                <th className="text-left px-5 py-3 font-medium">Status</th>
-                <th className="text-left px-5 py-3 font-medium">Expires</th>
-                <th className="text-right px-5 py-3 font-medium"></th>
+              <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
+                <th className="px-5 py-3 text-left font-medium">Code</th>
+                <th className="px-5 py-3 text-left font-medium">Discount</th>
+                <th className="px-5 py-3 text-right font-medium">Uses</th>
+                <th className="px-5 py-3 text-left font-medium">Status</th>
+                <th className="px-5 py-3 text-left font-medium">Expires</th>
+                <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody>
               {codes.map((code) => {
-                const isExpired = code.expires_at && new Date(code.expires_at) < new Date()
-                const isMaxed = code.max_redemptions && code.current_redemptions >= code.max_redemptions
-                const status = !code.is_active ? "Inactive" : isExpired ? "Expired" : isMaxed ? "Maxed" : "Active"
-                const statusColor = status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-
+                const status = codeStatus(code)
                 return (
-                  <tr key={code.promo_code_id} className="border-b border-gray-50 last:border-0">
-                    <td className="px-5 py-3 font-mono text-xs font-medium text-ink">{code.code}</td>
-                    <td className="px-5 py-3 text-gray-600">
-                      {code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}
-                    </td>
-                    <td className="px-5 py-3 text-right text-gray-600">
-                      {code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusColor}`}>
-                        {status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-xs text-gray-500">
-                      {code.expires_at ? formatDate(code.expires_at) : "Never"}
-                    </td>
+                  <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                    <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">{code.code}</td>
+                    <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
+                    <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">{code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}</td>
+                    <td className="px-5 py-3"><Badge variant={status.variant} size="sm">{status.label}</Badge></td>
+                    <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
                     <td className="px-5 py-3 text-right">
                       {code.is_active && (
-                        <button
-                          onClick={() => handleDeactivate(code.promo_code_id)}
-                          className="text-xs text-red-500 hover:text-red-700 cursor-pointer"
-                        >
-                          Deactivate
-                        </button>
+                        <button onClick={() => setDeactivateTarget(code)} className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Deactivate</button>
                       )}
                     </td>
                   </tr>
@@ -250,64 +152,120 @@ export default function PromoCodesPage({ params }: { params: Promise<{ id: strin
               })}
             </tbody>
           </table>
-        </div>
+          </div>
+        </Card>
       )}
 
-      {/* Universal (venue) promo codes — read-only here; managed per-venue */}
+      {/* universal venue codes (read-only) */}
       {universalCodes.length > 0 && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-ink">Universal Promo Codes</h2>
-            <Link href="/business/promo-codes" className="text-xs text-primary hover:underline">
-              Manage →
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Universal promo codes</h2>
+            <Link href="/business/promo-codes" className="inline-flex items-center gap-1 text-[13px] font-medium text-[#05EB54] hover:underline">
+              Manage <ArrowUpRight className="size-3.5" />
             </Link>
           </div>
-          <p className="text-xs text-gray-500 mb-3">
-            These apply to <span className="font-medium">every event at this venue</span>. They&apos;re managed under the Universal Promo Codes tab, not per-event.
+          <p className="-mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+            These apply to <span className="font-medium">every event at this venue</span>. They&apos;re managed under Universal promo codes, not per-event.
           </p>
-          <div className="rounded-xl border border-gray-200 bg-gray-50/40 overflow-hidden">
-            <table className="w-full text-sm">
+          <Card className="overflow-hidden bg-neutral-50/40 dark:bg-neutral-800/40">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
               <thead>
-                <tr className="text-xs text-gray-500 border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left px-5 py-3 font-medium">Code</th>
-                  <th className="text-left px-5 py-3 font-medium">Discount</th>
-                  <th className="text-right px-5 py-3 font-medium">Uses</th>
-                  <th className="text-left px-5 py-3 font-medium">Status</th>
-                  <th className="text-left px-5 py-3 font-medium">Expires</th>
+                <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
+                  <th className="px-5 py-3 text-left font-medium">Code</th>
+                  <th className="px-5 py-3 text-left font-medium">Discount</th>
+                  <th className="px-5 py-3 text-right font-medium">Uses</th>
+                  <th className="px-5 py-3 text-left font-medium">Status</th>
+                  <th className="px-5 py-3 text-left font-medium">Expires</th>
                 </tr>
               </thead>
               <tbody>
                 {universalCodes.map((code) => {
-                  const isExpired = code.expires_at && new Date(code.expires_at) < new Date()
-                  const isMaxed = code.max_redemptions && code.current_redemptions >= code.max_redemptions
-                  const status = !code.is_active ? "Inactive" : isExpired ? "Expired" : isMaxed ? "Maxed" : "Active"
-                  const statusColor = status === "Active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  const status = codeStatus(code)
                   return (
-                    <tr key={code.promo_code_id} className="border-b border-gray-50 last:border-0">
-                      <td className="px-5 py-3 font-mono text-xs font-medium text-ink">
+                    <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
+                      <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">
                         {code.code}
-                        <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary align-middle">VENUE</span>
+                        <Badge variant="brand" size="sm" className="ml-2 align-middle">Venue</Badge>
                       </td>
-                      <td className="px-5 py-3 text-gray-600">
-                        {code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}
-                      </td>
-                      <td className="px-5 py-3 text-right text-gray-600">
-                        {code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusColor}`}>{status}</span>
-                      </td>
-                      <td className="px-5 py-3 text-xs text-gray-500">
-                        {code.expires_at ? formatDate(code.expires_at) : "Never"}
-                      </td>
+                      <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
+                      <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">{code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}</td>
+                      <td className="px-5 py-3"><Badge variant={status.variant} size="sm">{status.label}</Badge></td>
+                      <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+          </Card>
         </div>
       )}
-    </div>
+
+      {/* create dialog */}
+      <Dialog open={showCreate} onOpenChange={(o) => { setShowCreate(o); if (!o) setCreateError("") }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New promo code</DialogTitle>
+            <DialogDescription>Discounts apply at checkout for this event.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <Label className="mb-1 block text-xs">Code</Label>
+                <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="e.g. EARLYBIRD" className="font-mono" autoFocus />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Discount type</Label>
+                <Select value={form.discount_type} onChange={(e) => setForm((f) => ({ ...f, discount_type: e.target.value as "percentage" | "flat" }))}>
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="flat">Flat ($)</option>
+                </Select>
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Discount value {form.discount_type === "percentage" ? "(%)" : "($)"}</Label>
+                <Input type="number" min="0" max={form.discount_type === "percentage" ? "100" : undefined} step="0.01" value={form.discount_value} onChange={(e) => setForm((f) => ({ ...f, discount_value: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Max redemptions</Label>
+                <Input type="number" min="0" value={form.max_redemptions} placeholder="Unlimited" onChange={(e) => setForm((f) => ({ ...f, max_redemptions: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Max per user</Label>
+                <Input type="number" min="1" value={form.max_per_user} onChange={(e) => setForm((f) => ({ ...f, max_per_user: e.target.value }))} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Expires at</Label>
+                <Input type="datetime-local" value={form.expires_at} onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))} />
+              </div>
+            </div>
+            {createError && <p className="text-xs text-red-600 dark:text-red-400">{createError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => { setShowCreate(false); setCreateError("") }}>Cancel</Button>
+              <Button type="submit" disabled={creating || !form.code.trim() || !form.discount_value}>
+                {creating && <Loader2 className="animate-spin" />} Create
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* deactivate confirm */}
+      <Dialog open={!!deactivateTarget} onOpenChange={(o) => !o && setDeactivateTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Deactivate code?</DialogTitle>
+            <DialogDescription>
+              <span className="font-mono">{deactivateTarget?.code}</span> will stop working at checkout.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeactivateTarget(null)}>Cancel</Button>
+            <Button variant="danger" onClick={handleDeactivate}>Deactivate</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

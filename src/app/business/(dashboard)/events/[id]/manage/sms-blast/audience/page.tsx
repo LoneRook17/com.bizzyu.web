@@ -1,13 +1,18 @@
 "use client"
 
 import { useEffect, useState, use } from "react"
-import Link from "next/link"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { CalendarDays } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { EventListItem } from "@/lib/business/types"
+import { cn } from "@/lib/v2/utils"
+import { Card } from "@/components/business/v2/ui/card"
+import { Button } from "@/components/business/v2/ui/button"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
+import { fmtDate } from "@/components/business/v2/events/eventStatus"
 
-export default function AudiencePickerPage({ params }: { params: Promise<{ id: string }> }) {
+export default function V2AudiencePickerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const currentEventId = Number(id)
@@ -47,94 +52,67 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="max-w-3xl pb-32">
-      <Link
-        href={`/business/events/${id}/manage/sms-blast`}
-        className="text-xs text-gray-500 hover:text-primary mb-2 inline-block"
-      >
-        &larr; Back to SMS Blasts
-      </Link>
-      <div className="mb-2">
-        <h1 className="text-xl font-bold text-ink">New SMS Blast</h1>
-        <p className="text-sm text-gray-500 mt-1">Select SMS Blast Audience</p>
-      </div>
+    <>
+      <ManageSubheader
+        eventId={id}
+        title="New SMS blast"
+        subtitle="Pick which event's ticket holders to text."
+        backHref={`/business/events/${id}/manage/sms-blast`}
+        backLabel="Back to SMS blasts"
+      />
 
-      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      <h2 className="text-sm font-semibold text-ink mt-6 mb-3">Your Events</h2>
+      <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Your events</h2>
 
       {loading ? (
-        <div className="space-y-2 animate-pulse">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded-xl" />
-          ))}
-        </div>
+        <div className="flex flex-col gap-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
       ) : events.length === 0 ? (
-        <p className="text-sm text-gray-500">No events found.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">No events found.</p>
       ) : (
-        <ul className="space-y-2">
+        <div className="flex flex-col gap-2 pb-2">
           {events.map((e) => {
             const isChecked = selectedId === e.event_id
             return (
-              <li key={e.event_id}>
-                <label
-                  className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
-                    isChecked ? "border-primary bg-primary/5" : "border-gray-200 bg-white hover:border-gray-300"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="sms-blast-event"
-                    checked={isChecked}
-                    onChange={() => setSelectedId(e.event_id)}
-                    className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
-                  />
-                  {e.flyer_image_url ? (
-                    <Image
-                      src={e.flyer_image_url}
-                      alt=""
-                      width={48}
-                      height={48}
-                      className="h-12 w-12 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="h-12 w-12 rounded-lg bg-gray-100" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-ink truncate">{e.name}</p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {new Date(e.start_date_time).toLocaleDateString()} · {e.venue_name}
-                    </p>
-                  </div>
-                </label>
-              </li>
+              <label
+                key={e.event_id}
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors",
+                  isChecked ? "border-[#05EB54] bg-green-50/60 dark:bg-green-950/40" : "border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-300 dark:hover:border-neutral-700"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="sms-blast-event"
+                  checked={isChecked}
+                  onChange={() => setSelectedId(e.event_id)}
+                  className="size-4 border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+                />
+                {e.flyer_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={e.flyer_image_url} alt="" className="size-12 rounded-lg object-cover" />
+                ) : (
+                  <span className="flex size-12 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600"><CalendarDays className="size-5" /></span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
+                  <span className="block truncate text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.venue_name}</span>
+                </span>
+              </label>
             )
           })}
-        </ul>
+        </div>
       )}
 
-      {/* Pinned bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4">
-        <div className="mx-auto max-w-3xl flex items-center justify-between gap-3">
-          <div className="text-xs text-gray-500">
-            {recipientCount !== null ? (
-              <>
-                ~{recipientCount} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in
-              </>
-            ) : (
-              <>1 event</>
-            )}
-            {previewLoading && <> · …</>}
-          </div>
-          <button
-            onClick={handleContinue}
-            disabled={selectedId == null}
-            className="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-          >
-            Select audience
-          </button>
-        </div>
-      </div>
-    </div>
+      <Card className="sticky bottom-4 flex items-center justify-between gap-3 px-4 py-3">
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+          {recipientCount !== null
+            ? <>~{recipientCount} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in</>
+            : <>1 event</>}
+          {previewLoading && <> · …</>}
+        </p>
+        <Button onClick={handleContinue} disabled={selectedId == null}>Select audience</Button>
+      </Card>
+    </>
   )
 }

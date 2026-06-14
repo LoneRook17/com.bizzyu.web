@@ -331,7 +331,7 @@ export default function ScannerClient() {
 
       {urlEventId && (
         <Link
-          href={`/business/v2/events/${urlEventId}/manage`}
+          href={`/business/events/${urlEventId}/manage`}
           className="-mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
         >
           <ArrowLeft className="size-3.5" /> Back to event

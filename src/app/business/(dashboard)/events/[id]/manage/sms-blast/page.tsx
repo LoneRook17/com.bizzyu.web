@@ -1,9 +1,17 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { Suspense, useEffect, useState, use } from "react"
 import Link from "next/link"
-import Image from "next/image"
+import { useSearchParams } from "next/navigation"
+import { MessagesSquare, Plus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { money } from "@/lib/v2/utils"
+import { Card } from "@/components/business/v2/ui/card"
+import { Button } from "@/components/business/v2/ui/button"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
+import { fmtDateTime } from "@/components/business/v2/events/eventStatus"
 
 interface Blast {
   id: number
@@ -15,24 +23,34 @@ interface Blast {
   fired_at: string
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
+function eventCount(b: Blast): number {
+  const ids = typeof b.event_ids === "string" ? JSON.parse(b.event_ids) : b.event_ids
+  return Array.isArray(ids) ? ids.length : 0
 }
 
-function formatCost(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`
+export default function V2SmsBlastHistoryPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense>
+      <SmsBlastHistory params={params} />
+    </Suspense>
+  )
 }
 
-export default function SmsBlastHistoryPage({ params }: { params: Promise<{ id: string }> }) {
+function SmsBlastHistory({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [items, setItems] = useState<Blast[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+
+  // Post-send result handoff from the compose page (?sent=&recipients=&failed=&blocked=).
+  // Without this banner a blast whose every send failed (e.g. no opted-in
+  // recipients with valid phones) looks like nothing happened at all.
+  const search = useSearchParams()
+  const justSent = search.get("sent") !== null
+  const sentN = Number(search.get("sent") ?? 0)
+  const recipientsN = Number(search.get("recipients") ?? 0)
+  const failedN = Number(search.get("failed") ?? 0)
+  const blockedN = Number(search.get("blocked") ?? 0)
 
   useEffect(() => {
     apiClient
@@ -42,70 +60,64 @@ export default function SmsBlastHistoryPage({ params }: { params: Promise<{ id: 
       .finally(() => setLoading(false))
   }, [id])
 
-  const eventCount = (b: Blast) => {
-    const ids = typeof b.event_ids === "string" ? JSON.parse(b.event_ids) : b.event_ids
-    return Array.isArray(ids) ? ids.length : 0
-  }
-
   return (
-    <div className="max-w-3xl pb-32">
-      <Link href={`/business/events/${id}/manage`} className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-        &larr; Back to Manage
-      </Link>
-      <h1 className="text-xl font-bold text-ink mb-6">SMS Blasts</h1>
+    <>
+      <ManageSubheader
+        eventId={id}
+        title="SMS blasts"
+        subtitle="Text-message campaigns sent for this event."
+        actions={
+          <Button asChild>
+            <Link href={`/business/events/${id}/manage/sms-blast/audience`}><Plus /> New SMS blast</Link>
+          </Button>
+        }
+      />
 
-      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      {justSent && (
+        sentN > 0 ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
+            Blast sent — {sentN} of {recipientsN} text{recipientsN === 1 ? "" : "s"} delivered to Twilio
+            {failedN > 0 && <> · {failedN} failed</>}
+            {blockedN > 0 && <> · {blockedN} opted out (texted STOP)</>}.
+          </div>
+        ) : (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            Blast fired, but 0 of {recipientsN} text{recipientsN === 1 ? "" : "s"} went through
+            {blockedN > 0 && <> ({blockedN} recipient{blockedN === 1 ? "" : "s"} opted out by texting STOP)</>}.
+            Recipients must have bought a ticket, have a valid phone number, and have SMS enabled for your venue.
+          </div>
+        )
+      )}
+
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {loading ? (
-        <div className="space-y-3 animate-pulse">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-gray-200 rounded-xl" />
-          ))}
-        </div>
+        <div className="flex flex-col gap-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
       ) : items.length === 0 ? (
-        <div className="text-center py-12">
-          <Image
-            src="/empty-state-blast.svg"
-            alt="Paper plane"
-            width={120}
-            height={120}
-            className="mx-auto opacity-80"
-          />
-          <h2 className="text-lg font-bold text-ink mt-4">Send Your First SMS Blast</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Quickly reach your audience with personalized text messages.
-          </p>
-        </div>
+        <EmptyState
+          icon={MessagesSquare}
+          title="Send your first SMS blast"
+          description="Reach ticket holders who opted in to text messages."
+          action={<Button asChild><Link href={`/business/events/${id}/manage/sms-blast/audience`}><Plus /> New SMS blast</Link></Button>}
+        />
       ) : (
-        <ul className="space-y-3">
+        <div className="flex flex-col gap-3">
           {items.map((b) => (
-            <li key={b.id} className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-sm text-ink line-clamp-2">{b.message}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                <span>{formatDate(b.fired_at)}</span>
+            <Card key={b.id} className="p-4">
+              <p className="line-clamp-2 text-sm text-neutral-900 dark:text-neutral-100">{b.message}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+                <span>{fmtDateTime(b.fired_at)}</span>
                 <span>·</span>
                 <span>{eventCount(b)} event{eventCount(b) === 1 ? "" : "s"}</span>
                 <span>·</span>
                 <span>{b.recipient_count} recipient{b.recipient_count === 1 ? "" : "s"}</span>
                 <span>·</span>
-                <span>{formatCost(b.estimated_cost_cents)}</span>
+                <span>{money(b.estimated_cost_cents)}</span>
               </div>
-            </li>
+            </Card>
           ))}
-        </ul>
-      )}
-
-      {/* Pinned bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4">
-        <div className="mx-auto max-w-3xl">
-          <Link
-            href={`/business/events/${id}/manage/sms-blast/audience`}
-            className="block w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90 text-center"
-          >
-            + New SMS Blast
-          </Link>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   )
 }

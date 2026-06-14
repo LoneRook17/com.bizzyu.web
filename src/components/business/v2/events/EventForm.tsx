@@ -267,7 +267,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
       if (isEditing) {
         await apiClient.put(`/business/events/${eventId}`, payload)
-        router.push(`/business/v2/events/${eventId}`)
+        router.push(`/business/events/${eventId}`)
       } else {
         const data = await apiClient.post<{
           event_id: number
@@ -279,12 +279,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         if (data.status === "draft") {
           // Saved, but not live yet (pending approval and/or Stripe). Land on the
           // event so the draft banner there explains why + offers Publish.
-          router.push(`/business/v2/events/${data.event_id}`)
+          router.push(`/business/events/${data.event_id}`)
         } else if (data.moderation_status === "pending_review") {
           setModerationNotice("Your event has been created but is under review due to content moderation.")
-          setTimeout(() => router.push("/business/v2/events"), 3000)
+          setTimeout(() => router.push("/business/events"), 3000)
         } else {
-          router.push("/business/v2/events")
+          router.push("/business/events")
         }
       }
     } catch (err) {
@@ -306,7 +306,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <Link
-        href="/business/v2/events"
+        href="/business/events"
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
         <ArrowLeft className="size-3.5" /> Back to events

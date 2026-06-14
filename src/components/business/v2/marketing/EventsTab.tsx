@@ -105,12 +105,12 @@ export default function EventsTab({ venueId }: Props) {
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button variant="secondary" size="sm" asChild>
-                  <Link href={`/business/v2/events/${e.event_id}/manage/announcements`}>
+                  <Link href={`/business/events/${e.event_id}/manage/announcements`}>
                     <Megaphone /> Announce
                   </Link>
                 </Button>
                 <Button variant="secondary" size="sm" asChild>
-                  <Link href={`/business/v2/events/${e.event_id}/manage/sms-blast`}>
+                  <Link href={`/business/events/${e.event_id}/manage/sms-blast`}>
                     <MessageSquare /> SMS blast
                   </Link>
                 </Button>

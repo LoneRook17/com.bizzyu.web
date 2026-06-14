@@ -3,44 +3,40 @@
 import { useState, useEffect, useCallback, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { ArrowLeft, CalendarOff, Copy, MapPin, Pencil, Rocket, ScanLine, Settings2, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import StatusBadge from "@/components/business/dashboard/StatusBadge"
 import type { EventDetail, TicketTier } from "@/lib/business/types"
+import { usd, cn } from "@/lib/v2/utils"
+import { Button } from "@/components/business/v2/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import { Input } from "@/components/business/v2/ui/input"
+import { Label } from "@/components/business/v2/ui/label"
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
+} from "@/components/business/v2/ui/dialog"
+import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2/events/eventStatus"
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
-}
-
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
-
-function formatCurrency(val: number) {
-  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
-export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  // Ticket price edit state
   const [editingTicketId, setEditingTicketId] = useState<number | null>(null)
   const [editPriceCents, setEditPriceCents] = useState(0)
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceError, setPriceError] = useState("")
+  const [duplicating, setDuplicating] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState("")
+  const [publishNeedsStripe, setPublishNeedsStripe] = useState(false)
+  const [stripeConnecting, setStripeConnecting] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
   const canEditPrice = canEdit || user?.business_role === "staff"
@@ -57,18 +53,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   }, [id])
 
-  useEffect(() => {
-    fetchEvent()
-  }, [fetchEvent])
+  useEffect(() => { fetchEvent() }, [fetchEvent])
 
   const openPriceEdit = (ticket: TicketTier) => {
     setEditingTicketId(ticket.ticket_id ?? null)
     setEditPriceCents(Math.round(ticket.price_usd * 100))
-    setPriceError("")
-  }
-
-  const closePriceEdit = () => {
-    setEditingTicketId(null)
     setPriceError("")
   }
 
@@ -81,10 +70,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     setPriceLoading(true)
     setPriceError("")
     try {
-      await apiClient.patch(`/business/events/${id}/tickets/${editingTicketId}/price`, {
-        price_cents: editPriceCents,
-      })
-      closePriceEdit()
+      await apiClient.patch(`/business/events/${id}/tickets/${editingTicketId}/price`, { price_cents: editPriceCents })
+      setEditingTicketId(null)
       fetchEvent()
     } catch (err) {
       setPriceError(err instanceof ApiError ? err.message : "Failed to update price")
@@ -93,252 +80,282 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  const handlePublish = async () => {
+    setPublishing(true)
+    setPublishError("")
+    setPublishNeedsStripe(false)
+    try {
+      await apiClient.post<{ event_id: number; status: string; moderation_status: string | null }>(
+        `/business/events/${id}/publish`
+      )
+      // Re-fetch so the status badge + banners reflect published / pending_review.
+      await fetchEvent()
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to publish event"
+      setPublishError(message)
+      if (/stripe/i.test(message)) setPublishNeedsStripe(true)
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true)
+    try {
+      const data = await apiClient.post<{ url: string; stripe_connect_id: string }>(
+        "/business/profile/stripe-onboard?platform=web"
+      )
+      window.location.href = data.url
+    } catch (err) {
+      setPublishError(err instanceof ApiError ? err.message : "Failed to start Stripe onboarding")
+      setStripeConnecting(false)
+    }
+  }
+
   const handleDuplicate = async () => {
+    setDuplicating(true)
     try {
       const data = await apiClient.post<{ event_id: number }>(`/business/events/${id}/duplicate`)
       router.push(`/business/events/${data.event_id}/edit`)
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to duplicate event")
+      setError(err instanceof ApiError ? err.message : "Failed to duplicate event")
+      setDuplicating(false)
     }
   }
 
-
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-48" />
-        <div className="h-48 bg-gray-200 rounded-xl" />
-        <div className="h-4 bg-gray-200 rounded w-64" />
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-9 w-64" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Skeleton className="h-72 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-48 rounded-xl" />
+        </div>
       </div>
     )
   }
 
   if (error || !event) {
     return (
-      <div className="text-center py-16">
-        <p className="text-sm text-red-500 mb-4">{error || "Event not found"}</p>
-        <Link href="/business/events" className="text-sm text-primary hover:underline">
-          Back to Events
-        </Link>
-      </div>
+      <EmptyState
+        icon={CalendarOff}
+        title={error || "Event not found"}
+        action={<Button asChild variant="secondary"><Link href="/business/events">Back to events</Link></Button>}
+      />
     )
   }
 
+  const badge = eventStatusBadge(event.status)
+  const editingTicket = event.tickets.find((t) => t.ticket_id === editingTicketId)
+
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <Link href="/business/events" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-            &larr; Back to Events
-          </Link>
-          <h1 className="text-xl font-bold text-ink">{event.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <StatusBadge status={event.status} />
-            <span className="text-xs text-gray-400">{event.type}</span>
-            {event.is_21_plus && (
-              <span className="text-xs text-gray-400 border border-gray-300 rounded px-1">21+</span>
-            )}
+    <>
+      <Link
+        href="/business/events"
+        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+      >
+        <ArrowLeft className="size-3.5" /> Back to events
+      </Link>
+
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <Badge variant={badge.variant}>{badge.label}</Badge>
+            <span className="text-[13px] text-neutral-500 dark:text-neutral-400">{event.type}</span>
+            {event.is_21_plus && <Badge variant="outline">21+</Badge>}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {canEdit && (
-            <Link
-              href={`/business/events/${event.event_id}/manage`}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
-            >
-              Manage
-            </Link>
+            <Button asChild><Link href={`/business/events/${event.event_id}/manage`}><Settings2 /> Manage</Link></Button>
           )}
-          <Link
-            href={`/business/scanner?eventId=${event.event_id}`}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-            title="Scan QR Code"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
-            </svg>
-            <span className="text-sm font-medium">Scan</span>
-          </Link>
+          <Button variant="secondary" asChild>
+            <Link href={`/business/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
+          </Button>
           {canEdit && (
-            <button
-              onClick={handleDuplicate}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Duplicate
-            </button>
+            <Button variant="secondary" onClick={handleDuplicate} disabled={duplicating}>
+              {duplicating ? <Loader2 className="animate-spin" /> : <Copy />} Duplicate
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Moderation notice */}
       {event.status === "pending_review" && event.moderation_reason && (
-        <div className="mb-6 rounded-lg bg-orange-50 border border-orange-200 p-4 text-sm text-orange-800">
-          <strong>Under review:</strong> {event.moderation_reason}
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          <span className="font-semibold">Under review:</span> {event.moderation_reason}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column — details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Flyer */}
-          {event.flyer_image_url && (
-            <div className="rounded-xl overflow-hidden border border-gray-200">
-              <img src={event.flyer_image_url} alt={event.name} className="w-full max-h-80 object-cover" />
-            </div>
-          )}
-
-          {/* Description */}
-          {event.description && (
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-ink mb-2">Description</h2>
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{event.description}</p>
-            </div>
-          )}
-
-          {/* Ticket tiers */}
-          {event.tickets && event.tickets.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-ink mb-3">Ticket Tiers</h2>
-              <div className="space-y-3">
-                {event.tickets.map((ticket, i) => (
-                  <div key={ticket.ticket_id || i} className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-ink">{ticket.name}</p>
-                      </div>
-                      <p className="text-xs text-gray-500 inline-flex items-center gap-1">
-                        {ticket.ticket_type === "free" ? "Free" : formatCurrency(ticket.price_usd)}
-                        {ticket.ticket_type !== "free" && canEditPrice && (
-                          <button
-                            onClick={() => openPriceEdit(ticket)}
-                            className="inline-flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
-                            title="Edit price"
-                          >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
-                            </svg>
-                          </button>
-                        )}
-                        {ticket.max_per_person ? <span> · Max {ticket.max_per_person}/person</span> : null}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-ink">
-                        {ticket.sold_count ?? 0} / {ticket.quantity || "∞"}
-                      </p>
-                      <p className="text-xs text-gray-400">sold</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right column — meta + stats */}
-        <div className="space-y-4">
-          {/* Date & Venue */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Date</p>
-              <p className="text-sm text-ink">{formatDate(event.start_date_time)}</p>
-              <p className="text-xs text-gray-500">
-                {formatTime(event.start_date_time)} – {formatTime(event.end_date_time)}
+      {event.status === "draft" && canEdit && (
+        <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">This event is a draft</p>
+              <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
+                {isPending
+                  ? "It goes live once Bizzy approves your business. You can keep editing in the meantime."
+                  : "Publish it when you're ready. Paid events need Stripe Connect first — free events don't."}
               </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Venue</p>
-              <p className="text-sm text-ink">{event.venue_name}</p>
-              {event.venue_address && (
-                <p className="text-xs text-gray-500">{event.venue_address}</p>
+              {publishError && (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">{publishError}</p>
               )}
             </div>
-          </div>
-
-          {/* Sales stats */}
-          {canViewRevenue && (
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <h2 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Sales Summary</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Attendees</span>
-                  <span className="text-sm font-medium text-ink">{event.sales?.total_attendees ?? event.total_attendees}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Revenue</span>
-                  <span className="text-sm font-medium text-ink">{formatCurrency(event.sales?.total_revenue ?? event.total_revenue)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Check-in Rate</span>
-                  <span className="text-sm font-medium text-ink">{(event.sales?.checkin_rate ?? event.checkin_rate).toFixed(1)}%</span>
-                </div>
-              </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button variant="secondary" asChild>
+                <Link href={`/business/events/${event.event_id}/edit`}><Pencil /> Edit</Link>
+              </Button>
+              {publishNeedsStripe ? (
+                <Button onClick={handleConnectStripe} disabled={stripeConnecting}>
+                  {stripeConnecting ? <Loader2 className="animate-spin" /> : null} Connect Stripe →
+                </Button>
+              ) : (
+                <Button onClick={handlePublish} disabled={publishing || isPending}>
+                  {publishing ? <Loader2 className="animate-spin" /> : <Rocket />} Publish
+                </Button>
+              )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* left column */}
+        <div className="flex flex-col gap-5 lg:col-span-2">
+          {event.flyer_image_url && (
+            <Card className="overflow-hidden p-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={event.flyer_image_url} alt={event.name} className="max-h-80 w-full object-cover" />
+            </Card>
+          )}
+
+          {event.description && (
+            <Card>
+              <CardHeader><CardTitle>About</CardTitle></CardHeader>
+              <CardContent className="pt-0">
+                <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{event.description}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {event.tickets && event.tickets.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Ticket tiers</CardTitle></CardHeader>
+              <CardContent className="pt-0">
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {event.tickets.map((ticket, i) => (
+                    <div key={ticket.ticket_id || i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{ticket.name}</p>
+                        <p className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+                          <span>{ticket.ticket_type === "free" ? "Free" : usd(ticket.price_usd)}</span>
+                          {ticket.ticket_type !== "free" && canEditPrice && (
+                            <button
+                              onClick={() => openPriceEdit(ticket)}
+                              className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
+                              title="Edit price"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
+                          )}
+                          {ticket.max_per_person ? <span>· Max {ticket.max_per_person}/person</span> : null}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{ticket.sold_count ?? 0} / {ticket.quantity || "∞"}</p>
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500">sold</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* right column */}
+        <div className="flex flex-col gap-5">
+          <Card>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Date</p>
+                <p className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{fmtLongDate(event.start_date_time)}</p>
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{fmtTime(event.start_date_time)} – {fmtTime(event.end_date_time)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Venue</p>
+                <p className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{event.venue_name}</p>
+                {event.venue_address && (
+                  <p className="inline-flex items-center gap-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+                    <MapPin className="size-3" /> {event.venue_address}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {canViewRevenue && (
+            <Card>
+              <CardHeader><CardTitle>Sales summary</CardTitle></CardHeader>
+              <CardContent className="space-y-2 pt-0">
+                <Row label="Attendees" value={String(event.sales?.total_attendees ?? event.total_attendees)} />
+                <Row label="Revenue" value={usd(event.sales?.total_revenue ?? event.total_revenue)} />
+                <Row label="Check-in rate" value={`${(event.sales?.checkin_rate ?? event.checkin_rate).toFixed(1)}%`} />
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
 
-      {/* Ticket Price Edit Modal */}
-      {editingTicketId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/40" onClick={closePriceEdit} />
-          <div className="relative rounded-xl bg-white p-6 shadow-xl max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-ink mb-1">Edit Ticket Price</h3>
-            <p className="text-xs text-gray-500 mb-4">
-              {event?.tickets.find((t) => t.ticket_id === editingTicketId)?.name}
-            </p>
-
-            {priceError && (
-              <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-2.5 text-xs text-red-700">
-                {priceError}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-ink mb-1">New Price</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={(editPriceCents / 100).toFixed(2)}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value)
-                      setEditPriceCents(!isNaN(v) ? Math.round(v * 100) : 0)
-                    }}
-                    className="w-full rounded-lg border border-gray-300 pl-7 pr-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-              </div>
-              <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-2.5 text-xs text-yellow-800">
-                Applies to new purchases only. Existing orders are not affected.
-              </div>
-              <div className="flex gap-3 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={closePriceEdit}
-                  disabled={priceLoading}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePriceUpdate}
-                  disabled={priceLoading}
-                  className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 transition-all disabled:opacity-60 cursor-pointer"
-                >
-                  {priceLoading ? "Saving..." : "Update Price"}
-                </button>
-              </div>
+      {/* price edit dialog */}
+      <Dialog open={editingTicketId !== null} onOpenChange={(o) => !o && setEditingTicketId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit ticket price</DialogTitle>
+            <DialogDescription>{editingTicket?.name}</DialogDescription>
+          </DialogHeader>
+          {priceError && (
+            <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-400">{priceError}</div>
+          )}
+          <div>
+            <Label htmlFor="new-price" className="mb-1.5 block">New price</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-500 dark:text-neutral-400">$</span>
+              <Input
+                id="new-price"
+                type="number"
+                step="0.01"
+                min="0"
+                className="pl-7"
+                value={(editPriceCents / 100).toFixed(2)}
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value)
+                  setEditPriceCents(!isNaN(v) ? Math.round(v * 100) : 0)
+                }}
+              />
             </div>
           </div>
-        </div>
-      )}
+          <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+            Applies to new purchases only. Existing orders are not affected.
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setEditingTicketId(null)} disabled={priceLoading}>Cancel</Button>
+            <Button onClick={handlePriceUpdate} disabled={priceLoading}>
+              {priceLoading && <Loader2 className="animate-spin" />} Update price
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+function Row({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div className={cn("flex items-center justify-between", className)}>
+      <span className="text-sm text-neutral-600 dark:text-neutral-400">{label}</span>
+      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{value}</span>
     </div>
   )
 }

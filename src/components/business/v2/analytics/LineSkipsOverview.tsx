@@ -71,7 +71,7 @@ function InstanceCard({ instance }: { instance: LineSkipOverviewInstance }) {
 
         {instance.tickets_sold > 0 && (
           <Button variant="secondary" size="sm" asChild>
-            <Link href={`/business/v2/line-skips/instances/${instance.instance_id}`}>Details</Link>
+            <Link href={`/business/line-skips/instances/${instance.instance_id}`}>Details</Link>
           </Button>
         )}
       </div>

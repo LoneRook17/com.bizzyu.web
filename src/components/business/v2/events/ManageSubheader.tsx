@@ -25,7 +25,7 @@ export function ManageSubheader({
   return (
     <div className="flex flex-col gap-3">
       <Link
-        href={backHref ?? `/business/v2/events/${eventId}/manage`}
+        href={backHref ?? `/business/events/${eventId}/manage`}
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
         <ArrowLeft className="size-3.5" /> {backLabel}

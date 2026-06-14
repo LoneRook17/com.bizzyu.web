@@ -123,7 +123,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
       if (isEditing) {
         await apiClient.put(`/business/deals/${dealId}`, payload)
-        router.push(`/business/v2/deals/${dealId}`)
+        router.push(`/business/deals/${dealId}`)
       } else {
         const data = await apiClient.post<{ deal_id: number; moderation_status: string | null; saved_as_draft?: boolean }>(
           "/business/deals",
@@ -131,12 +131,12 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
         )
         if (data.moderation_status === "pending_review") {
           setModerationNotice("Your deal has been created but is under review due to content moderation.")
-          setTimeout(() => router.push("/business/v2/deals"), 3000)
+          setTimeout(() => router.push("/business/deals"), 3000)
         } else if (data.saved_as_draft) {
           setModerationNotice("Saved as a draft — it can go live as soon as your business is approved.")
-          setTimeout(() => router.push("/business/v2/deals?tab=deactivated"), 3000)
+          setTimeout(() => router.push("/business/deals?tab=deactivated"), 3000)
         } else {
-          router.push("/business/v2/deals")
+          router.push("/business/deals")
         }
       }
     } catch (err) {
@@ -156,7 +156,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     <>
       <div className="min-w-0">
         <Link
-          href="/business/v2/deals"
+          href="/business/deals"
           className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
         >
           <ArrowLeft className="size-4" /> Back to deals

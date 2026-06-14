@@ -3,16 +3,26 @@
 import { Suspense, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import AuthCard from "@/components/business/auth/AuthCard"
-import FormInput from "@/components/business/auth/FormInput"
-import FormPasswordInput from "@/components/business/auth/FormPasswordInput"
-import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
+import {
+  AuthAlert,
+  AuthCard,
+  AuthField,
+  AuthFooterLink,
+  AuthPasswordField,
+  AuthSubmit,
+} from "@/components/business/v2/auth/auth-shell"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { LoginResponse } from "@/lib/business/types"
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<AuthCard title="Welcome back" subtitle="Log in to your business dashboard"><div /></AuthCard>}>
+    <Suspense
+      fallback={
+        <AuthCard title="Welcome back" subtitle="Log in to your business dashboard">
+          <div />
+        </AuthCard>
+      }
+    >
       <LoginPageInner />
     </Suspense>
   )
@@ -42,7 +52,6 @@ function LoginPageInner() {
         password: form.password,
       })
 
-      // biz_session cookie is set by the server (httpOnly=false, for Next.js middleware routing)
       router.push("/business")
     } catch (err) {
       if (err instanceof ApiError) {
@@ -66,12 +75,12 @@ function LoginPageInner() {
   return (
     <AuthCard title="Welcome back" subtitle="Log in to your business dashboard">
       {justRegistered && !error && (
-        <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+        <AuthAlert tone="success" className="mb-4">
           Application submitted. You&apos;ll receive an email once approved.
-        </div>
+        </AuthAlert>
       )}
       <form onSubmit={handleSubmit}>
-        <FormInput
+        <AuthField
           label="Email"
           name="email"
           type="email"
@@ -81,7 +90,7 @@ function LoginPageInner() {
           required
           autoComplete="email"
         />
-        <FormPasswordInput
+        <AuthPasswordField
           label="Password"
           name="password"
           value={form.password}
@@ -92,26 +101,29 @@ function LoginPageInner() {
         />
 
         <div className="mb-4 text-right">
-          <Link href="/business/forgot-password" className="text-xs text-primary hover:underline">
+          <Link
+            href="/business/forgot-password"
+            className="text-xs font-medium text-[#05EB54] hover:underline"
+          >
             Forgot password?
           </Link>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          <AuthAlert tone="error" className="mb-4">
             {error}
-          </div>
+          </AuthAlert>
         )}
 
-        <AuthSubmitButton loading={loading}>Log In</AuthSubmitButton>
+        <AuthSubmit loading={loading}>Log In</AuthSubmit>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <AuthFooterLink>
         Don&apos;t have an account?{" "}
-        <Link href="/business/signup" className="text-primary font-medium hover:underline">
+        <Link href="/business/signup" className="font-medium text-[#05EB54] hover:underline">
           Sign up
         </Link>
-      </p>
+      </AuthFooterLink>
     </AuthCard>
   )
 }

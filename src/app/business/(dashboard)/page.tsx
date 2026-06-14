@@ -1,301 +1,281 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import {
+  Plus, ArrowUpRight, CalendarDays, TrendingUp, Ticket, Sparkles, ChevronRight, Tag,
+} from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
+import { useDashboardMode } from "@/lib/v2/mode"
 import { apiClient } from "@/lib/business/api-client"
-import type { DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem } from "@/lib/business/types"
-import EventPreviewCard from "@/components/business/dashboard/EventPreviewCard"
-import DealPreviewCard from "@/components/business/dashboard/DealPreviewCard"
-import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
+import type {
+  DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem,
+} from "@/lib/business/types"
+import { cn, usd } from "@/lib/v2/utils"
+import { PageHeader } from "@/components/business/v2/PageHeader"
+import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Button } from "@/components/business/v2/ui/button"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import TrialHome from "@/components/business/v2/TrialHome"
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function fmtDate(s?: string | null) {
+  if (!s) return "—"
+  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+function fmtRelative(s: string) {
+  const d = new Date(s).getTime()
+  const mins = Math.round((Date.now() - d) / 60000)
+  if (mins < 1) return "now"
+  if (mins < 60) return `${mins}m`
+  const h = Math.round(mins / 60)
+  if (h < 24) return `${h}h`
+  return `${Math.round(h / 24)}d`
+}
+function eventBadge(status: string): { variant: "success" | "neutral" | "warning" | "danger"; label: string } {
+  const s = status?.toLowerCase()
+  if (s === "published" || s === "approved" || s === "active") return { variant: "success", label: "Live" }
+  if (s === "draft") return { variant: "neutral", label: "Draft" }
+  if (s?.includes("pending")) return { variant: "warning", label: "In review" }
+  if (s === "cancelled" || s === "rejected") return { variant: "danger", label: s === "cancelled" ? "Cancelled" : "Rejected" }
+  return { variant: "neutral", label: status || "—" }
+}
+
+function MetricTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-ink">{value}</p>
-    </div>
+    <Card className="p-5">
+      <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{label}</p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{value}</p>
+      {sub && <p className="mt-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">{sub}</p>}
+    </Card>
   )
 }
 
-function QuickStatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-ink">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-    </div>
-  )
-}
-
-/** Parse Laravel timestamps that may or may not include a timezone marker.
- * Naked ISO strings (e.g. "2026-05-05 23:41:00") are stored as UTC server-side;
- * JS would otherwise parse them as local time. Treat them as UTC so the
- * display converts correctly to the viewer's local zone. */
-function parseTimestamp(raw: string): Date {
-  const hasTimezone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw)
-  const normalized = hasTimezone
-    ? raw
-    : raw.replace(" ", "T") + "Z"
-  return new Date(normalized)
-}
-
-function formatActivityTime(raw: string): string {
-  const date = parseTimestamp(raw)
-  const now = new Date()
-  const diffSec = Math.max(0, (now.getTime() - date.getTime()) / 1000)
-
-  // Relative for very recent so the feed feels live.
-  if (diffSec < 60) return "Just now"
-  if (diffSec < 3600) {
-    const mins = Math.floor(diffSec / 60)
-    return `${mins} min${mins === 1 ? "" : "s"} ago`
-  }
-  if (diffSec < 86400) {
-    const hours = Math.floor(diffSec / 3600)
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`
-  }
-  // Absolute for older — viewer's local timezone.
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
-
-function ActivityItem({ item }: { item: ActivityFeedItem }) {
-  const time = formatActivityTime(item.timestamp)
-
-  return (
-    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
-      <div className="mt-0.5 h-2 w-2 rounded-full bg-primary flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-ink">{item.message}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{time}</p>
-      </div>
-    </div>
-  )
-}
-
-export default function DashboardHomePage() {
+export default function V2HomePage() {
   const { user, isPending } = useAuth()
-  const router = useRouter()
-  const { venues, isAllVenues, setSelectedVenue } = useVenue()
+  const { selectedVenue, isAllVenues, venues, isLoading: venuesLoading } = useVenue()
   const venueParam = useVenueParam()
-  const [showVenueModal, setShowVenueModal] = useState(false)
-  const [venueModalTarget, setVenueModalTarget] = useState("")
+  const { config } = useDashboardMode()
+
+  // The setup checklist owns Home until the business is BOTH approved and has a
+  // venue — a venue is the hard requirement for being visible to students.
+  const needsSetup = isPending || (!venuesLoading && venues.length === 0)
+
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
-  const [quickStats, setQuickStats] = useState<QuickStats | null>(null)
+  const [stats, setStats] = useState<QuickStats | null>(null)
   const [activity, setActivity] = useState<ActivityFeedItem[]>([])
-  const [upcomingEvents, setUpcomingEvents] = useState<EventListItem[]>([])
-  const [liveDeals, setLiveDeals] = useState<DealListItem[]>([])
+  const [events, setEvents] = useState<EventListItem[]>([])
+  const [deals, setDeals] = useState<DealListItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  const handleCreate = (path: string) => {
-    if (isAllVenues && venues.length > 1) {
-      setVenueModalTarget(path)
-      setShowVenueModal(true)
-    } else {
-      if (isAllVenues && venues.length === 1) {
-        setSelectedVenue(venues[0].id)
-      }
-      router.push(path)
-    }
-  }
-
   useEffect(() => {
-    async function fetchData() {
+    if (needsSetup || venuesLoading) return
+    let cancelled = false
+    ;(async () => {
       setLoading(true)
-      const results = await Promise.allSettled([
+      const res = await Promise.allSettled([
         apiClient.get<DashboardSummary>(`/business/dashboard/summary?_=1${venueParam}`),
         apiClient.get<QuickStats>(`/business/dashboard/quick-stats?_=1${venueParam}`),
-        apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=10${venueParam}`),
-        apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?tab=upcoming&limit=3${venueParam}`),
-        apiClient.get<{ deals: DealListItem[]; total: number }>(`/business/deals?tab=live&limit=3${venueParam}`),
+        apiClient.get<ActivityFeedItem[]>(`/business/dashboard/activity?limit=6${venueParam}`),
+        apiClient.get<{ events: EventListItem[] }>(`/business/events?tab=upcoming&limit=4${venueParam}`),
+        apiClient.get<{ deals: DealListItem[] }>(`/business/deals?tab=live&limit=4${venueParam}`),
       ])
-
-      const [summaryRes, statsRes, activityRes, eventsRes, dealsRes] = results
-
-      if (summaryRes.status === 'fulfilled') setSummary(summaryRes.value)
-      else console.error('[Dashboard] summary failed:', summaryRes.reason)
-
-      if (statsRes.status === 'fulfilled') setQuickStats(statsRes.value)
-      else console.error('[Dashboard] quick-stats failed:', statsRes.reason)
-
-      if (activityRes.status === 'fulfilled') setActivity(activityRes.value)
-      else console.error('[Dashboard] activity failed:', activityRes.reason)
-
-      if (eventsRes.status === 'fulfilled') setUpcomingEvents(eventsRes.value.events)
-      else console.error('[Dashboard] events failed:', eventsRes.reason)
-
-      if (dealsRes.status === 'fulfilled') setLiveDeals(dealsRes.value.deals)
-      else console.error('[Dashboard] deals failed:', dealsRes.reason)
-
+      if (cancelled) return
+      if (res[0].status === "fulfilled") setSummary(res[0].value)
+      if (res[1].status === "fulfilled") setStats(res[1].value)
+      if (res[2].status === "fulfilled") setActivity(res[2].value)
+      if (res[3].status === "fulfilled") setEvents(res[3].value.events ?? [])
+      if (res[4].status === "fulfilled") setDeals(res[4].value.deals ?? [])
       setLoading(false)
-    }
-    fetchData()
-  }, [venueParam])
+    })()
+    return () => { cancelled = true }
+  }, [venueParam, needsSetup, venuesLoading])
 
-  const formatCurrency = (val: number | null | undefined) => {
-    if (val == null) return "—"
-    return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  if (needsSetup) return <TrialHome />
+
+  const firstName = user?.full_name?.split(" ")[0]
+  const venueLabel = isAllVenues ? "all your venues" : selectedVenue?.name ?? "your venue"
+
+  // Attention items derived from real data
+  const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
+  const nextEvent = config.showEvents ? events[0] : undefined
+  if (nextEvent) {
+    attention.push({
+      icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
+      title: `${nextEvent.name} is coming up`,
+      sub: `${fmtDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
+      href: `/business/events/${nextEvent.event_id}/manage`, cta: "Manage",
+    })
+  }
+  if (config.showDeals && (stats?.active_deals_count ?? 0) > 0) {
+    attention.push({
+      icon: Ticket, tint: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+      title: `${stats!.active_deals_count} deals live right now`,
+      sub: `${stats?.claims_this_week ?? 0} claims this week`,
+      href: "/business/deals", cta: "View",
+    })
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-ink mb-6">
-        Welcome back{user ? `, ${user.full_name.split(" ")[0]}` : ""}
-      </h1>
-
-      {isPending && (
-        <div className="mb-6 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
-          Your dashboard data will populate once your business is approved.
-        </div>
-      )}
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-24 mb-2" />
-              <div className="h-8 bg-gray-200 rounded w-16" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          {(() => {
-            const hasEvents =
-              (summary?.total_events ?? 0) > 0 ||
-              (summary?.total_attendees ?? 0) > 0 ||
-              (quickStats?.upcoming_events_count ?? 0) > 0
-            const hasDeals =
-              (quickStats?.active_deals_count ?? 0) > 0 || liveDeals.length > 0
-            const dealsFirst = hasDeals && !hasEvents
-
-            const eventsBlock = (
-              <div className="mb-6" key="events">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-ink">Your events</h2>
-                  <Link href="/business/events" className="text-xs font-medium text-primary hover:underline">
-                    View all
-                  </Link>
-                </div>
-                {upcomingEvents.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {upcomingEvents.map((event) => (
-                      <EventPreviewCard key={event.event_id} event={event} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
-                    <p className="text-sm text-gray-400 mb-2">No upcoming events</p>
-                    <button
-                      onClick={() => handleCreate("/business/events/new")}
-                      className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
-                    >
-                      Create event
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-
-            const dealsBlock = (
-              <div className="mb-6" key="deals">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-ink">Your deals</h2>
-                  <Link href="/business/deals" className="text-xs font-medium text-primary hover:underline">
-                    View all
-                  </Link>
-                </div>
-                {liveDeals.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {liveDeals.map((deal) => (
-                      <DealPreviewCard key={deal.id} deal={deal} showVenue={isAllVenues} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
-                    <p className="text-sm text-gray-400 mb-2">No deals yet</p>
-                    <button
-                      onClick={() => handleCreate("/business/deals/new")}
-                      className="inline-flex items-center rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:brightness-110 transition-all cursor-pointer"
-                    >
-                      Create deal
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-
-            return (
-              <>
-                {/* Summary cards — only show event-revenue summary if business is using events */}
-                {hasEvents && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <StatCard label="Total Events" value={summary?.total_events ?? 0} />
-                    <StatCard label="Total Attendees" value={summary?.total_attendees ?? 0} />
-                    <StatCard label="Total Revenue" value={formatCurrency(summary?.total_revenue)} />
-                  </div>
-                )}
-
-                {/* Quick stats — order persona-aware; hide event tiles for deals-only businesses */}
-                <div className={`grid gap-4 mb-6 ${hasEvents ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
-                  <QuickStatCard label="Active Deals" value={quickStats?.active_deals_count ?? 0} />
-                  <QuickStatCard label="Claims This Week" value={quickStats?.claims_this_week ?? 0} />
-                  {hasEvents && (
-                    <>
-                      <QuickStatCard label="Upcoming Events" value={quickStats?.upcoming_events_count ?? 0} />
-                      <QuickStatCard
-                        label="Next Event"
-                        value={
-                          quickStats?.next_event_date
-                            ? new Date(quickStats.next_event_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                            : "—"
-                        }
-                      />
-                    </>
-                  )}
-                </div>
-
-                {dealsFirst ? [dealsBlock, eventsBlock] : [eventsBlock, dealsBlock]}
-              </>
-            )
-          })()}
-
-          {/* Activity feed */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-ink mb-3">Recent Activity</h2>
-            {activity.length > 0 ? (
-              <div>
-                {activity.map((item, i) => (
-                  <ActivityItem key={i} item={item} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 py-4 text-center">
-                No recent activity yet.
-              </p>
+    <>
+      <PageHeader
+        title={`Good to see you${firstName ? `, ${firstName}` : ""}`}
+        description={`Here's what's happening at ${venueLabel}.`}
+        actions={
+          <div className="flex items-center gap-2">
+            {config.showEvents && (
+              <Button variant={config.showDeals ? "secondary" : "primary"} asChild>
+                <Link href="/business/events/new"><Plus /> New event</Link>
+              </Button>
+            )}
+            {config.showDeals && (
+              <Button asChild>
+                <Link href="/business/deals/new"><Plus /> New deal</Link>
+              </Button>
             )}
           </div>
-        </>
+        }
+      />
+
+      {/* metric tiles — filtered by dashboard mode */}
+      <div className={cn("grid grid-cols-2 gap-4", config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+        {loading ? (
+          [0, 1, 2, 3].slice(0, config.showDeals && config.showEvents ? 4 : 3).map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
+        ) : (
+          <>
+            <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />
+            {config.showDeals && (
+              <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
+            )}
+            {config.showDeals && !config.showEvents && (
+              <MetricTile label="Claims this week" value={stats?.claims_this_week ?? 0} sub="Across all live deals" />
+            )}
+            {config.showEvents && (
+              <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
+            )}
+            {config.showEvents && (
+              <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
+            )}
+          </>
+        )}
+      </div>
+
+      {/* attention hub */}
+      {!loading && attention.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4">
+            <Sparkles className="size-4 text-[#05EB54]" />
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Needs your attention</h2>
+            <Badge variant="brand" className="ml-1">{attention.length}</Badge>
+          </div>
+          <div className="border-t border-neutral-100 dark:border-neutral-800">
+            {attention.map((a, i) => (
+              <Link
+                key={i}
+                href={a.href}
+                className={cn("flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}
+              >
+                <span className={cn("flex size-9 items-center justify-center rounded-lg", a.tint)}>
+                  <a.icon className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100">{a.title}</span>
+                  <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{a.sub}</span>
+                </span>
+                <Button variant="secondary" size="sm" asChild><span>{a.cta}</span></Button>
+              </Link>
+            ))}
+          </div>
+        </Card>
       )}
 
-      {showVenueModal && (
-        <VenueSelectModal
-          venues={venues}
-          onSelect={(venue) => {
-            setSelectedVenue(venue.id)
-            setShowVenueModal(false)
-            router.push(venueModalTarget)
-          }}
-          onClose={() => setShowVenueModal(false)}
-        />
-      )}
-    </div>
+      {/* bento — first card follows the dashboard mode */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        {config.showEvents ? (
+          <Card className="overflow-hidden">
+            <div className="flex items-center px-5 py-4">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Upcoming events</h2>
+              <Link href="/business/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+                View all <ArrowUpRight className="size-3.5" />
+              </Link>
+            </div>
+            <div className="border-t border-neutral-100 dark:border-neutral-800">
+              {loading ? (
+                [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
+              ) : events.length === 0 ? (
+                <div className="p-5"><EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start selling tickets." action={<Button asChild size="sm"><Link href="/business/events/new"><Plus /> Create event</Link></Button>} /></div>
+              ) : (
+                events.map((e, i) => {
+                  const b = eventBadge(e.status)
+                  return (
+                    <Link key={e.event_id} href={`/business/events/${e.event_id}/manage`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
+                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                      </span>
+                      <Badge variant={b.variant}>{b.label}</Badge>
+                      <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+                    </Link>
+                  )
+                })
+              )}
+            </div>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden">
+            <div className="flex items-center px-5 py-4">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Live deals</h2>
+              <Link href="/business/deals" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+                View all <ArrowUpRight className="size-3.5" />
+              </Link>
+            </div>
+            <div className="border-t border-neutral-100 dark:border-neutral-800">
+              {loading ? (
+                [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
+              ) : deals.length === 0 ? (
+                <div className="p-5"><EmptyState icon={Tag} title="No live deals" description="Create a deal to start reaching students." action={<Button asChild size="sm"><Link href="/business/deals/new"><Plus /> Create deal</Link></Button>} /></div>
+              ) : (
+                deals.map((d, i) => (
+                  <Link key={d.id} href={`/business/deals/${d.id}`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{d.deal_title}</span>
+                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtDate(d.expired_date)}</span>
+                    </span>
+                    <Badge variant="success">Live</Badge>
+                    <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+                  </Link>
+                ))
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* recent activity */}
+        <Card className="overflow-hidden">
+          <div className="flex items-center px-5 py-4">
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Recent activity</h2>
+          </div>
+          <div className="border-t border-neutral-100 dark:border-neutral-800">
+            {loading ? (
+              [0, 1, 2, 3].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-48" /></div>)
+            ) : activity.length === 0 ? (
+              <div className="p-5"><EmptyState icon={Sparkles} title="No activity yet" description="Sales, claims, and check-ins will show up here." /></div>
+            ) : (
+              activity.map((a, i) => (
+                <div key={i} className={cn("flex items-start gap-3 px-5 py-3.5", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[#05EB54]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-neutral-800 dark:text-neutral-200">{a.message}</span>
+                    <span className="block text-xs text-neutral-400 dark:text-neutral-500">{fmtRelative(a.timestamp)} ago</span>
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+      </div>
+    </>
   )
 }

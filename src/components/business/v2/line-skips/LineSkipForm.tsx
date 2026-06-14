@@ -73,7 +73,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   const { business } = useAuth()
   const isEdit = mode === "edit"
 
-  const backHref = isEdit && lineSkipId ? `/business/v2/line-skips/${lineSkipId}` : "/business/v2/line-skips"
+  const backHref = isEdit && lineSkipId ? `/business/line-skips/${lineSkipId}` : "/business/line-skips"
 
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [pageLoading, setPageLoading] = useState(true)
@@ -247,7 +247,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           regenerate_instances: regenerate,
           venue_id: selectedVenue?.id,
         })
-        router.push(`/business/v2/line-skips/${lineSkipId}`)
+        router.push(`/business/line-skips/${lineSkipId}`)
       } else {
         const data = await apiClient.post<{ line_skip: { id: number } }>("/business/line-skips", {
           name: form.name.trim(),
@@ -261,7 +261,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           default_capacity: form.default_capacity ? parseInt(form.default_capacity) : null,
           venue_id: selectedVenue?.id,
         })
-        router.push(`/business/v2/line-skips/${data.line_skip.id}`)
+        router.push(`/business/line-skips/${data.line_skip.id}`)
       }
     } catch (err) {
       setServerError(err instanceof ApiError ? err.message : "Failed to save line skip")
@@ -285,7 +285,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   if (!isEdit && profile && !profile.stripe_connect_onboarded) {
     return (
       <div className="max-w-2xl">
-        <Link href="/business/v2/line-skips" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+        <Link href="/business/line-skips" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
           <ArrowLeft className="size-4" /> Back to line skips
         </Link>
         <Card className="mt-4 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40">

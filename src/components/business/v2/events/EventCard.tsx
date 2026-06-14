@@ -20,7 +20,7 @@ export function EventCard({ event }: { event: EventListItem }) {
       <div className="flex gap-4 p-4">
         {/* flyer */}
         <Link
-          href={`/business/v2/events/${event.event_id}`}
+          href={`/business/events/${event.event_id}`}
           className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800"
         >
           {event.flyer_image_url ? (
@@ -36,7 +36,7 @@ export function EventCard({ event }: { event: EventListItem }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <Link
-                href={`/business/v2/events/${event.event_id}`}
+                href={`/business/events/${event.event_id}`}
                 className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors hover:text-[#05EB54] dark:hover:text-[#05EB54]"
               >
                 {event.name}
@@ -67,18 +67,18 @@ export function EventCard({ event }: { event: EventListItem }) {
       {/* actions */}
       <div className="flex items-center gap-1 border-t border-neutral-100 dark:border-neutral-800 px-4 py-2.5">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/business/v2/events/${event.event_id}`}>View</Link>
+          <Link href={`/business/events/${event.event_id}`}>View</Link>
         </Button>
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/business/v2/events/${event.event_id}/manage`}>Manage</Link>
+          <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>
         </Button>
         {canScan && (
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/business/v2/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
+            <Link href={`/business/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
           </Button>
         )}
         <Link
-          href={`/business/v2/events/${event.event_id}/manage`}
+          href={`/business/events/${event.event_id}/manage`}
           className="ml-auto inline-flex size-7 items-center justify-center rounded-lg text-neutral-300 dark:text-neutral-600 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-500 dark:hover:text-neutral-400"
           aria-label="Manage event"
         >

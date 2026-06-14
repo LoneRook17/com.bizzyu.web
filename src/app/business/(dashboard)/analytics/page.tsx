@@ -1,26 +1,41 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { BarChart3 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
-import DealsOverview from "@/components/business/dashboard/DealsOverview"
-import EventsOverview from "@/components/business/dashboard/EventsOverview"
-import LineSkipsOverview from "@/components/business/dashboard/LineSkipsOverview"
-import PromoterStatsView from "@/components/business/dashboard/PromoterStatsView"
-import type { DealsOverview as DealsOverviewType, EventsOverview as EventsOverviewType, PromoterLink, LineSkipAnalyticsOverview } from "@/lib/business/types"
+import type {
+  DealsOverview as DealsOverviewType,
+  EventsOverview as EventsOverviewType,
+  PromoterLink,
+  LineSkipAnalyticsOverview,
+} from "@/lib/business/types"
+import { PageHeader } from "@/components/business/v2/PageHeader"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import DealsOverviewView from "@/components/business/v2/analytics/DealsOverview"
+import EventsOverviewView from "@/components/business/v2/analytics/EventsOverview"
+import LineSkipsOverviewView from "@/components/business/v2/analytics/LineSkipsOverview"
+import PromoterStatsView from "@/components/business/v2/analytics/PromoterStats"
+import { AnalyticsSkeleton } from "@/components/business/v2/analytics/shared"
+
+function ErrorState() {
+  return (
+    <EmptyState
+      icon={BarChart3}
+      title="Couldn't load analytics"
+      description="Something went wrong fetching this data. Please try again in a moment."
+    />
+  )
+}
 
 export default function AnalyticsPage() {
   const { user } = useAuth()
   const role = user?.business_role
 
-  // Promoter view
   if (role === "promoter") return <PromoterView />
-
-  // Staff — deals only
   if (role === "staff") return <StaffView />
-
-  // Owner/Manager view — both tabs
   return <OwnerManagerView />
 }
 
@@ -34,15 +49,15 @@ function PromoterView() {
     apiClient
       .get<PromoterLink[]>(`/business/analytics/promoter-stats?_=1${venueParam}`)
       .then(setLinks)
-      .catch((err) => { console.error("Failed to load promoter stats:", err); setLinks([]) })
+      .catch(() => setLinks([]))
       .finally(() => setLoading(false))
   }, [venueParam])
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-ink mb-6">Your Stats</h1>
-      {loading ? <SkeletonCards /> : <PromoterStatsView links={links} />}
-    </div>
+    <>
+      <PageHeader title="Your stats" description="Track how your links are performing." />
+      {loading ? <AnalyticsSkeleton /> : <PromoterStatsView links={links} />}
+    </>
   )
 }
 
@@ -51,144 +66,100 @@ function StaffView() {
   const venueParam = useVenueParam()
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [loading, setLoading] = useState(true)
+  const [errored, setErrored] = useState(false)
 
   useEffect(() => {
     setLoading(true)
+    setErrored(false)
     apiClient
       .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
-      .catch((err) => { console.error("Failed to load deals analytics:", err); setDeals(null) })
+      .catch(() => {
+        setDeals(null)
+        setErrored(true)
+      })
       .finally(() => setLoading(false))
   }, [venueParam])
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-ink mb-6">Deal Analytics</h1>
-      {loading ? <SkeletonCards /> : deals ? <DealsOverview data={deals} isAllVenues={isAllVenues} /> : <ErrorState />}
-    </div>
+    <>
+      <PageHeader title="Deal analytics" description="See how your deals are performing." />
+      {loading ? <AnalyticsSkeleton /> : deals ? <DealsOverviewView data={deals} isAllVenues={isAllVenues} /> : errored ? <ErrorState /> : null}
+    </>
   )
 }
 
 function OwnerManagerView() {
   const { isAllVenues } = useVenue()
   const venueParam = useVenueParam()
-  const [tab, setTab] = useState<"deals" | "events" | "line-skips">("deals")
+
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [events, setEvents] = useState<EventsOverviewType | null>(null)
   const [lineSkips, setLineSkips] = useState<LineSkipAnalyticsOverview | null>(null)
   const [dealsLoading, setDealsLoading] = useState(true)
   const [eventsLoading, setEventsLoading] = useState(true)
   const [lineSkipsLoading, setLineSkipsLoading] = useState(true)
+  const [dealsErr, setDealsErr] = useState(false)
+  const [eventsErr, setEventsErr] = useState(false)
+  const [lineSkipsErr, setLineSkipsErr] = useState(false)
 
   useEffect(() => {
     setDealsLoading(true)
     setEventsLoading(true)
     setLineSkipsLoading(true)
+    setDealsErr(false)
+    setEventsErr(false)
+    setLineSkipsErr(false)
 
     apiClient
       .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
-      .catch((err) => { console.error("Failed to load deals analytics:", err); setDeals(null) })
+      .catch(() => {
+        setDeals(null)
+        setDealsErr(true)
+      })
       .finally(() => setDealsLoading(false))
 
     apiClient
       .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
       .then(setEvents)
-      .catch((err) => { console.error("Failed to load events analytics:", err); setEvents(null) })
+      .catch(() => {
+        setEvents(null)
+        setEventsErr(true)
+      })
       .finally(() => setEventsLoading(false))
 
     apiClient
       .get<LineSkipAnalyticsOverview>(`/business/line-skips/analytics/overview?_=1${venueParam}`)
       .then(setLineSkips)
-      .catch((err) => { console.error("Failed to load line skip analytics:", err); setLineSkips(null) })
+      .catch(() => {
+        setLineSkips(null)
+        setLineSkipsErr(true)
+      })
       .finally(() => setLineSkipsLoading(false))
   }, [venueParam])
 
   return (
-    <div>
-      <h1 className="text-xl font-bold text-ink mb-6">Analytics</h1>
+    <>
+      <PageHeader title="Analytics" description="Performance across deals, events, and line skips." />
 
-      {/* Tab bar */}
-      <div className="flex gap-1 mb-6 border-b border-gray-200">
-        <TabButton active={tab === "deals"} onClick={() => setTab("deals")}>
-          Deals
-        </TabButton>
-        <TabButton active={tab === "events"} onClick={() => setTab("events")}>
-          Events
-        </TabButton>
-        <TabButton active={tab === "line-skips"} onClick={() => setTab("line-skips")}>
-          Line Skips
-        </TabButton>
-      </div>
+      <Tabs defaultValue="deals">
+        <TabsList>
+          <TabsTrigger value="deals">Deals</TabsTrigger>
+          <TabsTrigger value="events">Events</TabsTrigger>
+          <TabsTrigger value="line-skips">Line skips</TabsTrigger>
+        </TabsList>
 
-      {/* Tab content */}
-      {tab === "deals" && (
-        dealsLoading ? <SkeletonCards /> : deals ? <DealsOverview data={deals} isAllVenues={isAllVenues} /> : <ErrorState />
-      )}
-      {tab === "events" && (
-        eventsLoading ? <SkeletonCards /> : events ? <EventsOverview data={events} isAllVenues={isAllVenues} /> : <ErrorState />
-      )}
-      {tab === "line-skips" && (
-        lineSkipsLoading ? <SkeletonCards /> : lineSkips ? <LineSkipsOverview data={lineSkips} isAllVenues={isAllVenues} /> : <ErrorState />
-      )}
-    </div>
-  )
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-        active
-          ? "border-ink text-ink"
-          : "border-transparent text-gray-500 hover:text-gray-700"
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
-
-function SkeletonCards() {
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 animate-pulse">
-            <div className="h-3 bg-gray-200 rounded w-16 mb-2" />
-            <div className="h-7 bg-gray-200 rounded w-12" />
-          </div>
-        ))}
-      </div>
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 animate-pulse">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-gray-200" />
-            <div className="flex-1">
-              <div className="h-4 bg-gray-200 rounded w-40 mb-2" />
-              <div className="h-3 bg-gray-200 rounded w-24" />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ErrorState() {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
-      Unable to load analytics. Please try again later.
-    </div>
+        <TabsContent value="deals">
+          {dealsLoading ? <AnalyticsSkeleton /> : deals ? <DealsOverviewView data={deals} isAllVenues={isAllVenues} /> : dealsErr ? <ErrorState /> : null}
+        </TabsContent>
+        <TabsContent value="events">
+          {eventsLoading ? <AnalyticsSkeleton /> : events ? <EventsOverviewView data={events} isAllVenues={isAllVenues} /> : eventsErr ? <ErrorState /> : null}
+        </TabsContent>
+        <TabsContent value="line-skips">
+          {lineSkipsLoading ? <AnalyticsSkeleton /> : lineSkips ? <LineSkipsOverviewView data={lineSkips} isAllVenues={isAllVenues} /> : lineSkipsErr ? <ErrorState /> : null}
+        </TabsContent>
+      </Tabs>
+    </>
   )
 }

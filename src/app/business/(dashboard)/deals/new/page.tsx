@@ -1,13 +1,12 @@
 "use client"
 
-import DealForm from "@/components/business/dashboard/DealForm"
-import HowDealsWorkSection from "@/components/business/dashboard/HowDealsWorkSection"
+import DealForm from "@/components/business/v2/deals/DealForm"
+import RequireVenue from "@/components/business/v2/RequireVenue"
 
 export default function CreateDealPage() {
   return (
-    <>
-      <HowDealsWorkSection />
+    <RequireVenue>
       <DealForm />
-    </>
+    </RequireVenue>
   )
 }

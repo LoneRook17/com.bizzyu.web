@@ -34,10 +34,10 @@ export default function TrialHome() {
     : "Takes about 2 minutes. It's queued and goes live the moment you're approved."
   const hero =
     mode === "events"
-      ? { title: "Create your first event", cta: { label: "Create event", href: "/business/v2/events/new" } }
+      ? { title: "Create your first event", cta: { label: "Create event", href: "/business/events/new" } }
       : mode === "hybrid"
-        ? { title: "Build your first deal or event", cta: { label: "Build deal", href: "/business/v2/deals/new" } }
-        : { title: "Build your first deal", cta: { label: "Build deal", href: "/business/v2/deals/new" } }
+        ? { title: "Build your first deal or event", cta: { label: "Build deal", href: "/business/deals/new" } }
+        : { title: "Build your first deal", cta: { label: "Build deal", href: "/business/deals/new" } }
 
   // Required steps gate going live; the first deal/event is optional.
   const steps: Step[] = [
@@ -47,7 +47,7 @@ export default function TrialHome() {
       sub: hasVenue ? "Venue added" : "Add your location, hours, and logo — students can't see you without a venue",
       done: hasVenue,
       current: !hasVenue,
-      cta: hasVenue ? undefined : { label: "Add venue", href: "/business/v2/settings?action=add-venue" },
+      cta: hasVenue ? undefined : { label: "Add venue", href: "/business/settings?action=add-venue" },
     },
     {
       title: "Get approved",
@@ -154,7 +154,7 @@ export default function TrialHome() {
             </Button>
           ) : (
             <Button variant="secondary" asChild>
-              <Link href="/business/v2/settings?action=add-venue"><Lock className="size-3.5" /> Add venue first</Link>
+              <Link href="/business/settings?action=add-venue"><Lock className="size-3.5" /> Add venue first</Link>
             </Button>
           )}
         </div>

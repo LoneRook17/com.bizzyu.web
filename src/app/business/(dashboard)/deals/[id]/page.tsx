@@ -3,23 +3,22 @@
 import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useAuth } from "@/lib/business/auth-context"
+import { ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import StatusBadge from "@/components/business/dashboard/StatusBadge"
-import ConfirmModal from "@/components/business/dashboard/ConfirmModal"
-import { MODERATION_STATUS_COLORS } from "@/lib/business/constants"
+import { useAuth } from "@/lib/business/auth-context"
+import { usd } from "@/lib/v2/utils"
 import type { DealListItem } from "@/lib/business/types"
+import { Button } from "@/components/business/v2/ui/button"
+import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { Progress } from "@/components/business/v2/ui/progress"
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose,
+} from "@/components/business/v2/ui/dialog"
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
-}
-
-function formatCurrency(val: number) {
-  return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function fmtDate(s: string) {
+  return new Date(s).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
 }
 
 export default function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,26 +30,31 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
   const [error, setError] = useState("")
   const [confirmAction, setConfirmAction] = useState<"deactivate" | "delete" | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [actionError, setActionError] = useState("")
 
   const canManage = user?.business_role === "owner" || user?.business_role === "manager"
 
   useEffect(() => {
-    async function fetchDeal() {
+    let cancelled = false
+    ;(async () => {
       try {
         const data = await apiClient.get<DealListItem>(`/business/deals/${id}`)
-        setDeal(data)
+        if (!cancelled) setDeal(data)
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Failed to load deal")
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load deal")
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
+    })()
+    return () => {
+      cancelled = true
     }
-    fetchDeal()
   }, [id])
 
   const handleConfirmAction = async () => {
     if (!confirmAction) return
     setActionLoading(true)
+    setActionError("")
     try {
       if (confirmAction === "deactivate") {
         await apiClient.patch(`/business/deals/${id}/deactivate`)
@@ -59,170 +63,190 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
       }
       router.push("/business/deals")
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Action failed")
-    } finally {
+      setActionError(err instanceof ApiError ? err.message : "Action failed")
       setActionLoading(false)
-      setConfirmAction(null)
     }
   }
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-48" />
-        <div className="h-48 bg-gray-200 rounded-xl" />
-      </div>
+      <>
+        <Skeleton className="h-7 w-56" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Skeleton className="h-80 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-48 rounded-xl" />
+        </div>
+      </>
     )
   }
 
   if (error || !deal) {
     return (
-      <div className="text-center py-16">
-        <p className="text-sm text-red-500 mb-4">{error || "Deal not found"}</p>
-        <Link href="/business/deals" className="text-sm text-primary hover:underline">
-          Back to Deals
-        </Link>
+      <div className="py-16 text-center">
+        <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error || "Deal not found"}</p>
+        <Button variant="link" asChild>
+          <Link href="/business/deals">Back to deals</Link>
+        </Button>
       </div>
     )
   }
 
-  const moderationColors = deal.moderation_status
-    ? MODERATION_STATUS_COLORS[deal.moderation_status]
-    : null
+  const supplyPct = deal.supply_limit
+    ? Math.min(((deal.claim_count ?? 0) / deal.supply_limit) * 100, 100)
+    : 0
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <Link href="/business/deals" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-            &larr; Back to Deals
+    <>
+      {/* header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <Link
+            href="/business/deals"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100"
+          >
+            <ArrowLeft className="size-4" /> Back to deals
           </Link>
-          <h1 className="text-xl font-bold text-ink">{deal.deal_title}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-gray-500">{deal.deal_category}</span>
-            <span className="text-xs text-gray-400">·</span>
-            <span className="text-xs text-gray-500">{deal.deal_type}</span>
-            {deal.is_active ? (
-              <span className="inline-flex items-center gap-1 text-xs text-green-600">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                Active
-              </span>
-            ) : (
-              <StatusBadge status="draft" />
-            )}
-            {deal.moderation_status === "pending_review" && moderationColors && (
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${moderationColors.bg} ${moderationColors.text}`}>
-                Under Review
-              </span>
-            )}
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{deal.deal_title}</h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-neutral-500 dark:text-neutral-400">
+            <span>{deal.deal_category}</span>
+            <span className="text-neutral-300 dark:text-neutral-600">·</span>
+            <span>{deal.deal_type}</span>
+            {deal.is_active ? <Badge variant="success">Active</Badge> : <Badge variant="neutral">Draft</Badge>}
+            {deal.moderation_status === "pending_review" && <Badge variant="warning">In review</Badge>}
           </div>
         </div>
         {canManage && (
-          <div className="flex gap-2">
-            <Link
-              href={`/business/deals/${deal.id}/edit`}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Edit
-            </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="secondary" asChild>
+              <Link href={`/business/deals/${deal.id}/edit`}>
+                <Pencil className="size-4" /> Edit
+              </Link>
+            </Button>
             {deal.is_active && (
-              <button
-                onClick={() => setConfirmAction("deactivate")}
-                className="rounded-lg border border-yellow-400 px-3 py-1.5 text-sm font-medium text-yellow-700 hover:bg-yellow-50 transition-colors cursor-pointer"
-              >
+              <Button variant="subtle" onClick={() => { setActionError(""); setConfirmAction("deactivate") }}>
                 Deactivate
-              </button>
+              </Button>
             )}
-            <button
-              onClick={() => setConfirmAction("delete")}
-              className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 transition-colors cursor-pointer"
-            >
-              Delete
-            </button>
+            <Button variant="danger" onClick={() => { setActionError(""); setConfirmAction("delete") }}>
+              <Trash2 className="size-4" /> Delete
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Moderation notice */}
+      {/* moderation notice */}
       {deal.moderation_status === "pending_review" && deal.moderation_reason && (
-        <div className="mb-6 rounded-lg bg-orange-50 border border-orange-200 p-4 text-sm text-orange-800">
-          <strong>Under review:</strong> {deal.moderation_reason}
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          <span className="font-semibold">Under review:</span> {deal.moderation_reason}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left — image + description */}
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* left — image + description */}
+        <div className="space-y-6 lg:col-span-2">
           {deal.deal_image_path && (
-            <div className="rounded-xl overflow-hidden border border-gray-200">
-              <img src={deal.deal_image_path} alt={deal.deal_title} className="w-full max-h-80 object-cover" />
-            </div>
+            <Card className="overflow-hidden p-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={deal.deal_image_path} alt={deal.deal_title} className="max-h-80 w-full object-cover" />
+            </Card>
           )}
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-ink mb-2">Description</h2>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap">{deal.description}</p>
-          </div>
+          <Card>
+            <CardContent className="p-5">
+              <h2 className="mb-2 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Description</h2>
+              <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{deal.description}</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Right — meta + stats */}
+        {/* right — meta + performance */}
         <div className="space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Dates</p>
-              <p className="text-sm text-ink">{formatDate(deal.start_date)} – {formatDate(deal.expired_date)}</p>
-            </div>
-            {deal.location && (
+          <Card>
+            <CardContent className="space-y-3 p-5">
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Location</p>
-                <p className="text-sm text-ink">{deal.location}</p>
+                <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Dates</p>
+                <p className="text-sm text-neutral-900 dark:text-neutral-100">
+                  {fmtDate(deal.start_date)} – {fmtDate(deal.expired_date)}
+                </p>
               </div>
-            )}
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide">Total Saving</p>
-              <p className="text-sm text-ink">{formatCurrency(deal.total_saving)}</p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h2 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Performance</h2>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Claims</span>
-                <span className="text-sm font-medium text-ink">{deal.claim_count ?? 0}</span>
-              </div>
-              {deal.supply_limit ? (
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Supply</span>
-                  <span className="text-sm font-medium text-ink">{deal.claim_count ?? 0} / {deal.supply_limit}</span>
+              {deal.location && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Location</p>
+                  <p className="text-sm text-neutral-900 dark:text-neutral-100">{deal.location}</p>
                 </div>
-              ) : null}
-            </div>
-          </div>
+              )}
+              <div>
+                <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Total saving</p>
+                <p className="text-sm text-neutral-900 dark:text-neutral-100">{usd(deal.total_saving)}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-5">
+              <h2 className="mb-3 text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Performance</h2>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">Claims</span>
+                  <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{deal.claim_count ?? 0}</span>
+                </div>
+                {deal.supply_limit ? (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-neutral-600 dark:text-neutral-400">Supply</span>
+                      <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                        {deal.claim_count ?? 0} / {deal.supply_limit}
+                      </span>
+                    </div>
+                    <Progress value={supplyPct} />
+                  </div>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* Confirm modals */}
-      <ConfirmModal
-        open={confirmAction === "deactivate"}
-        onClose={() => setConfirmAction(null)}
-        onConfirm={handleConfirmAction}
-        title="Deactivate Deal"
-        message="This will hide the deal from students. You can reactivate it later."
-        confirmLabel="Deactivate"
-        variant="warning"
-        loading={actionLoading}
-      />
-      <ConfirmModal
-        open={confirmAction === "delete"}
-        onClose={() => setConfirmAction(null)}
-        onConfirm={handleConfirmAction}
-        title="Delete Deal"
-        message="Are you sure you want to delete this deal? This action cannot be undone."
-        confirmLabel="Delete Deal"
-        variant="danger"
-        loading={actionLoading}
-      />
-    </div>
+      {/* deactivate confirm */}
+      <Dialog open={confirmAction === "deactivate"} onOpenChange={(o) => !o && setConfirmAction(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Deactivate deal</DialogTitle>
+            <DialogDescription>This will hide the deal from students. You can reactivate it later.</DialogDescription>
+          </DialogHeader>
+          {actionError && <p className="text-sm text-red-500 dark:text-red-400">{actionError}</p>}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary" disabled={actionLoading}>Cancel</Button>
+            </DialogClose>
+            <Button variant="subtle" onClick={handleConfirmAction} disabled={actionLoading}>
+              {actionLoading && <Loader2 className="size-4 animate-spin" />}
+              Deactivate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* delete confirm */}
+      <Dialog open={confirmAction === "delete"} onOpenChange={(o) => !o && setConfirmAction(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete deal</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this deal? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {actionError && <p className="text-sm text-red-500 dark:text-red-400">{actionError}</p>}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="secondary" disabled={actionLoading}>Cancel</Button>
+            </DialogClose>
+            <Button variant="danger" onClick={handleConfirmAction} disabled={actionLoading}>
+              {actionLoading && <Loader2 className="size-4 animate-spin" />}
+              Delete deal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
