@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Pencil, QrCode, ScanLine, Ticket, Users, Tag, MessagesSquare, ChevronRight,
+  Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
@@ -98,7 +98,6 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Stats and payouts", show: true },
     { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
-    { href: `${base}/sms-blast`, icon: MessagesSquare, title: "SMS blast", subtitle: "Text your audience", show: true },
     { href: `${base}/analytics`, icon: BarChart3, title: "Event analytics", subtitle: "Revenue and check-ins", show: true },
     { href: `${base}/checkins`, icon: CircleCheck, title: "Check-in history", subtitle: "Attendee scan status", show: true },
     { href: `${base}/scanner`, icon: QrCode, title: "Scanner & QR codes", subtitle: "Check-in access", show: true },

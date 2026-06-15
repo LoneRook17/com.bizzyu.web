@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { CalendarDays, Megaphone, MessageSquare } from "lucide-react"
+import { CalendarDays, Megaphone } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { EventListItem } from "@/lib/business/types"
 import { Card } from "@/components/business/v2/ui/card"
@@ -107,11 +107,6 @@ export default function EventsTab({ venueId }: Props) {
                 <Button variant="secondary" size="sm" asChild>
                   <Link href={`/business/events/${e.event_id}/manage/announcements`}>
                     <Megaphone /> Announce
-                  </Link>
-                </Button>
-                <Button variant="secondary" size="sm" asChild>
-                  <Link href={`/business/events/${e.event_id}/manage/sms-blast`}>
-                    <MessageSquare /> SMS blast
                   </Link>
                 </Button>
               </div>
