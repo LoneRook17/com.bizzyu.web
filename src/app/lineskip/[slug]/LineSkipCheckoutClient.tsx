@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 
 
 import { getApiBaseUrl } from "@/lib/api-url"
@@ -171,6 +171,63 @@ export default function LineSkipCheckoutClient({
   // SMS marketing opt-in (default-checked, optional). Sent with the purchase so
   // the backend sets business_followers.sms_enabled. Unchecking doesn't block.
   const [smsOptIn, setSmsOptIn] = useState(true)
+  // Keyboard overlap (px) reported by visualViewport; 0 on desktop / unsupported.
+  // Applied as a translateY on the modal's offset WRAPPER (never the ls-rise panel).
+  const [kbOffset, setKbOffset] = useState(0)
+  // The active step's primary input — focused manually after the entrance settles
+  // (instead of autoFocus, which opened the keyboard mid-animation = the jank).
+  const focusInputRef = useRef<HTMLInputElement | null>(null)
+
+  // ─── Keyboard-aware sheet offset (iOS Safari) ──────────────────────────────
+  // position:fixed is relative to the LAYOUT viewport on iOS, which does NOT
+  // shrink when the keyboard opens — only the VISUAL viewport does. We measure
+  // the overlap and lift the bottom-anchored sheet by exactly that much so the
+  // input stays just above the keyboard. Desktop / unsupported browsers report
+  // 0 and behave exactly as before.
+  useEffect(() => {
+    if (checkoutStep === "idle" || checkoutStep === "processing") {
+      setKbOffset(0)
+      return
+    }
+    if (typeof window === "undefined" || !window.visualViewport) return
+
+    const vv = window.visualViewport
+    let raf = 0
+    const update = () => {
+      // Coalesce the burst of resize/scroll events iOS fires during the keyboard
+      // slide into one write per frame.
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+        // Skip sub-pixel churn — only re-render on a meaningful change.
+        setKbOffset((prev) => (Math.abs(prev - overlap) > 1 ? Math.round(overlap) : prev))
+      })
+    }
+
+    vv.addEventListener("resize", update)
+    vv.addEventListener("scroll", update)
+    update() // initial measure
+
+    return () => {
+      cancelAnimationFrame(raf)
+      vv.removeEventListener("resize", update)
+      vv.removeEventListener("scroll", update)
+    }
+  }, [checkoutStep])
+
+  // Focus the active step's input AFTER the modal has visually settled, so iOS
+  // doesn't open the keyboard while the 0.6s ls-rise entrance is still running.
+  // The phone step (rendered on open) waits out the entrance; later steps reuse
+  // the already-mounted panel, so they focus almost immediately.
+  useEffect(() => {
+    if (checkoutStep === "idle" || checkoutStep === "processing") return
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    const delay = reduce ? 50 : checkoutStep === "phone" ? 650 : 80
+    const t = window.setTimeout(() => focusInputRef.current?.focus(), delay)
+    return () => window.clearTimeout(t)
+  }, [checkoutStep])
 
   // Fetch data if not provided by server
   const fetchData = useCallback(async () => {
@@ -727,8 +784,10 @@ export default function LineSkipCheckoutClient({
         .ls-rise { animation: lsRise 0.6s cubic-bezier(0.21, 0.65, 0.36, 1) both; }
         .ls-hero-img { animation: lsHeroZoom 24s ease-in-out infinite alternate; }
         .ls-blob { animation: lsFloat 14s ease-in-out infinite; }
+        .ls-kb-shift { transition: transform 0.2s ease-out; will-change: transform; }
         @media (prefers-reduced-motion: reduce) {
           .ls-rise, .ls-hero-img, .ls-blob { animation: none; }
+          .ls-kb-shift { transition: none; }
         }
       `}</style>
 
@@ -1089,7 +1148,15 @@ export default function LineSkipCheckoutClient({
       {/* ─── Checkout Modal ─────────────────────────────────────────────────── */}
       {checkoutStep !== "idle" && selectedInstance && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
-          <div className="ls-rise w-full max-w-md rounded-t-3xl border border-[#1e1e2e] bg-[#141420] p-6 sm:m-4 sm:rounded-3xl">
+          {/* Keyboard-offset wrapper — owns the dynamic translateY so it never fights
+              the panel's ls-rise entrance transform. Do NOT move this transform onto
+              the ls-rise panel; a running CSS animation overrides an inline transform
+              and reintroduces the keyboard jank. */}
+          <div
+            className="ls-kb-shift w-full max-w-md sm:m-4"
+            style={{ transform: `translateY(-${kbOffset}px)` }}
+          >
+            <div className="ls-rise w-full rounded-t-3xl border border-[#1e1e2e] bg-[#141420] p-6 sm:rounded-3xl">
             {/* Modal header */}
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-extrabold text-white">
@@ -1140,12 +1207,12 @@ export default function LineSkipCheckoutClient({
                 <div className="flex items-center gap-2 rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 transition-colors focus-within:border-[#D4AF37]/60">
                   <span className="text-sm text-white/40">+1</span>
                   <input
+                    ref={focusInputRef}
                     type="tel"
                     placeholder="(555) 123-4567"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/[^\d]/g, "").slice(0, 10))}
                     className="flex-1 bg-transparent text-sm text-white placeholder-white/30 outline-none"
-                    autoFocus
                   />
                 </div>
 
@@ -1185,12 +1252,12 @@ export default function LineSkipCheckoutClient({
                 </p>
                 <label className="mb-2 block text-sm font-semibold text-white/60">Your Name</label>
                 <input
+                  ref={focusInputRef}
                   type="text"
                   placeholder="Full name"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
                   className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF37]/60"
-                  autoFocus
                 />
 
                 {checkoutError && (
@@ -1230,6 +1297,7 @@ export default function LineSkipCheckoutClient({
                   )}
                 </p>
                 <input
+                  ref={focusInputRef}
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
@@ -1237,7 +1305,6 @@ export default function LineSkipCheckoutClient({
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white placeholder-white/20 outline-none transition-colors focus:border-[#D4AF37]/60"
-                  autoFocus
                 />
 
                 {checkoutError && (
@@ -1276,6 +1343,7 @@ export default function LineSkipCheckoutClient({
                 <p className="text-sm text-white/60">Setting up your payment...</p>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
