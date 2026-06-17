@@ -195,6 +195,12 @@ export default function VenuePageClient({
     deals.length > 0 && `${deals.length} ${deals.length === 1 ? "deal" : "deals"}`,
   ].filter(Boolean) as string[]
 
+  // Lead an events-less venue with its line skips: when there's nothing on the
+  // calendar but line skips exist, hide the empty "Upcoming Events" placeholder
+  // so "Skip the Line" becomes the first section. A venue with neither events
+  // nor line skips still shows the placeholder so the page isn't blank.
+  const showEventsSection = events.length > 0 || line_skips.length === 0
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white font-[family-name:var(--font-fira)]">
       {/* Page-scoped animations (globals.css is intentionally untouched) */}
@@ -321,7 +327,9 @@ export default function VenuePageClient({
           </div>
         </div>
 
-        {/* Upcoming Events */}
+        {/* Upcoming Events (hidden when the venue has no events but does have
+            line skips — see showEventsSection). */}
+        {showEventsSection && (
         <section id="events" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.2s" }}>
           <SectionHeader title="Upcoming Events" count={events.length} />
           {events.length === 0 ? (
@@ -392,6 +400,7 @@ export default function VenuePageClient({
             </div>
           )}
         </section>
+        )}
 
         {/* Line Skips */}
         {line_skips.length > 0 && (
