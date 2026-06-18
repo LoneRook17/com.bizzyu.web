@@ -6,7 +6,7 @@ import { apiClient, ApiError } from "@/lib/business/api-client"
 import { useVenue } from "@/lib/business/venue-context"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { cn } from "@/lib/v2/utils"
-import type { Venue } from "@/lib/business/types"
+import type { Venue, BusinessProfile } from "@/lib/business/types"
 import AddressAutocomplete from "@/components/business/dashboard/AddressAutocomplete"
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle,
@@ -50,6 +50,8 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
   const [error, setError] = useState("")
   const [dragOver, setDragOver] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const [profile, setProfile] = useState<BusinessProfile | null>(null)
+  const [sameAsBusiness, setSameAsBusiness] = useState(false)
 
   // Sync form to venue (or reset for create) whenever opened / venue changes
   useEffect(() => {
@@ -64,7 +66,35 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
     setPhotoPreview(venue?.photo_url ?? "")
     setPhotoError("")
     setError("")
+    setSameAsBusiness(false)
   }, [open, venue])
+
+  // Create mode: load the business profile so we can offer "same as my
+  // business" autofill — most businesses' first venue is their own location.
+  useEffect(() => {
+    if (!open || isEdit || profile) return
+    let cancelled = false
+    apiClient
+      .get<BusinessProfile>("/business/profile")
+      .then((p) => { if (!cancelled) setProfile(p) })
+      .catch(() => {}) // checkbox just won't show if this fails
+    return () => { cancelled = true }
+  }, [open, isEdit, profile])
+
+  const applySameAsBusiness = (checked: boolean) => {
+    setSameAsBusiness(checked)
+    if (checked && profile) {
+      setName(profile.name ?? "")
+      setAddress(profile.address ?? "")
+      setWebsite(profile.website ?? "")
+      setInstagram(profile.instagram ?? "")
+    } else if (!checked) {
+      setName("")
+      setAddress("")
+      setWebsite("")
+      setInstagram("")
+    }
+  }
 
   const handlePhotoSelect = (file: File) => {
     setPhotoError("")
@@ -179,6 +209,23 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {!isEdit && profile && (
+            <label className="flex items-start gap-2.5 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 p-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-colors">
+              <input
+                type="checkbox"
+                checked={sameAsBusiness}
+                onChange={(e) => applySameAsBusiness(e.target.checked)}
+                className="mt-0.5 size-4 rounded border-neutral-300 dark:border-neutral-600 text-[#05EB54] focus:ring-[#05EB54] cursor-pointer"
+              />
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">
+                <span className="font-medium">Same as my business</span>
+                <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  Use {profile.name}&apos;s name, address, and contact info. Uncheck if this venue is somewhere different.
+                </span>
+              </span>
+            </label>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="venue-name">Venue name</Label>
             <Input id="venue-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Downtown Location" />
