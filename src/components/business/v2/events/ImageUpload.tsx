@@ -51,9 +51,11 @@ export function ImageUpload({ value, onChange, aspect = "video", className }: Im
   return (
     <div className={className}>
       {value ? (
-        <div className={cn("relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800", previewClass)}>
+        <div className="relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900">
+          {/* Show the whole flyer (object-contain) at its natural ratio so portrait
+              or landscape art isn't cropped; cap the height so it's not oversized. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="Upload preview" className="h-full w-full object-cover" />
+          <img src={value} alt="Upload preview" className="mx-auto block max-h-[520px] w-auto max-w-full object-contain" />
           <button
             type="button"
             onClick={() => onChange("")}
