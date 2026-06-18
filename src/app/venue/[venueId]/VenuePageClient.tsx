@@ -74,6 +74,14 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 }
 
+/** YYYY-MM-DD in the viewer's local timezone — for "is this happening today?" */
+function localDateKey(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 function formatTime(timeStr: string) {
   const [h, m] = timeStr.split(":")
   const hour = parseInt(h)
@@ -138,6 +146,14 @@ export default function VenuePageClient({
     setIsMobileUA(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
   }, [])
 
+  // "Today" = the viewer's local calendar day. Computed after mount so the
+  // server render (UTC) and the client agree (no hydration mismatch); null
+  // until mounted, which makes the today-highlighting a no-op on first paint.
+  const [todayKey, setTodayKey] = useState<string | null>(null)
+  useEffect(() => {
+    setTodayKey(localDateKey(new Date()))
+  }, [])
+
   // Scroll a shared line skip into view (deep link ?line_skip=<id>).
   useEffect(() => {
     if (highlightLineSkip && lineSkipRef.current) {
@@ -194,6 +210,24 @@ export default function VenuePageClient({
     line_skips.length > 0 && `${line_skips.length} line ${line_skips.length === 1 ? "skip" : "skips"}`,
     deals.length > 0 && `${deals.length} ${deals.length === 1 ? "deal" : "deals"}`,
   ].filter(Boolean) as string[]
+
+  // Anything happening TODAY gets pulled to the top of its section, highlighted,
+  // and announced in a banner. todayKey is null pre-mount, so these are no-ops
+  // on the server render and light up after hydration.
+  const isEventToday = (e: { start_date_time: string }) =>
+    todayKey !== null && localDateKey(new Date(e.start_date_time)) === todayKey
+  const isLsToday = (ls: { date: string }) =>
+    todayKey !== null && ls.date.slice(0, 10) === todayKey
+
+  const orderedEvents = todayKey
+    ? [...events.filter(isEventToday), ...events.filter((e) => !isEventToday(e))]
+    : events
+  const orderedLineSkips = todayKey
+    ? [...line_skips.filter(isLsToday), ...line_skips.filter((ls) => !isLsToday(ls))]
+    : line_skips
+  const todayEvents = todayKey ? events.filter(isEventToday) : []
+  const todayLineSkips = todayKey ? line_skips.filter(isLsToday) : []
+  const hasToday = todayEvents.length > 0 || todayLineSkips.length > 0
 
   // Lead an events-less venue with its line skips: when there's nothing on the
   // calendar but line skips exist, hide the empty "Upcoming Events" placeholder
@@ -327,6 +361,45 @@ export default function VenuePageClient({
           </div>
         </div>
 
+        {/* Happening today — a highlighted callout that pulls today's event(s)
+            and line skip(s) to the very top so they're impossible to miss. */}
+        {hasToday && (
+          <section className="vp-rise mt-10">
+            <div className="rounded-3xl border border-[#05EB54]/50 bg-gradient-to-br from-[#05EB54]/12 via-[#05EB54]/5 to-transparent p-5 sm:p-6">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#05EB54] text-black">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </span>
+                <h2 className="text-lg font-extrabold tracking-tight text-[#05EB54]">Happening today</h2>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {todayEvents.map((e) => (
+                  <a
+                    key={`te-${e.event_id}`}
+                    href="#events"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#05EB54]/40 bg-[#05EB54]/10 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#05EB54]/20"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#05EB54]" />
+                    {e.name}
+                  </a>
+                ))}
+                {todayLineSkips.map((ls) => (
+                  <a
+                    key={`tls-${ls.id}`}
+                    href="#lineskips"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#05EB54]/40 bg-[#05EB54]/10 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#05EB54]/20"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#fbbf24]" />
+                    {ls.line_skip_name}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Upcoming Events (hidden when the venue has no events but does have
             line skips — see showEventsSection). */}
         {showEventsSection && (
@@ -342,15 +415,20 @@ export default function VenuePageClient({
             </div>
           ) : (
             <div className="grid gap-5 md:grid-cols-2">
-              {events.map((event) => {
+              {orderedEvents.map((event) => {
                 const price = event.min_ticket_price !== null ? Number(event.min_ticket_price) : null
+                const today = isEventToday(event)
                 return (
                   // Event checkout lives on the Laravel app, not Vercel (no
                   // event page here yet) — external link, not a Next route.
                   <a
                     key={event.event_id}
                     href={`${checkoutBaseUrl}/checkout/${event.event_id}`}
-                    className="group overflow-hidden rounded-3xl border border-[#1e1e2e] bg-[#141420] transition-all duration-300 hover:-translate-y-1 hover:border-[#05EB54]/60 hover:shadow-[0_24px_60px_-20px_rgba(5,235,84,0.35)]"
+                    className={`group overflow-hidden rounded-3xl border bg-[#141420] transition-all duration-300 ${
+                      today
+                        ? "border-[#05EB54] ring-2 ring-[#05EB54]/40"
+                        : "border-[#1e1e2e] hover:-translate-y-1 hover:border-[#05EB54]/60 hover:shadow-[0_24px_60px_-20px_rgba(5,235,84,0.35)]"
+                    }`}
                   >
                     <div className="relative h-48 w-full overflow-hidden bg-[#0d0d14]">
                       {event.flyer_image_url ? (
@@ -369,6 +447,11 @@ export default function VenuePageClient({
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
                       <DateChip dateStr={event.start_date_time} />
+                      {today && (
+                        <span className="absolute right-3 top-3 z-10 rounded-full bg-[#05EB54] px-3 py-1 text-xs font-black uppercase tracking-wide text-black shadow-lg">
+                          Today
+                        </span>
+                      )}
                     </div>
                     <div className="p-5">
                       <h3 className="text-xl font-extrabold leading-snug text-white">{event.name}</h3>
@@ -404,11 +487,12 @@ export default function VenuePageClient({
 
         {/* Line Skips */}
         {line_skips.length > 0 && (
-          <section className="vp-rise mt-12" style={{ animationDelay: "0.28s" }} ref={lineSkipRef}>
+          <section id="lineskips" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }} ref={lineSkipRef}>
             <SectionHeader title="Skip the Line" count={line_skips.length} />
             <div className="grid gap-5 md:grid-cols-2">
-              {line_skips.map((ls) => {
-                const isHighlighted = highlightLineSkip === String(ls.id)
+              {orderedLineSkips.map((ls) => {
+                const today = isLsToday(ls)
+                const isHighlighted = highlightLineSkip === String(ls.id) || today
                 const available = ls.capacity !== null ? Math.max(0, ls.capacity - ls.tickets_sold) : null
                 const soldOut = ls.capacity !== null && ls.tickets_sold >= ls.capacity
                 const pctSold = ls.capacity ? Math.min(100, Math.round((ls.tickets_sold / ls.capacity) * 100)) : 0
@@ -431,7 +515,12 @@ export default function VenuePageClient({
                         </svg>
                       </span>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-lg font-extrabold text-white">{ls.line_skip_name}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-extrabold text-white">{ls.line_skip_name}</h3>
+                          {today && (
+                            <span className="rounded-full bg-[#05EB54] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-black">Today</span>
+                          )}
+                        </div>
                         <p className="mt-0.5 text-sm font-semibold text-[#fbbf24]">
                           {formatDate(ls.date)} · {formatTime(ls.start_time)} &ndash; {formatTime(ls.end_time)}
                         </p>
