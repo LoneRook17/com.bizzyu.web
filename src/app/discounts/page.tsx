@@ -10,16 +10,16 @@ import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
 import { BUSINESS_FAQ, CONTACT_EMAIL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Post Student Discounts | Bizzy: Free to List, 0% Commission",
+  title: "Post Student Discounts | Bizzy: Free to List, Keep Every Sale",
   description:
-    "Restaurants, cafés, and retail: post a student-only discount and reach thousands of nearby students. Free to list, 0% commission, no POS integration. See exactly how signup and redemption work.",
+    "Restaurants, cafés, and retail: post a student-only discount and reach thousands of nearby students. Free to list, you keep every sale, no POS integration. See exactly how signup and redemption work.",
   alternates: {
     canonical: "https://bizzyu.com/discounts",
   },
   openGraph: {
-    title: "Post Student Discounts | Bizzy: Free to List, 0% Commission",
+    title: "Post Student Discounts | Bizzy: Free to List, Keep Every Sale",
     description:
-      "Create a free account, post a Bizzy-exclusive deal, and students walk in. No fees, no commissions, no POS integration. Live in minutes.",
+      "Reach thousands of local students and build a crowd of regulars. Post a Bizzy-exclusive deal. Free to list, you keep every sale, no POS integration. Live in minutes.",
   },
 };
 
@@ -81,7 +81,7 @@ const DEAL_TYPES = [
 const WHY_LIST = [
   "Reach thousands of students near your campus, for free",
   "Push product during slow hours and quiet days",
-  "0% commission, keep every dollar of every sale",
+  "Keep 100% of every sale, Bizzy never takes a cut",
   "No POS integration, hardware, or coupon codes",
   "A Bizzy-exclusive audience you can't reach on other apps",
   "Cancel anytime, no contracts, no lock-in",
@@ -167,6 +167,38 @@ function StepIcon({ name, className = "" }: { name: string; className?: string }
   return <CheckIcon className={className} />;
 }
 
+/* Reassurance strip under CTAs. Every claim is true: free to list, no cut of
+   sales, no hardware/POS, cancel anytime. Lowers the perceived cost of
+   starting an account for cold visitors arriving from outreach. */
+const REASSURE_POINTS = ["No credit card", "No cut of your sales", "No POS or hardware", "Cancel anytime"];
+
+function ReassureStrip({
+  className = "",
+  align = "left",
+  tone = "muted",
+}: {
+  className?: string;
+  align?: "left" | "center";
+  tone?: "muted" | "light";
+}) {
+  const text = tone === "light" ? "text-white/80" : "text-muted";
+  const dot = tone === "light" ? "text-white/90" : "text-primary";
+  return (
+    <ul
+      className={`flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium ${text} ${
+        align === "center" ? "justify-center" : ""
+      } ${className}`}
+    >
+      {REASSURE_POINTS.map((point) => (
+        <li key={point} className="inline-flex items-center gap-1.5">
+          <CheckIcon className={`w-4 h-4 ${dot}`} />
+          {point}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /* ─── Real app screenshots (device frame baked into each PNG) ─ */
 
 function PhonePhoto({
@@ -198,24 +230,27 @@ export default function DiscountsPage() {
     <>
       {/* ─── 1. Hero ──────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-white">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-light/50 via-white to-white pointer-events-none" />
-        <div className="absolute top-1/4 -right-20 w-[520px] h-[520px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Structured atmosphere: bulletin-board dots + one intentional green
+            glow + a top hairline, instead of the AI-default blur blobs. */}
+        <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(115%_85%_at_12%_-10%,black,transparent_72%)] [-webkit-mask-image:radial-gradient(115%_85%_at_12%_-10%,black,transparent_72%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(70%_55%_at_100%_0%,rgba(5,235,84,0.18),transparent_62%)] pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent pointer-events-none" />
 
         <SectionContainer className="relative !py-16 md:!py-24">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             <div className="lg:col-span-7">
               <AnimatedSection>
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
-                  Post a discount.
+                  Reach local students.
                   <br />
                   <span className="font-display-italic font-normal text-ink">
-                    Reach <span className="marker-underline">local students</span>.
+                    Build local <span className="marker-underline marker-draw">community</span>.
                   </span>
                 </h1>
 
                 <p className="text-lg md:text-xl text-muted mb-9 max-w-xl leading-relaxed">
-                  Set your deal and redemption cap. Bizzy puts it in front of thousands of students near campus.{" "}
-                  <span className="text-ink font-semibold">Free to list. 0% commission.</span>
+                  Thousands of students near campus are looking for their spot. Post a Bizzy-exclusive deal, fill your slow hours, and turn first visits into regulars.{" "}
+                  <span className="text-ink font-semibold">Free to list. You keep every sale.</span>
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -231,14 +266,16 @@ export default function DiscountsPage() {
                   </Link>
                 </div>
 
+                <ReassureStrip className="mt-5" />
+
                 <div className="mt-12 grid grid-cols-3 gap-6 max-w-md">
                   <div>
                     <p className="text-3xl md:text-4xl font-bold text-primary leading-none">$0</p>
                     <p className="text-xs text-muted mt-1.5">To list a deal</p>
                   </div>
                   <div>
-                    <p className="text-3xl md:text-4xl font-bold text-ink leading-none">0%</p>
-                    <p className="text-xs text-muted mt-1.5">Commission</p>
+                    <p className="text-3xl md:text-4xl font-bold text-ink leading-none">100%</p>
+                    <p className="text-xs text-muted mt-1.5">Yours to keep</p>
                   </div>
                   <div>
                     <p className="text-3xl md:text-4xl font-bold text-ink leading-none">25K+</p>
@@ -372,10 +409,11 @@ export default function DiscountsPage() {
           </AnimatedSection>
 
           <AnimatedSection delay={0.3}>
-            <div className="text-center mt-12">
+            <div className="flex flex-col items-center mt-12">
               <Button href="/business/signup" variant="primary" size="lg">
                 Get Started Free
               </Button>
+              <ReassureStrip className="mt-5" align="center" />
             </div>
           </AnimatedSection>
         </SectionContainer>
@@ -414,16 +452,16 @@ export default function DiscountsPage() {
       <SectionContainer className="!py-20 md:!py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <AnimatedSection>
-            <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">Why restaurants &amp; retail list</p>
+            <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">More than a discount</p>
             <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
-              The crowd you want.
+              Become their spot.
               <br />
               <span className="font-display-italic font-normal text-muted">
-                Walking through the <span className="marker-underline">door</span>.
+                Not a one-time <span className="marker-underline">deal</span>.
               </span>
             </h2>
             <p className="text-lg text-muted leading-relaxed max-w-xl">
-              Students near campus are already on Bizzy hunting for somewhere to eat, drink, and shop. A discount puts you at the top of that list, without paying a cut of every sale.
+              Students near campus are already on Bizzy hunting for somewhere to eat, drink, and shop. A Bizzy-exclusive deal gets them through the door, and the local following you build keeps them coming back, without paying a cut of every sale.
             </p>
           </AnimatedSection>
 
@@ -476,7 +514,7 @@ export default function DiscountsPage() {
               Post your first deal today.
             </h2>
             <p className="text-white/90 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
-              Free to list, 0% commission, live in minutes. Create your account and have a deal in front of students this week.
+              Free to list, you keep every sale, live in minutes. Create your account, post your first deal, and start turning local students into regulars this week.
             </p>
             <Button href="/business/signup" variant="white" size="lg">
               Get Started Free

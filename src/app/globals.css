@@ -100,7 +100,35 @@ body {
   );
   background-repeat: no-repeat;
   background-size: 100% 100%;
+  background-position: left center;
   padding: 0 0.08em;
+}
+
+/* Highlighter that strokes itself in on load, like someone marking the
+   word by hand. The one kinetic signature moment in the hero. Pair with
+   .marker-underline. Delay lets the headline fade-up settle first. */
+@keyframes marker-stroke {
+  from { background-size: 0% 100%; }
+  to   { background-size: 100% 100%; }
+}
+.marker-draw {
+  background-size: 0% 100%;
+  animation: marker-stroke 0.72s cubic-bezier(0.22, 1, 0.36, 1) 0.45s forwards;
+}
+
+/* Bulletin-board dot grid. Quiet structural texture for hero/section
+   backgrounds, the antidote to flat fills and the AI-default blur blob.
+   Mask it with [mask-image:...] so it fades instead of tiling edge to edge. */
+.bg-dot-grid {
+  background-image: radial-gradient(circle at center, rgba(3, 3, 3, 0.055) 1.1px, transparent 1.4px);
+  background-size: 22px 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker-draw {
+    background-size: 100% 100%;
+    animation: none;
+  }
 }
 
 /* Diagonal slash marker, for "do not" style strikethroughs or accents. */
