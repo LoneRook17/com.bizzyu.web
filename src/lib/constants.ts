@@ -86,7 +86,7 @@ export const BUSINESS_FAQ = [
   {
     question: "Is it really free for businesses?",
     answer:
-      "Yes. No platform fees, no commissions, no percentage of sales, no contracts. We don't take a cut from your sales or deal redemptions.",
+      "Yes. No platform fees, no commissions, no percentage of sales. We don't take a cut from your sales or deal redemptions.",
   },
   {
     question: "What's the catch?",

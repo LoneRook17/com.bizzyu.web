@@ -3,7 +3,7 @@ import AnimatedSection from "./AnimatedSection";
 const POINTS = [
   "No platform fees, no commissions on deal redemptions",
   "No POS integration or technical setup required",
-  "No contracts. Cancel anytime.",
+  "Cancel anytime.",
   "Takes less than 5 minutes to get started",
   "Staff just taps one button to verify deals",
 ];

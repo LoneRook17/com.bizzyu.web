@@ -84,7 +84,7 @@ const WHY_LIST = [
   "Keep 100% of every sale, Bizzy never takes a cut",
   "No POS integration, hardware, or coupon codes",
   "A Bizzy-exclusive audience you can't reach on other apps",
-  "Cancel anytime, no contracts, no lock-in",
+  "Cancel anytime, no lock-in",
 ];
 
 function CheckIcon({ className = "" }: { className?: string }) {

@@ -451,7 +451,7 @@ export default function Home() {
                 <div className="space-y-3 mb-8">
                   {[
                     "0% platform fees on deals and tickets",
-                    "No POS integration, no contracts",
+                    "No POS integration",
                     "Setup in under 5 minutes",
                     "Reach 25,000+ verified students",
                   ].map((point) => (
