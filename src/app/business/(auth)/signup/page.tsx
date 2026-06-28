@@ -148,7 +148,7 @@ export default function SignupPage() {
         website_url: honeypot,
       })
 
-      // Session cookies are set by the signup response — straight into the trial dashboard
+      // Session cookies are set by the signup response - straight into the trial dashboard
       router.push("/business")
     } catch (err) {
       if (err instanceof ApiError) {
@@ -300,7 +300,7 @@ export default function SignupPage() {
           error={errors.confirm_password}
         />
 
-        {/* Honeypot — humans never see this, bots fill every field */}
+        {/* Honeypot - humans never see this, bots fill every field */}
         <input
           type="text"
           name="website_url"

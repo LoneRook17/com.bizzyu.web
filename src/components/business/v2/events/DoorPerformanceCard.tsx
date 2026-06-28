@@ -18,7 +18,7 @@ function fmtTime(iso: string | null) {
 }
 
 function staffLabel(row: PerScannerRow) {
-  // Scanner-link rows have no user — the name IS the link's label.
+  // Scanner-link rows have no user - the name IS the link's label.
   if (row.staff_name) return row.staff_name
   if (row.staff_user_id == null) return "Unknown"
   return "Removed staff"

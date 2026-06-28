@@ -7,9 +7,9 @@ import type { DashboardMode } from "@/lib/business/types"
  * Single source of truth for what each dashboard mode shows.
  *
  * Mode semantics:
- * - 'deals'  — deals only (the majority of businesses). Events + Line skips hidden.
- * - 'events' — events & tickets. Deals hidden.
- * - 'hybrid' — everything (the original dashboard).
+ * - 'deals'  - deals only (the majority of businesses). Events + Line skips hidden.
+ * - 'events' - events & tickets. Deals hidden.
+ * - 'hybrid' - everything (the original dashboard).
  *
  * Hidden ≠ deleted: routes still render if URL-typed; pages can use
  * `useDashboardMode()` to show a "turn this on in Settings" empty state.

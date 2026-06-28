@@ -9,17 +9,17 @@ import FollowingTab from "@/components/business/dashboard/marketing/FollowingTab
 type TabKey = "events" | "followers"
 
 /**
- * Marketing dashboard — two send-paths surface to owners and managers.
+ * Marketing dashboard - two send-paths surface to owners and managers.
  *
- *   • Events    — pick one event, blast that event's audience via the
+ *   • Events    - pick one event, blast that event's audience via the
  *                 existing per-event composers under /business/events/[id]/manage/.
- *   • Followers — blast everyone who follows the selected venue (May 2026
+ *   • Followers - blast everyone who follows the selected venue (May 2026
  *                 venue-scope update). Multi-venue businesses use the global
  *                 venue switcher in the sidebar to scope; "All Venues"
  *                 rolls up unique followers across every venue.
  *
  * The venue scope comes from the global `useVenue()` context (the
- * sidebar's venue switcher), NOT a page-local dropdown — keeps the
+ * sidebar's venue switcher), NOT a page-local dropdown - keeps the
  * Marketing tab consistent with Line Skips / Team / etc.
  */
 export default function MarketingPage() {

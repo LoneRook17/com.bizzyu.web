@@ -1,7 +1,7 @@
 import ScannerClient from "./ScannerClient"
 
 export const metadata = {
-  title: "Scanner — Bizzy Business",
+  title: "Scanner: Bizzy Business",
   description: "Batch QR scanner for event check-ins",
 }
 

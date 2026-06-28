@@ -1285,7 +1285,7 @@ export default function HelpPage() {
           ))}
         </div>
 
-        {/* Table of contents — desktop sticky sidebar */}
+        {/* Table of contents - desktop sticky sidebar */}
         <div className="hidden lg:block w-56 flex-shrink-0">
           <div className="sticky top-6">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">On this page</h3>

@@ -70,7 +70,7 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
   }, [open, venue])
 
   // Create mode: load the business profile so we can offer "same as my
-  // business" autofill — most businesses' first venue is their own location.
+  // business" autofill - most businesses' first venue is their own location.
   useEffect(() => {
     if (!open || isEdit || profile) return
     let cancelled = false

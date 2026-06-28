@@ -116,7 +116,7 @@ export const BUSINESS_FAQ = [
   {
     question: "Can I change or remove my deals after I list?",
     answer:
-      "Yes. Manage everything yourself from the Deals section of your business dashboard — edit a deal, pause it, or take it down anytime, and the change goes live right away.",
+      "Yes. Manage everything yourself from the Deals section of your business dashboard, edit a deal, pause it, or take it down anytime, and the change goes live right away.",
   },
   {
     question: "How will I know if my deal is working?",
@@ -126,6 +126,6 @@ export const BUSINESS_FAQ = [
   {
     question: "How do I get started?",
     answer:
-      "Create your free account and post your first deal right from your dashboard — about 5 minutes, no call needed. Just hit Get Started Free to sign up.",
+      "Create your free account and post your first deal right from your dashboard, about 5 minutes, no call needed. Just hit Get Started Free to sign up.",
   },
 ];

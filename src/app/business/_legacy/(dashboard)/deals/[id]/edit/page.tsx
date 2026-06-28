@@ -22,7 +22,7 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
     async function fetchDeal() {
       try {
         const deal = await apiClient.get<DealListItem>(`/business/deals/${id}`)
-        // Year-2099 expirations are the "no expiration" sentinel — don't surface
+        // Year-2099 expirations are the "no expiration" sentinel - don't surface
         // that in the input; show blank instead so the field reads as optional.
         const expiredRaw = toDateInput(deal.expired_date)
         const expiredForForm = expiredRaw.startsWith("2099-") ? "" : expiredRaw

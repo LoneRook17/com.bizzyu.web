@@ -21,7 +21,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Legacy: the redesigned dashboard used to live under /business/v2. It is now
-  // the default at /business — permanently redirect old links/bookmarks/QRs.
+  // the default at /business - permanently redirect old links/bookmarks/QRs.
   if (pathname === "/business/v2" || pathname.startsWith("/business/v2/")) {
     const url = request.nextUrl.clone()
     url.pathname = pathname.replace("/business/v2", "/business") || "/business"

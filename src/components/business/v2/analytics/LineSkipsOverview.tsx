@@ -56,7 +56,7 @@ function InstanceCard({ instance }: { instance: LineSkipOverviewInstance }) {
             <Badge variant={b.variant} size="sm">{b.label}</Badge>
           </div>
           <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-            {formatDate(instance.date)} · {formatTime(instance.start_time)} – {formatTime(instance.end_time)}
+            {formatDate(instance.date)} · {formatTime(instance.start_time)} - {formatTime(instance.end_time)}
           </p>
         </div>
 

@@ -22,7 +22,7 @@ export default function EventPromotersPage({ params }: { params: Promise<{ id: s
       setCopiedId(p.tracking_link_id)
       setTimeout(() => setCopiedId((cur) => (cur === p.tracking_link_id ? null : cur)), 1500)
     } catch {
-      // Clipboard blocked — leave the URL visible so user can copy manually.
+      // Clipboard blocked - leave the URL visible so user can copy manually.
     }
   }
 
@@ -64,7 +64,7 @@ export default function EventPromotersPage({ params }: { params: Promise<{ id: s
         </div>
       ) : (
         <div className="space-y-4">
-          {/* "Going to promoters" tile — explicit copy that this is already
+          {/* "Going to promoters" tile - explicit copy that this is already
               deducted from gross, so the owner doesn't pay it directly. */}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <div className="flex items-center gap-2 mb-2">
@@ -75,7 +75,7 @@ export default function EventPromotersPage({ params }: { params: Promise<{ id: s
             </div>
             <p className="text-2xl font-bold text-ink mb-1">{formatCurrency(totalCommissionCents)}</p>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Already deducted from your gross — you don&apos;t pay this separately.
+              Already deducted from your gross. You don&apos;t pay this separately.
               Your Stripe take-home is what&apos;s left after this.
             </p>
           </div>

@@ -200,7 +200,7 @@ export default function LineSkipSuccessClient({
             </div>
             <div className="my-4 border-t border-dashed border-white/15" />
             <p className="text-center text-xs text-white/40">
-              Show your QR code at the door — cover included.
+              Show your QR code at the door. Cover included.
             </p>
           </div>
         </div>
@@ -246,7 +246,7 @@ function AppleWalletLineSkipButton({
   if (!show || tickets.length === 0) return null
 
   // Single anchor points at the `.pkpasses` bundle so iOS Safari surfaces one
-  // PassKit sheet with every ticket stacked — mirrors the Flutter app's
+  // PassKit sheet with every ticket stacked - mirrors the Flutter app's
   // `apple_passkit.addPasses()` flow used by `installLineSkipTicketPasses`.
   const label = `Add ${tickets.length > 1 ? `${tickets.length} ` : ""}to Apple Wallet`
   return (

@@ -11,7 +11,7 @@ interface ImageUploadProps {
   className?: string
 }
 
-/** v2 image uploader — drag/drop or click, POSTs to /business/upload/image. */
+/** v2 image uploader - drag/drop or click, POSTs to /business/upload/image. */
 export default function ImageUpload({ value, onChange, className }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")

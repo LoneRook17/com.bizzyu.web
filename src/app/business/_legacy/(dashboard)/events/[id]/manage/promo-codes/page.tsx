@@ -253,7 +253,7 @@ export default function PromoCodesPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* Universal (venue) promo codes — read-only here; managed per-venue */}
+      {/* Universal (venue) promo codes - read-only here; managed per-venue */}
       {universalCodes.length > 0 && (
         <div className="mt-8">
           <div className="flex items-center justify-between mb-2">

@@ -60,7 +60,7 @@ export default function V2HomePage() {
   const { config } = useDashboardMode()
 
   // The setup checklist owns Home until the business is BOTH approved and has a
-  // venue — a venue is the hard requirement for being visible to students.
+  // venue - a venue is the hard requirement for being visible to students.
   const needsSetup = isPending || (!venuesLoading && venues.length === 0)
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
@@ -139,7 +139,7 @@ export default function V2HomePage() {
         }
       />
 
-      {/* metric tiles — filtered by dashboard mode */}
+      {/* metric tiles - filtered by dashboard mode */}
       <div className={cn("grid grid-cols-2 gap-4", config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
         {loading ? (
           [0, 1, 2, 3].slice(0, config.showDeals && config.showEvents ? 4 : 3).map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
@@ -191,7 +191,7 @@ export default function V2HomePage() {
         </Card>
       )}
 
-      {/* bento — first card follows the dashboard mode */}
+      {/* bento - first card follows the dashboard mode */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {config.showEvents ? (
           <Card className="overflow-hidden">

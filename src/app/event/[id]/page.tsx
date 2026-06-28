@@ -25,7 +25,7 @@ interface PageProps {
 
 // Event ticket checkout lives on the Laravel app at bizzy-deals.com.
 // /checkout/:id on this Next.js app is the line-skip-only flow.
-// See .env.example — CHECKOUT_REDIRECT_BASE_URL is the canonical env name.
+// See .env.example - CHECKOUT_REDIRECT_BASE_URL is the canonical env name.
 // Dev: http://3.80.143.224  |  Prod: https://bizzy-deals.com
 const LARAVEL_CHECKOUT_BASE_URL =
   process.env.CHECKOUT_REDIRECT_BASE_URL ||

@@ -83,7 +83,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
         setTicket(data.ticket_info)
       }
     } catch {
-      setError("Network error — please try again")
+      setError("Network error, please try again")
       setOverlay(null)
     } finally {
       setRedeeming(false)

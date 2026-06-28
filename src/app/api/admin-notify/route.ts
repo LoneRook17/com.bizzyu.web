@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const { error: emailError } = await getResend().emails.send({
       from: "Bizzy <support@no-reply.bizzyu.com>",
       to: ADMIN_RECIPIENTS,
-      subject: `New ${label}: ${title}${business ? ` — ${business}` : ""}`,
+      subject: `New ${label}: ${title}${business ? ` - ${business}` : ""}`,
       html: `
         <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #05EB54, #10b981); padding: 24px; border-radius: 12px 12px 0 0;">

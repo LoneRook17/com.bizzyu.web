@@ -87,7 +87,7 @@ export function CancelEventModal({ open, onOpenChange, eventId, eventName, onCan
           {!success && !previewLoading && (
             <DialogDescription>
               {hasPaidOrders
-                ? "This event has paid sales — cancelling needs admin approval and refunds all ticket holders."
+                ? "This event has paid sales. Cancelling needs admin approval and refunds all ticket holders."
                 : "This event has no paid ticket sales. It will be cancelled immediately."}
             </DialogDescription>
           )}

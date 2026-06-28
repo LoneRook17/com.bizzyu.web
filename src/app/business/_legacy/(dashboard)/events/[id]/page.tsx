@@ -180,7 +180,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column — details */}
+        {/* Left column - details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Flyer */}
           {event.flyer_image_url && (
@@ -237,7 +237,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
 
-        {/* Right column — meta + stats */}
+        {/* Right column - meta + stats */}
         <div className="space-y-4">
           {/* Date & Venue */}
           <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
@@ -245,7 +245,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-xs text-gray-500 uppercase tracking-wide">Date</p>
               <p className="text-sm text-ink">{formatDate(event.start_date_time)}</p>
               <p className="text-xs text-gray-500">
-                {formatTime(event.start_date_time)} – {formatTime(event.end_date_time)}
+                {formatTime(event.start_date_time)} - {formatTime(event.end_date_time)}
               </p>
             </div>
             <div>

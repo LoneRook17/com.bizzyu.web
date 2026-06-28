@@ -25,9 +25,9 @@ function ValidTimeInfo() {
       {open && (
         <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-gray-200 bg-white p-3 text-[11px] leading-relaxed text-gray-600 shadow-lg">
           <strong className="mb-1 block text-gray-800">Redeemable / scan window (optional)</strong>
-          Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be <strong>bought beforehand</strong> — sales just <strong>close when the window ends</strong>.
+          Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be <strong>bought beforehand</strong>. Sales just <strong>close when the window ends</strong>.
           <span className="mt-2 block text-gray-500">
-            <strong>Example:</strong> For a &ldquo;Before 1 AM&rdquo; ticket, set <strong>Valid until</strong> to 1:00 AM — people can buy any time before then, and it scans in up until 1:00 AM. Leave both blank for no limit.
+            <strong>Example:</strong> For a &ldquo;Before 1 AM&rdquo; ticket, set <strong>Valid until</strong> to 1:00 AM. People can buy any time before then, and it scans in up until 1:00 AM. Leave both blank for no limit.
           </span>
         </span>
       )}
@@ -151,7 +151,7 @@ export default function TicketTierForm({ tiers, onChange }: TicketTierFormProps)
               </div>
             </div>
             <p className="mt-1.5 text-[11px] leading-relaxed text-gray-500">
-              When this ticket can be scanned at the door. It can still be bought beforehand — sales just close when the window ends. Leave blank for no limit.
+              When this ticket can be scanned at the door. It can still be bought beforehand. Sales just close when the window ends. Leave blank for no limit.
             </p>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">

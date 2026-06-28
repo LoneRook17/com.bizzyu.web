@@ -175,7 +175,7 @@ export default function LineSkipsPage() {
             onChanged={fetchProgram}
           />
 
-          {/* Performance — below the calendar */}
+          {/* Performance - below the calendar */}
           {program && canViewAnalytics && analytics && (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

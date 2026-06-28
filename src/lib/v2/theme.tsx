@@ -76,7 +76,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       window.localStorage.setItem(STORAGE_KEY, next)
     } catch {
-      // Storage unavailable (private mode etc.) — theme still applies for the session.
+      // Storage unavailable (private mode etc.) - theme still applies for the session.
     }
   }, [])
 

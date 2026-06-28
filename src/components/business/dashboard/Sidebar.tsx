@@ -217,7 +217,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Help link — always visible */}
+        {/* Help link - always visible */}
         <div className="px-3 pb-1">
           <div onClick={onClose}>
             <SidebarLink

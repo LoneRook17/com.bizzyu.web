@@ -96,7 +96,7 @@ export default function ComposeSmsBlastPage({ params }: { params: Promise<{ id: 
         <span>{message.length}/{MAX_LEN}</span>
         {containsStop && (
           <span className="text-red-500">
-            Remove the word &quot;STOP&quot; — opt-out instruction is appended automatically.
+            Remove the word &quot;STOP&quot;. The opt-out instruction is appended automatically.
           </span>
         )}
       </div>
@@ -135,7 +135,7 @@ export default function ComposeSmsBlastPage({ params }: { params: Promise<{ id: 
             <h2 className="text-lg font-bold text-ink mb-2">Confirm send</h2>
             <p className="text-sm text-gray-700">
               Sending to {recipientCount ?? "?"} ticket holder{recipientCount === 1 ? "" : "s"} with SMS opted-in.
-              Free during the May 2026 update — future blasts will be billed per Twilio segment cost.
+              Free during the May 2026 update. Future blasts will be billed per Twilio segment cost.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button

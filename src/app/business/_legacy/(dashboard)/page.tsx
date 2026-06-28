@@ -57,7 +57,7 @@ function formatActivityTime(raw: string): string {
     const hours = Math.floor(diffSec / 3600)
     return `${hours} hour${hours === 1 ? "" : "s"} ago`
   }
-  // Absolute for older — viewer's local timezone.
+  // Absolute for older - viewer's local timezone.
   return date.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
@@ -234,7 +234,7 @@ export default function DashboardHomePage() {
 
             return (
               <>
-                {/* Summary cards — only show event-revenue summary if business is using events */}
+                {/* Summary cards - only show event-revenue summary if business is using events */}
                 {hasEvents && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <StatCard label="Total Events" value={summary?.total_events ?? 0} />
@@ -243,7 +243,7 @@ export default function DashboardHomePage() {
                   </div>
                 )}
 
-                {/* Quick stats — order persona-aware; hide event tiles for deals-only businesses */}
+                {/* Quick stats - order persona-aware; hide event tiles for deals-only businesses */}
                 <div className={`grid gap-4 mb-6 ${hasEvents ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
                   <QuickStatCard label="Active Deals" value={quickStats?.active_deals_count ?? 0} />
                   <QuickStatCard label="Claims This Week" value={quickStats?.claims_this_week ?? 0} />

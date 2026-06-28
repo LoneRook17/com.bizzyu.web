@@ -18,7 +18,7 @@ interface Props {
   open: boolean
   onClose: () => void
   channel: BlastChannel
-  /** Either user_ids OR filters — NOT both. */
+  /** Either user_ids OR filters - NOT both. */
   audience: BlastAudienceBody
   /**
    * Optional human-readable summary of the audience (e.g. "5 selected" or
@@ -146,7 +146,7 @@ export default function BlastComposerModal({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               placeholder={
                 channel === "sms"
-                  ? "Hey! New event drop this weekend — link in bio."
+                  ? "Hey! New event drop this weekend, link in bio."
                   : "Tap to see what's new at our spot."
               }
             />

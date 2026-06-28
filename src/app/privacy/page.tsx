@@ -584,7 +584,7 @@ export default function PrivacyPage() {
               </tr>
               <tr className="bg-gray-50">
                 <td className="border border-gray-300 px-4 py-3">Financial information for Promoter payouts (taxpayer ID, payout account)</td>
-                <td className="border border-gray-300 px-4 py-3">Yes — Promoters only</td>
+                <td className="border border-gray-300 px-4 py-3">Yes, Promoters only</td>
                 <td className="border border-gray-300 px-4 py-3">No</td>
                 <td className="border border-gray-300 px-4 py-3">No</td>
               </tr>

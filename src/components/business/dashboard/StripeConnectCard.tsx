@@ -50,7 +50,7 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
     <div className="rounded-xl border border-gray-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-ink mb-1">Business Stripe Connect</h3>
       <p className="text-xs text-gray-500 mb-3">
-        Ticket revenue lands here. Promoter commission (if anyone on your team also promotes events) pays to a separate personal Stripe — not this account.
+        Ticket revenue lands here. Promoter commission (if anyone on your team also promotes events) pays to a separate personal Stripe, not this account.
       </p>
 
       {onboarded ? (
@@ -118,7 +118,7 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
 }
 
 /**
- * Stripe return banner — shown when user returns from Stripe onboarding.
+ * Stripe return banner - shown when user returns from Stripe onboarding.
  * Verifies onboarding status and shows result.
  */
 export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {

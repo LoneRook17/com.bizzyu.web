@@ -66,7 +66,7 @@ export default function SettingsPage() {
     }
   }
 
-  // Promoter — no access
+  // Promoter - no access
   if (role === "promoter") {
     return (
       <div>

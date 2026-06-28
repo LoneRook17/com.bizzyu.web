@@ -160,7 +160,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
                 </Button>
               )}
               {isPastEvent && event.status !== "cancelled" && (
-                <p className="text-xs text-neutral-400 dark:text-neutral-500">Cannot cancel — event has already ended.</p>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500">Cannot cancel. Event has already ended.</p>
               )}
             </div>
           </div>

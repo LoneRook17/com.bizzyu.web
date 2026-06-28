@@ -29,7 +29,7 @@ interface Props {
   open: boolean
   onClose: () => void
   channel: BlastChannel
-  /** Either user_ids OR filters — NOT both. */
+  /** Either user_ids OR filters - NOT both. */
   audience: BlastAudienceBody
   /** Human-readable summary of who's being targeted. */
   audienceLabel?: string
@@ -122,7 +122,7 @@ export default function BlastComposer({ open, onClose, channel, audience, audien
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={5}
-            placeholder={channel === "sms" ? "Hey! New event drop this weekend — link in bio." : "Tap to see what's new at our spot."}
+            placeholder={channel === "sms" ? "Hey! New event drop this weekend, link in bio." : "Tap to see what's new at our spot."}
           />
           <div className="mt-1.5 flex items-center justify-between text-xs">
             <span className={cn(overLimit ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400")}>

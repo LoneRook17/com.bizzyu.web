@@ -33,7 +33,7 @@ interface EventFormProps {
 
 // promotion_commission_value is stored as basis points (percent) or cents (fixed).
 // The form-side state mirrors it as a string so users type "10" for 10% or
-// "5.00" for $5 — kept untouched while editing, only converted on submit.
+// "5.00" for $5 - kept untouched while editing, only converted on submit.
 function commissionValueToInput(
   type: 'percent' | 'fixed' | undefined,
   storedValue: number | null | undefined
@@ -296,7 +296,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         }))
       }
 
-      // Promoter Program — only send fields when promotion is enabled.
+      // Promoter Program - only send fields when promotion is enabled.
       // When toggled off, send promotion_enabled: false so the server clears
       // any prior commission_type/value.
       if (form.promotion_enabled) {
@@ -317,7 +317,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           "/business/events",
           payload
         )
-        // Best-effort admin notification — never block redirect on failure
+        // Best-effort admin notification - never block redirect on failure
         void fetch("/api/admin-notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -421,7 +421,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
                     disabled={ticketedDisabled}
                     title={ticketedDisabled ? "Connect Stripe to enable" : undefined}
                   >
-                    {t}{ticketedDisabled ? " — Connect Stripe to enable" : ""}
+                    {t}{ticketedDisabled ? ": Connect Stripe to enable" : ""}
                   </option>
                 )
               })}

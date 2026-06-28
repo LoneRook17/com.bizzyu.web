@@ -301,7 +301,7 @@ export default function ManageEventPage({ params }: { params: Promise<{ id: stri
               </button>
             )}
             {isPastEvent && event.status !== "cancelled" && (
-              <p className="text-xs text-gray-400 py-2">Cannot cancel — event has already ended</p>
+              <p className="text-xs text-gray-400 py-2">Cannot cancel, event has already ended</p>
             )}
           </div>
         </div>

@@ -57,7 +57,7 @@ function EventDetail({ data }: { data: EventAnalytics }) {
       <Card className="p-5">
         <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Revenue</h4>
         <p className="text-2xl font-semibold text-green-600 dark:text-green-400">{usd(data.revenue?.revenue ?? 0)}</p>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Your take-home — matches Stripe payout.</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Your take-home, matches Stripe payout.</p>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

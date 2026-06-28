@@ -8,7 +8,7 @@ import { Button } from "@/components/business/v2/ui/button"
 
 interface StripeConnectCardProps {
   onboarded: boolean
-  /** Stored Stripe account is no longer valid (deauthorized/deleted) — prompt a reconnect. */
+  /** Stored Stripe account is no longer valid (deauthorized/deleted) - prompt a reconnect. */
   reconnectRequired?: boolean
   onOnboardingComplete?: () => void
 }
@@ -36,7 +36,7 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
       <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Business Stripe Connect</h3>
       <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
         Ticket revenue lands here. Promoter commission (if anyone on your team also promotes events) pays to a
-        separate personal Stripe — not this account.
+        separate personal Stripe, not this account.
       </p>
 
       {onboarded ? (
@@ -70,7 +70,7 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
             </p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
               {reconnectRequired
-                ? "Your business Stripe account is no longer valid — it may have been disconnected or deleted. Reconnect to keep accepting ticket payments."
+                ? "Your business Stripe account is no longer valid. It may have been disconnected or deleted. Reconnect to keep accepting ticket payments."
                 : "Connecting your business Stripe account is required to create paid events. Ticket payments will pay into this business account."}
             </p>
             {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}

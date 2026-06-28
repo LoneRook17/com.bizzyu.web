@@ -59,13 +59,13 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "p", text: "Bizzy helps bars, clubs, restaurants, and venues sell tickets, offer deals, and manage line skips to college students. It's your all-in-one tool for reaching students on campus." },
           { kind: "p", text: "From this dashboard you can:" },
           { kind: "ul", items: [
-            "Events — create events, sell tickets, and track who shows up",
-            "Line skips — let customers pay to skip the line on busy nights",
-            "Deals — post special offers that drive foot traffic",
-            "Analytics — see tickets sold, revenue, and top-performing deals",
-            "Team — invite staff, managers, and promoters",
-            "Settings — manage venues, connect Stripe, update your info",
-            "Scanner — scan QR-code tickets and line skips at the door",
+            "Events: create events, sell tickets, and track who shows up",
+            "Line skips: let customers pay to skip the line on busy nights",
+            "Deals: post special offers that drive foot traffic",
+            "Analytics: see tickets sold, revenue, and top-performing deals",
+            "Team: invite staff, managers, and promoters",
+            "Settings: manage venues, connect Stripe, update your info",
+            "Scanner: scan QR-code tickets and line skips at the door",
           ] },
         ],
       },
@@ -88,7 +88,7 @@ export const HELP_SECTIONS: HelpSection[] = [
             "The Bizzy team reviews your information",
             "Once approved, you get full access to create events, deals, and line skips",
           ] },
-          { kind: "p", text: "Approval usually takes 1–2 business days. While you wait you can still log in, explore the dashboard, and set up your venue." },
+          { kind: "p", text: "Approval usually takes 1-2 business days. While you wait you can still log in, explore the dashboard, and set up your venue." },
         ],
       },
       {
@@ -100,10 +100,10 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "ol", items: [
             "Go to Settings in the sidebar",
             "Find the Stripe Connect section and click \"Set up business Stripe\"",
-            "Follow Stripe's wizard — they'll ask for your business details, bank account, and a photo ID for verification",
+            "Follow Stripe's wizard, they'll ask for your business details, bank account, and a photo ID for verification",
             "Once finished, you're brought back to the Bizzy dashboard",
           ] },
-          { kind: "note", text: "After each sale, money typically arrives in your bank account within 2–3 business days." },
+          { kind: "note", text: "After each sale, money typically arrives in your bank account within 2-3 business days." },
         ],
       },
       {
@@ -130,7 +130,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "what-is-venue",
         title: "What is a venue?",
         blocks: [
-          { kind: "p", text: "A venue is a physical location — your bar, club, restaurant, or any place you host events or offer deals." },
+          { kind: "p", text: "A venue is a physical location: your bar, club, restaurant, or any place you host events or offer deals." },
           { kind: "ul", items: [
             "Your business can have multiple venues",
             "Every event, deal, and line skip is attached to a specific venue",
@@ -145,10 +145,10 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "p", text: "When you first log in after approval, you'll add your first venue:" },
           { kind: "ol", items: [
-            "Venue name — the name of your bar, club, or restaurant",
-            "Address — how customers find you",
-            "Description — what kind of place it is and the vibe",
-            "Photo — shows in the app, so make it a good one",
+            "Venue name: the name of your bar, club, or restaurant",
+            "Address: how customers find you",
+            "Description: what kind of place it is and the vibe",
+            "Photo: shows in the app, so make it a good one",
             "Website and Instagram (optional)",
           ] },
         ],
@@ -173,7 +173,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "what-are-events",
         title: "What are events?",
         blocks: [
-          { kind: "p", text: "Events are one-time happenings at your venue — concerts, DJ nights, watch parties, themed nights." },
+          { kind: "p", text: "Events are one-time happenings at your venue: concerts, DJ nights, watch parties, themed nights." },
           { kind: "ul", items: [
             "Sell tickets for paid events or allow free RSVPs",
             "Customers buy tickets right from their phone in the Bizzy app",
@@ -201,12 +201,12 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "p", text: "You can have multiple ticket types for one event (e.g. General Admission $10, VIP $25). For each type set:" },
           { kind: "ul", items: [
-            "Name — e.g. General Admission, VIP, Early Bird",
-            "Price — set to $0 for free tickets",
-            "Quantity — leave blank for no limit",
-            "Max per person — the most one person can buy at once",
+            "Name: e.g. General Admission, VIP, Early Bird",
+            "Price: set to $0 for free tickets",
+            "Quantity: leave blank for no limit",
+            "Max per person: the most one person can buy at once",
           ] },
-          { kind: "note", text: "A small service fee is added on top of your ticket price and paid by the customer — you receive the full amount you set." },
+          { kind: "note", text: "A small service fee is added on top of your ticket price and paid by the customer. You receive the full amount you set." },
         ],
       },
       {
@@ -215,8 +215,8 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "p", text: "Open any event and click \"Manage\" to:" },
           { kind: "ul", items: [
-            "View analytics — tickets sold, revenue, and check-ins",
-            "View check-ins — who's arrived and who hasn't",
+            "View analytics: tickets sold, revenue, and check-ins",
+            "View check-ins: who's arrived and who hasn't",
             "Manage promo codes and the event team",
             "View promoters and how their referrals are performing",
             "Duplicate the event, or cancel it",
@@ -227,7 +227,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "promo-codes",
         title: "Promo codes",
         blocks: [
-          { kind: "p", text: "Promo codes offer discounts on tickets — great for promoters, VIPs, or early supporters." },
+          { kind: "p", text: "Promo codes offer discounts on tickets, great for promoters, VIPs, or early supporters." },
           { kind: "ol", items: [
             "Go to your event → Manage → Promo codes → \"Create promo code\"",
             "Set the code name customers type at checkout (e.g. FRIENDS50)",
@@ -239,14 +239,14 @@ export const HELP_SECTIONS: HelpSection[] = [
       },
       {
         id: "scanning-tickets",
-        title: "Event day — scanning tickets",
+        title: "Event day: scanning tickets",
         blocks: [
           { kind: "ol", items: [
             "Go to Scanner in the sidebar (or use the Bizzy app)",
             "Point the camera at the customer's QR-code ticket",
             "Green = valid ticket, let them in. Red = already used or invalid, don't let them in",
           ] },
-          { kind: "note", text: "Assign team members as Staff so they can scan tickets too — see the Team section." },
+          { kind: "note", text: "Assign team members as Staff so they can scan tickets too, see the Team section." },
         ],
       },
       {
@@ -275,7 +275,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "what-is-tap-to-pay",
         title: "What is Tap-to-Pay?",
         blocks: [
-          { kind: "p", text: "Tap-to-Pay lets you sell tickets at the door — customers tap their card or phone (like Apple Pay) on your phone, and they're in. Perfect for walk-up customers." },
+          { kind: "p", text: "Tap-to-Pay lets you sell tickets at the door. Customers tap their card or phone (like Apple Pay) on your phone, and they're in. Perfect for walk-up customers." },
         ],
       },
       {
@@ -303,7 +303,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "What are line skips?",
         blocks: [
           { kind: "p", text: "Customers buy a line skip in advance, show a QR code at the door, and go straight to the front of the line." },
-          { kind: "note", text: "A line skip is guaranteed entry, and the price includes cover — the customer doesn't pay again at the door. All Bizzy line skips include cover." },
+          { kind: "note", text: "A line skip is guaranteed entry, and the price includes cover. The customer doesn't pay again at the door. All Bizzy line skips include cover." },
         ],
       },
       {
@@ -315,7 +315,7 @@ export const HELP_SECTIONS: HelpSection[] = [
             "Set the name, description, days of the week, and start date",
             "Set doors open/close times, price, and quantity per night",
           ] },
-          { kind: "note", text: "Line skips run on a rolling schedule — the system creates upcoming nights 2 weeks ahead automatically. You don't create each night manually." },
+          { kind: "note", text: "Line skips run on a rolling schedule. The system creates upcoming nights 2 weeks ahead automatically. You don't create each night manually." },
         ],
       },
       {
@@ -333,7 +333,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "ol", items: [
             "Open your phone's camera app (not the Bizzy app)",
             "Point it at the customer's QR code",
-            "Tap the link that pops up — it shows whether the line skip is valid",
+            "Tap the link that pops up, it shows whether the line skip is valid",
           ] },
         ],
       },
@@ -349,10 +349,10 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "what-are-deals",
         title: "What are deals?",
         blocks: [
-          { kind: "p", text: "Deals are special offers — discounts, freebies, BOGO offers — that customers claim in the app to use at your venue." },
+          { kind: "p", text: "Deals are special offers, discounts, freebies, BOGO offers, that customers claim in the app to use at your venue." },
           { kind: "ul", items: [
             "Customers see and claim deals in the Bizzy app",
-            "Deals are completely free to create — no fees",
+            "Deals are completely free to create, no fees",
             "Think of them as free advertising that drives foot traffic",
           ] },
         ],
@@ -410,7 +410,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "What the numbers mean",
         blocks: [
           { kind: "ul", items: [
-            "Revenue shown is your revenue — the amount you receive",
+            "Revenue shown is your revenue: the amount you receive",
             "Pre-sale = tickets bought online before the event",
             "Door sale = tickets sold at the door via Tap-to-Pay",
             "Check-in rate = the percentage of ticket holders who got scanned in",
@@ -431,8 +431,8 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "p", text: "There are two different teams on Bizzy:" },
           { kind: "ul", items: [
-            "Business team — people who work for your business ongoing (managers, staff, promoters). Set up from the Team page. They get dashboard access.",
-            "Event team (co-hosts) — people helping with one specific event only. Set up inside that event. They do NOT get full dashboard access.",
+            "Business team: people who work for your business ongoing (managers, staff, promoters). Set up from the Team page. They get dashboard access.",
+            "Event team (co-hosts): people helping with one specific event only. Set up inside that event. They do NOT get full dashboard access.",
           ] },
         ],
       },
@@ -441,10 +441,10 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "Business team roles",
         blocks: [
           { kind: "ul", items: [
-            "Owner — full access to everything, including settings and billing",
-            "Manager — create and manage events, deals, and line skips; view analytics; no business settings",
-            "Staff — scan tickets, sell via Tap-to-Pay, view basic event info",
-            "Promoter — view their share link and promotion performance",
+            "Owner: full access to everything, including settings and billing",
+            "Manager: create and manage events, deals, and line skips; view analytics; no business settings",
+            "Staff: scan tickets, sell via Tap-to-Pay, view basic event info",
+            "Promoter: view their share link and promotion performance",
           ] },
         ],
       },
@@ -453,8 +453,8 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "Global vs. venue-specific",
         blocks: [
           { kind: "ul", items: [
-            "Global — the member works across all your venues",
-            "Venue-specific — the member only sees one venue",
+            "Global: the member works across all your venues",
+            "Venue-specific: the member only sees one venue",
           ] },
           { kind: "p", text: "If you have one venue, everyone sees the same thing." },
         ],
@@ -486,7 +486,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "ul", items: [
             "Update your business name, phone, and address",
             "Upload your business logo (shows in the app)",
-            "Your email can't be changed here — contact support@bizzyu.com",
+            "Your email can't be changed here, contact support@bizzyu.com",
           ] },
         ],
       },
@@ -521,7 +521,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "Our refund policy",
         blocks: [
           { kind: "ul", items: [
-            "All sales are final — customers can't request individual refunds",
+            "All sales are final, customers can't request individual refunds",
             "Refunds only happen when you cancel an event or line skip night",
             "If you cancel, every buyer gets a full refund automatically",
           ] },
@@ -550,7 +550,7 @@ export const HELP_SECTIONS: HelpSection[] = [
             "The money is pulled back from your Stripe account",
             "Stripe may charge additional processing fees for the reversal",
           ] },
-          { kind: "note", text: "Cancelling an event costs you money — be certain before you cancel." },
+          { kind: "note", text: "Cancelling an event costs you money, be certain before you cancel." },
         ],
       },
       {
@@ -559,9 +559,9 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "p", text: "Cancelling occasionally is fine, but frequent cancellations trigger review:" },
           { kind: "ul", items: [
-            "2nd cancellation in 90 days — a warning",
-            "3rd in 90 days — your account is flagged for review",
-            "4th or more — your account may be suspended",
+            "2nd cancellation in 90 days: a warning",
+            "3rd in 90 days: your account is flagged for review",
+            "4th or more: your account may be suspended",
           ] },
         ],
       },
@@ -602,13 +602,13 @@ export const HELP_SECTIONS: HelpSection[] = [
     intro: "Quick answers to the most common questions.",
     subsections: [],
     faqs: [
-      { q: "When do I get paid?", a: "Money from ticket sales and line skips is transferred to your bank account through Stripe, typically within 2–3 business days after the transaction." },
-      { q: "What fees does Bizzy charge?", a: "A small service fee is added on top of your price and paid by the customer. You receive the full amount you set — the fee comes out of the customer's total, not your pocket." },
+      { q: "When do I get paid?", a: "Money from ticket sales and line skips is transferred to your bank account through Stripe, typically within 2-3 business days after the transaction." },
+      { q: "What fees does Bizzy charge?", a: "A small service fee is added on top of your price and paid by the customer. You receive the full amount you set. The fee comes out of the customer's total, not your pocket." },
       { q: "How do I see how much money I've made?", a: "Go to Analytics in the sidebar. Your revenue is shown for events, line skips, and overall." },
       { q: "Can I change the ticket price after people have bought tickets?", a: "Yes, you can change the price for future purchases. Existing ticket holders keep their original price." },
       { q: "What if my event sells out?", a: "A \"Sold out\" badge appears and no more tickets can be purchased. To sell more, increase the ticket quantity." },
       { q: "Do deals cost me anything?", a: "No. Creating and running deals on Bizzy is completely free. Deals drive foot traffic to your venue at no cost." },
-      { q: "What does \"includes cover\" mean?", a: "The line skip price includes the cover charge — the customer pays once and doesn't pay again at the door. All Bizzy line skips include cover." },
+      { q: "What does \"includes cover\" mean?", a: "The line skip price includes the cover charge. The customer pays once and doesn't pay again at the door. All Bizzy line skips include cover." },
       { q: "I can't log in. What do I do?", a: "Click \"Forgot password\" on the login page to reset it. If that doesn't work, email support@bizzyu.com." },
       { q: "The dashboard looks broken or won't load.", a: "Refresh the page first. If that doesn't help, clear your browser cache or try a different browser. Still stuck? Email support@bizzyu.com." },
       { q: "I need help with something not covered here.", a: "Email support@bizzyu.com or reach out to your Bizzy campus representative." },

@@ -45,7 +45,7 @@ function ValidTimeInfo() {
         <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400 shadow-lg">
           <strong className="mb-1 block text-neutral-800 dark:text-neutral-200">Redeemable / scan window (optional)</strong>
           Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be{" "}
-          <strong>bought beforehand</strong> — sales just <strong>close when the window ends</strong>.
+          <strong>bought beforehand</strong>, sales just <strong>close when the window ends</strong>.
         </span>
       )}
     </span>
@@ -141,7 +141,7 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
             </div>
           </div>
           <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-            When this ticket can be scanned at the door. It can still be bought beforehand — sales just close when the window ends. Leave blank for no limit.
+            When this ticket can be scanned at the door. It can still be bought beforehand, sales just close when the window ends. Leave blank for no limit.
           </p>
 
           <div className="mt-3 flex items-center justify-between">

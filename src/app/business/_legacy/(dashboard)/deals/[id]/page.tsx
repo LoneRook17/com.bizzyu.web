@@ -152,7 +152,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left — image + description */}
+        {/* Left - image + description */}
         <div className="lg:col-span-2 space-y-6">
           {deal.deal_image_path && (
             <div className="rounded-xl overflow-hidden border border-gray-200">
@@ -165,12 +165,12 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* Right — meta + stats */}
+        {/* Right - meta + stats */}
         <div className="space-y-4">
           <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Dates</p>
-              <p className="text-sm text-ink">{formatDate(deal.start_date)} – {formatDate(deal.expired_date)}</p>
+              <p className="text-sm text-ink">{formatDate(deal.start_date)} - {formatDate(deal.expired_date)}</p>
             </div>
             {deal.location && (
               <div>

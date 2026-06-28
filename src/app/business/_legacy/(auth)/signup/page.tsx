@@ -290,7 +290,7 @@ export default function SignupPage() {
           error={errors.confirm_password}
         />
 
-        {/* Honeypot — humans never see this, bots fill every field */}
+        {/* Honeypot - humans never see this, bots fill every field */}
         <input
           type="text"
           name="website_url"

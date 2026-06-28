@@ -29,7 +29,7 @@ export default function V2EventPromotersPage({ params }: { params: Promise<{ id:
       setCopiedId(p.tracking_link_id)
       setTimeout(() => setCopiedId((cur) => (cur === p.tracking_link_id ? null : cur)), 1500)
     } catch {
-      // Clipboard blocked — leave the URL visible to copy manually.
+      // Clipboard blocked - leave the URL visible to copy manually.
     }
   }
 
@@ -74,7 +74,7 @@ export default function V2EventPromotersPage({ params }: { params: Promise<{ id:
               </div>
               <p className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{money(totalCommissionCents)}</p>
               <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-                Already deducted from your gross — you don&apos;t pay this separately. Your Stripe take-home is what&apos;s left after this.
+                Already deducted from your gross. You don&apos;t pay this separately. Your Stripe take-home is what&apos;s left after this.
               </p>
             </CardContent>
           </Card>

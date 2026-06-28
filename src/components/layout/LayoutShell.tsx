@@ -10,9 +10,9 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   const isCheckoutRoute = pathname.startsWith("/checkout")
   const isSetupPassword = pathname.startsWith("/setup-password")
   // Venue pages double as a full-bleed "sign board" for screens outside the
-  // bar — no marketing chrome, same as checkout.
+  // bar - no marketing chrome, same as checkout.
   const isVenueRoute = pathname.startsWith("/venue/")
-  // Line-skip checkout is a dark full-bleed purchase flow like /venue — the
+  // Line-skip checkout is a dark full-bleed purchase flow like /venue - the
   // white marketing nav/footer clash with it.
   const isLineSkipRoute = pathname.startsWith("/lineskip/")
   const isAppInterstitial =

@@ -196,7 +196,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
               <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
                 {isPending
                   ? "It goes live once Bizzy approves your business. You can keep editing in the meantime."
-                  : "Publish it when you're ready. Paid events need Stripe Connect first — free events don't."}
+                  : "Publish it when you're ready. Paid events need Stripe Connect first, free events don't."}
               </p>
               {publishError && (
                 <p className="mt-2 text-xs text-red-600 dark:text-red-400">{publishError}</p>
@@ -281,7 +281,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Date</p>
                 <p className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">{fmtLongDate(event.start_date_time)}</p>
-                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{fmtTime(event.start_date_time)} – {fmtTime(event.end_date_time)}</p>
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{fmtTime(event.start_date_time)} - {fmtTime(event.end_date_time)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Venue</p>

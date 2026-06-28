@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${venueName} | Bizzy`,
     description,
-    // iOS Safari Smart App Banner — "Open" deep-links straight to this venue
+    // iOS Safari Smart App Banner - "Open" deep-links straight to this venue
     // in the app (the app routes /venue/:id universal links); "Get" goes to
     // the App Store. app-argument uses the canonical prod domain so the app
     // can route it regardless of which deployment served the page.
@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `${venueName} | Bizzy`,
       description,
       // /ui/venues/venue/:id returns the venue photo as `venuePhotoUrl`
-      // (camelCase — see venues.ts:462). Reading snake_case silently
+      // (camelCase - see venues.ts:462). Reading snake_case silently
       // undefined the field and every venue share fell back to the
       // business logo (the green Bizzy badge), which is why an LS share
       // through Messages had no rich preview of the venue itself.

@@ -277,9 +277,9 @@ export default function LineSkipCalendar({
                   <DialogDescription>
                     {inst
                       ? inst.status === "cancelled"
-                        ? `Closed${inst.cancellation_reason ? ` — ${inst.cancellation_reason}` : ""}`
-                        : `${money(price)} · ${cap ? `${inst.tickets_sold}/${cap} sold` : `${inst.tickets_sold} sold`} · ${fmtTime(inst.start_time)}–${fmtTime(inst.end_time)}`
-                      : `Runs your usual — ${money(price)}${cap ? ` · limit ${cap}` : ""}`}
+                        ? `Closed${inst.cancellation_reason ? `: ${inst.cancellation_reason}` : ""}`
+                        : `${money(price)} · ${cap ? `${inst.tickets_sold}/${cap} sold` : `${inst.tickets_sold} sold`} · ${fmtTime(inst.start_time)}-${fmtTime(inst.end_time)}`
+                      : `Runs your usual, ${money(price)}${cap ? ` · limit ${cap}` : ""}`}
                   </DialogDescription>
                 </DialogHeader>
 

@@ -284,7 +284,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
         <p className="text-sm text-gray-500 mt-1">Instance #{instanceId}</p>
       </div>
 
-      {/* Stats cards — matching Flutter layout */}
+      {/* Stats cards - matching Flutter layout */}
       {analytics && (
       <div ref={analyticsRef} className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -438,7 +438,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
       </div>
       )}
 
-      {/* Attendees — expandable */}
+      {/* Attendees - expandable */}
       {analytics && (
       <div className="rounded-xl border border-gray-200 bg-white p-4 mb-4">
         <button
@@ -505,7 +505,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
       </div>
       )}
 
-      {/* Promo Codes — expandable with CRUD */}
+      {/* Promo Codes - expandable with CRUD */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 mb-6">
         <div className="flex items-center justify-between">
           <button

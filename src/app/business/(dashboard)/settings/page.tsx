@@ -145,7 +145,7 @@ function SettingsContent() {
     <PageHeader title="Settings" description="Manage your business profile, venues, and payouts." />
   )
 
-  // Promoter — read-only message (never redirect)
+  // Promoter - read-only message (never redirect)
   if (role === "promoter") {
     return (
       <>
@@ -199,7 +199,7 @@ function SettingsContent() {
           </TabsList>
         </div>
 
-        {/* ——— Profile ——— */}
+        {/* --- Profile --- */}
         <TabsContent value="profile">
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
             <SettingsCard
@@ -220,13 +220,13 @@ function SettingsContent() {
           </div>
         </TabsContent>
 
-        {/* ——— Preferences ——— */}
+        {/* --- Preferences --- */}
         <TabsContent value="preferences">
           <div className="flex flex-col gap-5">
             <SettingsCard
               icon={LayoutGrid}
               title="Dashboard mode"
-              description="Choose what your dashboard is built around. Hidden sections aren't deleted — switch back anytime."
+              description="Choose what your dashboard is built around. Hidden sections aren't deleted. Switch back anytime."
             >
               <DashboardPreferences disabled={!canEdit} />
             </SettingsCard>
@@ -237,7 +237,7 @@ function SettingsContent() {
           </div>
         </TabsContent>
 
-        {/* ——— Payments ——— */}
+        {/* --- Payments --- */}
         <TabsContent value="payments">
           <div id="stripe-connect" className="scroll-mt-20">
             {(stripeParam === "return" || stripeParam === "refresh") && (
@@ -257,7 +257,7 @@ function SettingsContent() {
           </div>
         </TabsContent>
 
-        {/* ——— Venues ——— */}
+        {/* --- Venues --- */}
         <TabsContent value="venues">
           <div className="flex flex-col gap-8">
             <VenueManagementSection />
@@ -265,7 +265,7 @@ function SettingsContent() {
           </div>
         </TabsContent>
 
-        {/* ——— Security ——— */}
+        {/* --- Security --- */}
         <TabsContent value="security">
           <div className="flex flex-col gap-5">
             <SettingsCard

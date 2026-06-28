@@ -104,7 +104,7 @@ export default function PromoteClient(props: Props) {
     }
   }, [token, apiCall])
 
-  // Stripe polling — fires after the user clicks "Open Stripe" so we can
+  // Stripe polling - fires after the user clicks "Open Stripe" so we can
   // detect onboarding completion via the webhook and advance the wizard.
   const pollStripe = useCallback(() => {
     if (stripePollRef.current != null) return
@@ -238,7 +238,7 @@ export default function PromoteClient(props: Props) {
               {[
                 <>Open the <span className="font-semibold">Bizzy app</span> (it&apos;s free)</>,
                 <>Find <span className="font-semibold">{props.eventName}</span> and tap <span className="font-semibold">&ldquo;Get paid to promote this event&rdquo;</span></>,
-                <>Share your link — you earn on every ticket sold through it</>,
+                <>Share your link, you earn on every ticket sold through it</>,
               ].map((text, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
                   <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
@@ -437,7 +437,7 @@ function Wizard(p: WizardProps) {
             {p.busy ? "Opening…" : p.profile?.stripe_connect_id ? "Resume Stripe onboarding" : "Open Stripe"}
           </button>
           <p className="text-xs text-gray-500">
-            Keep this tab open after you finish on Stripe — we&rsquo;ll detect when you&rsquo;re
+            Keep this tab open after you finish on Stripe, we&rsquo;ll detect when you&rsquo;re
             done and advance the next step automatically.
           </p>
         </section>
@@ -499,13 +499,13 @@ function DashboardStub({ profile }: { profile: PromoterProfile }) {
         />
         <span>
           {profile.stripe_connect_onboarded
-            ? "Stripe Connect ready — you can receive payouts."
-            : "Stripe Connect not finished — finish onboarding to receive payouts."}
+            ? "Stripe Connect ready. You can receive payouts."
+            : "Stripe Connect not finished. Finish onboarding to receive payouts."}
         </span>
       </div>
 
       <button
-        onClick={() => alert("Coming soon — link generation lands in Session 4.2.")}
+        onClick={() => alert("Coming soon. Link generation lands in Session 4.2.")}
         className="w-full rounded-xl bg-primary text-white font-semibold py-3 hover:brightness-110 transition"
       >
         Get my promoter link

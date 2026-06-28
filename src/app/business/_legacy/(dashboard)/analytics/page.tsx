@@ -17,10 +17,10 @@ export default function AnalyticsPage() {
   // Promoter view
   if (role === "promoter") return <PromoterView />
 
-  // Staff — deals only
+  // Staff - deals only
   if (role === "staff") return <StaffView />
 
-  // Owner/Manager view — both tabs
+  // Owner/Manager view - both tabs
   return <OwnerManagerView />
 }
 

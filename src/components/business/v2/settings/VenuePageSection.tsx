@@ -85,7 +85,7 @@ export default function VenuePageSection() {
         </p>
       </div>
       {/* Public venue pages (and their shareable link/QR) stay dormant until the
-          business is approved — matches the Node venue endpoint, which 404s an
+          business is approved - matches the Node venue endpoint, which 404s an
           unapproved business's venue. Don't hand out a link that 404s. */}
       {isPending ? (
         <Card>

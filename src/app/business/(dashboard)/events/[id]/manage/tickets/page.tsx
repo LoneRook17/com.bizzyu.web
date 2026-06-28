@@ -198,7 +198,7 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
               <p className="-mt-1 text-xs text-neutral-400 dark:text-neutral-500">
-                Redeemable / scan window — when this ticket can be scanned at the door. It can still be bought beforehand; sales just close when the window ends.
+                Redeemable / scan window: when this ticket can be scanned at the door. It can still be bought beforehand; sales just close when the window ends.
               </p>
               {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
               <div className="flex items-center gap-2 pt-1">

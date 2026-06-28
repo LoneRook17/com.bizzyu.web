@@ -163,7 +163,7 @@ export default function UniversalPromoCodesPage() {
         title="Universal promo codes"
         description={
           <>
-            Codes here apply to <span className="font-medium text-neutral-900 dark:text-neutral-100">every event at {venueName}</span> — now and in
+            Codes here apply to <span className="font-medium text-neutral-900 dark:text-neutral-100">every event at {venueName}</span>, now and in
             the future. Usage limits count across all of those events.
           </>
         }
@@ -263,7 +263,7 @@ export default function UniversalPromoCodesPage() {
                                 ) : (
                                   <span
                                     className="px-3 text-[13px] font-semibold text-neutral-300 dark:text-neutral-600"
-                                    title="Has redemptions — deactivate instead"
+                                    title="Has redemptions, deactivate instead"
                                   >
                                     Delete
                                   </span>

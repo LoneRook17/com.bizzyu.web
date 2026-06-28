@@ -215,7 +215,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-/** Static desktop rail — hidden below lg, where MobileTopBar takes over. */
+/** Static desktop rail - hidden below lg, where MobileTopBar takes over. */
 export default function Sidebar() {
   return (
     <aside className="hidden w-[264px] shrink-0 border-r border-neutral-200 bg-white lg:block dark:border-neutral-800 dark:bg-neutral-900">

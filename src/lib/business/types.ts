@@ -257,7 +257,7 @@ export interface EventAnalytics {
     commission_cents: number
   }[]
   revenue: {
-    // The "Revenue" tile reads this — now matches the Stripe payout (net of
+    // The "Revenue" tile reads this - now matches the Stripe payout (net of
     // promoter commission). Pre-2026-05-12 this was gross creator payout.
     revenue: number
     pre_sales_revenue: number
@@ -301,7 +301,7 @@ export interface PerScannerRow {
   // scan_revenue + sold_revenue. Server emits `revenue` as an alias of this
   // for backwards compat with older clients.
   revenue: number
-  // Newly added fields (May 2026 — tap-to-pay attribution). Optional so the
+  // Newly added fields (May 2026 - tap-to-pay attribution). Optional so the
   // type still describes responses from older service deploys.
   scan_revenue?: number
   sold_count?: number
@@ -498,7 +498,7 @@ export interface LineSkipFormData {
 
 // Line Skip Analytics types
 export interface LineSkipInstanceAnalytics {
-  // Core instance fields — echoed by the API so the night-detail page can render
+  // Core instance fields - echoed by the API so the night-detail page can render
   // the configured price/time/date and drive the edit modal without a 2nd fetch.
   id: number
   line_skip_id: number

@@ -19,7 +19,7 @@ export async function nativeShare(opts: { title: string; url: string }): Promise
       await nav.share({ title: opts.title, url: opts.url })
       return "shared"
     } catch {
-      // User cancelled the sheet — treat as a non-failure no-op.
+      // User cancelled the sheet - treat as a non-failure no-op.
       return "shared"
     }
   }

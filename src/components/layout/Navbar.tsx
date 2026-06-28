@@ -10,7 +10,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // The discounts landing page is a focused signup funnel — keep "Book a Call"
+  // The discounts landing page is a focused signup funnel - keep "Book a Call"
   // (a bar-intro Calendly) off it so it doesn't compete with "Get Started Free".
   const hideBookACall = pathname === "/discounts";
 

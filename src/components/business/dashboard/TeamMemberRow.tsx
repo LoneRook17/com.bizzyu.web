@@ -56,7 +56,7 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
         </div>
       </div>
 
-      {/* Actions — owner only */}
+      {/* Actions - owner only */}
       {isOwnerViewing && !isOwnerMember && (
         <div className="flex items-center gap-2 flex-wrap pl-12 sm:pl-0 sm:flex-nowrap sm:flex-shrink-0">
           {/* Venue assignment */}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { ThemeProvider } from "@/lib/v2/theme"
 
-const TITLE = "Bizzy Business Portal — Sign In"
+const TITLE = "Bizzy Business Portal: Sign In"
 const DESCRIPTION =
   "Sign in to your Bizzy business dashboard to create events, post deals, and manage your team."
 

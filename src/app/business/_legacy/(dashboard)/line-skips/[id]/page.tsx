@@ -30,9 +30,9 @@ function formatDate(dateStr: string): string {
 function formatDateRange(start: string, end: string): string {
   const s = new Date(start + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   const endDate = new Date(end + "T00:00:00")
-  if (endDate.getFullYear() >= 2099) return `${s} – Ongoing`
+  if (endDate.getFullYear() >= 2099) return `${s} - Ongoing`
   const e = endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-  return `${s} – ${e}`
+  return `${s} - ${e}`
 }
 
 function formatTime(timeStr: string): string {
@@ -97,7 +97,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       const data = await apiClient.get<LineSkipAggregateAnalytics>(`/business/line-skips/${id}/analytics`)
       setAnalytics(data)
     } catch {
-      // Non-critical — analytics just won't display
+      // Non-critical - analytics just won't display
     }
   }, [id, canViewAnalytics])
 
@@ -252,7 +252,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <p className="text-xs text-gray-500">Time</p>
-              <p className="text-lg font-semibold text-ink">{formatTime(lineSkip.default_start_time)} – {formatTime(lineSkip.default_end_time)}</p>
+              <p className="text-lg font-semibold text-ink">{formatTime(lineSkip.default_start_time)} - {formatTime(lineSkip.default_end_time)}</p>
             </div>
           </>
         )}
@@ -348,7 +348,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
                     <div>
                       <p className="text-sm font-medium text-ink">{formatDate(instance.date)}</p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {formatTime(instance.start_time)} – {formatTime(instance.end_time)}
+                        {formatTime(instance.start_time)} - {formatTime(instance.end_time)}
                       </p>
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                         <span className="text-xs text-gray-600 font-medium">

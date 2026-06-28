@@ -75,7 +75,7 @@ function VerifyEmailContent() {
         <AuthAlert tone="warning" className="mb-4">
           <p className="mb-1 font-semibold">Your account is pending approval</p>
           <p>
-            You can explore your dashboard and build your first deal right away — it will go live
+            You can explore your dashboard and build your first deal right away. It will go live
             once the Bizzy team approves your account. You&apos;ll get an email when that happens.
           </p>
         </AuthAlert>
@@ -127,7 +127,7 @@ function VerifyEmailContent() {
     )
   }
 
-  // pending — no token, just email
+  // pending - no token, just email
   return (
     <AuthCard title="Check your email" subtitle="We've sent a verification link to your email address.">
       <AuthAlert tone="info" className="mb-4">

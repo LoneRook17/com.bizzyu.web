@@ -345,7 +345,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
             Line skips include cover. Customers who purchase a line skip will skip the line and have their cover included in the price.
           </p>
           <p className="text-sm text-blue-700 dark:text-blue-400">
-            Line skip tickets are scanned using the universal scanner — customers simply show their QR code and staff scan it with any phone camera. No app or special equipment needed.
+            Line skip tickets are scanned using the universal scanner. Customers simply show their QR code and staff scan it with any phone camera. No app or special equipment needed.
           </p>
         </div>
       )}
@@ -410,7 +410,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           <div>
             <Label>Nights it runs</Label>
             <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-              Tap the nights this line skip runs. Each night has its own price &amp; hours — set them all the same, or charge more on busy nights.
+              Tap the nights this line skip runs. Each night has its own price &amp; hours. Set them all the same, or charge more on busy nights.
             </p>
           </div>
 
@@ -522,10 +522,10 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           )}
         </div>
 
-        {/* Runs until (optional) — open-ended by default */}
+        {/* Runs until (optional) - open-ended by default */}
         <div className="space-y-1.5">
           <Label htmlFor="date_range_end">
-            Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional — leave blank to run until you turn it off)</span>
+            Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional, leave blank to run until you turn it off)</span>
           </Label>
           <Input
             id="date_range_end"
@@ -535,7 +535,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           />
         </div>
 
-        {/* Preview — the upcoming nights this schedule will run */}
+        {/* Preview - the upcoming nights this schedule will run */}
         <Card className="bg-neutral-50 dark:bg-neutral-800/50">
           <CardContent className="p-4">
             {days.length === 0 ? (

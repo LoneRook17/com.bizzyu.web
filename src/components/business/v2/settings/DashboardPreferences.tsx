@@ -21,7 +21,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; icon: React.Elemen
   { value: "system", label: "System", icon: Monitor },
 ]
 
-/** Dashboard mode picker — card chrome is provided by the settings page. */
+/** Dashboard mode picker - card chrome is provided by the settings page. */
 export default function DashboardPreferences({ disabled }: { disabled?: boolean }) {
   const { refreshProfile } = useAuth()
   const { mode } = useDashboardMode()
@@ -83,7 +83,7 @@ export default function DashboardPreferences({ disabled }: { disabled?: boolean 
   )
 }
 
-/** Light / Dark / System theme picker — card chrome is provided by the settings page. */
+/** Light / Dark / System theme picker - card chrome is provided by the settings page. */
 export function AppearanceSettings() {
   const { theme, setTheme } = useTheme()
 

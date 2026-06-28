@@ -133,7 +133,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
           setModerationNotice("Your deal has been created but is under review due to content moderation.")
           setTimeout(() => router.push("/business/deals"), 3000)
         } else if (data.saved_as_draft) {
-          setModerationNotice("Saved as a draft — it can go live as soon as your business is approved.")
+          setModerationNotice("Saved as a draft, it can go live as soon as your business is approved.")
           setTimeout(() => router.push("/business/deals?tab=deactivated"), 3000)
         } else {
           router.push("/business/deals")
@@ -174,7 +174,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-6 lg:flex-row">
-          {/* LEFT — live preview */}
+          {/* LEFT - live preview */}
           <div className="w-full shrink-0 lg:w-[340px]">
             <div className="lg:sticky lg:top-8">
               <div className="mx-auto w-full max-w-[320px]">
@@ -231,7 +231,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
             </div>
           </div>
 
-          {/* RIGHT — form */}
+          {/* RIGHT - form */}
           <div className="min-w-0 flex-1">
             <Card>
               <CardContent className="space-y-5 p-6">
@@ -407,7 +407,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                       </Label>
                       <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
                         By default the deal is always available. Turn this on to offer it only during set
-                        hours each day — outside those hours it shows dimmed and lower in the app.
+                        hours each day, outside those hours it shows dimmed and lower in the app.
                       </p>
                     </div>
                     <button
@@ -464,7 +464,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                       })}
                       <p className="pt-1 text-xs text-neutral-500 dark:text-neutral-400">
                         Enable each day the deal runs and set its hours. Unchecked days are unavailable.
-                        Overnight ranges (e.g. 10:00pm–2:00am) are supported.
+                        Overnight ranges (e.g. 10:00pm-2:00am) are supported.
                       </p>
                     </div>
                   )}
@@ -489,7 +489,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                   <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-3 text-sm text-red-600 dark:text-red-400">{serverError}</div>
                 )}
                 {isPending && (
-                  <Badge variant="warning">Trial — saved as a draft until approved</Badge>
+                  <Badge variant="warning">Trial: saved as a draft until approved</Badge>
                 )}
                 <Button type="submit" size="lg" disabled={loading} className="w-full sm:w-auto">
                   {loading && <Loader2 className="size-4 animate-spin" />}

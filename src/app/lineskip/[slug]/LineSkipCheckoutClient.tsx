@@ -9,7 +9,7 @@ import { nativeShare } from "@/lib/share"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
-// Line skips are the "VIP" product — gold accents instead of Bizzy green to
+// Line skips are the "VIP" product - gold accents instead of Bizzy green to
 // differentiate them from events/deals across the whole flow.
 const GOLD = "#D4AF37"
 const GOLD_LIGHT = "#F0CD6E"
@@ -174,13 +174,13 @@ export default function LineSkipCheckoutClient({
   // Keyboard overlap (px) reported by visualViewport; 0 on desktop / unsupported.
   // Applied as a translateY on the modal's offset WRAPPER (never the ls-rise panel).
   const [kbOffset, setKbOffset] = useState(0)
-  // The active step's primary input — focused manually after the entrance settles
+  // The active step's primary input - focused manually after the entrance settles
   // (instead of autoFocus, which opened the keyboard mid-animation = the jank).
   const focusInputRef = useRef<HTMLInputElement | null>(null)
 
   // ─── Keyboard-aware sheet offset (iOS Safari) ──────────────────────────────
   // position:fixed is relative to the LAYOUT viewport on iOS, which does NOT
-  // shrink when the keyboard opens — only the VISUAL viewport does. We measure
+  // shrink when the keyboard opens - only the VISUAL viewport does. We measure
   // the overlap and lift the bottom-anchored sheet by exactly that much so the
   // input stays just above the keyboard. Desktop / unsupported browsers report
   // 0 and behave exactly as before.
@@ -199,7 +199,7 @@ export default function LineSkipCheckoutClient({
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
         const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-        // Skip sub-pixel churn — only re-render on a meaningful change.
+        // Skip sub-pixel churn - only re-render on a meaningful change.
         setKbOffset((prev) => (Math.abs(prev - overlap) > 1 ? Math.round(overlap) : prev))
       })
     }
@@ -269,7 +269,7 @@ export default function LineSkipCheckoutClient({
     }
     setSelectedInstanceId(id)
     setQuantity(1)
-    // Clear promo when switching instances — promo may not apply to new instance
+    // Clear promo when switching instances - promo may not apply to new instance
     if (promoApplied) {
       removePromo()
     }
@@ -395,7 +395,7 @@ export default function LineSkipCheckoutClient({
           })
           const eligData = await eligRes.json()
           if (!eligRes.ok) {
-            // API validation error (missing fields etc.) — frontend bug, don't show raw error
+            // API validation error (missing fields etc.) - frontend bug, don't show raw error
             setCheckoutError("Something went wrong. Please try again.")
             setCheckoutLoading(false)
             return
@@ -428,13 +428,13 @@ export default function LineSkipCheckoutClient({
         return
       }
       if (data.has_account && data.user_name) {
-        // Registered user — skip name step
+        // Registered user - skip name step
         setUserName(data.user_name)
         setAttendeeName(data.user_name)
         setHasAccount(true)
         setCheckoutStep("verify")
       } else {
-        // New user — ask for name
+        // New user - ask for name
         setHasAccount(false)
         setCheckoutStep("name")
       }
@@ -677,7 +677,7 @@ export default function LineSkipCheckoutClient({
               Download the Bizzy App
             </a>
 
-            {/* Add to Apple Wallet — iOS-only small pill. Bundle endpoint
+            {/* Add to Apple Wallet - iOS-only small pill. Bundle endpoint
                 serves a `.pkpasses` archive so a single tap installs every
                 ticket from this free purchase, mirroring the Flutter app's
                 `apple_passkit.addPasses()` flow. */}
@@ -726,12 +726,12 @@ export default function LineSkipCheckoutClient({
               </div>
               <div className="my-4 border-t border-dashed border-white/15" />
               <p className="text-center text-xs text-white/40">
-                Show your QR code at the door — cover included.
+                Show your QR code at the door, cover included.
               </p>
             </div>
           </div>
 
-          {/* Share — mirrors the Flutter event-share pattern but targets
+          {/* Share - mirrors the Flutter event-share pattern but targets
               the venue page since line-skips are venue-scoped. */}
           <ShareVenueButton
             title={freeSuccessData.venue_name || freeSuccessData.business_name || "Bizzy"}
@@ -881,7 +881,7 @@ export default function LineSkipCheckoutClient({
             <p className="text-base font-extrabold" style={{ color: GOLD }}>
               Cover included
             </p>
-            <p className="text-sm text-white/50">Walk straight past the line — your cover charge is part of the price.</p>
+            <p className="text-sm text-white/50">Walk straight past the line, your cover charge is part of the price.</p>
           </div>
         </div>
 
@@ -903,7 +903,7 @@ export default function LineSkipCheckoutClient({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <p className="font-bold text-white">No Line Skips in the next 7 days</p>
-              <p className="text-sm text-gray-400">Check back soon — nights are added throughout the week.</p>
+              <p className="text-sm text-gray-400">Check back soon, nights are added throughout the week.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -948,7 +948,7 @@ export default function LineSkipCheckoutClient({
                               </span>
                             ) : remaining !== null ? (
                               <span className="mt-1.5 inline-block text-xs font-semibold text-white/40">
-                                {remaining} left{pctSold >= 75 ? " — going fast" : ""}
+                                {remaining} left{pctSold >= 75 ? ", going fast" : ""}
                               </span>
                             ) : (
                               <span className="mt-1.5 inline-block text-xs font-semibold text-white/40">Available</span>
@@ -1123,8 +1123,8 @@ export default function LineSkipCheckoutClient({
                 style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 16px 40px -12px ${GOLD}80` }}
               >
                 {fees && fees.total > 0
-                  ? `Get Line Skip — ${formatPrice(fees.total)}`
-                  : "Get Line Skip — Free"}
+                  ? `Get Line Skip: ${formatPrice(fees.total)}`
+                  : "Get Line Skip: Free"}
               </button>
               <p className="mt-3 text-center text-[11px] leading-relaxed text-white/30">
                 By purchasing, you agree that all sales are final. No refunds or exchanges.
@@ -1148,7 +1148,7 @@ export default function LineSkipCheckoutClient({
       {/* ─── Checkout Modal ─────────────────────────────────────────────────── */}
       {checkoutStep !== "idle" && selectedInstance && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
-          {/* Keyboard-offset wrapper — owns the dynamic translateY so it never fights
+          {/* Keyboard-offset wrapper - owns the dynamic translateY so it never fights
               the panel's ls-rise entrance transform. Do NOT move this transform onto
               the ls-rise panel; a running CSS animation overrides an inline transform
               and reintroduces the keyboard jank. */}
@@ -1200,7 +1200,7 @@ export default function LineSkipCheckoutClient({
               </div>
             </div>
 
-            {/* Phone step — phone number only */}
+            {/* Phone step - phone number only */}
             {checkoutStep === "phone" && (
               <div>
                 <label className="mb-2 block text-sm font-semibold text-white/60">Phone Number</label>
@@ -1229,7 +1229,7 @@ export default function LineSkipCheckoutClient({
                     style={{ accentColor: GOLD }}
                   />
                   <span className="text-xs text-white/50 leading-snug">
-                    Keep me posted by text — I agree to receive SMS marketing messages about this venue&apos;s events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out anytime. Unchecking won&apos;t affect your purchase.
+                    Keep me posted by text. I agree to receive SMS marketing messages about this venue&apos;s events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out anytime. Unchecking won&apos;t affect your purchase.
                   </span>
                 </label>
 
@@ -1244,7 +1244,7 @@ export default function LineSkipCheckoutClient({
               </div>
             )}
 
-            {/* Name step — shown only for unregistered users */}
+            {/* Name step - shown only for unregistered users */}
             {checkoutStep === "name" && (
               <div>
                 <p className="mb-3 text-sm text-white/60">

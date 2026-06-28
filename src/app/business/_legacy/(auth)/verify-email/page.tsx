@@ -122,7 +122,7 @@ function VerifyEmailContent() {
     )
   }
 
-  // pending — no token, just email
+  // pending - no token, just email
   return (
     <AuthCard title="Check your email" subtitle="We've sent a verification link to your email address.">
       <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-700 mb-4">

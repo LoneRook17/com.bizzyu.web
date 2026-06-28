@@ -24,7 +24,7 @@ const TAB_EMPTY_MESSAGES: Record<string, { title: string; message: string }> = {
   live: {
     title: "No live deals",
     message:
-      "Deals are Bizzy-exclusive promotions students unlock in the app and redeem at your venue. List one to drive foot traffic — no fees, no percent taken.",
+      "Deals are Bizzy-exclusive promotions students unlock in the app and redeem at your venue. List one to drive foot traffic, no fees, no percent taken.",
   },
   expired: { title: "No expired deals", message: "Deals that have passed their expiration date will appear here." },
   deactivated: { title: "No deactivated deals", message: "Deals you deactivate will appear here." },
@@ -69,7 +69,7 @@ export default function DealsPage() {
       const data = await apiClient.get<DealCounts>(`/business/deals/counts?_=1${venueParam}`)
       setCounts(data)
     } catch {
-      // ignore — counts are supplementary
+      // ignore - counts are supplementary
     }
   }, [venueParam])
 

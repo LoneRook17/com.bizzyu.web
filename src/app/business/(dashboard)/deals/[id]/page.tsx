@@ -142,7 +142,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* left — image + description */}
+        {/* left - image + description */}
         <div className="space-y-6 lg:col-span-2">
           {deal.deal_image_path && (
             <Card className="overflow-hidden p-0">
@@ -158,14 +158,14 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
         </div>
 
-        {/* right — meta + performance */}
+        {/* right - meta + performance */}
         <div className="space-y-4">
           <Card>
             <CardContent className="space-y-3 p-5">
               <div>
                 <p className="text-xs uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Dates</p>
                 <p className="text-sm text-neutral-900 dark:text-neutral-100">
-                  {fmtDate(deal.start_date)} – {fmtDate(deal.expired_date)}
+                  {fmtDate(deal.start_date)} - {fmtDate(deal.expired_date)}
                 </p>
               </div>
               {deal.location && (

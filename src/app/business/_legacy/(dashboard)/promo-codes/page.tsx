@@ -149,7 +149,7 @@ export default function UniversalPromoCodesPage() {
         )}
       </div>
       <p className="text-sm text-gray-500 mb-6">
-        Codes here apply to <strong>every event at {selectedVenue ? selectedVenue.name : "this venue"}</strong> — now
+        Codes here apply to <strong>every event at {selectedVenue ? selectedVenue.name : "this venue"}</strong>, now
         and in the future. Usage limits count across all of those events.
       </p>
 
@@ -314,7 +314,7 @@ export default function UniversalPromoCodesPage() {
                                   Delete
                                 </button>
                               ) : (
-                                <span className="text-xs text-gray-300" title="Has redemptions — deactivate instead">Delete</span>
+                                <span className="text-xs text-gray-300" title="Has redemptions, deactivate instead">Delete</span>
                               )}
                             </span>
                           )}

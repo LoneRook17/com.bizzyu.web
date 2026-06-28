@@ -37,7 +37,7 @@ export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
         <CardHeader><CardTitle>Revenue</CardTitle></CardHeader>
         <CardContent className="pt-0">
           <p className="text-3xl font-semibold tracking-tight text-[#05EB54]">{usd(data.revenue?.revenue ?? 0)}</p>
-          <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">Your take-home — matches Stripe payout.</p>
+          <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">Your take-home: matches Stripe payout.</p>
         </CardContent>
       </Card>
 

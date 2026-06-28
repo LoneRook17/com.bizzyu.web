@@ -20,11 +20,11 @@ export default function EventAnalyticsView({ data }: { data: EventAnalytics }) {
 
   return (
     <div className="space-y-6">
-      {/* Revenue — net of promoter commission, matches Stripe payout */}
+      {/* Revenue - net of promoter commission, matches Stripe payout */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-ink mb-4">Revenue</h3>
         <p className="text-2xl font-bold text-green-600">{formatCurrency(data.revenue?.revenue ?? 0)}</p>
-        <p className="text-xs text-gray-500 mt-1">Your take-home — matches Stripe payout.</p>
+        <p className="text-xs text-gray-500 mt-1">Your take-home, matches Stripe payout.</p>
       </div>
 
       {/* Ticket Access + Check-in */}
@@ -108,7 +108,7 @@ export default function EventAnalyticsView({ data }: { data: EventAnalytics }) {
               ))}
             </tbody>
           </table>
-          {/* Promoter-generated callout — shown when there's any promoter
+          {/* Promoter-generated callout - shown when there's any promoter
               attribution. Tier rows above are gross; this surfaces the
               business take-home from promoter-attributed sales specifically. */}
           {data.revenue?.promoter_attributed_take_home_cents > 0 && (() => {

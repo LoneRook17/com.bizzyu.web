@@ -113,7 +113,7 @@ function BizzyMark() {
   );
 }
 
-/* Unchecked checkbox — rendered as an empty square to make the default
+/* Unchecked checkbox - rendered as an empty square to make the default
    (un-selected) state unmistakable for carrier review. */
 function EmptyCheckbox() {
   return (
@@ -183,7 +183,7 @@ function ScreenPhoneAndConsent() {
         </p>
       </div>
 
-      {/* Terms / Privacy links — shown beside the form, not burying consent */}
+      {/* Terms / Privacy links - shown beside the form, not burying consent */}
       <p className="mt-2 pl-1 text-[10.5px] leading-snug text-muted">
         <span className="font-semibold text-[#05A33B] underline">Terms</span>
         {" · "}
@@ -332,7 +332,7 @@ export default function SmsOptInProofPage() {
           <PhoneFrame step="Step 2 of 3" label="One-time passcode verification of the mobile number entered">
             <ScreenVerify />
           </PhoneFrame>
-          <PhoneFrame step="Step 3 of 3" label="Confirmation screen — number verified and opt-in confirmed, with STOP/HELP reminder">
+          <PhoneFrame step="Step 3 of 3" label="Confirmation screen, number verified and opt-in confirmed, with STOP/HELP reminder">
             <ScreenConfirmation />
           </PhoneFrame>
         </div>
@@ -347,9 +347,9 @@ export default function SmsOptInProofPage() {
           <ul className="mt-6 space-y-3">
             {[
               "The opt-in form presents a dedicated phone number field, branded with the Bizzy business name.",
-              "The SMS marketing consent checkbox is unchecked by default — opt-in requires an affirmative action by the user.",
-              "Consent applies only to Bizzy marketing texts (event offers, ticket offers, line-skip offers, and limited-time event promotions) — it is not shared with any other use case.",
-              "The full, exact consent language is shown next to the checkbox before the user proceeds — it is not buried inside the Terms or Privacy Policy.",
+              "The SMS marketing consent checkbox is unchecked by default. Opt-in requires an affirmative action by the user.",
+              "Consent applies only to Bizzy marketing texts (event offers, ticket offers, line-skip offers, and limited-time event promotions). It is not shared with any other use case.",
+              "The full, exact consent language is shown next to the checkbox before the user proceeds. It is not buried inside the Terms or Privacy Policy.",
               "A clear Continue / submit action follows the consent disclosure, and a confirmation screen confirms the opt-in with STOP/HELP instructions.",
             ].map((item) => (
               <li key={item} className="flex items-start gap-3">
@@ -383,7 +383,7 @@ export default function SmsOptInProofPage() {
               &ldquo;{CONSENT_TEXT}&rdquo;
             </blockquote>
             <p className="mt-4 text-sm leading-relaxed text-muted">
-              Program: <span className="font-semibold text-ink">Bizzy</span> —
+              Program: <span className="font-semibold text-ink">Bizzy</span>,
               recurring marketing texts about event offers, ticket offers,
               line-skip offers, and limited-time event promotions. Message
               frequency varies. Msg &amp; data rates may apply. Reply{" "}

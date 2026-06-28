@@ -133,7 +133,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
           "/business/deals",
           payload
         )
-        // Best-effort admin notification — never block redirect on failure
+        // Best-effort admin notification - never block redirect on failure
         void fetch("/api/admin-notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -203,7 +203,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* LEFT COLUMN — Live Preview */}
+          {/* LEFT COLUMN - Live Preview */}
           <div className="w-full lg:w-[340px] shrink-0">
             <div className="lg:sticky lg:top-6">
               <div className="w-full max-w-[320px] mx-auto">
@@ -297,7 +297,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
             </div>
           </div>
 
-          {/* RIGHT COLUMN — Deal Details Form */}
+          {/* RIGHT COLUMN - Deal Details Form */}
           <div className="flex-1 min-w-0">
             <div className="rounded-xl border border-gray-200 bg-white p-6">
               <h2 className="text-2xl font-bold text-ink mb-1">Deal Details</h2>
@@ -504,7 +504,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                     </label>
                     <p className="text-xs text-muted">
                       By default the deal is always available. Turn this on to offer it only during set
-                      hours each day — outside those hours it shows dimmed and lower in the app.
+                      hours each day, outside those hours it shows dimmed and lower in the app.
                     </p>
                   </div>
                   <button
@@ -559,7 +559,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                     })}
                     <p className="pt-1 text-xs text-muted">
                       Enable each day the deal runs and set its hours. Unchecked days are unavailable.
-                      Overnight ranges (e.g. 10:00pm–2:00am) are supported.
+                      Overnight ranges (e.g. 10:00pm-2:00am) are supported.
                     </p>
                   </div>
                 )}

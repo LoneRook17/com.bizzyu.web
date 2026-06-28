@@ -30,7 +30,7 @@ export default function TrialHome() {
   const firstName = user?.full_name?.split(" ")[0]
 
   const heroQueueNote = isApproved
-    ? "Takes about 2 minutes — it goes live as soon as your venue is set up."
+    ? "Takes about 2 minutes. It goes live as soon as your venue is set up."
     : "Takes about 2 minutes. It's queued and goes live the moment you're approved."
   const hero =
     mode === "events"
@@ -44,7 +44,7 @@ export default function TrialHome() {
     { title: "Create your account", sub: "Welcome to Bizzy", done: true },
     {
       title: "Set up your venue",
-      sub: hasVenue ? "Venue added" : "Add your location, hours, and logo — students can't see you without a venue",
+      sub: hasVenue ? "Venue added" : "Add your location, hours, and logo, students can't see you without a venue",
       done: hasVenue,
       current: !hasVenue,
       cta: hasVenue ? undefined : { label: "Add venue", href: "/business/settings?action=add-venue" },
@@ -52,8 +52,8 @@ export default function TrialHome() {
     {
       title: "Get approved",
       sub: isApproved
-        ? "Approved — welcome aboard!"
-        : "Most businesses are reviewed within 24 hours — we'll email you the moment you're approved",
+        ? "Approved: welcome aboard!"
+        : "Most businesses are reviewed within 24 hours, we'll email you the moment you're approved",
       done: isApproved,
     },
   ]
@@ -74,7 +74,7 @@ export default function TrialHome() {
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isApproved
             ? "One thing left: add your venue and you're live to students."
-            : "Get your venue set up — you can explore everything while we review your account."}
+            : "Get your venue set up. You can explore everything while we review your account."}
         </p>
       </div>
 
@@ -83,7 +83,7 @@ export default function TrialHome() {
         <div className="flex items-start gap-3 rounded-xl border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 px-4 py-3.5">
           <PartyPopper className="mt-0.5 size-5 shrink-0 text-green-600 dark:text-green-400" />
           <p className="text-sm leading-relaxed text-green-900 dark:text-green-300">
-            <span className="font-semibold">You&apos;re approved!</span> Add your venue below to go live — students
+            <span className="font-semibold">You&apos;re approved!</span> Add your venue below to go live, students
             can&apos;t find you without a location.
           </p>
         </div>
@@ -91,7 +91,7 @@ export default function TrialHome() {
         <div className="flex items-start gap-3 rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3.5">
           <Eye className="mt-0.5 size-5 shrink-0 text-blue-600 dark:text-blue-400" />
           <p className="text-sm leading-relaxed text-blue-900 dark:text-blue-300">
-            <span className="font-semibold">Trial mode.</span> Look around the dashboard — nothing goes live to
+            <span className="font-semibold">Trial mode.</span> Look around the dashboard, nothing goes live to
             students until your business is approved and your venue is set up.
           </p>
         </div>
@@ -133,7 +133,7 @@ export default function TrialHome() {
         </div>
       </Card>
 
-      {/* optional: first deal/event — get a head start, not required.
+      {/* optional: first deal/event - get a head start, not required.
           Deals and events both require a venue, so the CTA stays locked until one exists. */}
       <Card className={cn("overflow-hidden", !hasVenue && "opacity-80")}>
         <div className="flex items-center gap-3.5 px-6 py-4">
@@ -144,8 +144,8 @@ export default function TrialHome() {
             </div>
             <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">
               {hasVenue
-                ? `Get a head start — ${heroQueueNote.charAt(0).toLowerCase() + heroQueueNote.slice(1)}`
-                : "Needs a venue first — deals and events are always attached to a location."}
+                ? `Get a head start, ${heroQueueNote.charAt(0).toLowerCase() + heroQueueNote.slice(1)}`
+                : "Needs a venue first. Deals and events are always attached to a location."}
             </p>
           </div>
           {hasVenue ? (
@@ -162,7 +162,7 @@ export default function TrialHome() {
 
       {/* explore hint */}
       <p className="px-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-        Want to look around first? Use the sidebar to explore — anything you build is saved as a draft until
+        Want to look around first? Use the sidebar to explore, anything you build is saved as a draft until
         you&apos;re live.
       </p>
     </>

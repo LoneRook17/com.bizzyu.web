@@ -12,7 +12,7 @@ import type {
 /**
  * Marketing → Followers sub-tab.
  *
- * Followers are venue-scoped (May 2026 update) — a buyer at Venue A follows
+ * Followers are venue-scoped (May 2026 update) - a buyer at Venue A follows
  * Venue A only, even when the parent business has other venues. This tab
  * scopes by the venue selected on the Marketing page; passing no venue
  * scopes to "All Venues" (rollup, deduped on user_id).
@@ -126,7 +126,7 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
-          {/* "Send Announcement" was removed 2026-05-13 — replaced by the
+          {/* "Send Announcement" was removed 2026-05-13 - replaced by the
               automatic push that fires when an event hits status='published'.
               SMS to followers stays operator-initiated. */}
           <SendButton

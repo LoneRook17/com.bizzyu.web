@@ -8,7 +8,7 @@ export type TurnstileResult =
 /**
  * Validate a Cloudflare Turnstile token + honeypot field from a public form.
  *
- * Fail-open if TURNSTILE_SECRET_KEY is not configured — logs a warning so a
+ * Fail-open if TURNSTILE_SECRET_KEY is not configured - logs a warning so a
  * missed env-var deploy doesn't lock real users out, but still flags it.
  */
 export async function verifyTurnstile(
@@ -22,7 +22,7 @@ export async function verifyTurnstile(
 
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
-    console.warn("[turnstile] TURNSTILE_SECRET_KEY not set — failing open");
+    console.warn("[turnstile] TURNSTILE_SECRET_KEY not set, failing open");
     return { ok: true };
   }
 
@@ -49,7 +49,7 @@ export async function verifyTurnstile(
     console.warn("[turnstile] verification failed", data["error-codes"]);
     return { ok: false, reason: "invalid" };
   } catch (err) {
-    console.error("[turnstile] verification error — failing open", err);
+    console.error("[turnstile] verification error, failing open", err);
     return { ok: true };
   } finally {
     clearTimeout(timeout);

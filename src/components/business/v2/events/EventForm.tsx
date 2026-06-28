@@ -364,12 +364,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   <option key={t} value={t}>{t}</option>
                 ))}
               </Select>
-              {/* Stripe is no longer required to BUILD a paid event — only to
+              {/* Stripe is no longer required to BUILD a paid event - only to
                   publish one. Show a non-blocking nudge for paid + no Stripe. */}
               {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
                 <div className="mt-1.5">
                   <p className="text-xs text-amber-600 dark:text-amber-400">
-                    You can build this now and save it as a draft. Connect Stripe before a paid event can go live — free events don&apos;t need it.
+                    You can build this now and save it as a draft. Connect Stripe before a paid event can go live, free events don&apos;t need it.
                   </p>
                   <button
                     type="button"
@@ -523,7 +523,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </Card>
       )}
 
-      {/* Notify followers — opt-in announcement on publish (any event type) */}
+      {/* Notify followers - opt-in announcement on publish (any event type) */}
       <Card>
         <CardHeader className="flex-col items-start gap-1">
           <CardTitle>Notify followers</CardTitle>
@@ -645,10 +645,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         {!isEditing && isPending && (
-          <Badge variant="warning">Trial — saved as a draft until you&apos;re approved</Badge>
+          <Badge variant="warning">Trial: saved as a draft until you&apos;re approved</Badge>
         )}
         {!isEditing && !isPending && hasPaidTicket && !stripeOnboarded && (
-          <Badge variant="warning">Saved as a draft — connect Stripe to publish</Badge>
+          <Badge variant="warning">Saved as a draft, connect Stripe to publish</Badge>
         )}
         <Button type="submit" size="lg" disabled={loading}>
           {loading && <Loader2 className="animate-spin" />}

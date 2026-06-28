@@ -192,7 +192,7 @@ function DealsContent() {
   }, [fetchDeals, fetchCounts])
 
   const handleReactivate = async (dealId: number) => {
-    // Publishing is approval-gated server-side (403) — explain instead of
+    // Publishing is approval-gated server-side (403) - explain instead of
     // firing a request that silently fails.
     if (isPending) {
       setReactivateNotice(

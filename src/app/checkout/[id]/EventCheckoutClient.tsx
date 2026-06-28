@@ -275,7 +275,7 @@ export default function EventCheckoutClient({
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
-        // Fee preview failed silently — non-critical, user can still proceed
+        // Fee preview failed silently - non-critical, user can still proceed
       }
     } finally {
       setFeeLoading(false)
@@ -410,7 +410,7 @@ export default function EventCheckoutClient({
         headers,
         body: JSON.stringify({
           quantity: ticket.quantity,
-          // {CHECKOUT_SESSION_ID} is a Stripe-side placeholder — Stripe
+          // {CHECKOUT_SESSION_ID} is a Stripe-side placeholder - Stripe
           // substitutes the real Checkout Session ID at redirect time. Used
           // by the Apple Wallet button on the success state to fetch the
           // correct .pkpass through the public session-id-gated route.
@@ -530,7 +530,7 @@ export default function EventCheckoutClient({
             </div>
           </div>
 
-          {/* Add to Apple Wallet — iOS Safari / Chrome only. Anchored
+          {/* Add to Apple Wallet - iOS Safari / Chrome only. Anchored
               directly at the `.pkpasses` bundle so iOS surfaces a single
               install sheet with every ticket from this order stacked
               (mirrors the Flutter app's `apple_passkit.addPasses()` flow). */}
@@ -622,7 +622,7 @@ export default function EventCheckoutClient({
                 const salesNotOpen = ticket.sales_state
                   ? ticket.sales_state === "not_open"
                   : vf !== null && now < vf
-                // Lock only when sold out or CLOSED — never merely "not open yet".
+                // Lock only when sold out or CLOSED - never merely "not open yet".
                 const unavailable =
                   isSoldOut ||
                   (ticket.is_purchasable !== undefined ? !ticket.is_purchasable : salesClosed)
@@ -657,7 +657,7 @@ export default function EventCheckoutClient({
                         ) : salesClosed ? (
                           <span className="text-xs font-semibold text-amber-400">Sales closed</span>
                         ) : salesNotOpen ? (
-                          // Still buyable — the window only gates when it can be SCANNED.
+                          // Still buyable - the window only gates when it can be SCANNED.
                           ticket.valid_from ? (
                             <span className="text-xs font-semibold text-primary">
                               {`Scannable from ${formatShortDate(ticket.valid_from)}, ${formatTime(ticket.valid_from, ticket.event_timezone)}`}
@@ -846,7 +846,7 @@ export default function EventCheckoutClient({
               </div>
             )}
 
-            {/* Phone step — phone number only */}
+            {/* Phone step - phone number only */}
             {checkoutStep === "phone" && (
               <div>
                 <label className="mb-2 block text-sm text-white/60">Phone Number</label>
@@ -877,7 +877,7 @@ export default function EventCheckoutClient({
               </div>
             )}
 
-            {/* Name step — shown only for unregistered users */}
+            {/* Name step - shown only for unregistered users */}
             {checkoutStep === "name" && (
               <div>
                 <p className="mb-3 text-sm text-white/60">

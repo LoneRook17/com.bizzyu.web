@@ -66,7 +66,7 @@ export default function VenueManagementSection() {
         <div>
           <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Your venues</h2>
           <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-            Your physical locations — each venue has its own photo, address, and details students see in the app · {venues.length} venue{venues.length !== 1 ? "s" : ""}
+            Your physical locations, each venue has its own photo, address, and details students see in the app · {venues.length} venue{venues.length !== 1 ? "s" : ""}
           </p>
         </div>
         {isOwner && (
@@ -86,7 +86,7 @@ export default function VenueManagementSection() {
               Add your first venue
             </h3>
             <p className="mt-1.5 max-w-md text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-              Your venue is your home on Bizzy — the location, photo, and hours students see in the app.
+              Your venue is your home on Bizzy: the location, photo, and hours students see in the app.
               Every deal and event you post lives at a venue, so this is step one.
             </p>
             {isOwner ? (

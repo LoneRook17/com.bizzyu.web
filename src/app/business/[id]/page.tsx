@@ -9,7 +9,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const title = "Business on Bizzy";
   const description =
-    "View this business and its deals on Bizzy — the student app for campus deals and events.";
+    "View this business and its deals on Bizzy, the student app for campus deals and events.";
   return {
     title,
     description,

@@ -10,7 +10,7 @@ import { openInApp } from "@/lib/open-in-app"
 const POLL_INTERVAL_MS = 25000
 
 // Shape matches GET /ui/venues/venue/:venueId (com.bizzyu.services
-// src/routes/venues.ts) — note the venue object is camelCase (venuePhotoUrl),
+// src/routes/venues.ts) - note the venue object is camelCase (venuePhotoUrl),
 // not snake_case.
 interface VenueData {
   venue: {
@@ -74,7 +74,7 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 }
 
-/** YYYY-MM-DD in the viewer's local timezone — for "is this happening today?" */
+/** YYYY-MM-DD in the viewer's local timezone - for "is this happening today?" */
 function localDateKey(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, "0")
@@ -197,7 +197,7 @@ export default function VenuePageClient({
   }
 
   const { venue, business, events, deals, line_skips } = data
-  // Venue photo only — the business logo is intentionally not used on this page.
+  // Venue photo only - the business logo is intentionally not used on this page.
   const heroImage = venue.venuePhotoUrl
   const resolvedInstagram = venue.instagram || business.instagram
   const resolvedWebsite = venue.website || business.website
@@ -292,7 +292,7 @@ export default function VenuePageClient({
         <div className="absolute inset-x-0 bottom-0 px-5 pb-8">
           <div className="vp-rise mx-auto max-w-5xl">
             <div className="min-w-0">
-              {/* Venue name only — the parent business is often a legal name
+              {/* Venue name only - the parent business is often a legal name
                   (e.g. "XXX LLC") customers shouldn't see. */}
               <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">
                 {venue.name}
@@ -361,7 +361,7 @@ export default function VenuePageClient({
           </div>
         </div>
 
-        {/* Happening today — a highlighted callout that pulls today's event(s)
+        {/* Happening today - a highlighted callout that pulls today's event(s)
             and line skip(s) to the very top so they're impossible to miss. */}
         {hasToday && (
           <section className="vp-rise mt-10">
@@ -401,7 +401,7 @@ export default function VenuePageClient({
         )}
 
         {/* Upcoming Events (hidden when the venue has no events but does have
-            line skips — see showEventsSection). */}
+            line skips - see showEventsSection). */}
         {showEventsSection && (
         <section id="events" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.2s" }}>
           <SectionHeader title="Upcoming Events" count={events.length} />
@@ -420,7 +420,7 @@ export default function VenuePageClient({
                 const today = isEventToday(event)
                 return (
                   // Event checkout lives on the Laravel app, not Vercel (no
-                  // event page here yet) — external link, not a Next route.
+                  // event page here yet) - external link, not a Next route.
                   <a
                     key={event.event_id}
                     href={`${checkoutBaseUrl}/checkout/${event.event_id}`}
@@ -539,7 +539,7 @@ export default function VenuePageClient({
                           />
                         </div>
                         <p className="mt-1.5 text-xs font-semibold text-gray-400">
-                          {available} of {ls.capacity} left{pctSold >= 75 ? " — going fast" : ""}
+                          {available} of {ls.capacity} left{pctSold >= 75 ? ", going fast" : ""}
                         </p>
                       </div>
                     )}
@@ -605,7 +605,7 @@ export default function VenuePageClient({
           </section>
         )}
 
-        {/* Open-in-app pill — mobile browsers only. Tries bizzy://venue/:id,
+        {/* Open-in-app pill - mobile browsers only. Tries bizzy://venue/:id,
             falls back to the App Store when the app isn't installed. */}
         {isMobileUA && (
           <div className="fixed inset-x-0 bottom-5 z-50 flex justify-center px-5">

@@ -152,7 +152,7 @@ export default function V2HelpPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for a topic — promo codes, refunds, Stripe…"
+            placeholder="Search for a topic, promo codes, refunds, Stripe…"
             className="h-11 pl-9 pr-9"
           />
           {query && (
@@ -187,7 +187,7 @@ export default function V2HelpPage() {
           )}
         </div>
 
-        {/* Table of contents — desktop */}
+        {/* Table of contents - desktop */}
         <aside className="hidden w-56 shrink-0 lg:block">
           <div className="sticky top-8">
             <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">On this page</h3>

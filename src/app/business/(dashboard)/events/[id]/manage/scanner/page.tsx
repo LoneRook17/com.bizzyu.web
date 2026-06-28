@@ -63,7 +63,7 @@ export default function V2ScannerLinksPage({ params }: { params: Promise<{ id: s
           <h2 className="mb-2 text-sm font-semibold text-blue-800 dark:text-blue-300">Tips for door staff</h2>
           <ul className="space-y-1.5 text-xs text-blue-700 dark:text-blue-400">
             <li>Ensure good lighting for camera scanning.</li>
-            <li>Hold the camera steady, about 6–8 inches from the QR code.</li>
+            <li>Hold the camera steady, about 6-8 inches from the QR code.</li>
             <li>Green screen = entry, orange screen = line skip only.</li>
             <li>Red screen = invalid or already scanned.</li>
             <li>Check-in stats update in real time across all devices.</li>

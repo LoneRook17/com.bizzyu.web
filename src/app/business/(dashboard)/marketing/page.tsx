@@ -11,11 +11,11 @@ import EventsTab from "@/components/business/v2/marketing/EventsTab"
 import FollowingTab from "@/components/business/v2/marketing/FollowingTab"
 
 /**
- * Marketing dashboard — two send-paths surface to owners and managers.
+ * Marketing dashboard - two send-paths surface to owners and managers.
  *
- *  • Events  — pick one event, blast that event's audience via the
+ *  • Events  - pick one event, blast that event's audience via the
  *         per-event composers under /business/v2/events/[id]/manage/.
- *  • Followers — blast everyone who follows the selected venue (May 2026
+ *  • Followers - blast everyone who follows the selected venue (May 2026
  *         venue-scope update). "All venues" rolls up unique
  *         followers across every venue.
  *
