@@ -10,6 +10,10 @@ export default function Navbar() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // The discounts landing page is a focused signup funnel — keep "Book a Call"
+  // (a bar-intro Calendly) off it so it doesn't compete with "Get Started Free".
+  const hideBookACall = pathname === "/discounts";
+
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   // Lock body scroll when drawer is open
@@ -85,14 +89,16 @@ export default function Navbar() {
             >
               Business Portal
             </Link>
-            <a
-              href={CALENDLY_DEMO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
-            >
-              Book a Call
-            </a>
+            {!hideBookACall && (
+              <a
+                href={CALENDLY_DEMO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
+              >
+                Book a Call
+              </a>
+            )}
           </div>
         </div>
       </nav>
@@ -156,15 +162,17 @@ export default function Navbar() {
             Business Portal
           </Link>
 
-          <a
-            href={CALENDLY_DEMO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={closeDrawer}
-            className="mt-3 inline-flex items-center justify-center px-6 py-3 bg-primary text-white text-base font-semibold rounded-full hover:brightness-110 transition-all"
-          >
-            Book a Call
-          </a>
+          {!hideBookACall && (
+            <a
+              href={CALENDLY_DEMO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={closeDrawer}
+              className="mt-3 inline-flex items-center justify-center px-6 py-3 bg-primary text-white text-base font-semibold rounded-full hover:brightness-110 transition-all"
+            >
+              Book a Call
+            </a>
+          )}
         </div>
       </div>
     </>
