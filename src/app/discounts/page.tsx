@@ -241,11 +241,7 @@ export default function DiscountsPage() {
             <div className="lg:col-span-7">
               <AnimatedSection>
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
-                  Reach local students.
-                  <br />
-                  <span className="font-display-italic font-normal text-ink">
-                    Build local <span className="marker-underline marker-draw">community</span>.
-                  </span>
+                  Get More Students Through Your <span className="marker-underline marker-draw">Door</span>.
                 </h1>
 
                 <p className="text-lg md:text-xl text-muted mb-9 max-w-xl leading-relaxed">
