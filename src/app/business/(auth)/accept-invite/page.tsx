@@ -101,7 +101,7 @@ function AcceptInviteContent() {
       }
 
       await apiClient.authPost("/business/auth/accept-invite", payload)
-      router.push("/business")
+      router.push("/business/v2")
     } catch (err) {
       if (err instanceof ApiError) {
         setServerError(err.message)
