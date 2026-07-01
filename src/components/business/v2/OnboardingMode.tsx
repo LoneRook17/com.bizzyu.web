@@ -32,15 +32,18 @@ const OPTIONS: { mode: DashboardMode; icon: React.ElementType; bullets: string[]
  * forever in Settings → Dashboard preferences.
  */
 export default function OnboardingMode() {
-  const { user, refreshProfile } = useAuth()
+  const { user, availableBusinesses, refreshProfile, switchBusiness } = useAuth()
   const [selected, setSelected] = useState<DashboardMode | null>(null)
   const [saving, setSaving] = useState(false)
+  const [switchingId, setSwitchingId] = useState<number | null>(null)
   const [error, setError] = useState("")
 
   const firstName = user?.full_name?.split(" ")[0]
+  // Escape hatch: multi-business users must never be trapped here.
+  const otherBusinesses = availableBusinesses.filter((b) => !b.is_current)
 
   const choose = async (mode: DashboardMode) => {
-    if (saving) return
+    if (saving || switchingId !== null) return
     setSelected(mode)
     setSaving(true)
     setError("")
@@ -51,6 +54,18 @@ export default function OnboardingMode() {
       setError("Couldn't save your choice. Please try again.")
       setSaving(false)
       setSelected(null)
+    }
+  }
+
+  const handleSwitch = async (businessId: number) => {
+    if (saving || switchingId !== null) return
+    setSwitchingId(businessId)
+    setError("")
+    try {
+      await switchBusiness(businessId) // hard-navigates on success
+    } catch {
+      setSwitchingId(null)
+      setError("Couldn't switch business. Please try again.")
     }
   }
 
@@ -108,6 +123,23 @@ export default function OnboardingMode() {
 
         {error && (
           <p className="mt-5 text-center text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
+
+        {otherBusinesses.length > 0 && (
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-sm text-neutral-500 dark:text-neutral-400">
+            <span>Looking for a different business?</span>
+            {otherBusinesses.map((b) => (
+              <button
+                key={b.business_id}
+                type="button"
+                disabled={saving || switchingId !== null}
+                onClick={() => handleSwitch(b.business_id)}
+                className="font-medium text-[#05EB54] hover:underline disabled:opacity-50"
+              >
+                {switchingId === b.business_id ? "Switching…" : `Switch to ${b.name}`}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -50,19 +50,24 @@ export const MODE_CONFIG: Record<
 /**
  * The business's dashboard mode.
  * - `mode` falls back to 'hybrid' when unset so nothing is ever wrongly hidden.
- * - `needsOnboarding` is true when the questionnaire hasn't been answered.
+ * - `needsOnboarding` is true when the questionnaire hasn't been answered AND
+ *   the current user can actually answer it. PUT /business/profile/preferences
+ *   is owner/manager-only, so staff/promoters must never be shown the
+ *   onboarding takeover — for them it's an inescapable dead end (no sidebar,
+ *   no business switcher, and every option 403s). They fall back to 'hybrid'.
  */
 export function useDashboardMode(): {
   mode: DashboardMode
   needsOnboarding: boolean
   config: (typeof MODE_CONFIG)[DashboardMode]
 } {
-  const { business } = useAuth()
+  const { business, user } = useAuth()
   const raw = business?.dashboard_mode ?? null
   const mode: DashboardMode = raw ?? "hybrid"
+  const canConfigure = user?.business_role === "owner" || user?.business_role === "manager"
   return {
     mode,
-    needsOnboarding: !!business && raw === null,
+    needsOnboarding: !!business && raw === null && canConfigure,
     config: MODE_CONFIG[mode],
   }
 }

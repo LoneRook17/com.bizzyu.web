@@ -55,8 +55,14 @@ export function middleware(request: NextRequest) {
   // Keep v2 traffic inside v2 (auth ↔ dashboard redirects stay in the same world)
   const isV2 = pathname.startsWith("/business/v2")
 
+  // Accept-invite must stay reachable while logged in: a user with an active
+  // session (biz_refresh lives 7 days) can legitimately click an invite email
+  // for another business/account. Bouncing them to the dashboard here silently
+  // drops the ?token= and the invite is never accepted.
+  const isAcceptInvite = pathname.includes("/accept-invite")
+
   // Authenticated user visiting auth pages → redirect to dashboard
-  if (isAuthPage && hasSession) {
+  if (isAuthPage && hasSession && !isAcceptInvite) {
     return NextResponse.redirect(new URL(isV2 ? "/business/v2" : "/business", request.url))
   }
 

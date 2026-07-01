@@ -73,7 +73,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     setUser(data.user)
     setBusiness(data.business)
     // biz_session cookie is now set by the server response
-    router.push("/business")
+    router.push("/business/v2")
   }
 
   const logout = async () => {
@@ -98,7 +98,8 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
   const switchBusiness = async (businessId: number) => {
     await apiClient.post("/business/auth/switch", { business_id: businessId })
     // Hard reload — clears all stale venue/event/deal context across every provider.
-    window.location.href = "/business"
+    // Point at v2 directly: /business only works via a middleware double-hop.
+    window.location.href = "/business/v2"
   }
 
   return (
