@@ -15,6 +15,7 @@ interface TeamMemberRowProps {
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
   onVenueChange: (memberId: number, venueId: number | null) => void
+  onResend?: (member: TeamMember) => void
 }
 
 const ROLE_BADGE: Record<string, { className: string }> = {
@@ -31,11 +32,12 @@ function initials(s: string) {
 }
 
 export default function TeamMemberRow({
-  member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange,
+  member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange, onResend,
 }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const isPending = !member.invite_accepted_at && !isOwnerMember
+  const isExpired = isPending && !!member.invite_expires_at && new Date(member.invite_expires_at) < new Date()
 
   const joinedSource = member.invite_accepted_at ?? member.created_at
   const joinedDate = joinedSource
@@ -54,7 +56,8 @@ export default function TeamMemberRow({
             <Badge size="sm" className={cn(ROLE_BADGE[member.role]?.className ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400")}>
               {ROLE_LABELS[member.role] ?? member.role}
             </Badge>
-            {isPending && <Badge size="sm" variant="warning">Pending invite</Badge>}
+            {isPending && !isExpired && <Badge size="sm" variant="warning">Pending invite</Badge>}
+            {isExpired && <Badge size="sm" variant="danger">Invite expired</Badge>}
             <span className="text-xs text-neutral-400 dark:text-neutral-500">{joinedDate}</span>
           </div>
         </div>
@@ -89,6 +92,11 @@ export default function TeamMemberRow({
             ))}
           </Select>
 
+          {isExpired && onResend && (
+            <Button variant="ghost" size="sm" onClick={() => onResend(member)} className="text-primary dark:text-primary hover:bg-primary/10">
+              Resend
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
             Remove
           </Button>
