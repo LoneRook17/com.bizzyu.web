@@ -7,7 +7,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X,
+  Sun, Moon, TicketPercent, Menu, X, Building2, Loader2,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -61,7 +61,8 @@ function initials(s?: string) {
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, business, isPending, logout } = useAuth()
+  const { user, business, availableBusinesses, isPending, logout, switchBusiness } = useAuth()
+  const [switching, setSwitching] = useState<number | null>(null)
   const { venues, selectedVenue, selectedVenueId, isAllVenues, setSelectedVenue } = useVenue()
   const { resolvedTheme, setTheme } = useTheme()
   const { config } = useDashboardMode()
@@ -80,6 +81,45 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-8 w-auto" />
       </Link>
+
+      {/* business switcher — only rendered when user belongs to multiple businesses */}
+      {availableBusinesses.length > 1 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger className="mt-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800/60">
+            <Building2 className="size-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              {business?.name ?? "—"}
+            </span>
+            <ChevronsUpDown className="size-3 shrink-0 text-neutral-400" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[232px]">
+            <DropdownMenuLabel>Switch business</DropdownMenuLabel>
+            {availableBusinesses.map((b) => (
+              <DropdownMenuItem
+                key={b.business_id}
+                disabled={switching !== null}
+                onSelect={async () => {
+                  if (b.is_current) return
+                  setSwitching(b.business_id)
+                  try {
+                    await switchBusiness(b.business_id)
+                  } catch {
+                    setSwitching(null)
+                  }
+                }}
+              >
+                {switching === b.business_id ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Building2 className="size-4" />
+                )}
+                <span className="truncate">{b.name}</span>
+                {b.is_current && <Check className="ml-auto size-4 text-[#05EB54]" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {/* venue switcher */}
       <DropdownMenu>
