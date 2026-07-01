@@ -68,6 +68,15 @@ export default function TeamPage() {
     }
   }
 
+  const handleResend = async (member: TeamMember) => {
+    try {
+      await apiClient.post("/business/team/invite", { email: member.email, role: member.role, venue_id: member.venue_id })
+      await fetchMembers()
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to resend invite")
+    }
+  }
+
   const handleRemove = async () => {
     if (!removeTarget) return
     setRemoveLoading(true)
@@ -203,6 +212,7 @@ export default function TeamPage() {
                     onRemove={setRemoveTarget}
                     onRoleChange={handleRoleChange}
                     onVenueChange={handleVenueChange}
+                    onResend={isOwner ? handleResend : undefined}
                   />
                 ))}
               </div>
