@@ -219,6 +219,7 @@ export interface TeamMember {
   email: string
   is_active: boolean
   invite_accepted_at: string | null
+  invite_expires_at: string | null
   created_at: string
   venue_id: number | null
   venue_name: string | null
