@@ -35,6 +35,7 @@ export interface Venue {
 export interface AuthState {
   user: BusinessUser | null
   business: Business | null
+  availableBusinesses: BusinessSummary[]
   isLoading: boolean
   isAuthenticated: boolean
   isPending: boolean
@@ -90,9 +91,18 @@ export interface LoginResponse {
   tokens: { accessToken: string; refreshToken: string }
 }
 
+export interface BusinessSummary {
+  business_id: number
+  name: string
+  logo_url: string | null
+  role: 'owner' | 'manager' | 'staff' | 'promoter'
+  is_current: boolean
+}
+
 export interface MeResponse {
   user: BusinessUser
   business: Business
+  available_businesses: BusinessSummary[]
 }
 
 // Event types
