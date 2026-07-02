@@ -63,7 +63,7 @@ export default function TeamMemberRow({
 
       {/* Actions — owner only, non-owner members */}
       {isOwnerViewing && !isOwnerMember && (
-        <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:pl-0">
+        <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:flex-shrink-0 sm:pl-0">
           <Select
             value={member.venue_id ?? ""}
             onChange={(e) => {
