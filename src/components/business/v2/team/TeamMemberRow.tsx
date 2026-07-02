@@ -38,6 +38,7 @@ export default function TeamMemberRow({
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const isPending = !member.invite_accepted_at && !isOwnerMember
+  const isExpired = isPending && !!member.invite_expires_at && new Date(member.invite_expires_at) < new Date()
   // Resend feedback: sending (disabled) → sent ✓ (3s) → idle. Without this the
   // button gives no feedback and users double-fire it thinking it didn't work.
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle")
@@ -59,7 +60,8 @@ export default function TeamMemberRow({
             <Badge size="sm" className={cn(ROLE_BADGE[member.role]?.className ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400")}>
               {ROLE_LABELS[member.role] ?? member.role}
             </Badge>
-            {isPending && <Badge size="sm" variant="warning">Pending invite</Badge>}
+            {isPending && !isExpired && <Badge size="sm" variant="warning">Pending invite</Badge>}
+            {isExpired && <Badge size="sm" variant="danger">Invite expired</Badge>}
             <span className="text-xs text-neutral-400 dark:text-neutral-500">{joinedDate}</span>
           </div>
         </div>
