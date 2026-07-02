@@ -81,6 +81,9 @@ export default function V2TeamPage() {
       await fetchMembers()
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Failed to resend invite")
+      // Rethrow so the row's button resets to a clickable state instead of
+      // showing a false "sent" confirmation.
+      throw err
     }
   }
 

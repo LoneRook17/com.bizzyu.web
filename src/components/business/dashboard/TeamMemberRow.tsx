@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { ROLE_LABELS } from "@/lib/business/constants"
 import type { TeamMember, Venue } from "@/lib/business/types"
 
@@ -10,7 +11,7 @@ interface TeamMemberRowProps {
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
   onVenueChange: (memberId: number, venueId: number | null) => void
-  onResend?: (member: TeamMember) => void
+  onResend?: (member: TeamMember) => void | Promise<void>
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -27,6 +28,9 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
   const isOwnerMember = member.role === "owner"
   const isPending = !member.invite_accepted_at && !isOwnerMember
   const isExpired = isPending && !!member.invite_expires_at && new Date(member.invite_expires_at) < new Date()
+  // Resend feedback: sending (disabled) → sent ✓ (3s) → idle. Without this the
+  // button gives no feedback and users double-fire it thinking it didn't work.
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle")
 
   const joinedDate = member.invite_accepted_at
     ? new Date(member.invite_accepted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -98,10 +102,24 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
               as "refresh the link" for a pending invitee who lost the email. */}
           {isPending && onResend && (
             <button
-              onClick={() => onResend(member)}
-              className="rounded-lg border border-primary px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer flex-shrink-0"
+              disabled={resendState !== "idle"}
+              onClick={async () => {
+                setResendState("sending")
+                try {
+                  await Promise.resolve(onResend(member))
+                  setResendState("sent")
+                  setTimeout(() => setResendState("idle"), 3000)
+                } catch {
+                  setResendState("idle")
+                }
+              }}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors flex-shrink-0 ${
+                resendState === "sent"
+                  ? "border-green-600 text-green-600"
+                  : "border-primary text-primary hover:bg-primary/10 cursor-pointer"
+              } disabled:opacity-70`}
             >
-              Resend
+              {resendState === "sending" ? "Sending…" : resendState === "sent" ? "Invite sent ✓" : "Resend"}
             </button>
           )}
 

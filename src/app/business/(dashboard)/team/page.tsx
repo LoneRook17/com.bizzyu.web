@@ -74,6 +74,8 @@ export default function TeamPage() {
       await fetchMembers()
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Failed to resend invite")
+      // Rethrow so the row's button resets instead of showing a false "sent".
+      throw err
     }
   }
 

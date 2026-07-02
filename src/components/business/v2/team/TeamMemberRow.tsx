@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { cn } from "@/lib/v2/utils"
 import { ROLE_LABELS } from "@/lib/business/constants"
 import type { TeamMember, Venue } from "@/lib/business/types"
@@ -15,7 +16,7 @@ interface TeamMemberRowProps {
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
   onVenueChange: (memberId: number, venueId: number | null) => void
-  onResend?: (member: TeamMember) => void
+  onResend?: (member: TeamMember) => void | Promise<void>
 }
 
 const ROLE_BADGE: Record<string, { className: string }> = {
@@ -37,6 +38,9 @@ export default function TeamMemberRow({
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const isPending = !member.invite_accepted_at && !isOwnerMember
+  // Resend feedback: sending (disabled) → sent ✓ (3s) → idle. Without this the
+  // button gives no feedback and users double-fire it thinking it didn't work.
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle")
 
   const joinedSource = member.invite_accepted_at ?? member.created_at
   const joinedDate = joinedSource
@@ -93,8 +97,27 @@ export default function TeamMemberRow({
           {/* Resend — any not-yet-accepted invite. Re-invite rotates the
               token + expiry server-side, so it doubles as "refresh the link". */}
           {isPending && onResend && (
-            <Button variant="ghost" size="sm" onClick={() => onResend(member)} className="text-primary hover:bg-primary/10">
-              Resend
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={resendState !== "idle"}
+              onClick={async () => {
+                setResendState("sending")
+                try {
+                  await Promise.resolve(onResend(member))
+                  setResendState("sent")
+                  setTimeout(() => setResendState("idle"), 3000)
+                } catch {
+                  setResendState("idle")
+                }
+              }}
+              className={cn(
+                resendState === "sent"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-primary hover:bg-primary/10",
+              )}
+            >
+              {resendState === "sending" ? "Sending…" : resendState === "sent" ? "Invite sent ✓" : "Resend"}
             </Button>
           )}
 
