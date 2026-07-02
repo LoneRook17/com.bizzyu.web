@@ -212,7 +212,8 @@ export default function EventCheckoutClient({
   const setQty = (ticketId: number, val: number) => {
     const ticket = tickets.find((t) => t.ticket_id === ticketId)
     const max = ticket?.max_per_person ?? 10
-    const available = ticket?.available_quantity
+    // quantity 0/null = unlimited supply; the API still reports available_quantity 0 for those
+    const available = ticket?.quantity ? ticket?.available_quantity : null
     const upperBound = available !== null && available !== undefined ? Math.min(max, available) : max
     setQuantities((prev) => ({ ...prev, [ticketId]: Math.max(0, Math.min(upperBound, val)) }))
   }
@@ -605,10 +606,11 @@ export default function EventCheckoutClient({
               {[...paidTickets, ...freeTickets].map((ticket) => {
                 const qty = getQty(ticket.ticket_id)
                 const isSoldOut =
+                  !!ticket.quantity &&
                   ticket.available_quantity !== null &&
                   ticket.available_quantity !== undefined &&
                   ticket.available_quantity <= 0
-                const remaining = ticket.available_quantity
+                const remaining = ticket.quantity ? ticket.available_quantity : null
                 // Scheduled tickets: the window is the REDEEM/scan window, and a
                 // ticket stays BUYABLE until it CLOSES (buying before it opens is
                 // fine). Trust the API's timezone-aware state; fall back to local
