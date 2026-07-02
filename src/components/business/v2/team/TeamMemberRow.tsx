@@ -15,6 +15,7 @@ interface TeamMemberRowProps {
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
   onVenueChange: (memberId: number, venueId: number | null) => void
+  onResend?: (member: TeamMember) => void
 }
 
 const ROLE_BADGE: Record<string, { className: string }> = {
@@ -31,7 +32,7 @@ function initials(s: string) {
 }
 
 export default function TeamMemberRow({
-  member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange,
+  member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange, onResend,
 }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
@@ -88,6 +89,14 @@ export default function TeamMemberRow({
               <option key={r} value={r}>{ROLE_LABELS[r]}</option>
             ))}
           </Select>
+
+          {/* Resend — any not-yet-accepted invite. Re-invite rotates the
+              token + expiry server-side, so it doubles as "refresh the link". */}
+          {isPending && onResend && (
+            <Button variant="ghost" size="sm" onClick={() => onResend(member)} className="text-primary hover:bg-primary/10">
+              Resend
+            </Button>
+          )}
 
           <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
             Remove
