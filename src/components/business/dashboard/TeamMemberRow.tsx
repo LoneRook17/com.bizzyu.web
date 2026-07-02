@@ -93,8 +93,10 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
             ))}
           </select>
 
-          {/* Resend invite — only for expired pending invites */}
-          {isExpired && onResend && (
+          {/* Resend invite — any not-yet-accepted invite (pending or expired).
+              Re-invite rotates the token + expiry server-side, so it doubles
+              as "refresh the link" for a pending invitee who lost the email. */}
+          {isPending && onResend && (
             <button
               onClick={() => onResend(member)}
               className="rounded-lg border border-primary px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer flex-shrink-0"
