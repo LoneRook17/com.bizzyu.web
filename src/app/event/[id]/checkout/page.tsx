@@ -1,4 +1,6 @@
 import { Metadata } from "next"
+import { after } from "next/server"
+import { headers } from "next/headers"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -33,6 +35,47 @@ const LARAVEL_CHECKOUT_BASE_URL =
   process.env.CHECKOUT_REDIRECT_BASE_URL ||
   process.env.LARAVEL_CHECKOUT_BASE_URL ||
   "https://bizzy-deals.com"
+
+// Promoter click tracking. This landing is where every non-app visitor lands
+// (Android / desktop / iOS-without-app / Universal-Link fallback) — the in-app
+// iOS tap opens the app instead and logs its own click via POST /p/:code, so
+// this page is the ONLY click-logging seam for the web path. Before it forwarded
+// ?ref straight to Laravel for *conversion* attribution but never logged the
+// *click*, so tracking_link_clicks only ever saw in-app taps. We close that gap
+// here by posting the click to the same public services endpoint the app uses.
+//
+// Link-preview scrapers fetch this URL (for OG tags) when a link is pasted into
+// a chat — logging those would inflate the count, so we skip known bot/preview
+// user-agents and only count real navigations.
+const CLICK_BOT_UA =
+  /bot|crawler|spider|facebookexternalhit|facebot|slackbot|whatsapp|telegram|discord|twitterbot|linkedinbot|pinterest|embedly|iframely|applebot|bingbot|googlebot|skypeuripreview|vkshare|redditbot|preview/i
+
+async function logPromoterClick(ref: string, userAgent: string | null): Promise<void> {
+  // Only the promoter tracking-code shape (mirrors the services /p/:code param
+  // guard). Other ?ref values (e.g. an event-share user id) are left for the
+  // endpoint to 404 → harmless no-op, matching the app's ?ref handler.
+  if (!/^[A-Za-z0-9-]{1,64}$/.test(ref)) return
+  if (userAgent && CLICK_BOT_UA.test(userAgent)) return
+  try {
+    const ctl = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), 2000)
+    try {
+      // POST (not the GET redirect) logs the click and returns JSON without a
+      // 302; a NULL idempotency token always logs (one real load = one click).
+      // Forward the visitor UA so the click row reflects the real client.
+      await fetch(`${API_URL}/p/${encodeURIComponent(ref)}`, {
+        method: "POST",
+        headers: userAgent ? { "user-agent": userAgent } : undefined,
+        cache: "no-store",
+        signal: ctl.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  } catch {
+    // Click logging is best-effort — never let it break the checkout redirect.
+  }
+}
 
 async function getEventPreview(eventId: string): Promise<EventPreview | null> {
   try {
@@ -83,6 +126,17 @@ function buildQueryString(sp: Record<string, string | string[] | undefined>): st
 export default async function EventCheckoutRedirect({ params, searchParams }: PageProps) {
   const { id } = await params
   const sp = await searchParams
+
+  // Log the promoter click (if this visit carries a ?ref code) AFTER the
+  // response flushes, so it adds zero latency to the redirect. Read the UA
+  // during render — headers() isn't available inside after().
+  const refRaw = sp.ref
+  const ref = Array.isArray(refRaw) ? refRaw[0] : refRaw
+  if (ref) {
+    const userAgent = (await headers()).get("user-agent")
+    after(() => logPromoterClick(ref, userAgent))
+  }
+
   const qs = buildQueryString(sp)
   const target = `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${id}${qs ? `?${qs}` : ""}`
   return (
