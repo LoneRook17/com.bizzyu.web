@@ -3,14 +3,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
+import {
+  fmtMoney,
+  ledgerLabel,
+  MIN_WITHDRAWAL_CENTS,
+  walletIsEmpty,
+  type LedgerEntry,
+  type WalletResponse,
+} from "@/lib/promoter/wallet"
+import WithdrawDialog from "./WithdrawDialog"
 
 const API_URL = getApiBaseUrl()
 const TOKEN_STORAGE_KEY = "bz_auth_token"
+const LEDGER_PAGE_SIZE = 25
 
 interface DashboardTotals {
   lifetime_earned_cents: number
   pending_balance_cents: number
   paid_balance_cents: number
+  // Retired (weekly payouts gone — PRD §6.5). Held as null by the server; the
+  // "Next payout" copy is replaced by the on-demand Withdraw flow below.
   next_payout_date: string | null
   lifetime_clicks: number
   lifetime_sales: number
@@ -40,23 +52,6 @@ interface DayPoint {
   revenue_cents: number
 }
 
-function fmtMoney(cents: number): string {
-  return (cents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "USD",
-  })
-}
-
-function fmtPayoutDate(iso: string | null): string {
-  if (!iso) return ""
-  try {
-    const d = new Date(iso)
-    return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}, 11am ET`
-  } catch {
-    return iso
-  }
-}
-
 function fmtEventDate(iso: string | null): string | null {
   if (!iso) return null
   try {
@@ -73,14 +68,32 @@ function fmtEventDate(iso: string | null): string | null {
   }
 }
 
+function fmtLedgerDate(iso: string | null): string {
+  if (!iso) return ""
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
+  } catch {
+    return iso
+  }
+}
+
 export default function PromoterDashboardClient() {
   const [token, setToken] = useState<string | null>(null)
   const [tokenInput, setTokenInput] = useState("")
   const [tokenLoaded, setTokenLoaded] = useState(false)
   const [data, setData] = useState<DashboardResponse | null>(null)
+  const [wallet, setWallet] = useState<WalletResponse | null>(null)
+  const [ledger, setLedger] = useState<LedgerEntry[]>([])
+  const [ledgerTotal, setLedgerTotal] = useState(0)
+  const [ledgerLoadingMore, setLedgerLoadingMore] = useState(false)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showWithdraw, setShowWithdraw] = useState(false)
   const [openTimeseriesFor, setOpenTimeseriesFor] = useState<number | null>(null)
   const [timeseries, setTimeseries] = useState<Record<number, DayPoint[]>>({})
 
@@ -99,6 +112,20 @@ export default function PromoterDashboardClient() {
     if (stored) setToken(stored)
     setTokenLoaded(true)
   }, [])
+
+  const loadWallet = useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await apiCall(`/promoter/wallet?limit=${LEDGER_PAGE_SIZE}&offset=0`)
+      if (!res.ok) return
+      const body = (await res.json()) as WalletResponse
+      setWallet(body)
+      setLedger(body.ledger ?? [])
+      setLedgerTotal(body.page?.total ?? (body.ledger?.length ?? 0))
+    } catch {
+      /* wallet is non-fatal to the dashboard render — leave it null */
+    }
+  }, [apiCall, token])
 
   const loadDashboard = useCallback(async () => {
     if (!token) return
@@ -127,8 +154,28 @@ export default function PromoterDashboardClient() {
   }, [apiCall, token])
 
   useEffect(() => {
-    if (token) loadDashboard()
-  }, [token, loadDashboard])
+    if (token) {
+      loadDashboard()
+      loadWallet()
+    }
+  }, [token, loadDashboard, loadWallet])
+
+  const loadMoreLedger = useCallback(async () => {
+    if (!token || ledgerLoadingMore) return
+    setLedgerLoadingMore(true)
+    try {
+      const res = await apiCall(
+        `/promoter/wallet?limit=${LEDGER_PAGE_SIZE}&offset=${ledger.length}`,
+      )
+      if (res.ok) {
+        const body = (await res.json()) as WalletResponse
+        setLedger((prev) => [...prev, ...(body.ledger ?? [])])
+        setLedgerTotal(body.page?.total ?? ledgerTotal)
+      }
+    } finally {
+      setLedgerLoadingMore(false)
+    }
+  }, [apiCall, token, ledger.length, ledgerTotal, ledgerLoadingMore])
 
   const loadTimeseries = useCallback(
     async (eventId: number) => {
@@ -240,6 +287,9 @@ export default function PromoterDashboardClient() {
     )
   }
 
+  const availableCents = wallet?.available_cents ?? 0
+  const pendingCents = wallet?.pending_cents ?? totals.pending_balance_cents
+
   return (
     <main className="min-h-screen bg-white text-ink px-4 py-8 sm:py-12">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -254,7 +304,23 @@ export default function PromoterDashboardClient() {
           </button>
         </div>
 
-        <TotalsCard totals={totals} />
+        <WalletCard
+          available={availableCents}
+          pending={pendingCents}
+          empty={wallet ? walletIsEmpty({ ...wallet, ledger }) : false}
+          onWithdraw={() => setShowWithdraw(true)}
+        />
+
+        <ActivityStats totals={totals} />
+
+        {ledger.length > 0 && (
+          <LedgerSection
+            entries={ledger}
+            total={ledgerTotal}
+            loadingMore={ledgerLoadingMore}
+            onLoadMore={loadMoreLedger}
+          />
+        )}
 
         <section>
           <h2 className="text-base font-semibold mb-3">Your events</h2>
@@ -316,44 +382,152 @@ export default function PromoterDashboardClient() {
           </ul>
         </section>
       </div>
+
+      {showWithdraw && (
+        <WithdrawDialog
+          availableCents={availableCents}
+          apiCall={apiCall}
+          onClose={() => setShowWithdraw(false)}
+          onSuccess={loadWallet}
+        />
+      )}
     </main>
   )
 }
 
-function TotalsCard({ totals }: { totals: DashboardTotals }) {
+/**
+ * Wallet balance card (replaces the retired Pending/Paid-out/Next-payout block).
+ * Shows Available (withdrawable) + Pending, with the on-demand Withdraw button.
+ * Handles the three balance states: empty (no earnings → share links), negative
+ * (Available < 0 after a post-withdrawal clawback → withdraw disabled), and
+ * below-minimum (Available < $20 → withdraw disabled with the reason shown).
+ */
+function WalletCard({
+  available,
+  pending,
+  empty,
+  onWithdraw,
+}: {
+  available: number
+  pending: number
+  empty: boolean
+  onWithdraw: () => void
+}) {
+  const negative = available < 0
+  const canWithdraw = available >= MIN_WITHDRAWAL_CENTS
+
   return (
     <div className="border rounded-lg p-5 bg-primary/5">
-      <p className="text-xs text-gray-600">Lifetime earned</p>
-      <p className="text-3xl font-semibold text-primary mt-1">
-        {fmtMoney(totals.lifetime_earned_cents)}
+      <p className="text-xs text-gray-600">Available to withdraw</p>
+      <p
+        className={`text-3xl font-semibold mt-1 ${negative ? "text-red-600" : "text-primary"}`}
+      >
+        {fmtMoney(available)}
       </p>
-      <div className="grid grid-cols-2 gap-3 mt-4">
-        <Stat label="Pending" value={fmtMoney(totals.pending_balance_cents)} />
-        <Stat label="Paid out" value={fmtMoney(totals.paid_balance_cents)} />
-      </div>
-      {totals.next_payout_date && (
-        <p className="text-xs text-gray-500 mt-3">
-          Next payout: {fmtPayoutDate(totals.next_payout_date)}
+      <p className="text-xs text-gray-500 mt-1">
+        {fmtMoney(pending)} pending — clears after your events end.
+      </p>
+
+      {empty ? (
+        <p className="mt-4 text-sm text-gray-600">
+          No earnings yet. Share your event links below to start earning commission.
         </p>
+      ) : negative ? (
+        <p className="mt-4 text-xs text-gray-600">
+          Your balance is negative after a refund/clawback. It will be offset by future
+          earnings before you can withdraw again.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-2">
+          <button
+            onClick={onWithdraw}
+            disabled={!canWithdraw}
+            className="w-full bg-primary text-white rounded-md py-2.5 text-sm font-medium disabled:opacity-50"
+          >
+            Withdraw
+          </button>
+          {!canWithdraw && (
+            <p className="text-xs text-gray-500 text-center">
+              Withdrawals start at {fmtMoney(MIN_WITHDRAWAL_CENTS)}. Keep earning to unlock.
+            </p>
+          )}
+          <p className="text-[11px] text-gray-400 text-center">
+            Withdrawals are on-demand — cash out whenever you like.
+          </p>
+        </div>
       )}
-      <div className="flex gap-2 mt-3 text-xs text-gray-700">
-        <span className="bg-white border rounded px-2 py-0.5">
-          {totals.lifetime_clicks} clicks
-        </span>
-        <span className="bg-white border rounded px-2 py-0.5">
-          {totals.lifetime_sales} sales
-        </span>
-      </div>
     </div>
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function ActivityStats({ totals }: { totals: DashboardTotals }) {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      <MiniStat label="Lifetime earned" value={fmtMoney(totals.lifetime_earned_cents)} />
+      <MiniStat label="Clicks" value={String(totals.lifetime_clicks)} />
+      <MiniStat label="Sales" value={String(totals.lifetime_sales)} />
+    </div>
+  )
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-white border rounded-md px-3 py-2">
       <p className="text-[11px] text-gray-500">{label}</p>
       <p className="text-base font-semibold">{value}</p>
     </div>
+  )
+}
+
+/** Paged, newest-first wallet ledger. Reversal rows are labeled as the automatic
+ *  return of a failed withdrawal to Available. */
+function LedgerSection({
+  entries,
+  total,
+  loadingMore,
+  onLoadMore,
+}: {
+  entries: LedgerEntry[]
+  total: number
+  loadingMore: boolean
+  onLoadMore: () => void
+}) {
+  return (
+    <section>
+      <h2 className="text-base font-semibold mb-3">Wallet activity</h2>
+      <ul className="border rounded-lg divide-y">
+        {entries.map((e) => {
+          const credit = e.amount_cents >= 0
+          return (
+            <li key={e.id} className="flex items-center justify-between px-4 py-2.5">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{ledgerLabel(e)}</p>
+                <p className="text-[11px] text-gray-500">
+                  {fmtLedgerDate(e.created_at)}
+                  {e.status === "pending" ? " · pending" : ""}
+                  {e.status === "failed" ? " · failed" : ""}
+                </p>
+              </div>
+              <span
+                className={`text-sm font-semibold shrink-0 ${credit ? "text-primary" : "text-ink"}`}
+              >
+                {credit ? "+" : "−"}
+                {fmtMoney(Math.abs(e.amount_cents))}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+      {entries.length < total && (
+        <button
+          onClick={onLoadMore}
+          disabled={loadingMore}
+          className="mt-2 text-xs text-gray-600 hover:text-ink disabled:opacity-50"
+        >
+          {loadingMore ? "Loading…" : "Show more"}
+        </button>
+      )}
+    </section>
   )
 }
 
