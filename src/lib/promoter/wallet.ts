@@ -173,8 +173,11 @@ export function classifyWithdrawResponse(status: number, body: unknown): Withdra
     return { kind: "below_minimum", message: errorMessage(body, "Below the minimum withdrawal.") }
   }
 
-  // (d) account_flagged (403).
-  if (type === "account_flagged") {
+  // (d) account_flagged (403) OR pending_approval (403). The relocated promoter
+  // Stripe approval kill switch (B9.1 §2 / B9.2) can answer at withdrawal-time
+  // onboarding — same neutral "under review, contact support" state as a flagged
+  // account (no onboarding URL to launch). Mirrors flutter's classifyWithdrawResponse.
+  if (type === "account_flagged" || type === "pending_approval") {
     return {
       kind: "flagged",
       message: errorMessage(body, "Withdrawals are under review. Please contact support."),
