@@ -128,6 +128,12 @@ export interface TicketTier {
   max_per_person?: number
   ticket_type: 'paid' | 'free' | 'guest'
   is_hidden?: boolean
+  // Operator "force sold out" flag. Unlike is_hidden, the tier stays visible on
+  // checkout but shows a Sold Out banner and can't be purchased. Quantity is
+  // untouched — clearing it restores sales.
+  force_sold_out?: boolean
+  // Derived signal from the API: force_sold_out OR a finite tier that ran out.
+  is_sold_out?: boolean
   // Scheduled tickets: optional sales/scan window (datetime-local strings, US/Eastern wall-clock). Empty/null = no limit.
   valid_from?: string | null
   valid_until?: string | null

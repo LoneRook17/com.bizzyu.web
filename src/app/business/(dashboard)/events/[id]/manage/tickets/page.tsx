@@ -57,7 +57,9 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
   const [editing, setEditing] = useState<FormState | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
-  const [togglingId, setTogglingId] = useState<number | null>(null)
+  // Which per-row toggle (if any) has an in-flight request. Tracks the field so
+  // only the button that was clicked shows a spinner.
+  const [toggling, setToggling] = useState<{ id: number; field: "hidden" | "sold_out" } | null>(null)
 
   const fetchTickets = async () => {
     try {
@@ -128,7 +130,7 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
   const handleToggleHidden = async (t: TicketTier) => {
     if (!t.ticket_id) return
     const next = !t.is_hidden
-    setTogglingId(t.ticket_id)
+    setToggling({ id: t.ticket_id, field: "hidden" })
     try {
       await apiClient.put(`/business/events/${id}/tickets/${t.ticket_id}`, {
         is_hidden: next,
@@ -137,7 +139,25 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Failed to update visibility")
     } finally {
-      setTogglingId(null)
+      setToggling(null)
+    }
+  }
+
+  // Force a tier sold out without touching its quantity. Buyers see the
+  // sold-out banner and can't purchase; clearing it restores sales.
+  const handleToggleSoldOut = async (t: TicketTier) => {
+    if (!t.ticket_id) return
+    const next = !t.force_sold_out
+    setToggling({ id: t.ticket_id, field: "sold_out" })
+    try {
+      await apiClient.put(`/business/events/${id}/tickets/${t.ticket_id}`, {
+        force_sold_out: next,
+      })
+      await fetchTickets()
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to update sold-out status")
+    } finally {
+      setToggling(null)
     }
   }
 
@@ -313,7 +333,8 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
                 t={t}
                 onEdit={() => startEdit(t)}
                 onToggleHidden={() => handleToggleHidden(t)}
-                isToggling={togglingId === t.ticket_id}
+                onToggleSoldOut={() => handleToggleSoldOut(t)}
+                togglingField={toggling && toggling.id === t.ticket_id ? toggling.field : null}
               />
             ))}
           </ul>
@@ -333,7 +354,8 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
                   t={t}
                   onEdit={() => startEdit(t)}
                   onToggleHidden={() => handleToggleHidden(t)}
-                  isToggling={togglingId === t.ticket_id}
+                  onToggleSoldOut={() => handleToggleSoldOut(t)}
+                  togglingField={toggling && toggling.id === t.ticket_id ? toggling.field : null}
                   dimmed
                 />
               ))}
@@ -358,13 +380,15 @@ function TicketRow({
   t,
   onEdit,
   onToggleHidden,
-  isToggling,
+  onToggleSoldOut,
+  togglingField,
   dimmed,
 }: {
   t: TicketTier
   onEdit: () => void
   onToggleHidden: () => void
-  isToggling: boolean
+  onToggleSoldOut: () => void
+  togglingField: "hidden" | "sold_out" | null
   dimmed?: boolean
 }) {
   const priceLabel =
@@ -372,6 +396,7 @@ function TicketRow({
       ? "Free"
       : `$${Number(t.price_usd).toFixed(2)}`
   const qtyLabel = t.quantity === 0 || t.quantity == null ? "Unlimited" : `${t.quantity} qty`
+  const busy = togglingField !== null
 
   return (
     <li
@@ -380,7 +405,14 @@ function TicketRow({
       }`}
     >
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink truncate">{t.name}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-ink truncate">{t.name}</p>
+          {t.force_sold_out && (
+            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
+              Sold out
+            </span>
+          )}
+        </div>
         <p className="text-xs text-gray-500 mt-0.5">
           {priceLabel} &middot; {qtyLabel} &middot; Sold {t.sold_count ?? 0}
         </p>
@@ -395,11 +427,19 @@ function TicketRow({
         </button>
         <button
           type="button"
-          onClick={onToggleHidden}
-          disabled={isToggling}
+          onClick={onToggleSoldOut}
+          disabled={busy}
           className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-60"
         >
-          {isToggling ? "…" : t.is_hidden ? "Unhide" : "Hide"}
+          {togglingField === "sold_out" ? "…" : t.force_sold_out ? "Mark available" : "Mark sold out"}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleHidden}
+          disabled={busy}
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-60"
+        >
+          {togglingField === "hidden" ? "…" : t.is_hidden ? "Unhide" : "Hide"}
         </button>
       </div>
     </li>

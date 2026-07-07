@@ -61,6 +61,11 @@ interface TicketTier {
   event_timezone?: string | null
   sales_state?: "open" | "not_open" | "closed" | string
   is_purchasable?: boolean
+  // Authoritative sold-out signal from the API: force_sold_out OR a finite tier
+  // that has run out. Prefer this over local available_quantity math — it also
+  // covers UNLIMITED tiers the operator has force-sold-out (where
+  // available_quantity is null and can't signal sold-out on its own).
+  is_sold_out?: boolean
 }
 
 interface FeePreview {
@@ -597,10 +602,15 @@ export default function EventCheckoutClient({
             <div className="space-y-3">
               {[...paidTickets, ...freeTickets].map((ticket) => {
                 const qty = getQty(ticket.ticket_id)
+                // Prefer the server's is_sold_out (covers unlimited tiers the
+                // operator forced sold-out); fall back to available_quantity
+                // math for compatibility with older API responses.
                 const isSoldOut =
-                  ticket.available_quantity !== null &&
-                  ticket.available_quantity !== undefined &&
-                  ticket.available_quantity <= 0
+                  ticket.is_sold_out !== undefined
+                    ? ticket.is_sold_out
+                    : ticket.available_quantity !== null &&
+                      ticket.available_quantity !== undefined &&
+                      ticket.available_quantity <= 0
                 const remaining = ticket.available_quantity
                 // Scheduled tickets: the window is the REDEEM/scan window, and a
                 // ticket stays BUYABLE until it CLOSES (buying before it opens is
