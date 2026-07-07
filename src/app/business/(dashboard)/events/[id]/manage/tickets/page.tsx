@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, useRef, use } from "react"
 import Link from "next/link"
+import { Reorder, useDragControls } from "framer-motion"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { TicketTier } from "@/lib/business/types"
 
@@ -76,6 +77,68 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
     fetchTickets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // ── Drag-to-reorder ticket tiers (July 2026 QoL #2) ──────────────────
+  // Optimistic: framer-motion mutates the local order live as you drag; we
+  // persist the full order (active + hidden) on drop and revert if the PUT
+  // fails. ticketsRef mirrors state so the drag-end handler reads the freshest
+  // order without a stale closure. The full order is always active-then-hidden,
+  // which matches how the two sections render.
+  const ticketsRef = useRef<TicketTier[]>([])
+  useEffect(() => {
+    ticketsRef.current = tickets
+  }, [tickets])
+  const preDragRef = useRef<TicketTier[] | null>(null)
+  const [reorderError, setReorderError] = useState("")
+  const [savingOrder, setSavingOrder] = useState(false)
+
+  // Rebuild the full list when one section is dragged, keeping the other
+  // section's order intact. onReorder can fire many times mid-drag; the
+  // functional update always merges against the latest state.
+  const handleReorder = (section: "active" | "hidden", next: TicketTier[]) => {
+    if (reorderError) setReorderError("")
+    setTickets((prev) => {
+      const others = prev.filter((t) => (section === "active" ? t.is_hidden : !t.is_hidden))
+      return section === "active" ? [...next, ...others] : [...others, ...next]
+    })
+  }
+
+  const handleDragStart = () => {
+    preDragRef.current = ticketsRef.current
+  }
+
+  const handleDragEnd = async () => {
+    const snapshot = preDragRef.current
+    preDragRef.current = null
+    if (!snapshot) return
+
+    const orderedIds = ticketsRef.current
+      .map((t) => t.ticket_id)
+      .filter((x): x is number => typeof x === "number")
+    const prevIds = snapshot
+      .map((t) => t.ticket_id)
+      .filter((x): x is number => typeof x === "number")
+
+    // Picked up and dropped in the same spot → nothing to save.
+    if (orderedIds.length === prevIds.length && orderedIds.every((v, i) => v === prevIds[i])) {
+      return
+    }
+
+    setSavingOrder(true)
+    setReorderError("")
+    try {
+      const data = await apiClient.put<{ tickets: TicketTier[] }>(
+        `/business/events/${id}/tickets/reorder`,
+        { ticket_ids: orderedIds },
+      )
+      setTickets(data.tickets ?? [])
+    } catch (err) {
+      setTickets(snapshot) // revert to the pre-drag order
+      setReorderError(err instanceof ApiError ? err.message : "Couldn't save the new order")
+    } finally {
+      setSavingOrder(false)
+    }
+  }
 
   const startCreate = () => {
     setSaveError("")
@@ -193,6 +256,12 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
       </div>
 
       {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+
+      {(savingOrder || reorderError) && (
+        <p className={`text-xs mb-4 ${reorderError ? "text-red-500" : "text-gray-500"}`}>
+          {reorderError || "Saving order…"}
+        </p>
+      )}
 
       {editing && (
         <form
@@ -326,18 +395,34 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
         {active.length === 0 ? (
           <p className="text-sm text-gray-500">No active tickets yet.</p>
         ) : (
-          <ul className="space-y-3">
-            {active.map((t) => (
-              <TicketRow
-                key={t.ticket_id ?? t.name}
-                t={t}
-                onEdit={() => startEdit(t)}
-                onToggleHidden={() => handleToggleHidden(t)}
-                onToggleSoldOut={() => handleToggleSoldOut(t)}
-                togglingField={toggling && toggling.id === t.ticket_id ? toggling.field : null}
-              />
-            ))}
-          </ul>
+          <>
+            {active.length > 1 && (
+              <p className="text-xs text-gray-400 mb-3 -mt-1">
+                Drag the handle to change the order buyers see.
+              </p>
+            )}
+            <Reorder.Group
+              as="ul"
+              axis="y"
+              values={active}
+              onReorder={(next) => handleReorder("active", next)}
+              className="space-y-3"
+            >
+              {active.map((t) => (
+                <TicketRow
+                  key={t.ticket_id ?? t.name}
+                  t={t}
+                  draggable={active.length > 1}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onEdit={() => startEdit(t)}
+                  onToggleHidden={() => handleToggleHidden(t)}
+                  onToggleSoldOut={() => handleToggleSoldOut(t)}
+                  togglingField={toggling && toggling.id === t.ticket_id ? toggling.field : null}
+                />
+              ))}
+            </Reorder.Group>
+          </>
         )}
       </Section>
 
@@ -347,11 +432,20 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
             <p className="text-xs text-gray-500 mb-3">
               Hidden tickets cannot be purchased. Existing ticket holders can still scan in.
             </p>
-            <ul className="space-y-3">
+            <Reorder.Group
+              as="ul"
+              axis="y"
+              values={hidden}
+              onReorder={(next) => handleReorder("hidden", next)}
+              className="space-y-3"
+            >
               {hidden.map((t) => (
                 <TicketRow
                   key={t.ticket_id ?? t.name}
                   t={t}
+                  draggable={hidden.length > 1}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                   onEdit={() => startEdit(t)}
                   onToggleHidden={() => handleToggleHidden(t)}
                   onToggleSoldOut={() => handleToggleSoldOut(t)}
@@ -359,7 +453,7 @@ export default function ManageTicketsPage({ params }: { params: Promise<{ id: st
                   dimmed
                 />
               ))}
-            </ul>
+            </Reorder.Group>
           </Section>
         </div>
       )}
@@ -383,6 +477,9 @@ function TicketRow({
   onToggleSoldOut,
   togglingField,
   dimmed,
+  draggable,
+  onDragStart,
+  onDragEnd,
 }: {
   t: TicketTier
   onEdit: () => void
@@ -390,7 +487,11 @@ function TicketRow({
   onToggleSoldOut: () => void
   togglingField: "hidden" | "sold_out" | null
   dimmed?: boolean
+  draggable?: boolean
+  onDragStart?: () => void
+  onDragEnd?: () => void
 }) {
+  const controls = useDragControls()
   const priceLabel =
     t.ticket_type === "free" || (t.price_usd ?? 0) === 0
       ? "Free"
@@ -399,23 +500,47 @@ function TicketRow({
   const busy = togglingField !== null
 
   return (
-    <li
-      className={`flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 ${
+    <Reorder.Item
+      value={t}
+      dragListener={false}
+      dragControls={controls}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={`flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 ${
         dimmed ? "opacity-70" : ""
       }`}
     >
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-ink truncate">{t.name}</p>
-          {t.force_sold_out && (
-            <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
-              Sold out
-            </span>
-          )}
+      <div className="flex min-w-0 items-center gap-2">
+        {draggable && (
+          <button
+            type="button"
+            aria-label="Drag to reorder"
+            onPointerDown={(e) => controls.start(e)}
+            className="-ml-1 shrink-0 cursor-grab touch-none rounded p-1 text-gray-300 hover:text-gray-500 active:cursor-grabbing"
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <circle cx="7" cy="5" r="1.6" />
+              <circle cx="13" cy="5" r="1.6" />
+              <circle cx="7" cy="10" r="1.6" />
+              <circle cx="13" cy="10" r="1.6" />
+              <circle cx="7" cy="15" r="1.6" />
+              <circle cx="13" cy="15" r="1.6" />
+            </svg>
+          </button>
+        )}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-ink truncate">{t.name}</p>
+            {t.force_sold_out && (
+              <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600">
+                Sold out
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {priceLabel} &middot; {qtyLabel} &middot; Sold {t.sold_count ?? 0}
+          </p>
         </div>
-        <p className="text-xs text-gray-500 mt-0.5">
-          {priceLabel} &middot; {qtyLabel} &middot; Sold {t.sold_count ?? 0}
-        </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button
@@ -442,6 +567,6 @@ function TicketRow({
           {togglingField === "hidden" ? "…" : t.is_hidden ? "Unhide" : "Hide"}
         </button>
       </div>
-    </li>
+    </Reorder.Item>
   )
 }
