@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
 import Sidebar, { MobileTopBar } from "@/components/business/v2/Sidebar"
 import OnboardingMode from "@/components/business/v2/OnboardingMode"
+import SupportBubble from "@/components/support/SupportBubble"
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuth()
@@ -40,6 +41,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>
           </main>
         </div>
+        <SupportBubble />
       </div>
     </VenueProvider>
   )
