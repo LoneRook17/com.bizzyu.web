@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Check In — Bizzy",
+  title: "Check In: Bizzy",
   description: "Ticket check-in for Bizzy events",
 }
 

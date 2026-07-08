@@ -2,7 +2,7 @@ import SectionContainer from "@/components/ui/SectionContainer"
 import { APP_STORE_URL } from "@/lib/constants"
 
 // Bizzy Premium is sold exclusively through the mobile apps (Apple App Store /
-// Google Play). The former web checkout flow (Stripe) has been removed — this
+// Google Play). The former web checkout flow (Stripe) has been removed - this
 // page now funnels web visitors to download the app and subscribe there.
 export const metadata = {
   title: "Bizzy Premium",
@@ -18,7 +18,7 @@ export default function PremiumPage() {
           Bizzy Premium
         </h1>
         <p className="mb-8 text-base leading-relaxed text-muted">
-          Unlimited deal claims, premium-only deals, and more — available in the
+          Unlimited deal claims, premium-only deals, and more, available in the
           Bizzy app. Download Bizzy, then head to{" "}
           <span className="font-semibold text-ink">Profile → Premium</span> to
           subscribe.

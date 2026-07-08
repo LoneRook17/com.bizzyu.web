@@ -3,10 +3,15 @@
 import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import AuthCard from "@/components/business/auth/AuthCard"
-import FormInput from "@/components/business/auth/FormInput"
-import FormPasswordInput from "@/components/business/auth/FormPasswordInput"
-import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
+import { Button } from "@/components/business/v2/ui/button"
+import {
+  AuthAlert,
+  AuthCard,
+  AuthField,
+  AuthFooterLink,
+  AuthPasswordField,
+  AuthSubmit,
+} from "@/components/business/v2/auth/auth-shell"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 
 function AcceptInviteContent() {
@@ -28,12 +33,9 @@ function AcceptInviteContent() {
   if (!token) {
     return (
       <AuthCard title="Invalid invite" subtitle="This invite link is invalid or has expired.">
-        <Link
-          href="/business/login"
-          className="block w-full rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2.5 text-center text-sm font-semibold text-white shadow-md shadow-primary/25 transition-all hover:brightness-110"
-        >
-          Go to Login
-        </Link>
+        <Button asChild size="lg" className="w-full">
+          <Link href="/business/login">Go to Login</Link>
+        </Button>
       </AuthCard>
     )
   }
@@ -63,7 +65,7 @@ function AcceptInviteContent() {
         phone: form.phone,
       })
 
-      // biz_session cookie is now set by the server response
+      // biz_token cookie is now set by the server response
       router.push("/business")
     } catch (err) {
       if (err instanceof ApiError) {
@@ -79,7 +81,7 @@ function AcceptInviteContent() {
   return (
     <AuthCard title="Join your team" subtitle="Set up your account to access the business dashboard.">
       <form onSubmit={handleSubmit}>
-        <FormInput
+        <AuthField
           label="Full Name"
           name="full_name"
           value={form.full_name}
@@ -89,7 +91,7 @@ function AcceptInviteContent() {
           autoComplete="name"
           error={errors.full_name}
         />
-        <FormInput
+        <AuthField
           label="Phone Number"
           name="phone"
           type="tel"
@@ -100,7 +102,7 @@ function AcceptInviteContent() {
           autoComplete="tel"
           error={errors.phone}
         />
-        <FormPasswordInput
+        <AuthPasswordField
           label="Password"
           name="password"
           value={form.password}
@@ -110,7 +112,7 @@ function AcceptInviteContent() {
           autoComplete="new-password"
           error={errors.password}
         />
-        <FormPasswordInput
+        <AuthPasswordField
           label="Confirm Password"
           name="confirm_password"
           value={form.confirm_password}
@@ -122,18 +124,20 @@ function AcceptInviteContent() {
         />
 
         {serverError && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{serverError}</div>
+          <AuthAlert tone="error" className="mb-4">
+            {serverError}
+          </AuthAlert>
         )}
 
-        <AuthSubmitButton loading={loading}>Accept Invite</AuthSubmitButton>
+        <AuthSubmit loading={loading}>Accept Invite</AuthSubmit>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <AuthFooterLink>
         Already have an account?{" "}
-        <Link href="/business/login" className="text-primary hover:underline">
+        <Link href="/business/login" className="font-medium text-[#05EB54] hover:underline">
           Log in
         </Link>
-      </p>
+      </AuthFooterLink>
     </AuthCard>
   )
 }

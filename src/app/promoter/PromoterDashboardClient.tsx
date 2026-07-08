@@ -51,7 +51,7 @@ function fmtPayoutDate(iso: string | null): string {
   if (!iso) return ""
   try {
     const d = new Date(iso)
-    return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} — 11am ET`
+    return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}, 11am ET`
   } catch {
     return iso
   }
@@ -357,7 +357,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   )
 }
 
-/** Inline SVG sparkline — three series (clicks line, sales bars, revenue line)
+/** Inline SVG sparkline - three series (clicks line, sales bars, revenue line)
  *  scaled into one chart space. No external dep. */
 function Sparkline({ days }: { days: DayPoint[] }) {
   const width = 600

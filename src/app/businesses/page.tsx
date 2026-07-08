@@ -106,28 +106,21 @@ export default function BusinessesPage() {
 
               <div className="relative z-10 flex flex-col h-full">
                 <div className="inline-flex items-center w-fit gap-2 px-3 py-1.5 bg-primary text-ink rounded-full text-[11px] font-bold uppercase tracking-widest mb-6">
-                  Bars & Event Venues
+                  Bars, Venues &amp; Promoters
                 </div>
 
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-4">
-                  Sell Tickets.
-                  <br />
-                  Reach More Students.
-                  <br />
-                  <span className="font-display-italic font-normal text-white">
-                    Keep <span className="marker-sticker"><span>100%</span></span>.
-                  </span>
+                  Sell Tickets. Keep Every <span className="marker-sticker"><span>Dollar</span></span>.
                 </h2>
                 <p className="text-white/70 text-base md:text-lg leading-relaxed mb-7 max-w-md">
-                  0% platform fees on tickets, line skip, and cover. Plus an auto-paid promoter army, SMS blasts to past attendees, and influencer + DJ talent we bring to venues nationwide.
+                  Run cover, line skip, and event tickets through Bizzy with 0% platform fees.
                 </p>
 
                 <ul className="space-y-3 mb-8">
                   {[
-                    "0% platform fees on tickets and cover",
-                    "Auto-paid promoter referral links",
-                    "SMS blasts to past attendees, included",
-                    "100+ influencer events brought to bars nationwide",
+                    "0% fees on tickets and cover",
+                    "Promoter referral links included",
+                    "SMS past attendees for future events",
                   ].map((line) => (
                     <li key={line} className="flex items-center gap-3 text-white/90 text-sm md:text-base">
                       <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
@@ -138,22 +131,18 @@ export default function BusinessesPage() {
                   ))}
                 </ul>
 
-                <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                <div className="mt-auto flex flex-col sm:flex-row sm:items-center gap-4">
                   <Button href={CALENDLY_DEMO_URL} variant="primary" size="lg" external>
                     Book a 15-Min Call
                   </Button>
                   <Link
                     href="/events"
-                    className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full font-semibold text-base text-white border-2 border-white/15 hover:border-white/40 hover:bg-white/5 transition-all"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/70 hover:text-white transition-colors"
                   >
-                    See the full pitch
+                    See ticketing details
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
-
-                <p className="mt-5 text-xs text-white/50">
-                  Recommended for: college bars, nightclubs, music venues, event spaces, promoters.
-                </p>
               </div>
             </div>
           </AnimatedSection>
@@ -165,28 +154,21 @@ export default function BusinessesPage() {
 
               <div className="relative z-10 flex flex-col h-full">
                 <div className="inline-flex items-center w-fit gap-2 px-3 py-1.5 bg-white border border-primary/20 rounded-full text-[11px] font-bold uppercase tracking-widest text-primary mb-6 shadow-sm">
-                  Restaurants & Retail
+                  Restaurants, Cafés &amp; Retail
                 </div>
 
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-4">
-                  Post Discounts.
-                  <br />
-                  Reach Nearby Students.
-                  <br />
-                  <span className="font-display-italic font-normal text-ink">
-                    <span className="marker-underline">Free</span> to list.
-                  </span>
+                  Reach More Students Near <span className="marker-underline">Campus</span>.
                 </h2>
                 <p className="text-muted text-base md:text-lg leading-relaxed mb-7 max-w-md">
-                  Post a student discount and reach thousands of nearby students in your college town. You set the deal, the redemption cap, and the hours. Bizzy puts it in front of the right crowd.
+                  Post a student deal for free and get in front of nearby students looking for places to eat, shop, and go out.
                 </p>
 
                 <ul className="space-y-3 mb-8">
                   {[
-                    "Reach thousands of nearby students",
-                    "Cap redemptions so you don't get crushed",
-                    "Push product during slow hours",
-                    "Free to list, no commissions on redemptions",
+                    "Free to list",
+                    "Set caps and hours",
+                    "No commission or POS needed",
                   ].map((line) => (
                     <li key={line} className="flex items-center gap-3 text-ink text-sm md:text-base">
                       <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
@@ -197,22 +179,28 @@ export default function BusinessesPage() {
                   ))}
                 </ul>
 
-                <div className="mt-auto flex flex-col sm:flex-row gap-3">
+                <div className="mt-auto flex flex-col sm:flex-row sm:items-center gap-4">
                   <Button href="/business/signup" variant="primary" size="lg">
-                    Get Started Free
+                    Post a Student Deal for Free
                   </Button>
-                  <Button href={CALENDLY_DEMO_URL} variant="outline" size="lg" external>
-                    Or book a call
-                  </Button>
+                  <Link
+                    href="/discounts#how-it-works"
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                  >
+                    See how it works
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
-
-                <p className="mt-5 text-xs text-muted">
-                  Recommended for: restaurants, cafés, QSR, retail, services, anything off-premise students walk into.
-                </p>
               </div>
             </div>
           </AnimatedSection>
         </div>
+
+        <AnimatedSection delay={0.15}>
+          <p className="mt-10 text-center text-sm text-muted">
+            Used for 100+ college nightlife events nationwide.
+          </p>
+        </AnimatedSection>
       </SectionContainer>
 
       {/* ─── 3. Live venue logo marquee ───────────────────── */}

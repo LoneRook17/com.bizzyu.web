@@ -3,33 +3,29 @@
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import EventForm from "@/components/business/dashboard/EventForm"
 import type { EventDetail, EventFormData } from "@/lib/business/types"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import { Button } from "@/components/business/v2/ui/button"
+import { EventForm } from "@/components/business/v2/events/EventForm"
+import { toDatetimeLocal } from "@/components/business/v2/events/eventStatus"
+import { CalendarOff } from "lucide-react"
 
-// Converts ISO date string to datetime-local input format.
-// DB stores times in US/Eastern (set on pool init). new Date() parses to browser local time.
-// This works correctly when the user's browser is in the same timezone as the server (US/Eastern).
-// For cross-timezone support, a timezone library would be needed.
-function toDatetimeLocal(dateStr: string) {
-  if (!dateStr) return ""
-  const d = new Date(dateStr)
-  const pad = (n: number) => n.toString().padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-export default function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
+export default function V2EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [initialData, setInitialData] = useState<Partial<EventFormData> | null>(null)
+  const [stripeOnboarded, setStripeOnboarded] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    async function fetchEvent() {
+    async function load() {
       try {
         const event = await apiClient.get<EventDetail>(`/business/events/${id}`)
         setInitialData({
           name: event.name,
           description: event.description,
+          venue_id: event.venue_id,
           venue_name: event.venue_name,
           venue_address: event.venue_address,
           start_date_time: toDatetimeLocal(event.start_date_time),
@@ -48,28 +44,32 @@ export default function EditEventPage({ params }: { params: Promise<{ id: string
         setLoading(false)
       }
     }
-    fetchEvent()
+    load()
+    apiClient
+      .get<{ stripe_connect_onboarded: boolean }>("/business/profile")
+      .then((p) => setStripeOnboarded(p.stripe_connect_onboarded))
+      .catch(() => {})
   }, [id])
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4 max-w-2xl">
-        <div className="h-6 bg-gray-200 rounded w-32" />
-        <div className="h-64 bg-gray-200 rounded-xl" />
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-64 rounded-xl" />
       </div>
     )
   }
 
   if (error || !initialData) {
     return (
-      <div className="text-center py-16">
-        <p className="text-sm text-red-500 mb-4">{error || "Event not found"}</p>
-        <Link href="/business/events" className="text-sm text-primary hover:underline">
-          Back to Events
-        </Link>
-      </div>
+      <EmptyState
+        icon={CalendarOff}
+        title={error || "Event not found"}
+        action={<Button asChild variant="secondary"><Link href="/business/events">Back to events</Link></Button>}
+      />
     )
   }
 
-  return <EventForm initialData={initialData} eventId={Number(id)} />
+  return <EventForm initialData={initialData} eventId={Number(id)} stripeOnboarded={stripeOnboarded} />
 }

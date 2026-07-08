@@ -5,14 +5,14 @@ import Button from "@/components/ui/Button";
 import { APP_STORE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "About Bizzy — The Campus App for Events, Tickets, Deals & Local Spots",
+  title: "About Bizzy: The Campus App for Events, Tickets, Deals & Local Spots",
   description:
     "Bizzy is the campus app that connects students with events, tickets, deals, and local spots around their school. Learn our story and mission.",
   alternates: {
     canonical: "https://bizzyu.com/about",
   },
   openGraph: {
-    title: "About Bizzy — The Campus App for Events, Tickets, Deals & Local Spots",
+    title: "About Bizzy: The Campus App for Events, Tickets, Deals & Local Spots",
     description:
       "Bizzy is the campus app that connects students with events, tickets, deals, and local spots around their school. Learn our story and mission.",
   },
@@ -214,7 +214,7 @@ export default function AboutPage() {
               <p>
                 Bizzy is the campus app for everything happening around your
                 school. Events, tickets, line skip, exclusive local deals, and
-                the businesses students actually go to — all in one place,
+                the businesses students actually go to, all in one place,
                 curated for each campus.
               </p>
               <p>
@@ -244,7 +244,7 @@ export default function AboutPage() {
 
             <div className="mt-12 text-center">
               <p className="text-ink font-medium">
-                — Cooper Aiello, Founder
+                - Cooper Aiello, Founder
               </p>
             </div>
           </div>
@@ -260,7 +260,7 @@ export default function AboutPage() {
                 <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
                 <p className="text-white/90 text-lg leading-relaxed">
                   Make college life more affordable, more social, and more
-                  connected — while helping the local businesses that shape
+                  connected, while helping the local businesses that shape
                   campus communities grow alongside the students they serve.
                 </p>
               </div>
@@ -284,7 +284,7 @@ export default function AboutPage() {
             {[
               {
                 title: "One App for Campus",
-                desc: "Events, tickets, line skip, deals, and local spots in a single feed — not a different app for each thing students do.",
+                desc: "Events, tickets, line skip, deals, and local spots in a single feed, not a different app for each thing students do.",
               },
               {
                 title: "Campus by Campus",
@@ -292,7 +292,7 @@ export default function AboutPage() {
               },
               {
                 title: "Exclusive, Not Recycled",
-                desc: "Our deals and events are built with local businesses for the college audience — not generic coupons or recycled listings.",
+                desc: "Our deals and events are built with local businesses for the college audience, not generic coupons or recycled listings.",
               },
             ].map((item, i) => (
               <AnimatedSection key={item.title} delay={i * 0.1}>
@@ -322,7 +322,7 @@ export default function AboutPage() {
                 student community, and curated experience.
               </p>
               <p>
-                Our vision is one app that connects every part of campus life —
+                Our vision is one app that connects every part of campus life:
                 events, tickets, deals, and the local spots around each
                 school. Strengthening the relationship between every college
                 campus and the businesses around it, helping good businesses

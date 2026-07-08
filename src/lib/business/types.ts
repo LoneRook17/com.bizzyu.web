@@ -6,12 +6,15 @@ export interface BusinessUser {
   venue_id: number | null
 }
 
+export type DashboardMode = 'deals' | 'events' | 'hybrid'
+
 export interface Business {
   business_id: number
   name: string
   email: string
   status: 'pending' | 'pending_verification' | 'pending_approval' | 'approved' | 'rejected' | 'suspended'
   logo_url: string | null
+  dashboard_mode?: DashboardMode | null
 }
 
 export interface Venue {
@@ -140,11 +143,13 @@ export interface TicketTier {
 }
 
 export interface EventDetail extends EventListItem {
+  venue_id: number | null
   university_id: number
   school: string
   fee: number
   percentage: number
   tickets: TicketTier[]
+  my_event_role: 'owner' | 'cohost' | 'crew' | 'scan_only' | 'scan_door_sales' | null
   sales: { total_attendees: number; total_revenue: number; checkin_rate: number }
   promotion_enabled?: boolean | number
   promotion_commission_type?: 'percent' | 'fixed' | null
@@ -168,6 +173,7 @@ export interface RecurringEventConfig {
 export interface EventFormData {
   name: string
   description: string
+  venue_id?: number | null
   venue_name: string
   venue_address: string
   latitude: number | null
@@ -183,9 +189,16 @@ export interface EventFormData {
   promotion_enabled?: boolean
   promotion_commission_type?: 'percent' | 'fixed'
   promotion_commission_value?: number | null
+  notify_followers_on_publish?: boolean
 }
 
 // Deal types
+export interface DealAvailabilityWindow {
+  day_of_week: number // 0=Sun, 1=Mon ... 6=Sat
+  start_time: string // "HH:MM:SS" or "HH:MM"
+  end_time: string
+}
+
 export interface DealListItem {
   id: number
   deal_title: string
@@ -206,6 +219,7 @@ export interface DealListItem {
   moderation_status?: string | null
   moderation_reason?: string | null
   claim_count?: number
+  availability_windows?: DealAvailabilityWindow[]
 }
 
 export interface DealFormData {
@@ -214,7 +228,9 @@ export interface DealFormData {
   total_saving: string
   redemption_frequency: string
   start_date: string
+  expired_date: string
   deal_image_path: string
+  availability_windows?: DealAvailabilityWindow[]
 }
 
 // Team types
@@ -225,6 +241,7 @@ export interface TeamMember {
   email: string
   is_active: boolean
   invite_accepted_at: string | null
+  invite_expires_at: string | null
   created_at: string
   venue_id: number | null
   venue_name: string | null
@@ -247,7 +264,7 @@ export interface EventAnalytics {
     commission_cents: number
   }[]
   revenue: {
-    // The "Revenue" tile reads this — now matches the Stripe payout (net of
+    // The "Revenue" tile reads this - now matches the Stripe payout (net of
     // promoter commission). Pre-2026-05-12 this was gross creator payout.
     revenue: number
     pre_sales_revenue: number
@@ -291,7 +308,7 @@ export interface PerScannerRow {
   // scan_revenue + sold_revenue. Server emits `revenue` as an alias of this
   // for backwards compat with older clients.
   revenue: number
-  // Newly added fields (May 2026 — tap-to-pay attribution). Optional so the
+  // Newly added fields (May 2026 - tap-to-pay attribution). Optional so the
   // type still describes responses from older service deploys.
   scan_revenue?: number
   sold_count?: number
@@ -458,8 +475,20 @@ export interface LineSkipInstance {
   updated_at: string
 }
 
+// Per-weekday recurring settings for a line skip program (0=Sun..6=Sat). Each
+// selected day may carry its own price/time/limit; days without an override row
+// fall back to the program's default_* values.
+export interface LineSkipDayOverride {
+  day_of_week: number
+  start_time: string // HH:MM[:SS]
+  end_time: string // HH:MM[:SS]
+  price_cents: number
+  capacity: number | null
+}
+
 export interface LineSkipDetail extends LineSkip {
   instances: LineSkipInstance[]
+  day_overrides?: LineSkipDayOverride[]
 }
 
 export interface LineSkipFormData {
@@ -476,6 +505,16 @@ export interface LineSkipFormData {
 
 // Line Skip Analytics types
 export interface LineSkipInstanceAnalytics {
+  // Core instance fields - echoed by the API so the night-detail page can render
+  // the configured price/time/date and drive the edit modal without a 2nd fetch.
+  id: number
+  line_skip_id: number
+  business_id: number
+  date: string // YYYY-MM-DD
+  start_time: string // HH:MM[:SS]
+  end_time: string // HH:MM[:SS]
+  price_cents: number
+  status: 'active' | 'cancelled' | 'sold_out'
   tickets_sold: number
   total_revenue_cents: number
   capacity: number | null
@@ -558,5 +597,7 @@ export interface BusinessProfile {
   logo_image_url: string | null
   status: string
   stripe_connect_onboarded: boolean
+  /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
+  stripe_reconnect_required?: boolean
   created_at: string
 }

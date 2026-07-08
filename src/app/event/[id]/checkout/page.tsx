@@ -17,11 +17,11 @@ const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
 // /event/:id/checkout is the AASA-claimed Universal Link path (see
 // public/.well-known/apple-app-site-association). On a tap from iMessage,
-// iOS opens the Bizzy app directly without ever fetching this URL — the
+// iOS opens the Bizzy app directly without ever fetching this URL - the
 // app then deep-links into the event with the ?ref attribution intact.
 //
 // For taps in non-iOS contexts (Android / desktop / users without the app):
-// 1. iMessage / link preview scrapers fetch this URL — they need OG tags to
+// 1. iMessage / link preview scrapers fetch this URL - they need OG tags to
 //    show an event image + title. generateMetadata renders those tags from
 //    the event's flyer.
 // 2. The page body redirects to the Laravel ticket checkout client-side so
@@ -93,17 +93,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const name = event?.name || "Event"
   const description = event?.description?.slice(0, 160) || `Get tickets for ${name}.`
   return {
-    title: `${name} — Get Tickets | Bizzy`,
+    title: `${name}: Get Tickets | Bizzy`,
     description,
     openGraph: {
-      title: `${name} — Get Tickets | Bizzy`,
+      title: `${name}: Get Tickets | Bizzy`,
       description,
       images: event?.flyer_image_url ? [event.flyer_image_url] : [],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${name} — Get Tickets | Bizzy`,
+      title: `${name}: Get Tickets | Bizzy`,
       description,
       images: event?.flyer_image_url ? [event.flyer_image_url] : [],
     },

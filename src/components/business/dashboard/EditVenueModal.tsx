@@ -72,7 +72,7 @@ export default function EditVenueModal({ open, venue, onClose }: EditVenueModalP
       setPhotoPreview(savedPhotoUrl)
       return
     }
-    // No saved photo either — just clear the preview.
+    // No saved photo either - just clear the preview.
     if (!savedPhotoUrl) {
       setPhotoPreview("")
       return

@@ -21,7 +21,7 @@ interface BizzyVenuesMarqueeProps {
  * Server-rendered marquee of every approved business's uploaded logo.
  * Pulled from the Node services public endpoint. Cached 5 min.
  *
- * Returns null silently if the API is unreachable or returns no logos —
+ * Returns null silently if the API is unreachable or returns no logos -
  * we never want to show a broken "Brands on Bizzy" strip.
  */
 export default async function BizzyVenuesMarquee({

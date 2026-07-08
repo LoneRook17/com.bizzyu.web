@@ -26,7 +26,7 @@ const faqJsonLd = {
 };
 
 export const metadata: Metadata = {
-  title: "Bizzy — The Campus App for Students & Local Businesses",
+  title: "Bizzy: The Campus App for Students & Local Businesses",
   description:
     "Students discover events, tickets, line skips, and exclusive deals near campus. Local businesses reach 25,000+ students with zero platform fees.",
   alternates: {
@@ -313,7 +313,7 @@ export default function Home() {
         </div>
       </SectionContainer>
 
-      {/* 4. FOR STUDENTS — BENTO ------------------------------------------- */}
+      {/* 4. FOR STUDENTS - BENTO ------------------------------------------- */}
       <SectionContainer className="!pt-16 md:!pt-24">
         <AnimatedSection>
           <div className="max-w-2xl mb-10 md:mb-12">
@@ -426,7 +426,7 @@ export default function Home() {
         </AnimatedSection>
       </SectionContainer>
 
-      {/* 5. FOR BUSINESSES — 0% block -------------------------------------- */}
+      {/* 5. FOR BUSINESSES - 0% block -------------------------------------- */}
       <section className="bg-ink relative overflow-hidden mt-16 md:mt-24">
         <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
@@ -451,7 +451,7 @@ export default function Home() {
                 <div className="space-y-3 mb-8">
                   {[
                     "0% platform fees on deals and tickets",
-                    "No POS integration, no contracts",
+                    "No POS integration",
                     "Setup in under 5 minutes",
                     "Reach 25,000+ verified students",
                   ].map((point) => (

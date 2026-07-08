@@ -28,7 +28,7 @@ export default function HowItWorks() {
             Getting started takes 5 minutes
           </h2>
           <p className="text-muted text-center mb-14 max-w-md mx-auto">
-            Three steps. No tech setup. No contracts.
+            Three steps. No tech setup.
           </p>
         </AnimatedSection>
 

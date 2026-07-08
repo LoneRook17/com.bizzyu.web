@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
+import { APP_STORE_URL } from "@/lib/constants"
+import { openInApp } from "@/lib/open-in-app"
 
 const API_URL = getApiBaseUrl()
 const TOKEN_STORAGE_KEY = "bz_auth_token"
@@ -37,7 +39,10 @@ function commissionLabel(type: "percent" | "fixed" | null, value: number | null)
 
 export default function PromoteClient(props: Props) {
   const [token, setToken] = useState<string | null>(null)
-  const [tokenInput, setTokenInput] = useState("")
+  const [isMobileUA, setIsMobileUA] = useState(false)
+  useEffect(() => {
+    setIsMobileUA(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent))
+  }, [])
   const [profile, setProfile] = useState<PromoterProfile | null>(null)
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [step, setStep] = useState<Step>("phone-send")
@@ -99,7 +104,7 @@ export default function PromoteClient(props: Props) {
     }
   }, [token, apiCall])
 
-  // Stripe polling — fires after the user clicks "Open Stripe" so we can
+  // Stripe polling - fires after the user clicks "Open Stripe" so we can
   // detect onboarding completion via the webhook and advance the wizard.
   const pollStripe = useCallback(() => {
     if (stripePollRef.current != null) return
@@ -127,11 +132,6 @@ export default function PromoteClient(props: Props) {
       }
     }
   }, [])
-
-  const saveToken = (t: string) => {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, t)
-    setToken(t)
-  }
 
   // ─── Step handlers ────────────────────────────────────────────────────────
 
@@ -231,32 +231,46 @@ export default function PromoteClient(props: Props) {
           <p className="text-gray-600 mb-6">
             {commissionLabel(props.commissionType, props.commissionValue)}.
           </p>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-            <p className="text-sm text-gray-700 mb-3">
-              The promoter program is signed in through your Bizzy mobile app.
-              Open the app and tap &ldquo;Get paid to promote this event&rdquo; on
-              the event page.
-            </p>
-            <p className="text-xs text-gray-500 mb-3">
-              Or paste a Bizzy auth token to continue here:
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-                placeholder="Paste token"
-                className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm"
-              />
+
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
+            <h2 className="text-lg font-bold mb-4">Get set up in the Bizzy app</h2>
+            <ol className="space-y-3 mb-6">
+              {[
+                <>Open the <span className="font-semibold">Bizzy app</span> (it&apos;s free)</>,
+                <>Find <span className="font-semibold">{props.eventName}</span> and tap <span className="font-semibold">&ldquo;Get paid to promote this event&rdquo;</span></>,
+                <>Share your link, you earn on every ticket sold through it</>,
+              ].map((text, i) => (
+                <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                    {i + 1}
+                  </span>
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ol>
+
+            {isMobileUA && (
               <button
-                onClick={() => tokenInput && saveToken(tokenInput.trim())}
-                className="rounded bg-ink text-white px-4 py-2 text-sm font-semibold disabled:opacity-50"
-                disabled={!tokenInput.trim()}
+                onClick={() => openInApp(`bizzy://promote/${props.eventId}`)}
+                className="mb-3 w-full rounded-xl bg-primary px-6 py-3 font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
               >
-                Continue
+                Open in the Bizzy app
               </button>
-            </div>
+            )}
+            <a
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener"
+              className={
+                isMobileUA
+                  ? "block w-full rounded-xl border border-gray-300 bg-white px-6 py-3 text-center font-semibold text-ink transition hover:bg-gray-100"
+                  : "block w-full rounded-xl bg-ink px-6 py-3 text-center font-semibold text-white transition hover:brightness-110"
+              }
+            >
+              Download on the App Store
+            </a>
           </div>
+
           <div className="mt-6 text-center">
             <Link href={`/event/${props.eventId}`} className="text-sm text-primary hover:underline">
               Back to event
@@ -423,7 +437,7 @@ function Wizard(p: WizardProps) {
             {p.busy ? "Opening…" : p.profile?.stripe_connect_id ? "Resume Stripe onboarding" : "Open Stripe"}
           </button>
           <p className="text-xs text-gray-500">
-            Keep this tab open after you finish on Stripe — we&rsquo;ll detect when you&rsquo;re
+            Keep this tab open after you finish on Stripe, we&rsquo;ll detect when you&rsquo;re
             done and advance the next step automatically.
           </p>
         </section>
@@ -485,13 +499,13 @@ function DashboardStub({ profile }: { profile: PromoterProfile }) {
         />
         <span>
           {profile.stripe_connect_onboarded
-            ? "Stripe Connect ready — you can receive payouts."
-            : "Stripe Connect not finished — finish onboarding to receive payouts."}
+            ? "Stripe Connect ready. You can receive payouts."
+            : "Stripe Connect not finished. Finish onboarding to receive payouts."}
         </span>
       </div>
 
       <button
-        onClick={() => alert("Coming soon — link generation lands in Session 4.2.")}
+        onClick={() => alert("Coming soon. Link generation lands in Session 4.2.")}
         className="w-full rounded-xl bg-primary text-white font-semibold py-3 hover:brightness-110 transition"
       >
         Get my promoter link

@@ -1,27 +1,33 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import Link from "next/link"
+import { Loader2, Plus, Users } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import UserSearchInput from "@/components/business/dashboard/UserSearchInput"
 import type { EventTeamMember } from "@/lib/business/types"
-import RolePermissionsModal from "@/components/business/dashboard/RolePermissionsModal"
+import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { Button } from "@/components/business/v2/ui/button"
+import { Select } from "@/components/business/v2/ui/input"
+import { Badge, type BadgeProps } from "@/components/business/v2/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/business/v2/ui/avatar"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
+} from "@/components/business/v2/ui/dialog"
+import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
+import { UserSearchInput } from "@/components/business/v2/events/UserSearchInput"
 
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
-  cohost: "Co-host",
-  crew: "Crew",
-  promoter: "Promoter",
+const ROLE_LABELS: Record<string, string> = { owner: "Owner", cohost: "Co-host", crew: "Crew", promoter: "Promoter" }
+const ROLE_VARIANT: Record<string, NonNullable<BadgeProps["variant"]>> = {
+  owner: "brand", cohost: "info", crew: "success", promoter: "warning",
 }
 
-const ROLE_COLORS: Record<string, string> = {
-  owner: "bg-purple-100 text-purple-700",
-  cohost: "bg-blue-100 text-blue-700",
-  crew: "bg-green-100 text-green-700",
-  promoter: "bg-orange-100 text-orange-700",
+function initials(s?: string | null) {
+  if (!s) return "?"
+  return s.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")
 }
 
-export default function TeamPage({ params }: { params: Promise<{ id: string }> }) {
+export default function V2EventTeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [members, setMembers] = useState<EventTeamMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +37,7 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
   const [role, setRole] = useState("crew")
   const [adding, setAdding] = useState(false)
   const [addError, setAddError] = useState("")
+  const [removeTarget, setRemoveTarget] = useState<EventTeamMember | null>(null)
 
   const fetchMembers = () => {
     apiClient
@@ -59,119 +66,110 @@ export default function TeamPage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
-  const handleRemove = async (memberId: number) => {
-    if (!confirm("Remove this team member?")) return
+  const handleRemove = async () => {
+    if (!removeTarget) return
     try {
-      await apiClient.delete(`/business/events/${id}/team/${memberId}`)
-      setMembers((prev) => prev.filter((m) => m.id !== memberId))
+      await apiClient.delete(`/business/events/${id}/team/${removeTarget.id}`)
+      setMembers((prev) => prev.filter((m) => m.id !== removeTarget.id))
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to remove member")
+      setError(err instanceof ApiError ? err.message : "Failed to remove member")
+    } finally {
+      setRemoveTarget(null)
     }
   }
 
   if (loading) {
     return (
-      <div className="max-w-3xl animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-48" />
-        <div className="h-48 bg-gray-200 rounded-xl" />
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl">
-      <Link href={`/business/events/${id}/manage`} className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-        &larr; Back to Manage
-      </Link>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-ink">Event Team</h1>
-          <RolePermissionsModal variant="event" />
-        </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer"
-        >
-          Add Member
-        </button>
-      </div>
+    <>
+      <ManageSubheader
+        eventId={id}
+        title="Event team"
+        subtitle="Co-hosts, crew, and promoters for this event."
+        actions={<Button onClick={() => setShowAdd(true)}><Plus /> Add member</Button>}
+      />
 
-      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      {/* Add form */}
-      {showAdd && (
-        <form onSubmit={handleAdd} className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-          <h3 className="text-sm font-semibold text-ink mb-3">Add Team Member</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-            <div className="sm:col-span-2">
-              <UserSearchInput
-                value={email}
-                onChange={setEmail}
-                onSelect={(user) => setEmail(user.email)}
-                placeholder="Search by name or email..."
-                autoFocus
-              />
-            </div>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white"
-            >
-              <option value="cohost">Co-host</option>
-              <option value="crew">Crew</option>
-            </select>
-          </div>
-          {addError && <p className="text-xs text-red-500 mb-3">{addError}</p>}
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={adding || !email.trim()}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-60"
-            >
-              {adding ? "Adding..." : "Add"}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setShowAdd(false); setEmail(""); setAddError("") }}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Members list */}
       {members.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-          <p className="text-sm text-gray-500">No team members yet.</p>
-          <p className="text-xs text-gray-400 mt-1">Add co-hosts, crew, or promoters for this event.</p>
-        </div>
+        <EmptyState icon={Users} title="No team members yet" description="Add co-hosts, crew, or promoters for this event." />
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-          {members.map((member) => (
-            <div key={member.id} className="flex items-center justify-between px-5 py-4">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-ink truncate">{member.full_name || "Unknown"}</p>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${ROLE_COLORS[member.role] || "bg-gray-100 text-gray-600"}`}>
-                    {ROLE_LABELS[member.role] || member.role}
-                  </span>
+        <Card className="overflow-hidden">
+          <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            {members.map((member) => (
+              <div key={member.id} className="flex items-center justify-between px-5 py-3.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar className="size-9">
+                    <AvatarFallback>{initials(member.full_name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{member.full_name || "Unknown"}</p>
+                      <Badge variant={ROLE_VARIANT[member.role] ?? "neutral"} size="sm">{ROLE_LABELS[member.role] ?? member.role}</Badge>
+                    </div>
+                    <p className="truncate text-[13px] text-neutral-500 dark:text-neutral-400">{member.email}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 truncate">{member.email}</p>
+                {member.role !== "owner" && (
+                  <Button variant="ghost" size="sm" className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-400" onClick={() => setRemoveTarget(member)}>
+                    Remove
+                  </Button>
+                )}
               </div>
-              {member.role !== "owner" && (
-                <button
-                  onClick={() => handleRemove(member.id)}
-                  className="text-xs text-red-500 hover:text-red-700 cursor-pointer shrink-0 ml-4"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Card>
       )}
-    </div>
+
+      {/* add member dialog */}
+      <Dialog open={showAdd} onOpenChange={(o) => { setShowAdd(o); if (!o) { setEmail(""); setAddError("") } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add team member</DialogTitle>
+            <DialogDescription>Search for an existing Bizzy user and assign a role.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAdd} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="sm:col-span-2">
+                <UserSearchInput value={email} onChange={setEmail} onSelect={(u) => setEmail(u.email)} autoFocus />
+              </div>
+              <Select value={role} onChange={(e) => setRole(e.target.value)}>
+                <option value="cohost">Co-host</option>
+                <option value="crew">Crew</option>
+              </Select>
+            </div>
+            {addError && <p className="text-xs text-red-600 dark:text-red-400">{addError}</p>}
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => { setShowAdd(false); setEmail(""); setAddError("") }}>Cancel</Button>
+              <Button type="submit" disabled={adding || !email.trim()}>
+                {adding && <Loader2 className="animate-spin" />} Add
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* remove confirm */}
+      <Dialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Remove team member?</DialogTitle>
+            <DialogDescription>{removeTarget?.full_name || removeTarget?.email} will lose access to this event.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setRemoveTarget(null)}>Cancel</Button>
+            <Button variant="danger" onClick={handleRemove}>Remove</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

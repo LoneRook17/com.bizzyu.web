@@ -83,7 +83,7 @@ function InstanceCard({ instance }: { instance: LineSkipOverviewInstance }) {
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            {formatDate(instance.date)} &middot; {formatTime(instance.start_time)} – {formatTime(instance.end_time)}
+            {formatDate(instance.date)} &middot; {formatTime(instance.start_time)} - {formatTime(instance.end_time)}
           </p>
         </div>
 

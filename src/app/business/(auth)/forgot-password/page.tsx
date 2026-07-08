@@ -2,9 +2,13 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import AuthCard from "@/components/business/auth/AuthCard"
-import FormInput from "@/components/business/auth/FormInput"
-import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
+import {
+  AuthAlert,
+  AuthCard,
+  AuthField,
+  AuthFooterLink,
+  AuthSubmit,
+} from "@/components/business/v2/auth/auth-shell"
 import { apiClient } from "@/lib/business/api-client"
 
 export default function ForgotPasswordPage() {
@@ -31,18 +35,19 @@ export default function ForgotPasswordPage() {
     <AuthCard title="Reset your password" subtitle="Enter your email and we'll send you a reset link.">
       {sent ? (
         <div className="space-y-4">
-          <div className="rounded-lg bg-green-50 p-4 text-sm text-green-700">
-            If an account exists with this email, a password reset link has been sent. Please check your inbox.
-          </div>
-          <p className="text-center text-sm text-gray-500">
-            <Link href="/business/login" className="text-primary hover:underline">
+          <AuthAlert tone="success">
+            If an account exists with this email, a password reset link has been sent. Please check
+            your inbox.
+          </AuthAlert>
+          <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+            <Link href="/business/login" className="font-medium text-[#05EB54] hover:underline">
               Back to Login
             </Link>
           </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          <FormInput
+          <AuthField
             label="Email"
             name="email"
             type="email"
@@ -52,13 +57,13 @@ export default function ForgotPasswordPage() {
             required
             autoComplete="email"
           />
-          <AuthSubmitButton loading={loading}>Send Reset Link</AuthSubmitButton>
+          <AuthSubmit loading={loading}>Send Reset Link</AuthSubmit>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
-            <Link href="/business/login" className="text-primary hover:underline">
+          <AuthFooterLink>
+            <Link href="/business/login" className="font-medium text-[#05EB54] hover:underline">
               Back to Login
             </Link>
-          </p>
+          </AuthFooterLink>
         </form>
       )}
     </AuthCard>

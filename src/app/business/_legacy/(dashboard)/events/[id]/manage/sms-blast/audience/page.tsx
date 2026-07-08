@@ -13,7 +13,7 @@ export default function AudiencePickerPage({ params }: { params: Promise<{ id: s
   const currentEventId = Number(id)
 
   const [events, setEvents] = useState<EventListItem[]>([])
-  // Single-select to match the Flutter app — one event per SMS blast.
+  // Single-select to match the Flutter app - one event per SMS blast.
   const [selectedId, setSelectedId] = useState<number | null>(currentEventId)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")

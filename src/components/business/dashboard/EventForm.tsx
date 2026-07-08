@@ -9,6 +9,7 @@ import ImageUpload from "./ImageUpload"
 import TicketTierForm from "./TicketTierForm"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { EVENT_TYPES } from "@/lib/business/constants"
+import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import type { EventFormData, RecurringEventConfig, RecurringNight, TicketTier } from "@/lib/business/types"
 
@@ -32,7 +33,7 @@ interface EventFormProps {
 
 // promotion_commission_value is stored as basis points (percent) or cents (fixed).
 // The form-side state mirrors it as a string so users type "10" for 10% or
-// "5.00" for $5 — kept untouched while editing, only converted on submit.
+// "5.00" for $5 - kept untouched while editing, only converted on submit.
 function commissionValueToInput(
   type: 'percent' | 'fixed' | undefined,
   storedValue: number | null | undefined
@@ -73,6 +74,7 @@ const EMPTY_TICKET: TicketTier = {
 export default function EventForm({ initialData, eventId, stripeOnboarded = true, businessName, businessAddress }: EventFormProps) {
   const router = useRouter()
   const isEditing = !!eventId
+  const { business } = useAuth()
   const { venues, selectedVenue, isAllVenues, setSelectedVenue } = useVenue()
 
   const [form, setForm] = useState<EventFormData>({
@@ -84,7 +86,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
     longitude: initialData?.longitude ?? null,
     start_date_time: initialData?.start_date_time || "",
     end_date_time: initialData?.end_date_time || "",
-    type: initialData?.type || "Ticketed",
+    type: initialData?.type || (stripeOnboarded ? "Ticketed" : "Free"),
     is_21_plus: initialData?.is_21_plus || false,
     is_recurring: initialData?.is_recurring || false,
     recurring_event: initialData?.recurring_event || undefined,
@@ -294,7 +296,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         }))
       }
 
-      // Promoter Program — only send fields when promotion is enabled.
+      // Promoter Program - only send fields when promotion is enabled.
       // When toggled off, send promotion_enabled: false so the server clears
       // any prior commission_type/value.
       if (form.promotion_enabled) {
@@ -315,6 +317,27 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           "/business/events",
           payload
         )
+        // Best-effort admin notification - never block redirect on failure
+        void fetch("/api/admin-notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "event",
+            title: form.name,
+            business: business?.name,
+            venue: form.venue_name,
+            id: data.event_id,
+            createdBy: business?.email,
+            details: {
+              "Type": form.type,
+              "Venue address": form.venue_address,
+              "Start": form.start_date_time || "(unset)",
+              "End": form.end_date_time || "(unset)",
+              "Tickets": form.type === "Ticketed" ? `${form.tickets.length} tier(s)` : "—",
+              "Moderation status": data.moderation_status ?? "approved",
+            },
+          }),
+        }).catch((err) => console.error("Admin notify failed:", err))
         if (data.moderation_status === "pending_review") {
           setModerationNotice("Your event has been created but is under review due to content moderation.")
           setTimeout(() => router.push("/business/events"), 3000)
@@ -389,11 +412,19 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
             >
-              {EVENT_TYPES.map((t) => (
-                <option key={t} value={t} disabled={t === "Ticketed" && !stripeOnboarded}>
-                  {t}{t === "Ticketed" && !stripeOnboarded ? " (Stripe required)" : ""}
-                </option>
-              ))}
+              {EVENT_TYPES.map((t) => {
+                const ticketedDisabled = t === "Ticketed" && !stripeOnboarded
+                return (
+                  <option
+                    key={t}
+                    value={t}
+                    disabled={ticketedDisabled}
+                    title={ticketedDisabled ? "Connect Stripe to enable" : undefined}
+                  >
+                    {t}{ticketedDisabled ? ": Connect Stripe to enable" : ""}
+                  </option>
+                )
+              })}
             </select>
             {!stripeOnboarded && (
               <div className="mt-1">
@@ -428,7 +459,14 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
 
       {/* Date & Time */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-        <h2 className="text-sm font-semibold text-ink mb-4">Date & Time</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-ink">Date & Time</h2>
+          {selectedVenue?.name && (
+            <span className="text-xs text-muted">
+              Times are in <span className="font-semibold text-ink">{selectedVenue.name} local time</span>
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <FormInput
             label="Start"
@@ -691,9 +729,14 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
           )}
         </div>
       )}
-      <AuthSubmitButton loading={loading}>
+      <AuthSubmitButton loading={loading} disabled={!stripeOnboarded && form.type === "Ticketed"}>
         {isEditing ? "Save Changes" : "Create Event"}
       </AuthSubmitButton>
+      {!stripeOnboarded && form.type === "Ticketed" && (
+        <p className="mt-2 text-center text-xs text-yellow-700">
+          Connect Stripe to create a Ticketed event, or switch Event Type to Free.
+        </p>
+      )}
     </form>
   )
 }

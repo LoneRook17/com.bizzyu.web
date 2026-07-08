@@ -10,6 +10,7 @@ interface TeamMemberRowProps {
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
   onVenueChange: (memberId: number, venueId: number | null) => void
+  onResend?: (member: TeamMember) => void
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -21,10 +22,11 @@ const ROLE_COLORS: Record<string, string> = {
 
 const ASSIGNABLE_ROLES = ["manager", "staff"]
 
-export default function TeamMemberRow({ member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange }: TeamMemberRowProps) {
+export default function TeamMemberRow({ member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange, onResend }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const isPending = !member.invite_accepted_at && !isOwnerMember
+  const isExpired = isPending && !!member.invite_expires_at && new Date(member.invite_expires_at) < new Date()
 
   const joinedDate = member.invite_accepted_at
     ? new Date(member.invite_accepted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -46,9 +48,14 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[member.role] || "bg-gray-100 text-gray-600"}`}>
               {ROLE_LABELS[member.role] || member.role}
             </span>
-            {isPending && (
+            {isPending && !isExpired && (
               <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">
                 Pending Invite
+              </span>
+            )}
+            {isExpired && (
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">
+                Invite Expired
               </span>
             )}
             <span className="text-xs text-gray-400">{joinedDate}</span>
@@ -56,7 +63,7 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
         </div>
       </div>
 
-      {/* Actions — owner only */}
+      {/* Actions - owner only */}
       {isOwnerViewing && !isOwnerMember && (
         <div className="flex items-center gap-2 flex-wrap pl-12 sm:pl-0 sm:flex-nowrap sm:flex-shrink-0">
           {/* Venue assignment */}
@@ -85,6 +92,16 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
               <option key={r} value={r}>{ROLE_LABELS[r]}</option>
             ))}
           </select>
+
+          {/* Resend invite — only for expired pending invites */}
+          {isExpired && onResend && (
+            <button
+              onClick={() => onResend(member)}
+              className="rounded-lg border border-primary px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors cursor-pointer flex-shrink-0"
+            >
+              Resend
+            </button>
+          )}
 
           {/* Remove */}
           <button

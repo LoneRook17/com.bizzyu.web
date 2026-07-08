@@ -134,7 +134,7 @@ function ContactForm() {
             />
           </div>
 
-          {/* Honeypot — humans never see this, bots fill every field */}
+          {/* Honeypot - humans never see this, bots fill every field */}
           <input
             type="text"
             name="website_url"

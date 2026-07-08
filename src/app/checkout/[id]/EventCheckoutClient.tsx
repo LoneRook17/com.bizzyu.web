@@ -105,6 +105,13 @@ function formatDate(dateStr: string): string {
   })
 }
 
+// Compact date ("Jun 14") for the inline ticket scan-window label, where the
+// full weekday/year of formatDate reads as clutter.
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr.replace(" ", "T"))
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
 function formatTime(dateStr: string, timezone?: string | null): string {
   const d = new Date(dateStr.replace(" ", "T"))
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
@@ -210,7 +217,8 @@ export default function EventCheckoutClient({
   const setQty = (ticketId: number, val: number) => {
     const ticket = tickets.find((t) => t.ticket_id === ticketId)
     const max = ticket?.max_per_person ?? 10
-    const available = ticket?.available_quantity
+    // quantity 0/null = unlimited supply; the API still reports available_quantity 0 for those
+    const available = ticket?.quantity ? ticket?.available_quantity : null
     const upperBound = available !== null && available !== undefined ? Math.min(max, available) : max
     setQuantities((prev) => ({ ...prev, [ticketId]: Math.max(0, Math.min(upperBound, val)) }))
   }
@@ -273,7 +281,7 @@ export default function EventCheckoutClient({
       }
     } catch (err: any) {
       if (err.name !== "AbortError") {
-        // Fee preview failed silently — non-critical, user can still proceed
+        // Fee preview failed silently - non-critical, user can still proceed
       }
     } finally {
       setFeeLoading(false)
@@ -408,7 +416,7 @@ export default function EventCheckoutClient({
         headers,
         body: JSON.stringify({
           quantity: ticket.quantity,
-          // {CHECKOUT_SESSION_ID} is a Stripe-side placeholder — Stripe
+          // {CHECKOUT_SESSION_ID} is a Stripe-side placeholder - Stripe
           // substitutes the real Checkout Session ID at redirect time. Used
           // by the Apple Wallet button on the success state to fetch the
           // correct .pkpass through the public session-id-gated route.
@@ -528,7 +536,7 @@ export default function EventCheckoutClient({
             </div>
           </div>
 
-          {/* Add to Apple Wallet — iOS Safari / Chrome only. Anchored
+          {/* Add to Apple Wallet - iOS Safari / Chrome only. Anchored
               directly at the `.pkpasses` bundle so iOS surfaces a single
               install sheet with every ticket from this order stacked
               (mirrors the Flutter app's `apple_passkit.addPasses()` flow). */}
@@ -608,10 +616,11 @@ export default function EventCheckoutClient({
                 const isSoldOut =
                   ticket.is_sold_out !== undefined
                     ? ticket.is_sold_out
-                    : ticket.available_quantity !== null &&
+                    : !!ticket.quantity &&
+                      ticket.available_quantity !== null &&
                       ticket.available_quantity !== undefined &&
                       ticket.available_quantity <= 0
-                const remaining = ticket.available_quantity
+                const remaining = ticket.quantity ? ticket.available_quantity : null
                 // Scheduled tickets: the window is the REDEEM/scan window, and a
                 // ticket stays BUYABLE until it CLOSES (buying before it opens is
                 // fine). Trust the API's timezone-aware state; fall back to local
@@ -625,7 +634,7 @@ export default function EventCheckoutClient({
                 const salesNotOpen = ticket.sales_state
                   ? ticket.sales_state === "not_open"
                   : vf !== null && now < vf
-                // Lock only when sold out or CLOSED — never merely "not open yet".
+                // Lock only when sold out or CLOSED - never merely "not open yet".
                 const unavailable =
                   isSoldOut ||
                   (ticket.is_purchasable !== undefined ? !ticket.is_purchasable : salesClosed)
@@ -660,12 +669,14 @@ export default function EventCheckoutClient({
                         ) : salesClosed ? (
                           <span className="text-xs font-semibold text-amber-400">Sales closed</span>
                         ) : salesNotOpen ? (
-                          // Still buyable — the window only gates when it can be SCANNED.
-                          <span className="text-xs text-white/40">
-                            {ticket.valid_from
-                              ? `Scannable from ${formatDate(ticket.valid_from)}, ${formatTime(ticket.valid_from, ticket.event_timezone)}`
-                              : "Buy now"}
-                          </span>
+                          // Still buyable - the window only gates when it can be SCANNED.
+                          ticket.valid_from ? (
+                            <span className="text-xs font-semibold text-primary">
+                              {`Scannable from ${formatShortDate(ticket.valid_from)}, ${formatTime(ticket.valid_from, ticket.event_timezone)}`}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-white/40">Buy now</span>
+                          )
                         ) : remaining !== null && remaining !== undefined ? (
                           <span className="text-xs text-white/40">{remaining} remaining</span>
                         ) : (
@@ -847,7 +858,7 @@ export default function EventCheckoutClient({
               </div>
             )}
 
-            {/* Phone step — phone number only */}
+            {/* Phone step - phone number only */}
             {checkoutStep === "phone" && (
               <div>
                 <label className="mb-2 block text-sm text-white/60">Phone Number</label>
@@ -878,7 +889,7 @@ export default function EventCheckoutClient({
               </div>
             )}
 
-            {/* Name step — shown only for unregistered users */}
+            {/* Name step - shown only for unregistered users */}
             {checkoutStep === "name" && (
               <div>
                 <p className="mb-3 text-sm text-white/60">

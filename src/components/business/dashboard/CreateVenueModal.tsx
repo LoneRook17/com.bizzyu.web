@@ -4,6 +4,7 @@ import { useState, useRef } from "react"
 import { apiClient } from "@/lib/business/api-client"
 import { useVenue } from "@/lib/business/venue-context"
 import AddressAutocomplete from "./AddressAutocomplete"
+import { showToast } from "./Toast"
 
 import { getApiBaseUrl } from "@/lib/api-url"
 
@@ -20,8 +21,6 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
   const { refreshVenues, setSelectedVenue } = useVenue()
   const [name, setName] = useState("")
   const [address, setAddress] = useState("")
-  const [description, setDescription] = useState("")
-  const [website, setWebsite] = useState("")
   const [instagram, setInstagram] = useState("")
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState("")
@@ -61,21 +60,17 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
       setError("Venue name is required.")
       return
     }
+    if (!address.trim()) {
+      setError("Address is required.")
+      return
+    }
     setLoading(true)
     setError("")
     setWarning("")
     try {
       const created = await apiClient.post<{ venue: { id: number } }>("/business/venues", {
         name: name.trim(),
-        address: address.trim() || undefined,
-        description: description.trim() || undefined,
-        website: (() => {
-          let w = website.trim()
-          if (w && !w.startsWith("http://") && !w.startsWith("https://")) {
-            w = "https://" + w
-          }
-          return w || undefined
-        })(),
+        address: address.trim(),
         instagram: instagram.trim() || undefined,
       })
       const venueId = created.venue.id
@@ -101,11 +96,12 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
       setSelectedVenue(venueId)
       setName("")
       setAddress("")
-      setDescription("")
-      setWebsite("")
       setInstagram("")
       clearPhoto()
-      if (!photoFailed) onClose()
+      if (!photoFailed) {
+        showToast("Venue created")
+        onClose()
+      }
     } catch {
       setError("Failed to create venue. Please try again.")
     } finally {
@@ -117,7 +113,10 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
       <div className="relative rounded-xl bg-white p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-ink mb-4">Add New Venue</h3>
+        <h3 className="text-lg font-semibold text-ink mb-1">Add New Venue</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          A venue is a physical location under your business. You can add multiple venues for different locations.
+        </p>
 
         {warning && (
           <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
@@ -139,33 +138,11 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Address *</label>
             <AddressAutocomplete
               value={address}
               onChange={setAddress}
               placeholder="123 Main St, City, ST"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              placeholder="Brief description of this venue..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-            <input
-              type="text"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://www.example.com"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none"
             />
           </div>
@@ -183,7 +160,7 @@ export default function CreateVenueModal({ open, onClose }: CreateVenueModalProp
 
           {/* Venue Photo */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Business Logo</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Venue Logo</label>
             {photoPreview ? (
               <div className="relative rounded-lg border border-gray-200 overflow-hidden">
                 <img src={photoPreview} alt="Venue photo preview" className="w-full h-40 object-cover" />

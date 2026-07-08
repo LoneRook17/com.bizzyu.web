@@ -37,7 +37,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
       setUser(data.user)
       setBusiness(data.business)
     } catch {
-      // Access token may be expired — try refreshing before giving up
+      // Access token may be expired - try refreshing before giving up
       try {
         await apiClient.authPost("/business/auth/refresh")
         const data = await apiClient.get<MeResponse>("/business/auth/me")
@@ -48,7 +48,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
         setBusiness(null)
         // Cooper (May 2026): use multi-variant clear so stale biz_session
         // cookies (set with different domain/path by older deployments) are
-        // actually removed — otherwise middleware keeps the user "logged in"
+        // actually removed - otherwise middleware keeps the user "logged in"
         // and we get a redirect loop.
         clearBizSession()
       }

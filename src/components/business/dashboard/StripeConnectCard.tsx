@@ -50,7 +50,7 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
     <div className="rounded-xl border border-gray-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-ink mb-1">Business Stripe Connect</h3>
       <p className="text-xs text-gray-500 mb-3">
-        Ticket revenue lands here. Promoter commission (if anyone on your team also promotes events) pays to a separate personal Stripe — not this account.
+        Ticket revenue lands here. Promoter commission (if anyone on your team also promotes events) pays to a separate personal Stripe, not this account.
       </p>
 
       {onboarded ? (
@@ -104,7 +104,7 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Setting up...
+                  Connecting...
                 </>
               ) : (
                 "Set Up Business Stripe"
@@ -118,7 +118,7 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete }: S
 }
 
 /**
- * Stripe return banner — shown when user returns from Stripe onboarding.
+ * Stripe return banner - shown when user returns from Stripe onboarding.
  * Verifies onboarding status and shows result.
  */
 export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
@@ -164,7 +164,7 @@ export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
     return (
       <div className="rounded-xl border border-green-200 bg-green-50 p-4 mb-4">
         <p className="text-sm text-green-700 font-medium">
-          Stripe Connect setup complete! You can now create paid events.
+          Stripe Connect setup complete! You can now create paid events and sell line skips.
         </p>
       </div>
     )

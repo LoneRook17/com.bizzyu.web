@@ -9,7 +9,7 @@ type Props = {
   subtitle?: string;
   /** The universal-link URL the user originally tapped. Used by the "Open in App" button. */
   deepLinkUrl: string;
-  /** Optional bizzy:// custom-scheme variant — preferred for the "Open in App" button when available. */
+  /** Optional bizzy:// custom-scheme variant - preferred for the "Open in App" button when available. */
   customSchemeUrl?: string;
 };
 

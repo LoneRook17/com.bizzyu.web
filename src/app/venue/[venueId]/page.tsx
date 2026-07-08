@@ -32,17 +32,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { venueId } = await params
   const data = await getVenueData(venueId)
   const venueName = data?.venue?.name || "Venue"
-  const businessName = data?.business?.name || ""
   const description = data?.venue?.description || `Check out events, line skips, and deals at ${venueName} on Bizzy.`
 
   return {
     title: `${venueName} | Bizzy`,
     description,
+    // iOS Safari Smart App Banner - "Open" deep-links straight to this venue
+    // in the app (the app routes /venue/:id universal links); "Get" goes to
+    // the App Store. app-argument uses the canonical prod domain so the app
+    // can route it regardless of which deployment served the page.
+    itunes: {
+      appId: "6683306360",
+      appArgument: `https://bizzyu.com/venue/${venueId}`,
+    },
     openGraph: {
       title: `${venueName} | Bizzy`,
       description,
       // /ui/venues/venue/:id returns the venue photo as `venuePhotoUrl`
-      // (camelCase — see venues.ts:462). Reading snake_case silently
+      // (camelCase - see venues.ts:462). Reading snake_case silently
       // undefined the field and every venue share fell back to the
       // business logo (the green Bizzy badge), which is why an LS share
       // through Messages had no rich preview of the venue itself.

@@ -3,13 +3,15 @@
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import DealForm from "@/components/business/dashboard/DealForm"
 import { DEAL_TYPE_TO_FREQUENCY } from "@/lib/business/constants"
 import type { DealListItem, DealFormData } from "@/lib/business/types"
+import DealForm from "@/components/business/v2/deals/DealForm"
+import { Button } from "@/components/business/v2/ui/button"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
 
-function toDateInput(dateStr: string) {
-  if (!dateStr) return ""
-  return new Date(dateStr).toISOString().split("T")[0]
+function toDateInput(s: string) {
+  if (!s) return ""
+  return new Date(s).toISOString().split("T")[0]
 }
 
 export default function EditDealPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,9 +21,11 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
   const [error, setError] = useState("")
 
   useEffect(() => {
-    async function fetchDeal() {
+    let cancelled = false
+    ;(async () => {
       try {
         const deal = await apiClient.get<DealListItem>(`/business/deals/${id}`)
+        if (cancelled) return
         setInitialData({
           deal_title: deal.deal_title,
           description: deal.description,
@@ -31,30 +35,32 @@ export default function EditDealPage({ params }: { params: Promise<{ id: string 
           deal_image_path: deal.deal_image_path || "",
         })
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Failed to load deal")
+        if (!cancelled) setError(err instanceof ApiError ? err.message : "Failed to load deal")
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
+    })()
+    return () => {
+      cancelled = true
     }
-    fetchDeal()
   }, [id])
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-4 max-w-2xl">
-        <div className="h-6 bg-gray-200 rounded w-32" />
-        <div className="h-64 bg-gray-200 rounded-xl" />
-      </div>
+      <>
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="h-96 rounded-xl" />
+      </>
     )
   }
 
   if (error || !initialData) {
     return (
-      <div className="text-center py-16">
-        <p className="text-sm text-red-500 mb-4">{error || "Deal not found"}</p>
-        <Link href="/business/deals" className="text-sm text-primary hover:underline">
-          Back to Deals
-        </Link>
+      <div className="py-16 text-center">
+        <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error || "Deal not found"}</p>
+        <Button variant="link" asChild>
+          <Link href="/business/deals">Back to deals</Link>
+        </Button>
       </div>
     )
   }

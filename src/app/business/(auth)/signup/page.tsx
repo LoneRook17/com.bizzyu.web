@@ -3,14 +3,21 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import AuthCard from "@/components/business/auth/AuthCard"
-import FormInput from "@/components/business/auth/FormInput"
-import FormPasswordInput from "@/components/business/auth/FormPasswordInput"
-import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
+import {
+  AuthAlert,
+  AuthCard,
+  AuthField,
+  AuthFooterLink,
+  AuthPasswordField,
+  AuthSubmit,
+} from "@/components/business/v2/auth/auth-shell"
+import { Label } from "@/components/business/v2/ui/label"
+import { Select, Textarea } from "@/components/business/v2/ui/input"
 import AddressAutocomplete from "@/components/business/dashboard/AddressAutocomplete"
 import TurnstileWidget from "@/components/ui/TurnstileWidget"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { CAMPUSES } from "@/lib/business/constants"
+import { cn } from "@/lib/v2/utils"
 
 const BLOCKED_EMAIL_DOMAINS = [
   'proton.me', 'protonmail.com', 'pm.me',
@@ -44,6 +51,8 @@ interface CampusOption {
 }
 
 const FALLBACK_CAMPUSES: CampusOption[] = CAMPUSES.map(({ id, name }) => ({ id, name }))
+
+const errorRing = "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/20"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -139,7 +148,8 @@ export default function SignupPage() {
         website_url: honeypot,
       })
 
-      router.push(`/business/login?registered=1`)
+      // Session cookies are set by the signup response - straight into the trial dashboard
+      router.push("/business")
     } catch (err) {
       if (err instanceof ApiError) {
         setServerError(err.message)
@@ -154,7 +164,7 @@ export default function SignupPage() {
   return (
     <AuthCard title="Create your account" subtitle="Register your business to get started">
       <form onSubmit={handleSubmit}>
-        <FormInput
+        <AuthField
           label="Business Name"
           name="business_name"
           value={form.business_name}
@@ -163,7 +173,7 @@ export default function SignupPage() {
           required
           error={errors.business_name}
         />
-        <FormInput
+        <AuthField
           label="Contact Name"
           name="contact_name"
           value={form.contact_name}
@@ -172,7 +182,7 @@ export default function SignupPage() {
           required
           error={errors.contact_name}
         />
-        <FormInput
+        <AuthField
           label="Email"
           name="email"
           type="email"
@@ -183,7 +193,7 @@ export default function SignupPage() {
           autoComplete="email"
           error={errors.email}
         />
-        <FormInput
+        <AuthField
           label="Phone"
           name="phone"
           type="tel"
@@ -195,9 +205,9 @@ export default function SignupPage() {
           error={errors.phone}
         />
         <div className="mb-4">
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-            Business Address<span className="text-red-500 ml-0.5">*</span>
-          </label>
+          <Label htmlFor="address" className="mb-1.5 block">
+            Business Address<span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
+          </Label>
           <AddressAutocomplete
             value={form.address}
             onChange={(value) => {
@@ -206,19 +216,21 @@ export default function SignupPage() {
               setServerError("")
             }}
             placeholder="Start typing an address..."
-            className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none bg-white text-ink
-              ${errors.address ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"}`}
+            className={cn(
+              "flex h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 shadow-sm outline-none transition-colors placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:ring-2 focus-visible:ring-[#05EB54]/30 focus-visible:border-[#05EB54]",
+              errors.address && errorRing
+            )}
           />
-          {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
+          {errors.address && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.address}</p>}
         </div>
-        <FormInput
+        <AuthField
           label="Website"
           name="website"
           value={form.website}
           onChange={handleChange}
           placeholder="www.yourbusiness.com"
         />
-        <FormInput
+        <AuthField
           label="Instagram"
           name="instagram"
           value={form.instagram}
@@ -227,10 +239,10 @@ export default function SignupPage() {
         />
 
         <div className="mb-4">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            Business Description<span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <textarea
+          <Label htmlFor="description" className="mb-1.5 block">
+            Business Description<span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
+          </Label>
+          <Textarea
             id="description"
             name="description"
             value={form.description}
@@ -241,23 +253,21 @@ export default function SignupPage() {
             }}
             rows={3}
             placeholder="Briefly describe your business and what you offer"
-            className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none bg-white text-ink resize-none
-              ${errors.description ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"}`}
+            className={cn("resize-none", errors.description && errorRing)}
           />
-          {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
+          {errors.description && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.description}</p>}
         </div>
 
         <div className="mb-4">
-          <label htmlFor="campus_id" className="block text-sm font-medium text-gray-700 mb-1">
-            Campus<span className="text-red-500 ml-0.5">*</span>
-          </label>
-          <select
+          <Label htmlFor="campus_id" className="mb-1.5 block">
+            Campus<span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
+          </Label>
+          <Select
             id="campus_id"
             name="campus_id"
             value={form.campus_id}
             onChange={handleChange}
-            className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-colors outline-none bg-white text-ink
-              ${errors.campus_id ? "border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500" : "border-gray-300 focus:border-primary focus:ring-1 focus:ring-primary"}`}
+            className={cn("h-10", errors.campus_id && errorRing)}
           >
             <option value="">Select a campus</option>
             {campuses.map((c) => (
@@ -265,11 +275,11 @@ export default function SignupPage() {
                 {c.name}
               </option>
             ))}
-          </select>
-          {errors.campus_id && <p className="mt-1 text-xs text-red-500">{errors.campus_id}</p>}
+          </Select>
+          {errors.campus_id && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.campus_id}</p>}
         </div>
 
-        <FormPasswordInput
+        <AuthPasswordField
           label="Password"
           name="password"
           value={form.password}
@@ -279,7 +289,7 @@ export default function SignupPage() {
           autoComplete="new-password"
           error={errors.password}
         />
-        <FormPasswordInput
+        <AuthPasswordField
           label="Confirm Password"
           name="confirm_password"
           value={form.confirm_password}
@@ -290,7 +300,7 @@ export default function SignupPage() {
           error={errors.confirm_password}
         />
 
-        {/* Honeypot — humans never see this, bots fill every field */}
+        {/* Honeypot - humans never see this, bots fill every field */}
         <input
           type="text"
           name="website_url"
@@ -310,20 +320,20 @@ export default function SignupPage() {
         </div>
 
         {serverError && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          <AuthAlert tone="error" className="mb-4">
             {serverError}
-          </div>
+          </AuthAlert>
         )}
 
-        <AuthSubmitButton loading={loading}>Create Account</AuthSubmitButton>
+        <AuthSubmit loading={loading}>Create Account</AuthSubmit>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <AuthFooterLink>
         Already have an account?{" "}
-        <Link href="/business/login" className="text-primary font-medium hover:underline">
+        <Link href="/business/login" className="font-medium text-[#05EB54] hover:underline">
           Log in
         </Link>
-      </p>
+      </AuthFooterLink>
     </AuthCard>
   )
 }

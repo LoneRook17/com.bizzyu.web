@@ -17,6 +17,9 @@ interface DealFormProps {
   dealId?: number
 }
 
+const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+type DayWindow = { enabled: boolean; start: string; end: string }
+
 export default function DealForm({ initialData, dealId }: DealFormProps) {
   const router = useRouter()
   const { business } = useAuth()
@@ -29,6 +32,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     total_saving: initialData?.total_saving || "",
     redemption_frequency: initialData?.redemption_frequency || "",
     start_date: initialData?.start_date || "",
+    expired_date: initialData?.expired_date || "",
     deal_image_path: initialData?.deal_image_path || "",
   })
 
@@ -37,6 +41,26 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
   const [loading, setLoading] = useState(false)
   const [moderationNotice, setModerationNotice] = useState("")
   const [showFreqInfo, setShowFreqInfo] = useState(false)
+
+  // Per-day availability windows. Seed 7 slots from initialData, trimming the
+  // server's "HH:MM:SS" to "HH:MM" for <input type="time">.
+  const [availabilityLimited, setAvailabilityLimited] = useState<boolean>(
+    (initialData?.availability_windows?.length ?? 0) > 0
+  )
+  const [windows, setWindows] = useState<DayWindow[]>(() => {
+    const slots: DayWindow[] = DAY_LABELS.map(() => ({ enabled: false, start: "", end: "" }))
+    for (const w of initialData?.availability_windows ?? []) {
+      const d = Number(w.day_of_week)
+      if (d >= 0 && d <= 6) {
+        slots[d] = { enabled: true, start: (w.start_time || "").slice(0, 5), end: (w.end_time || "").slice(0, 5) }
+      }
+    }
+    return slots
+  })
+
+  const updateWindow = (day: number, patch: Partial<DayWindow>) => {
+    setWindows((prev) => prev.map((w, i) => (i === day ? { ...w, ...patch } : w)))
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -51,6 +75,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     if (!form.description.trim()) errs.description = "Description is required"
     if (!form.total_saving.trim()) errs.total_saving = "Estimated savings is required"
     if (!form.redemption_frequency) errs.redemption_frequency = "Redemption frequency is required"
+    if (!form.deal_image_path) errs.deal_image_path = "Deal image is required"
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -71,14 +96,33 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
       // Strip $ sign and parse savings
       const savingsNum = parseFloat(form.total_saving.replace(/[$,]/g, "")) || 0
 
+      // Default expiration: today's MM-DD in year 2099 (effectively "no expiration").
+      // If the business sets a real date, the daily DeactivateExpiredDeals cron will
+      // auto-pull the deal once it passes; live-deal queries filter expired_date >= CURDATE().
+      const today = new Date()
+      const defaultExpired = `2099-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+      const expiredDate = form.expired_date || defaultExpired
+
+      // Only enabled days with both times become windows; empty array = always
+      // available (and, on edit, clears any previously-set windows).
+      const availability_windows = availabilityLimited
+        ? windows.flatMap((w, day) =>
+            w.enabled && w.start && w.end
+              ? [{ day_of_week: day, start_time: w.start, end_time: w.end }]
+              : []
+          )
+        : []
+
       const payload = {
         deal_title: form.deal_title,
         description: form.description,
         deal_type: dealType,
         deal_image_path: form.deal_image_path || undefined,
         start_date: form.start_date || undefined,
+        expired_date: expiredDate,
         total_saving: savingsNum,
         venue_id: selectedVenue?.id,
+        availability_windows,
       }
 
       if (isEditing) {
@@ -89,6 +133,27 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
           "/business/deals",
           payload
         )
+        // Best-effort admin notification - never block redirect on failure
+        void fetch("/api/admin-notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "deal",
+            title: form.deal_title,
+            business: business?.name,
+            venue: selectedVenue?.name,
+            id: data.deal_id,
+            createdBy: business?.email,
+            details: {
+              "Description": form.description,
+              "Estimated savings": `$${savingsNum}`,
+              "Frequency": selectedOption?.label ?? dealType,
+              "Start date": form.start_date || "(immediate)",
+              "Expiration": form.expired_date || "(none)",
+              "Moderation status": data.moderation_status ?? "approved",
+            },
+          }),
+        }).catch((err) => console.error("Admin notify failed:", err))
         if (data.moderation_status === "pending_review") {
           setModerationNotice("Your deal has been created but is under review due to content moderation.")
           setTimeout(() => router.push("/business/deals"), 3000)
@@ -138,7 +203,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
 
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* LEFT COLUMN — Live Preview */}
+          {/* LEFT COLUMN - Live Preview */}
           <div className="w-full lg:w-[340px] shrink-0">
             <div className="lg:sticky lg:top-6">
               <div className="w-full max-w-[320px] mx-auto">
@@ -232,7 +297,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
             </div>
           </div>
 
-          {/* RIGHT COLUMN — Deal Details Form */}
+          {/* RIGHT COLUMN - Deal Details Form */}
           <div className="flex-1 min-w-0">
             <div className="rounded-xl border border-gray-200 bg-white p-6">
               <h2 className="text-2xl font-bold text-ink mb-1">Deal Details</h2>
@@ -396,34 +461,129 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                 </div>
               )}
 
-              {/* Start Date */}
-              <div className="mb-5">
-                <label htmlFor="start_date" className="block text-xs font-medium text-muted mb-1">
-                  Start Date
-                </label>
-                <input
-                  id="start_date"
-                  name="start_date"
-                  type="date"
-                  value={form.start_date}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                />
+              {/* Start Date + Expiration Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                <div>
+                  <label htmlFor="start_date" className="block text-xs font-medium text-muted mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    id="start_date"
+                    name="start_date"
+                    type="date"
+                    value={form.start_date}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="expired_date" className="block text-xs font-medium text-muted mb-1">
+                    Expiration Date <span className="font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="expired_date"
+                    name="expired_date"
+                    type="date"
+                    value={form.expired_date}
+                    onChange={handleChange}
+                    min={form.start_date || undefined}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                  />
+                  <p className="text-xs text-muted mt-1">
+                    Deal automatically removes from the app on this date. Leave blank for no expiration.
+                  </p>
+                </div>
+              </div>
+
+              {/* Availability Windows */}
+              <div className="mb-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-ink mb-1">
+                      Limit to specific times <span className="font-normal text-muted">(optional)</span>
+                    </label>
+                    <p className="text-xs text-muted">
+                      By default the deal is always available. Turn this on to offer it only during set
+                      hours each day, outside those hours it shows dimmed and lower in the app.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={availabilityLimited}
+                    onClick={() => setAvailabilityLimited((v) => !v)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                      availabilityLimited ? "bg-primary" : "bg-gray-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                        availabilityLimited ? "translate-x-5" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {availabilityLimited && (
+                  <div className="mt-4 space-y-2 rounded-xl border border-gray-200 p-3">
+                    {DAY_LABELS.map((label, day) => {
+                      const w = windows[day]
+                      return (
+                        <div key={day} className="flex items-center gap-3">
+                          <label className="flex w-32 shrink-0 cursor-pointer items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={w.enabled}
+                              onChange={(e) => updateWindow(day, { enabled: e.target.checked })}
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+                            />
+                            <span className="text-sm text-ink">{label}</span>
+                          </label>
+                          <input
+                            type="time"
+                            value={w.start}
+                            disabled={!w.enabled}
+                            onChange={(e) => updateWindow(day, { start: e.target.value })}
+                            className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-ink transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50 disabled:text-gray-400"
+                          />
+                          <span className="text-sm text-muted">to</span>
+                          <input
+                            type="time"
+                            value={w.end}
+                            disabled={!w.enabled}
+                            onChange={(e) => updateWindow(day, { end: e.target.value })}
+                            className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-ink transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50 disabled:text-gray-400"
+                          />
+                        </div>
+                      )
+                    })}
+                    <p className="pt-1 text-xs text-muted">
+                      Enable each day the deal runs and set its hours. Unchecked days are unavailable.
+                      Overnight ranges (e.g. 10:00pm-2:00am) are supported.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Deal Image */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-ink mb-1">
-                  Deal Image <span className="text-muted font-normal">(optional)</span>
+                  Deal Image <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs text-muted mb-2">
-                  Recommended: 1600&times;1000px landscape (16:10). You can always send one later.
+                  Recommended: 1600&times;1000px landscape (16:10).
                 </p>
                 <ImageUpload
                   value={form.deal_image_path}
-                  onChange={(url) => setForm((prev) => ({ ...prev, deal_image_path: url }))}
+                  onChange={(url) => {
+                    setForm((prev) => ({ ...prev, deal_image_path: url }))
+                    setErrors((prev) => ({ ...prev, deal_image_path: "" }))
+                  }}
                   label=""
                 />
+                {errors.deal_image_path && (
+                  <p className="text-xs text-red-500 mt-2">{errors.deal_image_path}</p>
+                )}
               </div>
 
               {/* Submit */}

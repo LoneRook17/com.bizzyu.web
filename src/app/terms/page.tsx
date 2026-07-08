@@ -180,12 +180,12 @@ export default function TermsPage() {
           Bizzy is not liable for any loss or damage arising from your failure to comply with this section. You are responsible for all activities that occur under your account, whether or not you authorized such activities.
         </p>
 
-        {/* ── 6. Bizzy Deals — Terms of Use ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">6. Bizzy Deals — Terms of Use</h2>
+        {/* ── 6. Bizzy Deals - Terms of Use ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">6. Bizzy Deals: Terms of Use</h2>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">6.1 How Deals Work</h3>
         <p className="text-muted leading-relaxed">
-          Merchants create and manage their own Deals on the Platform. When you redeem a Deal, you are entering into a transaction directly with the Merchant — not with Bizzy. Bizzy&#39;s role is limited to providing the technology platform that displays and facilitates access to those Deals.
+          Merchants create and manage their own Deals on the Platform. When you redeem a Deal, you are entering into a transaction directly with the Merchant, not with Bizzy. Bizzy&#39;s role is limited to providing the technology platform that displays and facilitates access to those Deals.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">6.2 In-Store Redemption</h3>
@@ -210,7 +210,7 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">6.6 Deal Claim Limits</h3>
         <p className="text-muted leading-relaxed">
-          Deals may be subject to claim limits, including but not limited to a maximum number of redemptions per User per day, per week, per month, or per Merchant. Free-tier Users are limited to a capped number of deal claims per week; Bizzy Premium subscribers receive unlimited claims subject to per-deal frequency rules. Limits are displayed on the Deal listing or within your account. Bizzy tracks your claim history to enforce these limits. Attempting to circumvent claim limits — including by creating multiple accounts, using automated tools, or other means — is a violation of these Terms and may result in account suspension or termination.
+          Deals may be subject to claim limits, including but not limited to a maximum number of redemptions per User per day, per week, per month, or per Merchant. Free-tier Users are limited to a capped number of deal claims per week; Bizzy Premium subscribers receive unlimited claims subject to per-deal frequency rules. Limits are displayed on the Deal listing or within your account. Bizzy tracks your claim history to enforce these limits. Attempting to circumvent claim limits, including by creating multiple accounts, using automated tools, or other means, is a violation of these Terms and may result in account suspension or termination.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">6.7 Deal Disputes</h3>
@@ -218,8 +218,8 @@ export default function TermsPage() {
           If a Merchant refuses to honor a listed Deal, modifies its terms at the point of sale, or otherwise fails to fulfill a Deal, you must resolve the issue directly with the Merchant. Bizzy will make commercially reasonable efforts to assist where possible, but assumes no liability for Merchant non-compliance.
         </p>
 
-        {/* ── 7. Bizzy Ticketing — Terms of Use ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">7. Bizzy Ticketing — Terms of Use</h2>
+        {/* ── 7. Bizzy Ticketing - Terms of Use ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">7. Bizzy Ticketing: Terms of Use</h2>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.1 Ticket Purchases</h3>
         <p className="text-muted leading-relaxed">
@@ -317,7 +317,7 @@ export default function TermsPage() {
           Payments made through the Platform are processed by third-party payment processors, which may include Stripe, Apple Pay, Google Pay, Apple In-App Purchase, Google Play Billing, or other processors as designated by Bizzy. Bizzy does not directly collect, store, or process your payment card information. Your use of any third-party payment service is subject to that provider&#39;s own terms of service and privacy policy. Payment processors maintain PCI-DSS compliance for cardholder data; Bizzy disclaims liability for payment processor security incidents to the maximum extent permitted by law.
         </p>
 
-        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">9.2 Bizzy Premium Subscription — Auto-Renewal</h3>
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">9.2 Bizzy Premium Subscription: Auto-Renewal</h3>
         <p className="text-muted leading-relaxed">
           Bizzy Premium is offered as an auto-renewing subscription. When you subscribe:
         </p>
@@ -530,8 +530,8 @@ export default function TermsPage() {
           Bizzy may suspend or terminate your Promoter participation at any time, with or without cause, including for (a) violation of these Terms, (b) chargeback or refund rates above acceptable thresholds, (c) suspected fraud, (d) failure to maintain valid tax or payout information, or (e) at the request of the Event Organizer. Upon termination, no further commissions will accrue. Pending balance amounts are subject to clawback for refunds, chargebacks, or fraud reversals as described above. Bizzy may withhold any pending payout pending investigation of suspected fraud or breach.
         </p>
 
-        {/* ── 15. Marketing Communications — Opt-In, Opt-Out, TCPA & CAN-SPAM ── */}
-        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">15. Marketing Communications — Opt-In, Opt-Out, TCPA &amp; CAN-SPAM</h2>
+        {/* ── 15. Marketing Communications - Opt-In, Opt-Out, TCPA & CAN-SPAM ── */}
+        <h2 className="text-2xl font-bold text-ink mt-10 mb-4">15. Marketing Communications: Opt-In, Opt-Out, TCPA &amp; CAN-SPAM</h2>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.1 Categories of Communications</h3>
         <p className="text-muted leading-relaxed">
@@ -640,7 +640,7 @@ export default function TermsPage() {
         {/* ── 19. User-Generated Content ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">19. User-Generated Content</h2>
         <p className="text-muted leading-relaxed">
-          If the Platform allows you to submit, post, or share content (including reviews, ratings, comments, photos, or other materials — collectively, &quot;User Content&quot;), the following terms apply:
+          If the Platform allows you to submit, post, or share content (including reviews, ratings, comments, photos, or other materials, collectively, &quot;User Content&quot;), the following terms apply:
         </p>
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li><strong>Ownership:</strong> You retain ownership of your User Content. However, by submitting User Content, you grant Bizzy a worldwide, non-exclusive, royalty-free, perpetual, irrevocable, sublicensable, and transferable license to use, reproduce, modify, adapt, publish, translate, distribute, and display such User Content in connection with the Platform and Bizzy&#39;s business operations.</li>
@@ -789,7 +789,7 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">27.3 Effect of Termination</h3>
         <p className="text-muted leading-relaxed">
-          Upon termination, Sections 14 (Promoter Program — solely for purposes of clawback and tax reporting), 15 (Marketing Communications — solely for purposes of post-account communications and recordkeeping), 18, 19, 21, 22, 23, 24, 25, 26, 31, 33, and any other provisions that by their nature should survive, shall survive termination.
+          Upon termination, Sections 14 (Promoter Program, solely for purposes of clawback and tax reporting), 15 (Marketing Communications, solely for purposes of post-account communications and recordkeeping), 18, 19, 21, 22, 23, 24, 25, 26, 31, 33, and any other provisions that by their nature should survive, shall survive termination.
         </p>
 
         {/* ── 28. Service Availability & Modifications ── */}

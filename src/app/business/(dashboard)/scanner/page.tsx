@@ -1,10 +1,13 @@
-import ScannerClient from "./ScannerClient"
+"use client"
 
-export const metadata = {
-  title: "Scanner — Bizzy Business",
-  description: "Batch QR scanner for event check-ins",
-}
+import { Suspense } from "react"
+import { PageHeader } from "@/components/business/v2/PageHeader"
+import ScannerClient from "@/components/business/v2/scanner/ScannerClient"
 
-export default function ScannerPage() {
-  return <ScannerClient />
+export default function V2ScannerPage() {
+  return (
+    <Suspense fallback={<PageHeader title="Scanner" description="Scan ticket QR codes to check in attendees." />}>
+      <ScannerClient />
+    </Suspense>
+  )
 }

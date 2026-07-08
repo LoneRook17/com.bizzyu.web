@@ -1,20 +1,17 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import Link from "next/link"
+import { CircleCheck, Users } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { CheckinEntry } from "@/lib/business/types"
+import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { Progress } from "@/components/business/v2/ui/progress"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
+import { fmtDateTime } from "@/components/business/v2/events/eventStatus"
 
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
-
-export default function CheckinsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function V2CheckinsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [checkins, setCheckins] = useState<CheckinEntry[]>([])
   const [summary, setSummary] = useState({ total: 0, redeemed: 0 })
@@ -34,107 +31,85 @@ export default function CheckinsPage({ params }: { params: Promise<{ id: string 
 
   if (loading) {
     return (
-      <div className="max-w-3xl animate-pulse space-y-4">
-        <div className="h-6 bg-gray-200 rounded w-48" />
-        <div className="h-48 bg-gray-200 rounded-xl" />
+      <div className="flex flex-col gap-5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-9 w-52" />
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     )
   }
 
   const checkedIn = checkins.filter((c) => c.is_redeemed)
   const notCheckedIn = checkins.filter((c) => !c.is_redeemed)
-  const pct = summary.total > 0 ? ((summary.redeemed / summary.total) * 100).toFixed(1) : "0.0"
+  const pct = summary.total > 0 ? (summary.redeemed / summary.total) * 100 : 0
 
   return (
-    <div className="max-w-3xl">
-      <Link href={`/business/events/${id}/manage`} className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-        &larr; Back to Manage
-      </Link>
-      <h1 className="text-xl font-bold text-ink mb-6">Check-In History</h1>
+    <>
+      <ManageSubheader eventId={id} title="Check-in history" subtitle="Who scanned in, and who hasn't yet." />
 
-      {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-ink">{summary.total}</p>
-          <p className="text-xs text-gray-500">Total Tickets</p>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{summary.redeemed}</p>
-          <p className="text-xs text-gray-500">Checked In</p>
-        </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
-          <p className="text-2xl font-bold text-ink">{pct}%</p>
-          <p className="text-xs text-gray-500">Check-in Rate</p>
-        </div>
+      <div className="grid grid-cols-3 gap-4">
+        <StatTile value={String(summary.total)} label="Total tickets" />
+        <StatTile value={String(summary.redeemed)} label="Checked in" accent />
+        <StatTile value={`${pct.toFixed(1)}%`} label="Check-in rate" />
       </div>
 
-      {/* Progress bar */}
-      <div className="mb-6">
-        <div className="h-3 w-full rounded-full bg-gray-100 overflow-hidden">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
+      <Progress value={pct} />
 
       {checkins.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-          <p className="text-sm text-gray-500">No ticket holders yet.</p>
-        </div>
+        <EmptyState icon={Users} title="No ticket holders yet" description="Once tickets are sold, attendees show up here." />
       ) : (
-        <div className="space-y-4">
-          {/* Checked in */}
+        <div className="flex flex-col gap-4">
           {checkedIn.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-100 bg-green-50/50">
-                <h3 className="text-sm font-semibold text-green-700">Checked In ({checkedIn.length})</h3>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {checkedIn.map((c) => (
-                  <div key={c.ticket_instance_id} className="flex items-center justify-between px-5 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink truncate">{c.attendee_name || "Guest"}</p>
-                      <p className="text-xs text-gray-500">
-                        {c.ticket_name}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0 ml-4">
-                      <p className="text-xs text-green-600 font-medium">Checked In</p>
-                      {c.redeemed_at && (
-                        <p className="text-[10px] text-gray-400">{formatTime(c.redeemed_at)}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CheckinGroup title={`Checked in (${checkedIn.length})`} tint="green" rows={checkedIn} />
           )}
-
-          {/* Not checked in */}
           {notCheckedIn.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50">
-                <h3 className="text-sm font-semibold text-gray-600">Not Checked In ({notCheckedIn.length})</h3>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {notCheckedIn.map((c) => (
-                  <div key={c.ticket_instance_id} className="flex items-center justify-between px-5 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink truncate">{c.attendee_name || "Guest"}</p>
-                      <p className="text-xs text-gray-500">
-                        {c.ticket_name}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0 ml-4">
-                      <p className="text-xs text-gray-400">Not scanned</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CheckinGroup title={`Not checked in (${notCheckedIn.length})`} tint="neutral" rows={notCheckedIn} />
           )}
         </div>
       )}
-    </div>
+    </>
+  )
+}
+
+function StatTile({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
+  return (
+    <Card className="p-4 text-center">
+      <p className={accent ? "text-2xl font-semibold tracking-tight text-[#05EB54]" : "text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100"}>{value}</p>
+      <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{label}</p>
+    </Card>
+  )
+}
+
+function CheckinGroup({ title, tint, rows }: { title: string; tint: "green" | "neutral"; rows: CheckinEntry[] }) {
+  return (
+    <Card className="overflow-hidden">
+      <div className={tint === "green" ? "border-b border-neutral-100 dark:border-neutral-800 bg-green-50/50 dark:bg-green-950/40 px-5 py-3" : "border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 px-5 py-3"}>
+        <h3 className={tint === "green" ? "text-sm font-semibold text-green-700 dark:text-green-400" : "text-sm font-semibold text-neutral-600 dark:text-neutral-400"}>{title}</h3>
+      </div>
+      <CardContent className="p-0">
+        <div className="divide-y divide-neutral-50 dark:divide-neutral-800">
+          {rows.map((c) => (
+            <div key={c.ticket_instance_id} className="flex items-center justify-between px-5 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{c.attendee_name || "Guest"}</p>
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{c.ticket_name}</p>
+              </div>
+              <div className="ml-4 shrink-0 text-right">
+                {c.is_redeemed ? (
+                  <>
+                    <p className="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400"><CircleCheck className="size-3.5" /> Checked in</p>
+                    {c.redeemed_at && <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{fmtDateTime(c.redeemed_at)}</p>}
+                  </>
+                ) : (
+                  <p className="text-xs text-neutral-400 dark:text-neutral-500">Not scanned</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

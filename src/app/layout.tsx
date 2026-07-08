@@ -27,7 +27,7 @@ const fredoka = Fredoka({
 });
 
 // Fira Sans powers the public venue "sign board" (/venue/[venueId]), which
-// mirrors the Laravel event-checkout theme. Exposed as a CSS variable only —
+// mirrors the Laravel event-checkout theme. Exposed as a CSS variable only -
 // the venue page opts in via font-[family-name:var(--font-fira)]; every other
 // page stays on Geist.
 const firaSans = Fira_Sans({
@@ -39,8 +39,11 @@ const firaSans = Fira_Sans({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://bizzyu.com"),
+  // Smart App Banner (was a raw <meta> in <head>; moved into the metadata API so
+  // individual routes like /setup-password can opt out with `itunes: null`)
+  itunes: { appId: "6683306360" },
   title: {
-    default: "Bizzy — Student Deals & Discounts at Your College Campus",
+    default: "Bizzy: Student Deals & Discounts at Your College Campus",
     template: "%s | Bizzy",
   },
   description:
@@ -63,7 +66,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "Bizzy",
-    title: "Bizzy — Student Deals & Discounts at Your College Campus",
+    title: "Bizzy: Student Deals & Discounts at Your College Campus",
     description:
       "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
     images: [
@@ -71,13 +74,13 @@ export const metadata: Metadata = {
         url: "/images/og-default.png",
         width: 1200,
         height: 630,
-        alt: "Bizzy — Student Deals & Discounts at Your College Campus",
+        alt: "Bizzy: Student Deals & Discounts at Your College Campus",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bizzy — Student Deals & Discounts at Your College Campus",
+    title: "Bizzy: Student Deals & Discounts at Your College Campus",
     description:
       "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
     images: ["/images/og-default.png"],
@@ -167,7 +170,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="apple-itunes-app" content="app-id=6683306360" />
         <JsonLd data={organizationJsonLd} />
         <JsonLd data={appJsonLd} />
       </head>

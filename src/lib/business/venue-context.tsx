@@ -90,7 +90,7 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Check if first-time wizard should show:
-      // - Zero venues: always show (even if previously dismissed — user needs at least one)
+      // - Zero venues: always show (even if previously dismissed - user needs at least one)
       // - Exactly 1 venue whose name matches the business name (auto-created default): show unless dismissed
       const wizardDismissed = localStorage.getItem(WIZARD_DISMISSED_KEY)
       if (
