@@ -1,11 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { loadKnowledgePack } from "@/lib/support/kb"
-import { verifySupportToken } from "@/lib/support/auth"
+import { resolveSupportUser } from "@/lib/support/auth"
 import { checkRateLimit } from "@/lib/support/ratelimit"
 
-// Streaming support-chat endpoint. Loaded by /support-chat (inside the iOS
-// app's WebView). Requires a valid app auth token — see lib/support/auth.ts.
-// Requires ANTHROPIC_API_KEY in the environment.
+// Streaming support-chat endpoint, shared by two audiences (see auth.ts):
+//   • students — /support-chat inside the iOS app WebView (Bearer Sanctum token)
+//   • businesses — the dashboard help bubble (business session cookie)
+// The audience is decided by the auth type on the request. Requires a valid
+// session in one form or the other, plus ANTHROPIC_API_KEY in the environment.
 
 export const maxDuration = 60
 
@@ -30,10 +32,11 @@ export async function POST(req: Request) {
   // shows its generic "email support" fallback.
   if (process.env.SUPPORT_CHAT_DISABLED === "1") return err(503, "disabled")
 
-  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "")
-  const user = await verifySupportToken(token)
+  const user = await resolveSupportUser(req)
   if (!user) return err(401, "unauthorized")
-  const rate = checkRateLimit(user.id)
+  // Namespace the rate-limit key by audience so a student id and a business id
+  // can never collide into a shared bucket.
+  const rate = checkRateLimit(`${user.audience}:${user.id}`)
   if (!rate.ok) return err(429, rate.reason === "daily" ? "daily_limit" : "rate_limited")
 
   let body: unknown
@@ -63,8 +66,16 @@ export async function POST(req: Request) {
   const userContext = [
     "Context for this conversation (from the authenticated session, trustworthy):",
     user.name ? `The user's name is ${user.name}.` : null,
-    user.school ? `They attend ${user.school}.` : null,
-    "They are using the Bizzy iOS app.",
+    user.audience === "business"
+      ? user.business
+        ? `They manage the business "${user.business}" on Bizzy.`
+        : null
+      : user.school
+        ? `They attend ${user.school}.`
+        : null,
+    user.audience === "business"
+      ? "They are a business owner/operator using the Bizzy business dashboard on the web."
+      : "They are using the Bizzy iOS app.",
   ]
     .filter(Boolean)
     .join(" ")
@@ -81,7 +92,7 @@ export async function POST(req: Request) {
     system: [
       {
         type: "text",
-        text: loadKnowledgePack(),
+        text: loadKnowledgePack(user.audience),
         cache_control: { type: "ephemeral" },
       },
       { type: "text", text: userContext },
@@ -104,6 +115,7 @@ export async function POST(req: Request) {
         console.log(
           JSON.stringify({
             tag: "support-chat-usage",
+            audience: user.audience,
             user: user.id,
             turns: sent.length,
             input_tokens: final.usage.input_tokens,

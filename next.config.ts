@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // The support bot's knowledge pack is read from disk at runtime — make sure
   // the markdown files ship inside the serverless bundle on Vercel.
   outputFileTracingIncludes: {
-    "/api/support-chat": ["./support-kb/*.md"],
+    "/api/support-chat": ["./support-kb/*.md", "./business-kb/*.md"],
   },
   images: {
     remotePatterns: [

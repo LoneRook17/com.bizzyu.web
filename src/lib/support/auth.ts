@@ -1,29 +1,57 @@
-// Verifies the app's Sanctum token against the Laravel API (POST /api/profile).
-// The chat page is loaded inside the iOS app's WebView with ?token=<sanctum token>;
-// every chat request must carry it. Without a valid token the bot won't answer —
-// that's the main defense against the endpoint being farmed as a free LLM.
+// Resolves who the support bot is talking to, by AUTH TYPE — one endpoint,
+// two audiences:
+//
+//   • student  — the iOS app WebView loads /support-chat?token=<sanctum token>
+//                and sends it as `Authorization: Bearer <token>`. Verified
+//                against the Laravel API (POST /api/profile).
+//   • business — the web dashboard mounts the chat behind the existing business
+//                session (the httpOnly `biz_token` cookie set by the Node API).
+//                Verified by mirroring the dashboard's own auth/me call
+//                (GET /business/auth/me) server-side, forwarding the cookie.
+//
+// A valid session in EITHER form is the defense against the endpoint being
+// farmed as a free LLM. Rate limits, kill switch, and usage logging apply to
+// both audiences (see route.ts).
+
+export type SupportAudience = "student" | "business"
 
 export interface SupportUser {
   id: string
+  audience: SupportAudience
   name: string | null
-  school: string | null
+  school: string | null // students only
+  business: string | null // businesses only (business/venue name)
 }
 
-// Verified tokens are cached in-memory for 10 minutes so a conversation doesn't
-// hit Laravel once per message. Serverless caveat: the cache is per-instance,
-// which only means occasional extra verify calls — never a security gap.
+// Verified sessions are cached in-memory for 10 minutes so a conversation
+// doesn't hit the backing API once per message. Serverless caveat: the cache is
+// per-instance, which only means occasional extra verify calls — never a
+// security gap. Keyed by the raw credential (token or biz_token value).
 const cache = new Map<string, { user: SupportUser; expires: number }>()
 const TTL_MS = 10 * 60 * 1000
 
-export async function verifySupportToken(token: string): Promise<SupportUser | null> {
+/**
+ * Picks the audience by which credential the request carries. A Bearer token
+ * ⇒ student (Sanctum); otherwise fall back to the business session cookie.
+ */
+export async function resolveSupportUser(req: Request): Promise<SupportUser | null> {
+  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim()
+  if (bearer) return verifyStudentToken(bearer)
+  return verifyBusinessSession(req.headers.get("cookie") ?? "")
+}
+
+/** Student path: verify a Laravel Sanctum token via POST {LARAVEL_API_URL}/api/profile. */
+export async function verifyStudentToken(token: string): Promise<SupportUser | null> {
   if (!token || token.length > 500) return null
 
   // Local-dev bypass ONLY. Never set SUPPORT_CHAT_DEV_BYPASS on Vercel.
-  if (process.env.SUPPORT_CHAT_DEV_BYPASS === "1" && process.env.NODE_ENV !== "production") {
-    return { id: "dev", name: "Dev Tester", school: "FGCU" }
+  // "1" or "student" ⇒ a fake student; "business" ⇒ handled in verifyBusinessSession.
+  const bypass = process.env.SUPPORT_CHAT_DEV_BYPASS
+  if ((bypass === "1" || bypass === "student") && process.env.NODE_ENV !== "production") {
+    return { id: "dev", audience: "student", name: "Dev Tester", school: "FGCU", business: null }
   }
 
-  const hit = cache.get(token)
+  const hit = cache.get(`student:${token}`)
   if (hit && hit.expires > Date.now()) return hit.user
 
   // LARAVEL_API_URL is the base for POST {base}/api/profile — set it WITHOUT a
@@ -55,10 +83,68 @@ export async function verifySupportToken(token: string): Promise<SupportUser | n
     if (!u || typeof u !== "object") return null
     const user: SupportUser = {
       id: String(u.id ?? "unknown"),
+      audience: "student",
       name: u.full_name ?? u.name ?? null,
       school: u.university?.name ?? u.university_name ?? null,
+      business: null,
     }
-    cache.set(token, { user, expires: Date.now() + TTL_MS })
+    cache.set(`student:${token}`, { user, expires: Date.now() + TTL_MS })
+    return user
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Business path: verify the dashboard's own session by calling the Node API's
+ * GET /business/auth/me with the incoming Cookie header forwarded verbatim.
+ * That endpoint's middleware reads the httpOnly `biz_token` access-token cookie
+ * (see com.bizzyu.services middleware/businessAuth.ts) — exactly what the
+ * dashboard's api-client relies on. INTERNAL_API_URL is the server-to-server
+ * base for the Node API (same var next.config.ts uses for the /api/proxy rewrite).
+ */
+export async function verifyBusinessSession(cookieHeader: string): Promise<SupportUser | null> {
+  // Local-dev bypass ONLY: SUPPORT_CHAT_DEV_BYPASS=business ⇒ a fake business owner.
+  if (process.env.SUPPORT_CHAT_DEV_BYPASS === "business" && process.env.NODE_ENV !== "production") {
+    return {
+      id: "dev-biz",
+      audience: "business",
+      name: "Dev Owner",
+      school: null,
+      business: "Dev Venue Co.",
+    }
+  }
+
+  // No business access-token cookie ⇒ no business session; don't bother the API.
+  const bizToken = /(?:^|;\s*)biz_token=([^;]+)/.exec(cookieHeader)?.[1]
+  if (!bizToken) return null
+
+  const hit = cache.get(`business:${bizToken}`)
+  if (hit && hit.expires > Date.now()) return hit.user
+
+  const base = process.env.INTERNAL_API_URL || "http://localhost:3000"
+  try {
+    const res = await fetch(`${base}/business/auth/me`, {
+      method: "GET",
+      headers: {
+        Cookie: cookieHeader,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return null
+    const body = await res.json().catch(() => null)
+    const u = body?.user
+    const b = body?.business
+    if (!u || typeof u !== "object") return null
+    const user: SupportUser = {
+      id: String(u.id ?? "unknown"),
+      audience: "business",
+      name: u.full_name ?? u.name ?? null,
+      school: null,
+      business: (b && typeof b === "object" ? b.name : null) ?? null,
+    }
+    cache.set(`business:${bizToken}`, { user, expires: Date.now() + TTL_MS })
     return user
   } catch {
     return null

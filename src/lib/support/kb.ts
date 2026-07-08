@@ -1,21 +1,34 @@
 import fs from "fs"
 import path from "path"
+import type { SupportAudience } from "./auth"
 
-// The support bot's entire knowledge base lives in /support-kb/*.md (repo root).
-// Files are concatenated in filename order into one system-prompt string.
-// Module-scope cache: the pack is read once per serverless instance. Editing
-// the pack takes effect on the next deploy.
-let cached: string | null = null
+// The support bot's knowledge base lives in per-audience markdown packs at the
+// repo root: /support-kb/*.md (students, loaded in the iOS WebView) and
+// /business-kb/*.md (business owners, loaded in the dashboard help bubble).
+// Files in a pack are concatenated in filename order into one system-prompt
+// string. Module-scope cache: each pack is read once per serverless instance,
+// so editing a pack takes effect on the next deploy.
+//
+// NOTE: any new pack directory must be added to outputFileTracingIncludes in
+// next.config.ts, or the .md files won't ship inside the serverless bundle.
+const PACK_DIRS: Record<SupportAudience, string> = {
+  student: "support-kb",
+  business: "business-kb",
+}
 
-export function loadKnowledgePack(): string {
-  if (cached) return cached
-  const dir = path.join(process.cwd(), "support-kb")
+const cached: Partial<Record<SupportAudience, string>> = {}
+
+export function loadKnowledgePack(audience: SupportAudience): string {
+  const hit = cached[audience]
+  if (hit) return hit
+  const dir = path.join(process.cwd(), PACK_DIRS[audience])
   const files = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".md") && f !== "README.md")
     .sort()
-  cached = files
+  const pack = files
     .map((f) => fs.readFileSync(path.join(dir, f), "utf8").trim())
     .join("\n\n---\n\n")
-  return cached
+  cached[audience] = pack
+  return pack
 }
