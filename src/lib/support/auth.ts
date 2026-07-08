@@ -26,6 +26,17 @@ export async function verifySupportToken(token: string): Promise<SupportUser | n
   const hit = cache.get(token)
   if (hit && hit.expires > Date.now()) return hit.user
 
+  // LARAVEL_API_URL is the base for POST {base}/api/profile — set it WITHOUT a
+  // trailing /api. Fallback below is LOCAL dev only.
+  // ┌──────────────────────────────────────────────────────────────────────┐
+  // │ DEV (l2gp Vercel project):  http://3.80.143.224   ← dev Laravel EC2   │
+  // │ PROD (com-bizzyu-web):      https://bizzy-deals.com                    │
+  // │ LOCAL:                      http://127.0.0.1:8001                      │
+  // └──────────────────────────────────────────────────────────────────────┘
+  // ⚠️ NEVER set https://bizzy-deals.com (PROD) on the l2gp/dev project — that
+  //    verifies dev app tokens against the PROD user table. l2gp MUST use the
+  //    dev EC2 (http://3.80.143.224). Matches the CHECKOUT_REDIRECT_BASE /
+  //    LARAVEL_API_URL convention already in next.config.ts. See SUPPORT_CHAT_SETUP.md.
   const base = process.env.LARAVEL_API_URL || "http://127.0.0.1:8001"
   try {
     const res = await fetch(`${base}/api/profile`, {
