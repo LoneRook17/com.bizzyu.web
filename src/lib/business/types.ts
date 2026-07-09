@@ -154,6 +154,10 @@ export interface EventDetail extends EventListItem {
   promotion_enabled?: boolean | number
   promotion_commission_type?: 'percent' | 'fixed' | null
   promotion_commission_value?: number | null
+  lowstock_alerts_enabled?: boolean | number
+  lowstock_threshold_type?: 'percent' | 'count' | null
+  lowstock_threshold_value?: number | null
+  lowstock_notify_business_team?: boolean | number
 }
 
 export interface RecurringNight {
@@ -190,6 +194,10 @@ export interface EventFormData {
   promotion_commission_type?: 'percent' | 'fixed'
   promotion_commission_value?: number | null
   notify_followers_on_publish?: boolean
+  lowstock_alerts_enabled?: boolean
+  lowstock_threshold_type?: 'percent' | 'count'
+  lowstock_threshold_value?: number | null
+  lowstock_notify_business_team?: boolean
 }
 
 // Deal types

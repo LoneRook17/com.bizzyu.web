@@ -62,6 +62,29 @@ function commissionInputToStored(
   return { value: Math.round(num * 100), error: null }
 }
 
+// lowstock_threshold_value is a plain integer: a percent (≤100) or a raw ticket count.
+function lowstockValueToInput(storedValue: number | null | undefined): string {
+  if (storedValue == null) return ""
+  return String(storedValue)
+}
+
+// Mirrors the services-side validation (positive int; ≤100 when percent).
+function lowstockInputToStored(
+  type: "percent" | "count",
+  inputValue: string
+): { value: number | null; error: string | null } {
+  const trimmed = inputValue.trim()
+  if (trimmed === "") return { value: null, error: "Enter a threshold value" }
+  const num = Number(trimmed)
+  if (!Number.isInteger(num) || num <= 0) {
+    return { value: null, error: "Threshold must be a positive whole number" }
+  }
+  if (type === "percent" && num > 100) {
+    return { value: null, error: "Percent threshold can't exceed 100" }
+  }
+  return { value: num, error: null }
+}
+
 export function EventForm({ initialData, eventId, stripeOnboarded = true }: EventFormProps) {
   const router = useRouter()
   const isEditing = !!eventId
@@ -88,10 +111,18 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     promotion_commission_type: initialData?.promotion_commission_type || "percent",
     promotion_commission_value: initialData?.promotion_commission_value ?? null,
     notify_followers_on_publish: !!initialData?.notify_followers_on_publish,
+    lowstock_alerts_enabled: !!initialData?.lowstock_alerts_enabled,
+    lowstock_threshold_type: initialData?.lowstock_threshold_type || "percent",
+    lowstock_threshold_value: initialData?.lowstock_threshold_value ?? null,
+    lowstock_notify_business_team: !!initialData?.lowstock_notify_business_team,
   })
 
   const [promotionValueInput, setPromotionValueInput] = useState<string>(
     commissionValueToInput(initialData?.promotion_commission_type || "percent", initialData?.promotion_commission_value)
+  )
+
+  const [lowstockValueInput, setLowstockValueInput] = useState<string>(
+    lowstockValueToInput(initialData?.lowstock_threshold_value)
   )
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -227,6 +258,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         }
       }
     }
+    if (form.lowstock_alerts_enabled) {
+      const { error } = lowstockInputToStored(form.lowstock_threshold_type || "percent", lowstockValueInput)
+      if (error) errs.lowstock_threshold_value = error
+    }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -278,6 +313,21 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         payload.promotion_enabled = false
       }
 
+      // Stock alerts (ticketed only). Always send the two flags. Only send
+      // type + value when there's a valid threshold to write: the server rejects
+      // a null/empty value, and omitting it lets the stored threshold persist —
+      // which is exactly what we want when disabling without a threshold set.
+      if (form.type === "Ticketed") {
+        const lowstockType = form.lowstock_threshold_type || "percent"
+        const { value: lowstockValue } = lowstockInputToStored(lowstockType, lowstockValueInput)
+        payload.lowstock_alerts_enabled = !!form.lowstock_alerts_enabled
+        payload.lowstock_notify_business_team = !!form.lowstock_notify_business_team
+        if (lowstockValue != null) {
+          payload.lowstock_threshold_type = lowstockType
+          payload.lowstock_threshold_value = lowstockValue
+        }
+      }
+
       // Opt-in announcement to venue followers on publish.
       payload.notify_followers_on_publish = !!form.notify_followers_on_publish
 
@@ -318,6 +368,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       ? "Connect Stripe to enable the promoter program."
       : ""
   const commissionType = form.promotion_commission_type || "percent"
+  const lowstockType = form.lowstock_threshold_type || "percent"
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -625,6 +676,83 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                     <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.promotion_commission_value}</p>
                   )}
                 </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stock alerts - operator low-stock notifications (ticketed only) */}
+      {form.type === "Ticketed" && (
+        <Card>
+          <CardHeader className="flex-col items-start gap-1">
+            <CardTitle>Stock alerts</CardTitle>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier is running low, so you can react before it sells out.</p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!!form.lowstock_alerts_enabled}
+                onChange={(e) => {
+                  setForm((prev) => ({ ...prev, lowstock_alerts_enabled: e.target.checked }))
+                  setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
+                }}
+                className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+              />
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">Enable low-stock alerts</span>
+            </label>
+
+            {form.lowstock_alerts_enabled && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="lowstock_threshold_type" className="mb-1.5 block">Alert on</Label>
+                    <Select
+                      id="lowstock_threshold_type"
+                      value={lowstockType}
+                      onChange={(e) => {
+                        setForm((prev) => ({ ...prev, lowstock_threshold_type: e.target.value as "percent" | "count" }))
+                        setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
+                      }}
+                    >
+                      <option value="percent">Percent left</option>
+                      <option value="count">Tickets left</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="lowstock_threshold_value" className="mb-1.5 block">
+                      Threshold {lowstockType === "percent" ? "(%)" : "(tickets)"}
+                    </Label>
+                    <Input
+                      id="lowstock_threshold_value"
+                      type="number"
+                      inputMode="numeric"
+                      step="1"
+                      min="1"
+                      max={lowstockType === "percent" ? "100" : undefined}
+                      className="w-40"
+                      placeholder={lowstockType === "percent" ? "e.g. 10" : "e.g. 20"}
+                      value={lowstockValueInput}
+                      onChange={(e) => {
+                        setLowstockValueInput(e.target.value)
+                        setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
+                      }}
+                    />
+                    {errors.lowstock_threshold_value && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.lowstock_threshold_value}</p>
+                    )}
+                  </div>
+                </div>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!form.lowstock_notify_business_team}
+                    onChange={(e) => setForm((prev) => ({ ...prev, lowstock_notify_business_team: e.target.checked }))}
+                    className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+                  />
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">Also notify business team</span>
+                </label>
               </div>
             )}
           </CardContent>
