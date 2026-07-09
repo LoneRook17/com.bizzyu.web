@@ -37,6 +37,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState("")
   const [deactivateTarget, setDeactivateTarget] = useState<PromoCode | null>(null)
+  const [reactivatingId, setReactivatingId] = useState<number | null>(null)
   const [form, setForm] = useState({
     code: "",
     discount_type: "percentage" as "percentage" | "flat",
@@ -95,6 +96,21 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
     }
   }
 
+  const handleReactivate = async (code: PromoCode) => {
+    setReactivatingId(code.promo_code_id)
+    try {
+      await apiClient.put(`/business/events/${id}/promo-codes/${code.promo_code_id}`, { is_active: true })
+      fetchCodes()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to reactivate")
+    } finally {
+      setReactivatingId(null)
+    }
+  }
+
+  const activeCodes = codes.filter((c) => c.is_active)
+  const inactiveCodes = codes.filter((c) => !c.is_active)
+
   if (loading) {
     return (
       <div className="flex flex-col gap-5">
@@ -118,6 +134,8 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
 
       {codes.length === 0 ? (
         <EmptyState icon={Tag} title="No promo codes yet" description="Create a code to offer discounts on this event." />
+      ) : activeCodes.length === 0 ? (
+        <EmptyState icon={Tag} title="No active promo codes" description="Reactivate a code below or create a new one." />
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
@@ -133,7 +151,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
               </tr>
             </thead>
             <tbody>
-              {codes.map((code) => {
+              {activeCodes.map((code) => {
                 const status = codeStatus(code)
                 return (
                   <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
@@ -143,9 +161,7 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
                     <td className="px-5 py-3"><Badge variant={status.variant} size="sm">{status.label}</Badge></td>
                     <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
                     <td className="px-5 py-3 text-right">
-                      {code.is_active && (
-                        <button onClick={() => setDeactivateTarget(code)} className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Deactivate</button>
-                      )}
+                      <button onClick={() => setDeactivateTarget(code)} className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline">Deactivate</button>
                     </td>
                   </tr>
                 )
@@ -154,6 +170,49 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
           </table>
           </div>
         </Card>
+      )}
+
+      {/* inactive codes — reactivation restores the code with its usage counts, caps, and expiry untouched */}
+      {inactiveCodes.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Inactive</h2>
+          <Card className="overflow-hidden bg-neutral-50/40 dark:bg-neutral-800/40">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
+                  <th className="px-5 py-3 text-left font-medium">Code</th>
+                  <th className="px-5 py-3 text-left font-medium">Discount</th>
+                  <th className="px-5 py-3 text-right font-medium">Uses</th>
+                  <th className="px-5 py-3 text-left font-medium">Status</th>
+                  <th className="px-5 py-3 text-left font-medium">Expires</th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {inactiveCodes.map((code) => (
+                  <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0 opacity-60">
+                    <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">{code.code}</td>
+                    <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
+                    <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">{code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}</td>
+                    <td className="px-5 py-3"><Badge variant="neutral" size="sm">Inactive</Badge></td>
+                    <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={() => handleReactivate(code)}
+                        disabled={reactivatingId === code.promo_code_id}
+                        className="text-xs font-medium text-[#05EB54] hover:underline disabled:opacity-50"
+                      >
+                        {reactivatingId === code.promo_code_id ? "Reactivating…" : "Reactivate"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* universal venue codes (read-only) */}
@@ -240,7 +299,11 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
                 <Input type="datetime-local" value={form.expires_at} onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))} />
               </div>
             </div>
-            {createError && <p className="text-xs text-red-600 dark:text-red-400">{createError}</p>}
+            {createError && (
+              <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+                {createError}
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => { setShowCreate(false); setCreateError("") }}>Cancel</Button>
               <Button type="submit" disabled={creating || !form.code.trim() || !form.discount_value}>
