@@ -32,6 +32,69 @@ const cache = new Map<string, { user: SupportUser; expires: number }>()
 const TTL_MS = 10 * 60 * 1000
 
 /**
+ * Coerce a raw id to its positive-integer string form, or null if it isn't one.
+ * An unidentified user must never be minted: a null id fails verification, so
+ * such a request can't share a rate-limit bucket (keyed `${audience}:${id}`) or
+ * reach the ingest endpoint (which 400s on a non-integer user_id).
+ */
+export function toPositiveIntId(raw: unknown): string | null {
+  const n =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string" && raw.trim() !== ""
+        ? Number(raw)
+        : NaN
+  return Number.isInteger(n) && n > 0 ? String(n) : null
+}
+
+/**
+ * Map a Laravel POST /api/profile body to a SupportUser. Shape is env-dependent:
+ * the dev API nests the user under `profile` (top-level keys: deal_used,
+ * amount_saved, rank, profile); other shapes wrap as `{ data }` or return the
+ * user flat — try all three, in that order. A body without a positive-integer
+ * id fails verification (returns null) rather than minting an "unknown" user.
+ */
+export function parseStudentProfile(body: unknown): SupportUser | null {
+  const b = body as Record<string, unknown> | null | undefined
+  const u = (b?.profile ?? b?.data ?? b) as Record<string, unknown> | null | undefined
+  if (!u || typeof u !== "object") return null
+  const id = toPositiveIntId(u.id)
+  if (!id) return null
+  const university = u.university as { name?: string } | undefined
+  return {
+    id,
+    audience: "student",
+    name: (u.full_name as string) ?? (u.name as string) ?? null,
+    school: university?.name ?? (u.university_name as string) ?? null,
+    business: null,
+    businessId: null,
+  }
+}
+
+/**
+ * Map a Node GET /business/auth/me body to a SupportUser. The user id lives
+ * under `user.id`; the business id under `business.business_id` (NOT `business.id`).
+ * A body without a positive-integer user id fails verification.
+ */
+export function parseBusinessMe(body: unknown): SupportUser | null {
+  const b = body as Record<string, unknown> | null | undefined
+  const u = b?.user as Record<string, unknown> | null | undefined
+  const biz = b?.business as Record<string, unknown> | null | undefined
+  if (!u || typeof u !== "object") return null
+  const id = toPositiveIntId(u.id)
+  if (!id) return null
+  return {
+    id,
+    audience: "business",
+    name: (u.full_name as string) ?? (u.name as string) ?? null,
+    school: null,
+    business: biz && typeof biz === "object" ? ((biz.name as string) ?? null) : null,
+    businessId:
+      biz && typeof biz === "object" ? toPositiveIntId(biz.business_id ?? biz.id) : null,
+  }
+}
+
+/**
  * Picks the audience by which credential the request carries. A Bearer token
  * ⇒ student (Sanctum); otherwise fall back to the business session cookie.
  */
@@ -85,18 +148,8 @@ export async function verifyStudentToken(token: string): Promise<SupportUser | n
     })
     if (!res.ok) return null
     const body = await res.json().catch(() => null)
-    // Laravel wraps responses as { message, data }. Be tolerant of shape —
-    // a valid 200 with a user payload is what matters.
-    const u = body?.data ?? body
-    if (!u || typeof u !== "object") return null
-    const user: SupportUser = {
-      id: String(u.id ?? "unknown"),
-      audience: "student",
-      name: u.full_name ?? u.name ?? null,
-      school: u.university?.name ?? u.university_name ?? null,
-      business: null,
-      businessId: null,
-    }
+    const user = parseStudentProfile(body)
+    if (!user) return null
     cache.set(`student:${token}`, { user, expires: Date.now() + TTL_MS })
     return user
   } catch {
@@ -144,17 +197,8 @@ export async function verifyBusinessSession(cookieHeader: string): Promise<Suppo
     })
     if (!res.ok) return null
     const body = await res.json().catch(() => null)
-    const u = body?.user
-    const b = body?.business
-    if (!u || typeof u !== "object") return null
-    const user: SupportUser = {
-      id: String(u.id ?? "unknown"),
-      audience: "business",
-      name: u.full_name ?? u.name ?? null,
-      school: null,
-      business: (b && typeof b === "object" ? b.name : null) ?? null,
-      businessId: (b && typeof b === "object" && b.id != null ? String(b.id) : null),
-    }
+    const user = parseBusinessMe(body)
+    if (!user) return null
     cache.set(`business:${bizToken}`, { user, expires: Date.now() + TTL_MS })
     return user
   } catch {
