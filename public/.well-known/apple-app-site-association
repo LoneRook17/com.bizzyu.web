@@ -1,9 +1,24 @@
 {
+  "_readme": [
+    "JSON forbids comments, so notes live in this key — iOS ignores unknown top-level keys.",
+    "WHY the root exclude: texting the bare 'bizzyu.com' link was opening the app instead of",
+    "the website, and the app dead-ends on '/' with a 'Link Not Supported' dialog",
+    "(deep_link_service.dart _routeFor, segments.isEmpty). Components are evaluated in order",
+    "with FIRST-MATCH-WINS semantics, so the '/' exclude must stay ABOVE the claims.",
+    "It matches ONLY the exact root path (any query string — omitting the '?' key means the",
+    "query is not considered); every deeper path (/event/*, /p/*, ...) still opens the app.",
+    "CACHING CAVEAT: since iOS 14 devices fetch this file via Apple's CDN",
+    "(https://app-site-association.cdn-apple.com/a/v1/bizzyu.com), which re-crawls on its own",
+    "schedule (typically up to ~1 week), and each device re-evaluates only on app",
+    "install/update/reboot cycles. Changes here are NOT live on real phones immediately after",
+    "deploy — real-device verification only works on prod bizzyu.com after release."
+  ],
   "applinks": {
     "details": [
       {
         "appIDs": ["Q8YCT49UJB.com.bizzy.deals"],
         "components": [
+          { "/": "/", "exclude": true },
           { "/": "/ls/*", "exclude": true },
           { "/": "/checkin/*", "exclude": true },
           { "/": "/event/*/checkout" },
