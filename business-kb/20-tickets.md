@@ -19,7 +19,8 @@ Click **"Add ticket"** (or **Edit** on an existing one) and set:
   window ends.
 
 A small service fee is added on top of your price and paid by the customer — you
-receive the full amount you set.
+receive the full amount you set (minus any promoter commission on promoter-driven sales,
+if you run the Promoter Program).
 
 ## Reordering ticket tiers (drag to reorder)
 

@@ -5,8 +5,13 @@ There are **two different kinds of team** on Bizzy:
 
 - **Business team** — people who work for your business ongoing (managers, staff,
   promoters). Set up from the **Team** page. They get dashboard access.
-- **Event team (co-hosts)** — people helping with **one specific event only**. Set up
-  inside that event (Manage → team). They do **NOT** get full dashboard access.
+- **Event team (co-hosts & crew)** — people helping with **one specific event only**. Set
+  up inside that event (Manage → team). They do **NOT** get full dashboard access. There
+  are two event roles:
+  - **Co-host** — helps manage that event (event team, promo codes, tracking links, and
+    the like) and can also scan.
+  - **Crew** — works the door: **scan tickets and tap the door counters**. Crew can't
+    manage the event.
 
 ## Business team roles
 
@@ -29,7 +34,8 @@ There are **two different kinds of team** on Bizzy:
 3. Pick their **role** and **venue assignment**.
 
 They'll get an email invitation. Once accepted, they have ongoing access based on their
-role. **Only owners can manage business team members.**
+role. **Owners and managers can invite new members; only the owner can remove a member or
+change a member's role or venue assignment.**
 
 ## Common gotchas
 

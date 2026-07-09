@@ -24,21 +24,26 @@ You must connect Stripe **before you can create any paid events or line skips**.
 - After each sale, money typically arrives in your bank account within **2–3 business
   days**.
 - **Revenue shown in Analytics is *your* revenue** — the amount you receive. The service
-  fee is added on top and paid by the customer, so it doesn't come out of your share.
+  fee is added on top and paid by the customer, so it doesn't come out of your share. You
+  receive the full amount you set (minus any promoter commission on promoter-driven sales,
+  if you run the Promoter Program).
 
 ## Refunds & your Stripe balance
 
-- **All sales are final for customers** — they can't request individual refunds.
-- Refunds happen only when **you cancel** an event or a line-skip night. Then every
-  buyer is refunded in full (price + fees) automatically, and the money is **pulled back
-  from your Stripe account** (Stripe may add processing fees for the reversal). See the
-  "Events" article for the cancellation flow and the repeated-cancellation policy.
+- **Customers can't self-serve refunds**, and businesses don't issue individual refunds
+  from the dashboard. Exceptional cases go through support (support@bizzyu.com).
+- Refunds happen automatically only when **you cancel** an event or a line-skip night.
+  Then every buyer is refunded in full (price + fees) automatically, and the money is
+  **pulled back from your Stripe account** (Stripe may add processing fees for the
+  reversal). See the "Events" article for the cancellation flow and the
+  repeated-cancellation policy.
 
 ## Promoter payouts
 
-- If you run the Promoter Program, promoter commissions are paid out **weekly via Stripe
-  Connect** to the promoter's own account, separate from your revenue. See the
-  "Promoters & commissions" article.
+- If you run the Promoter Program, promoter commissions accrue to each promoter's **in-app
+  wallet** and they **withdraw on demand** — there is no weekly payout. This is separate
+  from your own revenue (commission comes out of the host's share). See the "Promoters &
+  commissions" article for the full flow.
 
 ## Troubleshooting payouts
 
