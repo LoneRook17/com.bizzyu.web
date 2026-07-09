@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react"
 import {
   clearHistory,
   historyKey,
-  loadHistory,
-  saveHistory,
+  loadConversation,
+  newExternalKey,
+  saveConversation,
   type StoredMsg,
 } from "@/lib/support/history"
 
@@ -53,17 +54,27 @@ export default function SupportChat({
   const [fatal, setFatal] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  // ── Device-local history (both audiences) ──────────────────────────────
-  // Resolve the storage key, restore prior messages, then keep it in sync.
+  // ── Device-local history + conversation key (both audiences) ────────────
+  // Resolve the storage key, restore prior messages, then keep it in sync. The
+  // external_key rides the same lifecycle: it's minted fresh for a new
+  // conversation, adopted from storage when restoring a live one, and rotated by
+  // "Start new conversation". It's sent with every request so the server can tie
+  // the transcript to one durable DB row.
   const [storageKey, setStorageKey] = useState<string | null>(null)
+  const [externalKey, setExternalKey] = useState<string>(() => newExternalKey())
   const restoredRef = useRef(false)
 
   useEffect(() => {
     let cancelled = false
     historyKey(audience, historySeed).then((key) => {
       if (cancelled) return
-      const prior = loadHistory(key)
-      if (prior.length) setMessages(prior)
+      const { messages: prior, externalKey: ek } = loadConversation(key)
+      // Adopt the stored key only when continuing a real conversation; a fresh
+      // one keeps the key minted above.
+      if (prior.length) {
+        setMessages(prior)
+        setExternalKey(ek)
+      }
       restoredRef.current = true
       setStorageKey(key)
     })
@@ -77,8 +88,8 @@ export default function SupportChat({
   useEffect(() => {
     if (!storageKey || !restoredRef.current) return
     if (messages.length === 0) return
-    saveHistory(storageKey, messages as StoredMsg[])
-  }, [messages, storageKey])
+    saveConversation(storageKey, messages as StoredMsg[], externalKey)
+  }, [messages, storageKey, externalKey])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -93,6 +104,7 @@ export default function SupportChat({
   function startNewConversation() {
     if (storageKey) clearHistory(storageKey)
     setMessages([])
+    setExternalKey(newExternalKey()) // rotate the conversation id
     setFatal(null)
     setInput("")
   }
@@ -111,7 +123,7 @@ export default function SupportChat({
       const res = await fetch("/api/support-chat", {
         method: "POST",
         headers,
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, external_key: externalKey }),
       })
       if (!res.ok || !res.body) {
         const code = await res

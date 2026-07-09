@@ -72,7 +72,30 @@ LARAVEL_API_URL=http://3.80.143.224
 | Prod (`com-bizzyu-web`) | `https://bizzy-deals.com` |
 | Local       | `http://127.0.0.1:8001` (code fallback if unset) |
 
-### 4. `SUPPORT_CHAT_DEV_BYPASS` — NEVER on Vercel
+### 4. `SUPPORT_CHAT_INGEST_SECRET` — transcript persistence (leave UNSET until A2 is live)
+
+Shared secret for POSTing completed conversations to the Node API's
+`POST {INTERNAL_API_URL}/internal/support-chat/ingest` (A2's endpoint), which
+persists transcripts + a per-conversation classification to the shared DB.
+
+**Behavior is gated entirely on this var:**
+- **Unset (default)** → the route behaves exactly as before: it streams the
+  answer and writes the usage log line, but runs **no** classifier call and
+  **no** ingest POST. Ship it unset while A2's endpoint isn't deployed yet.
+- **Set** → after each reply (via `after()`, so the user never waits) the route
+  runs one cheap Haiku classification and fires a fire-and-forget ingest POST
+  with header `X-Support-Chat-Secret: <this value>`. It must **match** the value
+  A2 configured on the Node service. Every ingest failure (404 before A2 ships,
+  timeout, 401) is a single `support-chat-ingest-error` log line — the chat is
+  never affected.
+
+The POST target is `INTERNAL_API_URL` (the same server-to-server Node API base
+already used for the business-session auth check). Set `SUPPORT_CHAT_INGEST_SECRET`
+only once A2's endpoint is deployed on dev and the secret matches on both sides.
+Each usage log line now also carries `external_key` + `flagged` so a Vercel log
+line can be tied back to its persisted DB row.
+
+### 5. `SUPPORT_CHAT_DEV_BYPASS` — NEVER on Vercel
 
 Leave this **unset** on every Vercel project (dev and prod). It's a **local-dev
 only** escape hatch: when `=1` *and* `NODE_ENV !== "production"`, `auth.ts` returns

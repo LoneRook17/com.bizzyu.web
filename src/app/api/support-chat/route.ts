@@ -1,7 +1,10 @@
+import { after } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 import { loadKnowledgePack } from "@/lib/support/kb"
 import { resolveSupportUser } from "@/lib/support/auth"
 import { checkRateLimit } from "@/lib/support/ratelimit"
+import { classifyConversation, type Classification } from "@/lib/support/classify"
+import { buildIngestPayload, postIngest } from "@/lib/support/ingest"
 
 // Streaming support-chat endpoint, shared by two audiences (see auth.ts):
 //   • students — /support-chat inside the iOS app WebView (Bearer Sanctum token)
@@ -60,6 +63,13 @@ export async function POST(req: Request) {
   }
   if (messages[messages.length - 1].role !== "user") return err(400, "last_message_must_be_user")
 
+  // Per-conversation id from the client (see lib/support/history.ts). Used only
+  // to correlate the transcript with the persisted DB row — a bad/missing value
+  // never blocks the chat; it just means we skip ingest for this request.
+  const ekRaw = (body as { external_key?: unknown })?.external_key
+  const externalKey =
+    typeof ekRaw === "string" && ekRaw.length >= 1 && ekRaw.length <= 100 ? ekRaw : null
+
   // Who the bot is talking to — placed AFTER the cached knowledge-pack block so
   // the per-user line never invalidates the prompt cache. Being in the system
   // role, it can't be spoofed by message content.
@@ -109,21 +119,6 @@ export async function POST(req: Request) {
             controller.enqueue(encoder.encode(event.delta.text))
           }
         }
-        // One structured log line per message — greppable in Vercel logs to
-        // watch spend and spot abuse (filter on "support-chat-usage").
-        const final = await stream.finalMessage()
-        console.log(
-          JSON.stringify({
-            tag: "support-chat-usage",
-            audience: user.audience,
-            user: user.id,
-            turns: sent.length,
-            input_tokens: final.usage.input_tokens,
-            cache_read_input_tokens: final.usage.cache_read_input_tokens ?? 0,
-            cache_creation_input_tokens: final.usage.cache_creation_input_tokens ?? 0,
-            output_tokens: final.usage.output_tokens,
-          }),
-        )
         controller.close()
       } catch (e) {
         console.error("support-chat stream error", e)
@@ -133,6 +128,63 @@ export async function POST(req: Request) {
     cancel() {
       stream.abort()
     },
+  })
+
+  // Post-stream work (usage log, classification, ingest) runs AFTER the response
+  // has finished streaming, so the user never waits on it. Everything here is
+  // best-effort — any failure is logged and swallowed, the chat is unaffected.
+  after(async () => {
+    let final: Anthropic.Message
+    try {
+      final = await stream.finalMessage()
+    } catch (e) {
+      // Client disconnected / stream aborted — nothing to persist.
+      console.error("support-chat finalize error", e)
+      return
+    }
+
+    const assistantText = final.content
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("")
+    // The full transcript for persistence: everything the client sent plus the
+    // reply we just streamed. (The client's history already carries prior
+    // assistant turns, so this grows to the complete conversation.)
+    const transcript = assistantText.trim()
+      ? [...messages, { role: "assistant" as const, content: assistantText }]
+      : messages
+
+    const ingestSecret = process.env.SUPPORT_CHAT_INGEST_SECRET
+    // Classify only on the ingest path. With no secret set, there's nowhere to
+    // persist a verdict, so we skip the extra Haiku call — the route then
+    // behaves exactly as it did before this feature (stream + usage log only).
+    let classification: Classification | null = null
+    if (ingestSecret && externalKey) {
+      classification = await classifyConversation(anthropic, transcript)
+    }
+
+    // One structured log line per message — greppable in Vercel logs to watch
+    // spend and spot abuse (filter on "support-chat-usage"). external_key +
+    // flagged let a log line be correlated back to its persisted DB row.
+    console.log(
+      JSON.stringify({
+        tag: "support-chat-usage",
+        audience: user.audience,
+        user: user.id,
+        external_key: externalKey,
+        flagged: classification?.flag === true,
+        turns: sent.length,
+        input_tokens: final.usage.input_tokens,
+        cache_read_input_tokens: final.usage.cache_read_input_tokens ?? 0,
+        cache_creation_input_tokens: final.usage.cache_creation_input_tokens ?? 0,
+        output_tokens: final.usage.output_tokens,
+      }),
+    )
+
+    if (ingestSecret && externalKey) {
+      const payload = buildIngestPayload({ externalKey, user, messages: transcript, classification })
+      await postIngest(payload)
+    }
   })
 
   return new Response(readable, {

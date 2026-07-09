@@ -21,6 +21,7 @@ export interface SupportUser {
   name: string | null
   school: string | null // students only
   business: string | null // businesses only (business/venue name)
+  businessId: string | null // businesses only (numeric business id, for ingest)
 }
 
 // Verified sessions are cached in-memory for 10 minutes so a conversation
@@ -48,7 +49,14 @@ export async function verifyStudentToken(token: string): Promise<SupportUser | n
   // "1" or "student" ⇒ a fake student; "business" ⇒ handled in verifyBusinessSession.
   const bypass = process.env.SUPPORT_CHAT_DEV_BYPASS
   if ((bypass === "1" || bypass === "student") && process.env.NODE_ENV !== "production") {
-    return { id: "dev", audience: "student", name: "Dev Tester", school: "FGCU", business: null }
+    return {
+      id: "dev",
+      audience: "student",
+      name: "Dev Tester",
+      school: "FGCU",
+      business: null,
+      businessId: null,
+    }
   }
 
   const hit = cache.get(`student:${token}`)
@@ -87,6 +95,7 @@ export async function verifyStudentToken(token: string): Promise<SupportUser | n
       name: u.full_name ?? u.name ?? null,
       school: u.university?.name ?? u.university_name ?? null,
       business: null,
+      businessId: null,
     }
     cache.set(`student:${token}`, { user, expires: Date.now() + TTL_MS })
     return user
@@ -112,6 +121,7 @@ export async function verifyBusinessSession(cookieHeader: string): Promise<Suppo
       name: "Dev Owner",
       school: null,
       business: "Dev Venue Co.",
+      businessId: "dev-biz-1",
     }
   }
 
@@ -143,6 +153,7 @@ export async function verifyBusinessSession(cookieHeader: string): Promise<Suppo
       name: u.full_name ?? u.name ?? null,
       school: null,
       business: (b && typeof b === "object" ? b.name : null) ?? null,
+      businessId: (b && typeof b === "object" && b.id != null ? String(b.id) : null),
     }
     cache.set(`business:${bizToken}`, { user, expires: Date.now() + TTL_MS })
     return user
