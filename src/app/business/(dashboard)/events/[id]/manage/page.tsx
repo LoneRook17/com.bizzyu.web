@@ -4,11 +4,12 @@ import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
+  ArrowLeft, BarChart3, CalendarOff, Check, CircleCheck, Copy, Link2, MessageSquare, Megaphone,
+  Pencil, QrCode, ScanLine, Share2, Ticket, Users, Tag, ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { nativeShare } from "@/lib/share"
 import type { EventDetail } from "@/lib/business/types"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
@@ -18,6 +19,8 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
+
+const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 
 type Tile = {
   href: string
@@ -42,6 +45,65 @@ function ManageTile({ href, icon: Icon, title, subtitle }: Omit<Tile, "show">) {
       </span>
       <ChevronRight className="mt-0.5 size-4 shrink-0 text-neutral-300 dark:text-neutral-600" />
     </Link>
+  )
+}
+
+// The canonical public checkout link — the AASA-claimed Universal Link shape
+// shared with the app and promoter tracking links. Promoter links append
+// ?ref for attribution; this one must stay bare or the operator's own shares
+// would count as promoter-attributed sales.
+function EventLinkRow({ eventId, eventName }: { eventId: string; eventName: string }) {
+  const [copied, setCopied] = useState(false)
+  const [canShare, setCanShare] = useState(false)
+  const url = `${WEB_BASE_URL}/event/${eventId}/checkout`
+
+  useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && typeof navigator.share === "function")
+  }, [])
+
+  const flashCopied = () => {
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url)
+      flashCopied()
+    } catch {
+      window.prompt("Copy this link:", url)
+    }
+  }
+
+  const share = async () => {
+    const outcome = await nativeShare({ title: eventName, url })
+    if (outcome === "copied") flashCopied()
+  }
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3 shadow-sm">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+        <Link2 className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Event link</p>
+        <p className="truncate font-mono text-xs text-neutral-500 dark:text-neutral-400" title={url}>{url}</p>
+      </div>
+      <button
+        onClick={copy}
+        className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#05EB54] hover:underline"
+      >
+        {copied ? <><Check className="size-3.5" /> Copied</> : <><Copy className="size-3.5" /> Copy</>}
+      </button>
+      {canShare && (
+        <button
+          onClick={share}
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#05EB54] hover:underline"
+        >
+          <Share2 className="size-3.5" /> Share
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -90,6 +152,9 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   const isPastEvent = new Date(event.end_date_time) < new Date()
   const cancellationStatus = event.cancellation_status || "none"
   const badge = eventStatusBadge(event.status)
+  // Only hand out the public link once the event is live — a draft/pending
+  // event's checkout page dead-ends (same rule as venue page links).
+  const isLive = ["published", "approved", "active"].includes((event.status ?? "").toLowerCase())
 
   const tiles: Tile[] = [
     { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, tickets, and flyer", show: canEdit },
@@ -124,6 +189,8 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           <Link href={`/business/events/${id}/manage/scanner`}><ScanLine /> Open scanner</Link>
         </Button>
       </div>
+
+      {isLive && <EventLinkRow eventId={id} eventName={event.name} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {tiles.filter((t) => t.show).map((t) => (
