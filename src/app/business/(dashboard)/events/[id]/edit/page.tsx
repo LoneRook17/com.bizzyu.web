@@ -37,6 +37,10 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
           promotion_enabled: !!event.promotion_enabled,
           promotion_commission_type: event.promotion_commission_type ?? undefined,
           promotion_commission_value: event.promotion_commission_value ?? null,
+          lowstock_alerts_enabled: !!event.lowstock_alerts_enabled,
+          lowstock_threshold_type: event.lowstock_threshold_type ?? undefined,
+          lowstock_threshold_value: event.lowstock_threshold_value ?? null,
+          lowstock_notify_business_team: !!event.lowstock_notify_business_team,
         })
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load event")
