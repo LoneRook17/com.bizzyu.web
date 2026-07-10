@@ -26,7 +26,6 @@ export default function TeamPage() {
   const [removeLoading, setRemoveLoading] = useState(false)
 
   const canInvite = user?.business_role === "owner" || user?.business_role === "manager"
-  const isOwner = user?.business_role === "owner"
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -216,7 +215,6 @@ export default function TeamPage() {
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         onInvited={() => { setInviteOpen(false); fetchMembers() }}
-        canInviteManager={isOwner}
         venues={venues}
       />
 

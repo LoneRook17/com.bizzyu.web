@@ -16,7 +16,6 @@ interface InviteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onInvited: () => void
-  canInviteManager: boolean
   venues: Venue[]
 }
 
@@ -26,7 +25,7 @@ const INVITABLE_ROLES = [
 ] as const
 
 export default function InviteDialog({
-  open, onOpenChange, onInvited, canInviteManager, venues,
+  open, onOpenChange, onInvited, venues,
 }: InviteDialogProps) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("staff")
@@ -34,10 +33,6 @@ export default function InviteDialog({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
-
-  const roles = canInviteManager
-    ? INVITABLE_ROLES
-    : INVITABLE_ROLES.filter((r) => r.value !== "manager")
 
   const reset = () => {
     setEmail("")
@@ -105,7 +100,7 @@ export default function InviteDialog({
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-role">Role</Label>
               <Select id="invite-role" value={role} onChange={(e) => setRole(e.target.value)}>
-                {roles.map((r) => (
+                {INVITABLE_ROLES.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </Select>
