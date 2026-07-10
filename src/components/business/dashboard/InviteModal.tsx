@@ -9,7 +9,6 @@ interface InviteModalProps {
   open: boolean
   onClose: () => void
   onInvited: () => void
-  canInviteManager: boolean
   venues: Venue[]
 }
 
@@ -18,17 +17,13 @@ const INVITABLE_ROLES = [
   { value: "staff", label: "Staff" },
 ] as const
 
-export default function InviteModal({ open, onClose, onInvited, canInviteManager, venues }: InviteModalProps) {
+export default function InviteModal({ open, onClose, onInvited, venues }: InviteModalProps) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("staff")
   const [venueId, setVenueId] = useState<string>("") // "" = global (null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
-
-  const roles = canInviteManager
-    ? INVITABLE_ROLES
-    : INVITABLE_ROLES.filter((r) => r.value !== "manager")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,7 +99,7 @@ export default function InviteModal({ open, onClose, onInvited, canInviteManager
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-ink"
               >
-                {roles.map((r) => (
+                {INVITABLE_ROLES.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>

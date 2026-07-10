@@ -219,7 +219,6 @@ export default function V2TeamPage() {
         open={inviteOpen}
         onOpenChange={setInviteOpen}
         onInvited={() => { setInviteOpen(false); fetchMembers() }}
-        canInviteManager={!!isOwner}
         venues={venues}
       />
 
