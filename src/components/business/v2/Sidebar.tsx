@@ -7,7 +7,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X,
+  Sun, Moon, TicketPercent, Menu, X, Repeat,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator,
 } from "./ui/dropdown-menu"
 
-type Feature = "showDeals" | "showEvents" | "showLineSkips"
+type Feature = "showDeals" | "showEvents" | "showLineSkips" | "showRecurring"
 
 type Item = {
   label: string
@@ -35,6 +35,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
   { items: [
     { label: "Home", href: "/business", icon: Home },
     { label: "Events", href: "/business/events", icon: CalendarDays, feature: "showEvents" },
+    { label: "Recurring", href: "/business/recurring", icon: Repeat, feature: "showRecurring" },
     { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
     { label: "Deals", href: "/business/deals", icon: Tag, feature: "showDeals" },
     { label: "Line skips", href: "/business/line-skips", icon: Zap, feature: "showLineSkips" },

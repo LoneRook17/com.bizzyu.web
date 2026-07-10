@@ -158,6 +158,12 @@ export interface EventDetail extends EventListItem {
   lowstock_threshold_type?: 'percent' | 'count' | null
   lowstock_threshold_value?: number | null
   lowstock_notify_business_team?: boolean | number
+  // Recurring series linkage (#5): set when this event is one night of a
+  // recurring series. series_customized_at marks a hand-edited night that
+  // template edits will never overwrite.
+  recurring_series_id?: number | null
+  series_customized_at?: string | null
+  occurrence_date?: string | null
 }
 
 export interface RecurringNight {
@@ -608,4 +614,104 @@ export interface BusinessProfile {
   /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
   stripe_reconnect_required?: boolean
   created_at: string
+}
+
+// Recurring event series (#5) — /business/recurring-series (services).
+// A series is the schedule + occurrence template; every occurrence is a normal
+// Event row stamped by core's generator and managed from the events surface.
+export interface RecurringTemplateTicket {
+  name: string
+  description?: string | null
+  price_usd: number
+  quantity: number // 0 = unlimited
+  max_per_person: number // 0 = unlimited
+  ticket_type: 'paid' | 'free'
+  is_hidden?: number
+  sort_order?: number
+  // Sales/scan windows are RELATIVE to each night: a time of day plus a day
+  // offset vs the occurrence date. Absolute datetimes are computed at stamp time.
+  valid_from_time: string | null // "HH:MM:SS"
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+}
+
+export interface RecurringSeriesListItem {
+  id: number
+  name: string
+  days_of_week: number[] // ISO weekdays, 1 = Mon … 7 = Sun
+  date_range_start: string // "YYYY-MM-DD"
+  date_range_end: string | null // null = runs until suspended
+  is_active: number | boolean
+  type: 'Ticketed' | 'Free' | 'RSVP'
+  venue_id: number | null
+  venue_name: string
+  start_time: string // "HH:MM:SS"
+  end_time: string
+  flyer_image_url: string | null
+  created_at: string
+  updated_at: string
+  occurrence_count: number
+  upcoming_count: number
+  next_occurrence_date: string | null // "YYYY-MM-DD"
+}
+
+export interface RecurringSeriesDetail extends RecurringSeriesListItem {
+  business_id: number
+  created_by: number
+  description: string | null
+  venue_address: string
+  is_21_plus: number
+  timezone: string | null
+  promotion_enabled: number
+  promotion_commission_type: 'percent' | 'fixed' | null
+  promotion_commission_value: number | null
+  notify_followers_on_publish: number
+  lowstock_alerts_enabled: number
+  lowstock_threshold_type: 'percent' | 'count' | null
+  lowstock_threshold_value: number | null
+  lowstock_notify_business_team: number
+  template_tickets: RecurringTemplateTicket[] | null
+}
+
+export interface RecurringOccurrence {
+  event_id: number
+  name: string
+  slug: string
+  occurrence_date: string // "YYYY-MM-DD"
+  status: string
+  start_date_time: string
+  end_date_time: string
+  /** events.series_customized_at IS NOT NULL — the operator edited this night directly. */
+  is_customized: boolean
+  tickets_sold: number
+  paid_orders: number
+}
+
+/** core topUpSeries — POST create + POST /:id/generate-now. */
+export interface RecurringGenerationSummary {
+  stamped: number[]
+  skipped_existing: number
+  status: string
+}
+
+/** core restampFutureOccurrences — returned by PUT /business/recurring-series/:id. All values are event ids. */
+export interface RecurringRestampSummary {
+  restamped: number[]
+  tiers_replaced: number[]
+  skipped_customized: number[]
+  skipped_tiers_with_sales: number[]
+  // Pattern shrink (weekday dropped / date range pulled in): nights that no
+  // longer match the schedule.
+  removed_from_pattern_cancelled: number[]
+  removed_from_pattern_skipped_customized: number[]
+  removed_from_pattern_skipped_with_sales: number[]
+}
+
+/** core suspendSeries — returned by POST /business/recurring-series/:id/suspend. */
+export interface RecurringSuspendSummary {
+  message?: string
+  cancelled: number[]
+  skipped_customized: number[]
+  skipped_with_sales: number[]
 }

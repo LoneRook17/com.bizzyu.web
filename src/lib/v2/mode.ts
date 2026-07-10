@@ -22,6 +22,7 @@ export const MODE_CONFIG: Record<
     showDeals: boolean
     showEvents: boolean
     showLineSkips: boolean
+    showRecurring: boolean
   }
 > = {
   deals: {
@@ -30,6 +31,7 @@ export const MODE_CONFIG: Record<
     showDeals: true,
     showEvents: false,
     showLineSkips: false,
+    showRecurring: false,
   },
   events: {
     label: "Events only",
@@ -37,6 +39,7 @@ export const MODE_CONFIG: Record<
     showDeals: false,
     showEvents: true,
     showLineSkips: true,
+    showRecurring: true,
   },
   hybrid: {
     label: "Both (Events & Deals)",
@@ -44,6 +47,7 @@ export const MODE_CONFIG: Record<
     showDeals: true,
     showEvents: true,
     showLineSkips: true,
+    showRecurring: true,
   },
 }
 
