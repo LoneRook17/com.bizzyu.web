@@ -18,6 +18,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
+import { EventVenuePayoutBanner } from "@/components/business/v2/settings/VenuePayoutPaused"
 import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
@@ -189,6 +190,11 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           <Link href={`/business/events/${id}/manage/scanner`}><ScanLine /> Open scanner</Link>
         </Button>
       </div>
+
+      {/* #9 venue-stripe (locked decision 2): if this event's venue is matched
+          to a not-ready payout account, every sale here is blocked — that must
+          be unmissable on the manage surface. */}
+      <EventVenuePayoutBanner venueId={event.venue_id} />
 
       {isLive && <EventLinkRow eventId={id} eventName={event.name} />}
 

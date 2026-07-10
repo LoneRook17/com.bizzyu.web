@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
 import { isAppleWalletCapable } from "@/lib/apple-wallet"
+import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
+import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
@@ -171,6 +173,9 @@ export default function EventCheckoutClient({
   const [userName, setUserName] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // Venue payout account not ready (#9): sales at this venue are paused.
+  // Rendered as a full pause notice in place of the purchase CTA.
+  const [venueBlock, setVenueBlock] = useState<VenueStripeBlock | null>(null)
 
   // Promoter tracking code (PRD §7.4). On mount, hydrate from URL ?ref=
   // (writing the cookie) or from any prior bz_ref cookie. Survives page
@@ -427,6 +432,13 @@ export default function EventCheckoutClient({
       })
       const data = await res.json()
       if (!res.ok) {
+        const block = parseVenueStripeBlock(data)
+        if (block) {
+          setVenueBlock(block)
+          setCheckoutStep("idle")
+          setCheckoutError("")
+          return
+        }
         setCheckoutError(data.message || "Failed to create checkout")
         setCheckoutStep("phone")
         return
@@ -783,8 +795,12 @@ export default function EventCheckoutClient({
           </div>
         )}
 
+        {/* Venue payout account not ready (#9): the pause notice replaces the
+            purchase CTA entirely — the buyer must never see a raw error. */}
+        {venueBlock && <VenueSalesPausedNotice block={venueBlock} />}
+
         {/* Get Tickets Button */}
-        {totalQty > 0 && (
+        {totalQty > 0 && !venueBlock && (
           <button
             onClick={startCheckout}
             disabled={feeLoading}
@@ -798,7 +814,7 @@ export default function EventCheckoutClient({
         )}
 
         {/* Refund policy */}
-        {totalQty > 0 && (
+        {totalQty > 0 && !venueBlock && (
           <p className="mt-3 text-center text-[10px] text-white/30 leading-relaxed">
             By purchasing, you agree that all sales are final. No refunds or exchanges.
             If the event is cancelled by the host, you will receive a full refund.

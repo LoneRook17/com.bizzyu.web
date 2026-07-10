@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { nativeShare } from "@/lib/share"
+import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
+import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
@@ -168,6 +170,9 @@ export default function LineSkipCheckoutClient({
   const [hasAccount, setHasAccount] = useState(false)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // Venue payout account not ready (#9): line-skip sales at this venue are
+  // paused. Rendered as a full pause notice in place of the purchase CTA.
+  const [venueBlock, setVenueBlock] = useState<VenueStripeBlock | null>(null)
   // SMS marketing opt-in (default-checked, optional). Sent with the purchase so
   // the backend sets business_followers.sms_enabled. Unchecking doesn't block.
   const [smsOptIn, setSmsOptIn] = useState(true)
@@ -523,6 +528,13 @@ export default function LineSkipCheckoutClient({
         })
         const data = await res.json()
         if (!res.ok) {
+          const block = parseVenueStripeBlock(data)
+          if (block) {
+            setVenueBlock(block)
+            setCheckoutStep("idle")
+            setCheckoutError("")
+            return
+          }
           setCheckoutError(data.message || "Checkout failed")
           setCheckoutStep("phone")
           return
@@ -548,6 +560,13 @@ export default function LineSkipCheckoutClient({
       })
       const data = await res.json()
       if (!res.ok) {
+        const block = parseVenueStripeBlock(data)
+        if (block) {
+          setVenueBlock(block)
+          setCheckoutStep("idle")
+          setCheckoutError("")
+          return
+        }
         setCheckoutError(data.message || "Failed to create checkout")
         setCheckoutStep("phone")
         return
@@ -1114,8 +1133,12 @@ export default function LineSkipCheckoutClient({
             </div>
           )}
 
+          {/* Venue payout account not ready (#9): the pause notice replaces
+              the purchase CTA entirely — never rendered as a raw error. */}
+          {venueBlock && <VenueSalesPausedNotice block={venueBlock} />}
+
           {/* Get Line Skip CTA */}
-          {selectedInstanceId && (
+          {selectedInstanceId && !venueBlock && (
             <>
               <button
                 onClick={startCheckout}
