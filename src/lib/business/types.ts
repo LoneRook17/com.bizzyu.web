@@ -28,8 +28,28 @@ export interface Venue {
   is_active: boolean
   website: string | null
   instagram: string | null
+  // #9 venue-stripe: matched business_stripe_accounts row (null = default
+  // routing). Absent from envs that haven't run the V1 core migrations —
+  // the services GET /business/venues drift guard serves the old shape.
+  business_stripe_account_id?: number | null
   created_at: string
   updated_at: string
+}
+
+// #9 venue-stripe V3 — one business_stripe_accounts row as served by
+// GET /business/stripe-accounts (live-verified against Stripe per request:
+// a deauthorized/deleted account comes back with all flags false and
+// stripe_reconnect_required true, regardless of what the DB claims).
+export interface BusinessStripeAccount {
+  id: number
+  label: string | null
+  stripe_connect_id: string | null
+  stripe_connect_onboarded: boolean
+  charges_enabled: boolean
+  payouts_enabled: boolean
+  is_default: boolean
+  stripe_reconnect_required: boolean
+  matched_venue_ids: number[]
 }
 
 export interface AuthState {

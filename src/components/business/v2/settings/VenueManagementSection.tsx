@@ -6,17 +6,22 @@ import { ImageIcon, MapPin, Plus } from "lucide-react"
 import { useVenue } from "@/lib/business/venue-context"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient } from "@/lib/business/api-client"
+import { useBusinessStripeAccounts, getVenuePayoutBlock } from "@/lib/business/venue-payout"
 import type { Venue } from "@/lib/business/types"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Badge } from "@/components/business/v2/ui/badge"
 import VenueDialog from "./VenueDialog"
 import ConfirmDialog from "@/components/business/v2/ConfirmDialog"
+import { VenuePayoutPausedBadge, VenuePayoutPausedBanner } from "./VenuePayoutPaused"
 
 export default function VenueManagementSection() {
   const { venues, refreshVenues, selectedVenueId, setSelectedVenue } = useVenue()
   const { user } = useAuth()
   const isOwner = user?.business_role === "owner"
+  // #9 venue-stripe: a venue matched to a not-ready payout account has sales
+  // PAUSED (locked decision 2) — that state must be unmissable on the venue row.
+  const { accounts: stripeAccounts } = useBusinessStripeAccounts()
   const router = useRouter()
   const searchParams = useSearchParams()
   const sectionRef = useRef<HTMLElement>(null)
@@ -102,7 +107,9 @@ export default function VenueManagementSection() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {venues.map((venue) => (
+          {venues.map((venue) => {
+            const payoutBlock = getVenuePayoutBlock(venue, stripeAccounts)
+            return (
             <Card key={venue.id} className="overflow-hidden">
               <div className="relative h-32 bg-neutral-100 dark:bg-neutral-800">
                 {venue.photo_url ? (
@@ -113,16 +120,19 @@ export default function VenueManagementSection() {
                     <ImageIcon className="size-10" />
                   </div>
                 )}
-                <Badge
-                  variant={venue.is_active ? "success" : "neutral"}
-                  className="absolute right-2 top-2"
-                >
-                  {venue.is_active ? "Active" : "Inactive"}
-                </Badge>
+                <div className="absolute right-2 top-2 flex items-center gap-1.5">
+                  {payoutBlock && <VenuePayoutPausedBadge />}
+                  <Badge variant={venue.is_active ? "success" : "neutral"}>
+                    {venue.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
               </div>
               <div className="p-4">
                 <h3 className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{venue.name}</h3>
                 {venue.address && <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400">{venue.address}</p>}
+                {payoutBlock && (
+                  <VenuePayoutPausedBanner venueName={venue.name} reason={payoutBlock} className="mt-3" />
+                )}
                 {isOwner && (
                   <div className="mt-3 flex gap-2">
                     <Button variant="secondary" size="sm" className="flex-1" onClick={() => setEditVenue(venue)}>
@@ -140,7 +150,8 @@ export default function VenueManagementSection() {
                 )}
               </div>
             </Card>
-          ))}
+            )
+          })}
         </div>
       )}
 
