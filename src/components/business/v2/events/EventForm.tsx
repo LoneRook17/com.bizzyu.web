@@ -35,7 +35,8 @@ const EMPTY_TICKET: TicketTier = {
 }
 
 // promotion_commission_value is stored as basis points (percent) or cents (fixed).
-function commissionValueToInput(
+// Exported for reuse by the recurring-series form, which carries the same fields.
+export function commissionValueToInput(
   type: "percent" | "fixed" | undefined,
   storedValue: number | null | undefined
 ): string {
@@ -45,7 +46,7 @@ function commissionValueToInput(
   return ""
 }
 
-function commissionInputToStored(
+export function commissionInputToStored(
   type: "percent" | "fixed",
   inputValue: string
 ): { value: number | null; error: string | null } {
@@ -63,13 +64,13 @@ function commissionInputToStored(
 }
 
 // lowstock_threshold_value is a plain integer: a percent (≤100) or a raw ticket count.
-function lowstockValueToInput(storedValue: number | null | undefined): string {
+export function lowstockValueToInput(storedValue: number | null | undefined): string {
   if (storedValue == null) return ""
   return String(storedValue)
 }
 
 // Mirrors the services-side validation (positive int; ≤100 when percent).
-function lowstockInputToStored(
+export function lowstockInputToStored(
   type: "percent" | "count",
   inputValue: string
 ): { value: number | null; error: string | null } {
