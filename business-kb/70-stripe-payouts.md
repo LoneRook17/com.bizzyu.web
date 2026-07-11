@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Stripe & payouts (getting paid)
 
 Stripe is the payment service that handles the money. When a customer buys a ticket or
@@ -46,12 +45,12 @@ Venue payout accounts**.
 
 ## When you get paid
 
-- After a sale, Stripe collects the payment and pays your share out to your bank account
-  on **Stripe's payout schedule for your account**. Exact timing depends on your Stripe
-  account (new accounts take longer for the first payout), so we don't quote a fixed
-  number of days. You can always see your next payout date and history in your Stripe
-  dashboard. If a payout seems overdue, check **Settings → Stripe Connect** for anything
-  Stripe still needs, and escalate to support@bizzyu.com if it's still unclear.
+- Payouts run on **Stripe's schedule for your account**, not a Bizzy timeline. Your
+  **first** payout usually takes about **7 to 14 days** while Stripe finishes verifying
+  your account. After that, payouts arrive on Stripe's standard rolling schedule.
+- Exact payout dates and history live in **your Stripe dashboard**. If a payout seems
+  overdue, check **Settings → Stripe Connect** for anything Stripe still needs, and
+  escalate to support@bizzyu.com if it's still unclear.
 - **Revenue shown in Analytics is *your* revenue** — the amount you receive. The service
   fee is added on top and paid by the customer, so it doesn't come out of your share. You
   receive the full amount you set (minus any promoter commission on promoter-driven sales,

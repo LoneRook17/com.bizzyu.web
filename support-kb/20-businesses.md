@@ -7,8 +7,8 @@ apply to business/venue users.
 
 - Log in at bizzyu.com/business with email + password. "Forgot password" on the login
   page sends a reset link (check spam). Still locked out → support@bizzyu.com.
-- New signups are reviewed by the Bizzy team; approval usually takes 1–2 business
-  days. While waiting you can log in and set up your venue.
+- New signups are reviewed by the Bizzy team; approval is usually fast and the business
+  gets an email once approved. While waiting they can log in and set up their venue.
 - The business email on the account can't be self-changed — email support@bizzyu.com.
 - The Bizzy phone app doubles as the business tool for scanning and door sales. Sign
   up in the app with the same phone number as the business account to link them.
@@ -18,9 +18,10 @@ apply to business/venue users.
 - Businesses must connect **Stripe** (Settings → Stripe Connect) before creating paid
   events or line skips. Stripe's wizard asks for business details, bank account, and
   photo ID.
-- Sales pay out to the business's bank account on Stripe's payout schedule for their
-  account; exact timing varies by account, so don't promise a set number of days. The
-  business can see their next payout in their Stripe dashboard.
+- Sales pay out to the business's bank account on Stripe's schedule for their account
+  (not a Bizzy timeline). The first payout usually takes about 7 to 14 days while Stripe
+  verifies the account; after that, payouts arrive on Stripe's standard rolling schedule.
+  Exact dates live in the business's Stripe dashboard.
 - A service fee is added on top of the business's price and paid by the customer —
   the business receives the full amount it set.
 - Businesses with more than one venue can route a specific venue's sales to a different
@@ -81,15 +82,17 @@ apply to business/venue users.
   money is pulled back from the business's Stripe account.
 - Cancelling an event with paid tickets sold requires Bizzy admin approval; with no
   paid tickets it cancels immediately. Events that already ended can't be cancelled.
-- Repeated cancellations: 2nd in 90 days = warning; 3rd = account flagged; 4th+ =
-  possible suspension.
+- Repeated cancellations trigger review: a 3rd cancellation within 90 days flags the
+  account for review by the Bizzy team.
 
 ## Team
 
 - **Business team** (ongoing, dashboard access): Owner (everything incl. settings),
   Manager (create/manage events, deals, line skips + analytics; no business
   settings), Staff (scan + Tap-to-Pay + basic event info), Promoter (share link +
-  performance). Members can be global or venue-specific. Only owners manage the team.
+  performance). Members can be global or venue-specific. Owners and managers manage the
+  team; a manager can add members and remove or re-role non-owner members, but only the
+  owner can remove or re-role another manager, transfer ownership, or manage billing.
 - **Event team (co-hosts)**: help with one specific event only; no full dashboard
   access. Set up inside that event.
 - Invites go by email from the Team page.

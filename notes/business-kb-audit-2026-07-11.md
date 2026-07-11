@@ -1,7 +1,14 @@
 # Support-bot knowledge-pack audit — 2026-07-11
 
-Branch: `fix/business-kb-audit` (off `dev`). Nothing merged. Nothing ships until Luke
-answers the open questions at the bottom.
+Branch: `fix/business-kb-audit` (off `dev`). Nothing merged — Luke merges after reading
+the diff.
+
+> **STATUS: round 2 (2026-07-11) — Luke answered all 3 blocking questions; applied.**
+> All 11 business-kb files + the student pack are now review-clean (zero
+> `pending review` markers). The three policy answers, plus a final adversarial re-read
+> that caught one more team-permission error, are recorded in
+> "Resolution — round 2" at the bottom. The "QUESTIONS FOR LUKE" section below is kept
+> for the record with each item marked RESOLVED.
 
 Audited every factual claim in `business-kb/*.md` (11 files) and swept `support-kb/*.md`
 (student bot) for the same class of errors. Each claim classified:
@@ -216,3 +223,62 @@ still carry `<!-- CONTENT PENDING LUKE REVIEW -->` (01-overview, 10-events,
    "a service fee is added on top, paid by the customer" and escalating for the number.
 5. **Universal promo codes.** Confirm universal/venue-wide codes are NOT live in prod
    (only on `feature/admin-v2`), so keeping them out of both packs is correct.
+
+---
+
+## Resolution — round 2 (2026-07-11)
+
+Luke answered the three blockers. Applied to both packs:
+
+1. **Payout timing → RESOLVED.** Describe Stripe's actual default, no single number.
+   `70-stripe-payouts.md` "When you get paid" now reads: payouts run on Stripe's schedule
+   for the account; the **first** payout takes roughly **7–14 days** while Stripe verifies
+   the account; after that, payouts arrive on Stripe's standard rolling schedule; exact
+   dates live in the owner's Stripe dashboard. Framed as Stripe's schedule, not a Bizzy
+   guarantee. Same wording applied to `support-kb/20-businesses.md`.
+2. **Business-account approval → RESOLVED, kept vague.** Removed "1–2 business days" from
+   `01-overview.md` and from `support-kb/20-businesses.md`. Now: "approval is usually fast,
+   and you'll get an email once your account is approved." This is ACCOUNT approval only —
+   no per-EVENT approval language was reintroduced.
+3. **Cancellation ladder → RESOLVED.** Stripped the 2nd-warning and 4th-suspension rungs
+   from `10-events.md` and `support-kb/20-businesses.md`. Only the verifiable rung remains:
+   a 3rd cancellation within 90 days flags the account for review. Escalation path kept.
+
+Headers: `pending review` marker removed from `01-overview.md`, `10-events.md`,
+`70-stripe-payouts.md`. Grep confirms **zero** markers across `business-kb/` and
+`support-kb/`. All 11 business files + the student pack are review-clean.
+
+### Final adversarial self-check — one more defect found and fixed
+
+Re-read both packs in full asking "can I point to the code that proves this?" of every
+claim. One survivor from the first pass:
+
+- ❌→✅ **`support-kb/20-businesses.md` Team section said "Only owners manage the team."**
+  Same defect I fixed in `business-kb/60-team.md` last round, missed in the student pack.
+  Contradicts the permission matrix (`RolePermissionsDialog.tsx:57-60`): managers can add
+  members and remove/re-role non-owner members. Fixed to match — owners and managers
+  manage the team; only the owner can remove/re-role another manager, transfer ownership,
+  or manage billing.
+
+Everything else in both packs traces to verified code or Luke-confirmed policy. Two claims
+I deliberately left, with reasoning (neither is code-citable to a line, both are
+long-standing operational facts, neither is in the payout/fee/approval/feature danger set):
+
+- App↔business linking by shared phone number (`01-overview.md`, `support-kb/20`) — an
+  operational mechanism, consistent across both packs and the dashboard help center; not
+  line-citable but low-risk and unchanged.
+- Support SLA "replies within 24 hours on business days" (`00-policies.md` both packs) — a
+  support-response expectation, operator policy, not a payout/approval claim. Unchanged.
+
+### Lower-priority items — recommendations (no further Luke input needed)
+
+4. **Fee wording → RECOMMEND: keep the no-percentage rule; do NOT document a fee %.**
+   There is no single fee number to document: platform fees vary per business (business-
+   level overrides exist, e.g. 14% vs the 20% global — see the fee-override history). That
+   is a positive reason the bot must never quote a percentage. The strengthened
+   `00-policies.md` rule already enforces this. The soft word "small" is a qualifier, not a
+   number, and is fine to keep. No change needed unless you want "small" dropped too.
+5. **Universal promo codes → RECOMMEND: keep them OUT of both packs (done).** Verified the
+   universal/venue-wide-code work lives only on the unmerged `feature/admin-v2` branch, so
+   it is not in dev/prod. The claim was removed from `support-kb`. Re-add to the pack only
+   when that feature actually ships. Re-confirm at admin-v2 release.

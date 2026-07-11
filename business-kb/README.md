@@ -8,15 +8,11 @@ returns it.
 
 These articles were drafted from the dashboard's own help center
 (`src/app/business/(dashboard)/help/content.ts`) and the live dashboard pages (e.g. the
-Manage tickets page). A code-grounded audit (branch `fix/business-kb-audit`) verified
-most files against the services/core code and cleared their
-`<!-- CONTENT PENDING LUKE REVIEW -->` header.
-
-**Files that still carry the header have an open question for Luke** (see the audit
-report). As of that audit, those are: `01-overview.md` (business-account approval
-timeline), `10-events.md` (repeated-cancellation escalation thresholds), and
-`70-stripe-payouts.md` (real payout timing). Remove the header on each once Luke
-confirms the open item.
+Manage tickets page). A code-grounded audit (branch `fix/business-kb-audit`,
+`notes/business-kb-audit-2026-07-11.md`) verified every file against the services/core
+code and against Luke's answers on the three policy questions (approval turnaround,
+cancellation consequences, payout timing). All files are now review-clean — the
+drafting-stage "pending review" HTML comment has been removed from every article.
 
 Files:
 

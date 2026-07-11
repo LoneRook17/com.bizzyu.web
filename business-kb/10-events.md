@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Events (lifecycle)
 
 Events are one-time happenings at your venue: concerts, DJ nights, watch parties,
@@ -58,5 +57,5 @@ Open any event and click **"Manage"** to reach the management hub, where you can
   + fees) automatically through Stripe, and the money is pulled back from your Stripe
   account (Stripe may charge processing fees for the reversal). Cancelling costs you
   money — be certain before you cancel.
-- **Repeated cancellations trigger review:** 2nd in 90 days = a warning; 3rd = your
-  account is flagged; 4th or more = your account may be suspended.
+- **Repeated cancellations trigger review:** a 3rd cancellation within 90 days gets your
+  account flagged for review by the Bizzy team.
