@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Promo codes
 
 Promo codes offer discounts on tickets — great for promoters, VIPs, or early

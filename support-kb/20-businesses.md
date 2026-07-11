@@ -18,9 +18,14 @@ apply to business/venue users.
 - Businesses must connect **Stripe** (Settings → Stripe Connect) before creating paid
   events or line skips. Stripe's wizard asks for business details, bank account, and
   photo ID.
-- Money from sales typically arrives in the bank account within **2–3 business days**.
+- Sales pay out to the business's bank account on Stripe's payout schedule for their
+  account; exact timing varies by account, so don't promise a set number of days. The
+  business can see their next payout in their Stripe dashboard.
 - A service fee is added on top of the business's price and paid by the customer —
   the business receives the full amount it set.
+- Businesses with more than one venue can route a specific venue's sales to a different
+  Stripe account (Settings → Payments → Venue payout accounts); by default everything
+  pays out to one default account.
 
 ## Venues
 
@@ -38,10 +43,10 @@ apply to business/venue users.
 - Price changes only affect future purchases; existing holders keep their price.
 - **Promo codes**: per-event under Manage → Promo codes — percentage or fixed amount
   off, with a max number of uses. The service fee is calculated on the discounted
-  price. Universal venue codes can apply across all of a venue's events.
+  price.
 - **Promoters**: enable the Promoter Program on an event and set commission terms.
-  Promoters get a personal share link; commissions accrue automatically and pay out
-  weekly via Stripe. Track under Manage → Promoters.
+  Promoters get a personal share link; commissions accrue to the promoter's in-app
+  wallet and they cash out on demand (no weekly payout). Track under Manage → Promoters.
 
 ## Door tools
 

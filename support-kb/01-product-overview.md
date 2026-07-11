@@ -32,7 +32,8 @@ school at signup; if their school isn't on Bizzy yet they can request it.
 - **Wallet (student)** — the app tab holding purchased tickets and line skips
   (Upcoming / Past / All) with their QR codes.
 - **Promoter** — a user who promotes an event with a personal tracking link and
-  earns commission on tickets sold through it, paid weekly via Stripe.
+  earns commission on tickets sold through it. Commission accrues to their in-app
+  wallet and they cash out on demand (there is no weekly payout).
 - **Service fee** — added on top of ticket/line-skip prices and paid by the buyer.
   Businesses receive the full price they set.
 

@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Team members & roles
 
 There are **two different kinds of team** on Bizzy:
@@ -34,8 +33,13 @@ There are **two different kinds of team** on Bizzy:
 3. Pick their **role** and **venue assignment**.
 
 They'll get an email invitation. Once accepted, they have ongoing access based on their
-role. **Owners and managers can invite new members; only the owner can remove a member or
-change a member's role or venue assignment.**
+role. Who can manage the team:
+
+- **Owners and managers** can invite / add new members.
+- **Managers** can remove members and change roles, but only for staff and other
+  non-owner members. A manager can't remove or re-role the owner.
+- **Only the owner** can remove or re-role another manager, and only the owner can
+  transfer ownership or manage billing and Stripe.
 
 ## Common gotchas
 

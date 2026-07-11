@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Analytics, Tap-to-Pay & marketing
 
 ## Analytics

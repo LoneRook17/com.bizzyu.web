@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Scanning & door counters
 
 ## Scanning tickets
