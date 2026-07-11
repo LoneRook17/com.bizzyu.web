@@ -25,6 +25,81 @@ const HISTORY_SENT = 12
 
 type ChatMessage = { role: "user" | "assistant"; content: string }
 
+// Belt-and-braces house-style guard (see 00-policies.md "Formatting rules").
+// The system prompt forbids markdown bold and em/en dashes, but Haiku mirrors
+// the KB packs' own heavy formatting (hundreds of `**bold**` runs, dozens of
+// em-dashes) and slips intermittently, so we also enforce the rules on the
+// streamed output as a hard guarantee.
+//
+// Safety — this only ever removes characters that cannot be legitimate content
+// in a support answer:
+//   • Em/en dashes (`—`/`–`) are single code units that always arrive whole in
+//     one delta and never appear in code or URLs. Replaced (with any adjacent
+//     horizontal spaces) by ", ".
+//   • Asterisk runs (length 1-3) are stripped as emphasis markers UNLESS both
+//     sides look literal: both whitespace/boundary (a spaced `*`, a `***` rule)
+//     or both alphanumeric (`2**8`). That strips `**bold**`, `*emph*`, `***x***`
+//     and bold ending in punctuation (`**Cooldowns.**`) while leaving math and
+//     bullets intact; URLs never contain `*`. A short tail is buffered so a run
+//     split across two deltas is classified correctly before anything is emitted.
+function replaceDashes(s: string): string {
+  return s.replace(/[ \t]*[—–][ \t]*/g, ", ")
+}
+
+function isAlnum(c: string): boolean {
+  return /[A-Za-z0-9]/.test(c)
+}
+
+// Stateful streaming sanitizer. push() takes a raw text delta and returns the
+// text safe to emit now; flush() returns whatever was held back at stream end.
+function createSanitizer() {
+  let buf = "" // unprocessed tail — may hold an asterisk run awaiting right-context
+  let prev = "" // last original char before buf (left-context for a run at buf[0])
+
+  function drain(final: boolean): string {
+    let out = ""
+    let i = 0
+    while (i < buf.length) {
+      if (buf[i] !== "*") {
+        out += buf[i]
+        prev = buf[i]
+        i++
+        continue
+      }
+      // Consume the whole asterisk run [i, j).
+      let j = i
+      while (j < buf.length && buf[j] === "*") j++
+      // A run at the very end can still be growing and has no right-context yet;
+      // hold it back until more arrives (or the final flush).
+      if (j === buf.length && !final) break
+      const left = i > 0 ? buf[i - 1] : prev
+      const right = j < buf.length ? buf[j] : ""
+      const spaceLeft = left === "" || /\s/.test(left)
+      const spaceRight = right === "" || /\s/.test(right)
+      const literal = (spaceLeft && spaceRight) || (isAlnum(left) && isAlnum(right))
+      if (j - i <= 3 && !literal) {
+        prev = left // emphasis marker — drop the asterisks, keep surrounding text
+      } else {
+        out += buf.slice(i, j)
+        prev = "*"
+      }
+      i = j
+    }
+    buf = buf.slice(i)
+    return out
+  }
+
+  return {
+    push(delta: string): string {
+      buf += delta
+      return replaceDashes(drain(false))
+    },
+    flush(): string {
+      return replaceDashes(drain(true))
+    },
+  }
+}
+
 function err(status: number, code: string) {
   return Response.json({ error: code }, { status })
 }
@@ -113,12 +188,16 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder()
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
+      const sanitize = createSanitizer()
       try {
         for await (const event of stream) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            controller.enqueue(encoder.encode(event.delta.text))
+            const clean = sanitize.push(event.delta.text)
+            if (clean) controller.enqueue(encoder.encode(clean))
           }
         }
+        const tail = sanitize.flush()
+        if (tail) controller.enqueue(encoder.encode(tail))
         controller.close()
       } catch (e) {
         console.error("support-chat stream error", e)
