@@ -32,11 +32,15 @@ const nextConfig: NextConfig = {
   async redirects() {
     // /event/:id forwards to the Laravel event checkout. Destination is
     // per-deploy so the dev Vercel project (com-bizzyu-web-l2gp) can point
-    // at the dev Laravel EC2 (3.80.143.224) while the prod project
-    // (com-bizzyu-web) points at bizzy-deals.com. Set
-    // CHECKOUT_REDIRECT_BASE in each Vercel project's environment vars.
+    // at the dev Laravel EC2 while the prod project (com-bizzyu-web) points
+    // at bizzy-deals.com. CHECKOUT_REDIRECT_BASE_URL is the canonical var and
+    // MUST come first here — it's the same var the page components read, so a
+    // single value governs every redirect path (build-time and runtime).
+    // CHECKOUT_REDIRECT_BASE is kept only as a legacy fallback.
     const checkoutBase =
-      process.env.CHECKOUT_REDIRECT_BASE || "https://bizzy-deals.com";
+      process.env.CHECKOUT_REDIRECT_BASE_URL ||
+      process.env.CHECKOUT_REDIRECT_BASE ||
+      "https://bizzy-deals.com";
     return [
       {
         source: "/signup",
