@@ -1,10 +1,9 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Events (lifecycle)
 
 Events are one-time happenings at your venue: concerts, DJ nights, watch parties,
-themed nights. You can sell tickets for paid events or allow free RSVPs. Customers buy
-right from their phone in the Bizzy app, and you get a QR-code scanner to check people
-in at the door.
+themed nights. You can sell paid tickets, or offer free tickets (price set to $0).
+Customers buy or reserve right from their phone in the Bizzy app, and you get a QR-code
+scanner to check people in at the door.
 
 ## Creating an event
 
@@ -17,10 +16,17 @@ in at the door.
 
 ## Approval / going live
 
-- After you create an event it goes to the Bizzy team for a quick review before it's
-  visible to students. Approval is usually fast.
-- You must have **Stripe connected before you can create paid events** (see the "Stripe
-  & payouts" article). Free-RSVP events don't require Stripe.
+You do not need Bizzy to approve each event. Once your business account is approved and
+your Stripe is connected, the events you create go **live right away** for students to
+see. Two things can hold an event back before it goes live:
+
+- **Automated content checks.** If the name, description, or flyer gets flagged by our
+  automated content check, the event goes to a short Bizzy review before it's visible.
+  Most events are never flagged.
+- **Stripe not connected.** You must connect Stripe **before you can create paid events**
+  (see the "Stripe & payouts" article). A **free event** can be created without Stripe,
+  but until Stripe is connected it's held for a quick Bizzy review instead of going live
+  automatically. Connect Stripe and your events publish on their own.
 
 ## Managing an event
 
@@ -51,5 +57,5 @@ Open any event and click **"Manage"** to reach the management hub, where you can
   + fees) automatically through Stripe, and the money is pulled back from your Stripe
   account (Stripe may charge processing fees for the reversal). Cancelling costs you
   money — be certain before you cancel.
-- **Repeated cancellations trigger review:** 2nd in 90 days = a warning; 3rd = your
-  account is flagged; 4th or more = your account may be suspended.
+- **Repeated cancellations trigger review:** a 3rd cancellation within 90 days gets your
+  account flagged for review by the Bizzy team.

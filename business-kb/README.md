@@ -6,10 +6,13 @@ bot (the floating help bubble in the business dashboard). It mirrors `/support-k
 (except this README) in filename order into one system prompt; `loadKnowledgePack("business")`
 returns it.
 
-**Every content file starts with `<!-- CONTENT PENDING LUKE REVIEW -->`.** These
-articles were drafted from the dashboard's own help center (`src/app/business/(dashboard)/help/content.ts`)
-and the live dashboard pages (e.g. the Manage tickets page), but have **not** been
-reviewed by Luke for accuracy/tone. Remove the header on each file once reviewed.
+These articles were drafted from the dashboard's own help center
+(`src/app/business/(dashboard)/help/content.ts`) and the live dashboard pages (e.g. the
+Manage tickets page). A code-grounded audit (branch `fix/business-kb-audit`,
+`notes/business-kb-audit-2026-07-11.md`) verified every file against the services/core
+code and against Luke's answers on the three policy questions (approval turnaround,
+cancellation consequences, payout timing). All files are now review-clean — the
+drafting-stage "pending review" HTML comment has been removed from every article.
 
 Files:
 
@@ -18,7 +21,7 @@ Files:
 - `10-events.md` — events lifecycle: create, approval, manage, edit, cancel.
 - `20-tickets.md` — ticket types, drag-reorder, mark sold out, hide, scan window.
 - `30-promo-codes.md` — per-event promo codes.
-- `40-promoters.md` — Promoter Program, commissions, weekly payouts.
+- `40-promoters.md` — Promoter Program, commissions, in-app wallet + on-demand payouts.
 - `50-scanners-door-counters.md` — ticket/line-skip scanning + door counters.
 - `60-team.md` — business team vs event co-hosts, roles, invites.
 - `70-stripe-payouts.md` — connecting Stripe, payout timing, refunds.

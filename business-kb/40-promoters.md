@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Promoters & commissions
 
 Promoters help promote your event and earn commission on every ticket they sell.

@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Dashboard overview
 
 Bizzy helps bars, clubs, restaurants, and venues sell tickets, offer deals, and manage
@@ -22,9 +21,9 @@ scanning and Tap-to-Pay door sales.
 - Log in at bizzyu.com/business with the email and password used at signup. "Forgot
   password" on the login page sends a reset link (check spam). Still locked out →
   support@bizzyu.com.
-- New signups go through a quick review by the Bizzy team; approval usually takes 1–2
-  business days. While waiting you can still log in, explore the dashboard, and set up
-  your venue.
+- New signups go through a quick review by the Bizzy team. Approval is usually fast, and
+  you'll get an email once your account is approved. While you wait you can still log in,
+  explore the dashboard, and set up your venue.
 - The business email on the account can't be self-changed — email support@bizzyu.com.
 
 ## Venues

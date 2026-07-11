@@ -1,4 +1,3 @@
-<!-- CONTENT PENDING LUKE REVIEW -->
 # Managing tickets
 
 Manage tickets from an event's **Manage → Manage tickets** page. An event can have
