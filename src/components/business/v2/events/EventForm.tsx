@@ -69,13 +69,17 @@ export function lowstockValueToInput(storedValue: number | null | undefined): st
   return String(storedValue)
 }
 
-// Mirrors the services-side validation (positive int; ≤100 when percent).
+// The low-stock threshold is OPTIONAL. Blank is valid and means "no low-stock
+// threshold" — the tier alerts on sold-out only (services F6). A positive whole
+// number sets a real threshold; percent is capped at 100 as a client nicety
+// (the server enforces it too). Only non-blank, non-positive, or non-integer
+// input is a client error.
 export function lowstockInputToStored(
   type: "percent" | "count",
   inputValue: string
 ): { value: number | null; error: string | null } {
   const trimmed = inputValue.trim()
-  if (trimmed === "") return { value: null, error: "Enter a threshold value" }
+  if (trimmed === "") return { value: null, error: null }
   const num = Number(trimmed)
   if (!Number.isInteger(num) || num <= 0) {
     return { value: null, error: "Threshold must be a positive whole number" }
@@ -314,18 +318,26 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         payload.promotion_enabled = false
       }
 
-      // Stock alerts (ticketed only). Always send the two flags. Only send
-      // type + value when there's a valid threshold to write: the server rejects
-      // a null/empty value, and omitting it lets the stored threshold persist —
-      // which is exactly what we want when disabling without a threshold set.
+      // Stock alerts (ticketed only). Always send the two flags.
+      //   • Enabled + a positive threshold => send type + value (low-stock AND
+      //     sold-out alerts).
+      //   • Enabled + blank threshold => send an explicit null value so a
+      //     previously-stored threshold is actually cleared (sold-out-only mode).
+      //     Omitting it would let the old value persist server-side.
+      //   • Disabled => omit type/value so the stored threshold survives for when
+      //     alerts are re-enabled.
       if (form.type === "Ticketed") {
-        const lowstockType = form.lowstock_threshold_type || "percent"
-        const { value: lowstockValue } = lowstockInputToStored(lowstockType, lowstockValueInput)
         payload.lowstock_alerts_enabled = !!form.lowstock_alerts_enabled
         payload.lowstock_notify_business_team = !!form.lowstock_notify_business_team
-        if (lowstockValue != null) {
-          payload.lowstock_threshold_type = lowstockType
-          payload.lowstock_threshold_value = lowstockValue
+        if (form.lowstock_alerts_enabled) {
+          const lowstockType = form.lowstock_threshold_type || "percent"
+          const { value: lowstockValue } = lowstockInputToStored(lowstockType, lowstockValueInput)
+          if (lowstockValue != null) {
+            payload.lowstock_threshold_type = lowstockType
+            payload.lowstock_threshold_value = lowstockValue
+          } else {
+            payload.lowstock_threshold_value = null
+          }
         }
       }
 
@@ -688,7 +700,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Stock alerts</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier is running low, so you can react before it sells out.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier sells out — and optionally before it does.</p>
           </CardHeader>
           <CardContent className="pt-0">
             <label className="flex cursor-pointer items-center gap-2">
@@ -701,14 +713,18 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                 }}
                 className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
               />
-              <span className="text-sm text-neutral-700 dark:text-neutral-300">Enable low-stock alerts</span>
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">Notify me when a ticket tier sells out</span>
             </label>
 
             {form.lowstock_alerts_enabled && (
               <div className="mt-4 space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Also warn me when it&apos;s running low</p>
+                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional — leave blank to only be notified on sell-out.</p>
+                </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="lowstock_threshold_type" className="mb-1.5 block">Alert on</Label>
+                    <Label htmlFor="lowstock_threshold_type" className="mb-1.5 block">Warn on</Label>
                     <Select
                       id="lowstock_threshold_type"
                       value={lowstockType}
