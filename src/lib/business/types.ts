@@ -178,6 +178,15 @@ export interface EventDetail extends EventListItem {
   lowstock_threshold_type?: 'percent' | 'count' | null
   lowstock_threshold_value?: number | null
   lowstock_notify_business_team?: boolean | number
+  // Door code (door-staff credential). Services owns generation: a 6-digit
+  // code is auto-created when the event goes live, backed by a scanner_token
+  // whose created_by is the event creator. Staff type it on the app's login
+  // screen ("Scan Tickets") to scan with no account. null until the event is
+  // live / before services has stamped a code. door_code_label is the optional
+  // audit label on the code ("Front door", "Sarah") — scanner_tokens.label.
+  // CONTRACT: confirm these field names against services feat/door-code.
+  door_code?: string | null
+  door_code_label?: string | null
   // Recurring series linkage (#5): set when this event is one night of a
   // recurring series. series_customized_at marks a hand-edited night that
   // template edits will never overwrite.
