@@ -9,6 +9,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   const isBusinessRoute = pathname.startsWith("/business/") || pathname === "/business"
   const isCheckoutRoute = pathname.startsWith("/checkout")
   const isSetupPassword = pathname.startsWith("/setup-password")
+  const isAcceptInvite = pathname.startsWith("/accept-invite")
   // Venue pages double as a full-bleed "sign board" for screens outside the
   // bar - no marketing chrome, same as checkout.
   const isVenueRoute = pathname.startsWith("/venue/")
@@ -20,7 +21,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   // Support chat renders inside the iOS app's WebView - no marketing chrome.
   const isSupportChat = pathname.startsWith("/support-chat")
 
-  if (isBusinessRoute || isCheckoutRoute || isSetupPassword || isVenueRoute || isLineSkipRoute || isAppInterstitial || isSupportChat) {
+  if (isBusinessRoute || isCheckoutRoute || isSetupPassword || isAcceptInvite || isVenueRoute || isLineSkipRoute || isAppInterstitial || isSupportChat) {
     return <>{children}</>
   }
 

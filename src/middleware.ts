@@ -28,6 +28,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url) // clone keeps the query string (invite/reset tokens)
   }
 
+  // The invite email path moved to the unclaimed root-level /accept-invite so the
+  // iOS app (which universal-links /business/*) can't hijack invite links into an
+  // app that has no invite handler. Invites already sitting in inboxes still point
+  // at /business/accept-invite - redirect them, keeping ?token=. The AASA excludes
+  // /business/accept-invite* so this old link reaches the browser to be redirected.
+  if (
+    pathname === "/business/accept-invite" ||
+    pathname.startsWith("/business/accept-invite/")
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/accept-invite"
+    return NextResponse.redirect(url) // clone keeps the query string (invite token)
+  }
+
   const isAuthPage = AUTH_PAGES.some(
     (page) => pathname === page || pathname.startsWith(page + "/")
   )
