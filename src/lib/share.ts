@@ -5,7 +5,10 @@
 
 export type ShareOutcome = "shared" | "copied" | "failed"
 
-export async function nativeShare(opts: { title: string; url: string }): Promise<ShareOutcome> {
+// Either `url` (link shares) or `text` (message shares, e.g. pasting a door
+// code into a staff group chat) must be provided. When only `text` is given
+// the clipboard fallback copies the message body verbatim.
+export async function nativeShare(opts: { title: string; url?: string; text?: string }): Promise<ShareOutcome> {
   if (typeof navigator === "undefined") return "failed"
 
   type ShareNav = Navigator & {
@@ -16,7 +19,7 @@ export async function nativeShare(opts: { title: string; url: string }): Promise
 
   if (typeof nav.share === "function") {
     try {
-      await nav.share({ title: opts.title, url: opts.url })
+      await nav.share({ title: opts.title, url: opts.url, text: opts.text })
       return "shared"
     } catch {
       // User cancelled the sheet - treat as a non-failure no-op.
@@ -24,9 +27,11 @@ export async function nativeShare(opts: { title: string; url: string }): Promise
     }
   }
 
-  if (nav.clipboard?.writeText) {
+  // Desktop fallback: copy the message body (or the link) to the clipboard.
+  const fallback = opts.text ?? opts.url
+  if (fallback && nav.clipboard?.writeText) {
     try {
-      await nav.clipboard.writeText(opts.url)
+      await nav.clipboard.writeText(fallback)
       return "copied"
     } catch {
       return "failed"

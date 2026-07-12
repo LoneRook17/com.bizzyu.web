@@ -18,6 +18,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
+import { DoorCodeCard } from "@/components/business/v2/events/DoorCodeCard"
 import { EventVenuePayoutBanner } from "@/components/business/v2/settings/VenuePayoutPaused"
 import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
 
@@ -160,7 +161,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   const tiles: Tile[] = [
     { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, tickets, and flyer", show: canEdit },
     { href: `${base}/tickets`, icon: Ticket, title: "Manage tickets", subtitle: "Add, edit, or hide tiers", show: canEdit },
-    { href: `${base}/team`, icon: Users, title: "Team members", subtitle: "Co-hosts, crew, and promoters", show: true },
+    { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
     { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Stats and payouts", show: true },
     { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
@@ -197,6 +198,17 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       <EventVenuePayoutBanner venueId={event.venue_id} />
 
       {isLive && <EventLinkRow eventId={id} eventName={event.name} />}
+
+      {/* Door code — the PRIMARY way to put a staffer on the door tonight.
+          Owners used to fall back to the (broken) email-invite path because the
+          dashboard had no way to hand out a scan credential; this is that way.
+          Email invite is demoted to the "Managers & co-hosts" tile below. */}
+      <DoorCodeCard
+        eventId={id}
+        eventName={event.name}
+        isLive={isLive}
+        canManage={canEdit}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {tiles.filter((t) => t.show).map((t) => (

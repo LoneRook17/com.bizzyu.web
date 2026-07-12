@@ -178,6 +178,9 @@ export interface EventDetail extends EventListItem {
   lowstock_threshold_type?: 'percent' | 'count' | null
   lowstock_threshold_value?: number | null
   lowstock_notify_business_team?: boolean | number
+  // NOTE: the door code is intentionally NOT on this payload. It's a credential,
+  // so services keeps it off the broadly-fetched event and serves it from a
+  // dedicated GET /business/events/:id/door-code — DoorCodeCard fetches it there.
   // Recurring series linkage (#5): set when this event is one night of a
   // recurring series. series_customized_at marks a hand-edited night that
   // template edits will never overwrite.
