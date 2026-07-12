@@ -206,8 +206,6 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       <DoorCodeCard
         eventId={id}
         eventName={event.name}
-        code={event.door_code}
-        label={event.door_code_label}
         isLive={isLive}
         canManage={canEdit}
       />

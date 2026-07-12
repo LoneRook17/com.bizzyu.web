@@ -14,20 +14,24 @@ import {
 } from "@/components/business/v2/ui/dialog"
 
 /**
- * ── API CONTRACT (services owns feat/door-code) ────────────────────────────
- * READ:   `door_code` / `door_code_label` come off the event payload
- *         (GET /business/events/:id) — see EventDetail in lib/business/types.
- * WRITE:  the two endpoints below. Services had not pushed feat/door-code when
- *         this was wired, so the paths follow the businessEventManage.ts
- *         convention (/business/events/:id/...). CONFIRM them before merge —
- *         if services names them differently, change ONLY these two constants.
+ * ── API CONTRACT (services owns feat/door-code — FINAL, confirmed) ──────────
+ * All three endpoints are under /business/*, authed with biz_token, and return
+ * EXACTLY { door_code, door_code_label } — nothing else (the raw scanner token
+ * is a server-side credential and is never sent here).
  *
- *   Rotate: POST  /business/events/:id/door-code/rotate
+ *   Read:   GET   /business/events/:id/door-code
  *           → { door_code: string, door_code_label: string | null }
+ *           404 = no code available (past / creator-less event) → empty state.
+ *   Rotate: POST  /business/events/:id/door-code/rotate
+ *           → { door_code, door_code_label }
  *           Old code stops working immediately (token revoked server-side).
  *   Label:  PATCH /business/events/:id/door-code   body { label: string | null }
- *           → { door_code: string, door_code_label: string | null }
+ *           → { door_code, door_code_label }
+ *
+ * The code is a CREDENTIAL, so it deliberately does NOT ride on the broad
+ * GET /business/events/:id payload — this card fetches it separately on mount.
  */
+const getPath = (id: string) => `/business/events/${id}/door-code`
 const rotatePath = (id: string) => `/business/events/${id}/door-code/rotate`
 const labelPath = (id: string) => `/business/events/${id}/door-code`
 
@@ -61,23 +65,53 @@ function shareMessage(eventName: string, code: string) {
 export function DoorCodeCard({
   eventId,
   eventName,
-  code: initialCode,
-  label: initialLabel,
   isLive,
   canManage,
 }: {
   eventId: string
   eventName: string
-  code: string | null | undefined
-  label: string | null | undefined
   isLive: boolean
   canManage: boolean
 }) {
-  const [code, setCode] = useState(initialCode ?? null)
-  const [label, setLabel] = useState<string | null>(initialLabel ?? null)
+  // The code is a credential, fetched on its own (not off the event payload).
+  const [code, setCode] = useState<string | null>(null)
+  const [label, setLabel] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [forbidden, setForbidden] = useState(false)
   const [copied, setCopied] = useState(false)
   const [canShare, setCanShare] = useState(false)
   const [error, setError] = useState("")
+
+  // Fetch the door code separately from the event.
+  //   404 → no code available (past / creator-less event) → empty state.
+  //   403 → this viewer isn't entitled to the credential (e.g. a staffer who
+  //         isn't a manager/cohost) → hide the card entirely, don't alarm them.
+  //   other → a gentle inline message.
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    apiClient
+      .get<DoorCodeResponse>(getPath(eventId))
+      .then((res) => {
+        if (cancelled) return
+        setCode(res.door_code)
+        setLabel(res.door_code_label)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 404) {
+          setCode(null) // expected: no code yet → empty state
+        } else if (err instanceof ApiError && err.status === 403) {
+          setForbidden(true) // not entitled → card is hidden below
+        } else {
+          setError(err instanceof ApiError ? err.message : "Couldn't load the door code.")
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [eventId])
 
   // Rotate flow
   const [showRotate, setShowRotate] = useState(false)
@@ -155,7 +189,27 @@ export function DoorCodeCard({
     setShowLabel(true)
   }
 
-  // ── Empty state: no code yet ──────────────────────────────────────────────
+  // ── Not entitled (403): hide the credential card entirely ─────────────────
+  if (forbidden) return null
+
+  // ── Loading: the code is fetched separately from the event ────────────────
+  if (loading) {
+    return (
+      <Card className="border-neutral-200 dark:border-neutral-800">
+        <div className="flex items-start gap-3.5 p-5">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500">
+            <DoorOpen className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-4 w-24 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
+            <div className="h-8 w-40 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  // ── No code: empty state (404 = past/creator-less), or a load error ───────
   if (!code) {
     return (
       <Card className="border-neutral-200 dark:border-neutral-800">
@@ -166,7 +220,9 @@ export function DoorCodeCard({
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Door code</h2>
             <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-              {isLive
+              {error
+                ? error
+                : isLive
                 ? "Your door code is being created — refresh in a moment. Staff will use it to scan tickets with no account."
                 : "A 6-digit door code is created automatically when this event goes live. Share it with your door staff so they can scan tickets — no account needed."}
             </p>
