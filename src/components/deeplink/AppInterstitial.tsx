@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef } from "react";
 import { APP_STORE_URL } from "@/lib/constants";
 
 type Props = {
@@ -13,43 +12,14 @@ type Props = {
   customSchemeUrl?: string;
 };
 
-const REDIRECT_DELAY_MS = 3000;
-
 export default function AppInterstitial({
   title,
   subtitle,
   deepLinkUrl,
   customSchemeUrl,
 }: Props) {
-  const cancelled = useRef(false);
-
-  useEffect(() => {
-    const cancel = () => {
-      cancelled.current = true;
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") cancel();
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", cancel);
-    window.addEventListener("blur", cancel);
-
-    const timer = window.setTimeout(() => {
-      if (!cancelled.current && document.visibilityState === "visible") {
-        window.location.href = APP_STORE_URL;
-      }
-    }, REDIRECT_DELAY_MS);
-
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", cancel);
-      window.removeEventListener("blur", cancel);
-    };
-  }, []);
-
+  // The "Open in App" button prefers the bizzy:// custom scheme when the
+  // consumer supplies one, otherwise it falls back to the universal link.
   const openInApp = customSchemeUrl ?? deepLinkUrl;
 
   return (
@@ -66,16 +36,19 @@ export default function AppInterstitial({
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-white/70">
-            {subtitle ?? "Opening in Bizzy…"}
+            {subtitle ?? "Tap below to open it in the app."}
           </p>
         </div>
-        <div
-          aria-hidden
-          className="h-1 w-32 overflow-hidden rounded-full bg-white/10"
-        >
-          <div className="h-full w-1/2 animate-[loading_1.4s_ease-in-out_infinite] rounded-full bg-[#05EB54]" />
-        </div>
         <div className="mt-4 flex w-full max-w-xs flex-col gap-3">
+          {/*
+            Tap-only by design. We deliberately do NOT auto-fire the bizzy://
+            scheme on load: on a device WITHOUT the app, navigating to a custom
+            scheme throws Safari's "address is invalid" error - that was the
+            original bug this page exists to avoid. Firing the scheme only on an
+            explicit tap means non-app users never hit that error; they read the
+            page and choose "Download Bizzy" instead. Do not "helpfully" automate
+            this with a setTimeout/redirect - that reintroduces the error.
+          */}
           <a
             href={openInApp}
             className="rounded-full bg-[#05EB54] px-6 py-3 text-center text-sm font-semibold text-black transition hover:brightness-110"
@@ -90,15 +63,6 @@ export default function AppInterstitial({
           </a>
         </div>
       </div>
-      <noscript>
-        <meta httpEquiv="refresh" content={`3;url=${APP_STORE_URL}`} />
-      </noscript>
-      <style>{`
-        @keyframes loading {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-      `}</style>
     </div>
   );
 }
