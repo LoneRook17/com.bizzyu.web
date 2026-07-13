@@ -181,20 +181,22 @@ export default function SupportChat({
 
   const showSuggestions = messages.length === 0 && !busy
   const wrapClass =
-    variant === "panel" ? "flex h-full flex-col bg-white" : "flex h-dvh flex-col bg-white"
+    variant === "panel"
+      ? "flex h-full flex-col bg-white dark:bg-neutral-900"
+      : "flex h-dvh flex-col bg-white dark:bg-neutral-900"
 
   return (
     <div className={wrapClass}>
       {/* Slim header — the app's native bar already says "Support" */}
-      <header className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
+      <header className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-neutral-800">
         <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-        <span className="text-sm font-semibold text-gray-900">{headerLabel}</span>
-        <span className="text-xs text-gray-400">{headerNote}</span>
+        <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{headerLabel}</span>
+        <span className="text-xs text-gray-400 dark:text-neutral-500">{headerNote}</span>
         {messages.length > 0 && (
           <button
             type="button"
             onClick={startNewConversation}
-            className="ml-auto text-xs text-gray-400 hover:text-gray-600"
+            className="ml-auto text-xs text-gray-400 hover:text-gray-600 dark:text-neutral-500 dark:hover:text-neutral-300"
           >
             Start new conversation
           </button>
@@ -204,7 +206,7 @@ export default function SupportChat({
             type="button"
             onClick={onClose}
             aria-label="Close chat"
-            className={`${messages.length > 0 ? "ml-2" : "ml-auto"} rounded p-1 text-gray-400 hover:text-gray-600`}
+            className={`${messages.length > 0 ? "ml-2" : "ml-auto"} rounded p-1 text-gray-400 hover:text-gray-600 dark:text-neutral-500 dark:hover:text-neutral-300`}
           >
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path
@@ -234,7 +236,7 @@ export default function SupportChat({
           </Bubble>
         )}
         {fatal && (
-          <p className="mx-auto max-w-[85%] rounded-xl bg-amber-50 px-3 py-2 text-center text-xs text-amber-800">
+          <p className="mx-auto max-w-[85%] rounded-xl bg-amber-50 px-3 py-2 text-center text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
             {fatal}
           </p>
         )}
@@ -248,7 +250,7 @@ export default function SupportChat({
             <button
               key={s}
               onClick={() => send(s)}
-              className="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-700 active:bg-gray-100"
+              className="rounded-full border border-gray-200 px-3 py-1.5 text-xs text-gray-700 active:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:active:bg-neutral-800"
             >
               {s}
             </button>
@@ -258,7 +260,7 @@ export default function SupportChat({
 
       {/* Composer */}
       <form
-        className="flex items-end gap-2 border-t border-gray-100 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="flex items-end gap-2 border-t border-gray-100 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:border-neutral-800"
         onSubmit={(e) => {
           e.preventDefault()
           send(input)
@@ -276,7 +278,7 @@ export default function SupportChat({
           rows={1}
           maxLength={1500}
           placeholder={placeholder}
-          className="max-h-28 flex-1 resize-none rounded-2xl border border-gray-200 px-4 py-2.5 text-[16px] outline-none focus:border-primary"
+          className="max-h-28 flex-1 resize-none rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-[16px] text-gray-900 outline-none placeholder:text-gray-400 focus:border-primary dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-500"
         />
         <button
           type="submit"
@@ -298,7 +300,7 @@ function Bubble({ role, children }: { role: "user" | "assistant"; children: Reac
         className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-[15px] leading-snug ${
           isUser
             ? "rounded-br-md bg-primary text-gray-900"
-            : "rounded-bl-md bg-gray-100 text-gray-900"
+            : "rounded-bl-md bg-gray-100 text-gray-900 dark:bg-neutral-800 dark:text-neutral-100"
         }`}
       >
         {children}
@@ -310,7 +312,7 @@ function Bubble({ role, children }: { role: "user" | "assistant"; children: Reac
 function Dot({ delay }: { delay: string }) {
   return (
     <span
-      className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400"
+      className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 dark:bg-neutral-500"
       style={{ animationDelay: delay }}
     />
   )
