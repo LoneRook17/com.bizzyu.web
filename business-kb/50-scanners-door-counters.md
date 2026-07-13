@@ -1,4 +1,4 @@
-# Scanning & door counters
+# Scanning, door codes & door counters
 
 ## Scanning tickets
 
@@ -11,6 +11,45 @@
   article).
 - A ticket's **scan window** (its "Valid from / Valid until" times, if set) controls
   when it can be scanned.
+
+## Door codes (get staff scanning fast, no account)
+
+Every event has a **6-digit door code**. It's the fastest way to get a doorperson
+scanning: they never make an account or get invited. This is the answer to "how do
+I get someone scanning tickets tonight?" — share the code, not an email invite.
+
+How a staffer uses it:
+
+1. They open the Bizzy phone app and, on the **login screen**, tap **"Scan
+   Tickets"** (they do not log in).
+2. They type the **6-digit code**.
+3. They land on the **door hub** for that event, where they can **Scan Tickets**,
+   **Accept Payments** (Tap-to-Pay door sales), and view **Check-ins** — all with
+   no account.
+
+Where you find and manage the code:
+
+- Open the event → **Manage** → the door code section. There you can **view**,
+  **share**, and **rotate** the code, and add an optional **label** (like "Front
+  door") that the staffer sees.
+- The code is a **credential**, so who can see or rotate it is limited: the
+  **business owner**, **managers**, the **event's creator**, and event
+  **co-hosts**. Business **staff** and event **crew** can't view it in the
+  dashboard — you hand them the code to use at the door.
+
+Good to know:
+
+- The code is generated automatically for each event (each recurring night gets its
+  own).
+- It stops working about **2 hours after the event ends**.
+- **Rotating** the code makes a brand-new one and **kills the old one instantly** —
+  use it if a code leaks.
+- When a **new device** first uses the code, the owner gets a notification, so an
+  unexpected doorperson is visible.
+- A door-code session can scan and take door payments, but it can **never issue
+  refunds or manage the event** — those stay in the dashboard for owners/managers.
+- Money from a door-code Tap-to-Pay sale still routes to the venue's own Stripe
+  account, exactly like any other door sale.
 
 ## Scanning line skips (different!)
 
