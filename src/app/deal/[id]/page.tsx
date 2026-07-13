@@ -32,6 +32,13 @@ export default async function DealInterstitialPage({ params }: PageProps) {
     <AppInterstitial
       title="Opening deal…"
       deepLinkUrl={`https://bizzyu.com/deal/${id}`}
+      // The "Open in App" button prefers this custom scheme. It's the ONLY thing
+      // that opens the app when the user arrives from a same-domain tap (e.g. the
+      // venue page on bizzyu.com), where a Universal Link is suppressed. Non-app
+      // users never reach this via a scheme automatically — the page shows the
+      // App Store CTA and auto-redirects there — so the raw scheme only fires on
+      // an explicit "Open in App" tap.
+      customSchemeUrl={`bizzy://deal/${id}`}
     />
   );
 }
