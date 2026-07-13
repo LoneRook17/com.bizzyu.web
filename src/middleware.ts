@@ -42,6 +42,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url) // clone keeps the query string (invite token)
   }
 
+  // Same AASA-hijack fix for email verification: verification emails now point at
+  // the unclaimed root-level /verify-email. Verification links already sitting in
+  // inboxes still point at /business/verify-email - redirect them, keeping ?token=.
+  // The AASA excludes /business/verify-email* so the old link reaches the browser
+  // to be redirected instead of being swallowed into the (handler-less) iOS app.
+  if (
+    pathname === "/business/verify-email" ||
+    pathname.startsWith("/business/verify-email/")
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/verify-email"
+    return NextResponse.redirect(url) // clone keeps the query string (verify token)
+  }
+
   const isAuthPage = AUTH_PAGES.some(
     (page) => pathname === page || pathname.startsWith(page + "/")
   )
