@@ -73,7 +73,7 @@ export default function TeamMemberRow({
               onVenueChange(member.id, val === "" ? null : Number(val))
             }}
             title="Venue assignment"
-            className="h-8 min-w-0 flex-1 px-2 text-xs sm:max-w-[140px] sm:flex-none"
+            className="h-8 min-w-0 flex-1 px-2 text-xs sm:w-[140px] sm:flex-none"
           >
             <option value="">Global</option>
             {venues.map((v) => (
@@ -85,7 +85,7 @@ export default function TeamMemberRow({
             value={member.role}
             onChange={(e) => onRoleChange(member.id, e.target.value)}
             title="Role"
-            className="h-8 min-w-0 flex-1 px-2 text-xs sm:max-w-[120px] sm:flex-none"
+            className="h-8 min-w-0 flex-1 px-2 text-xs sm:w-[120px] sm:flex-none"
           >
             {ASSIGNABLE_ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_LABELS[r]}</option>
