@@ -5,6 +5,9 @@ themed nights. You can sell paid tickets, or offer free tickets (price set to $0
 Customers buy or reserve right from their phone in the Bizzy app, and you get a QR-code
 scanner to check people in at the door.
 
+Running the **same event every week** (like Trivia Tuesdays)? Set up a recurring
+series instead of creating each night by hand, see the "Recurring events" article.
+
 ## Creating an event
 
 1. Go to **Events** in the sidebar and click **"Create event"**.
@@ -36,8 +39,25 @@ Open any event and click **"Manage"** to reach the management hub, where you can
 - View **check-ins**: who's arrived and who hasn't.
 - Manage **tickets**, **promo codes**, and the **event team** (co-hosts).
 - View **promoters** and how their referrals are performing.
+- View, share, and **rotate the event's door code** (see the "Scanning, door codes
+  & door counters" article).
 - Send **announcements** and **SMS blasts** to attendees.
 - **Duplicate** the event, or **cancel** it.
+
+## Low-stock & sold-out alerts
+
+When you create or edit an event you can turn on **low-stock and sold-out alerts**
+so you're notified as tickets run low, without watching the dashboard.
+
+- Turn on **low-stock alerts** on the event form, then set a **threshold** as either
+  a **percent** (for example 10% left) or a **ticket count** (for example 10 left).
+- Leaving the threshold **blank is fine** — you'll then be alerted **only when a
+  tier fully sells out**.
+- By default alerts go to the **event team** (the owner and co-hosts). Toggle
+  **notify the business team** to also alert your wider business team.
+- Alerts arrive as a **push notification** and in the app's **Events** tab. If you
+  restock a tier (raise the quantity, unhide it, or clear a "sold out" mark), the
+  alert re-arms for next time.
 
 ## Changing an event after it's live
 

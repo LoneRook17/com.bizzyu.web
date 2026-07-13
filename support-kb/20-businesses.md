@@ -48,11 +48,27 @@ apply to business/venue users.
 - **Promoters**: enable the Promoter Program on an event and set commission terms.
   Promoters get a personal share link; commissions accrue to the promoter's in-app
   wallet and they cash out on demand (no weekly payout). Track under Manage → Promoters.
+- **Recurring events**: run the same event weekly (e.g. Trivia Tuesdays) from the
+  **Recurring** section — pick the nights of the week and a ticket template, and each
+  night is created automatically as its own event with its own tickets, sales, and
+  door code. Edit one night (marked "Customized") or the template; suspending only
+  cancels future nights that have no sales. Generated nights more than about a week
+  out aren't in the student feed/search yet but still exist and sell via direct and
+  promoter links.
+- **Low-stock alerts**: turn on low-stock/sold-out alerts on the event form (percent
+  or count threshold; blank = sold-out-only). Alerts reach the event team by push and
+  in the app's Events tab.
 
 ## Door tools
 
 - **Scanning tickets**: Scanner in the dashboard sidebar or the Bizzy app. Green =
   valid, let them in; red = already used or invalid.
+- **Door codes**: every event has a 6-digit door code. A doorperson opens the app,
+  taps "Scan Tickets" on the login screen, types the code, and can scan and take
+  door sales with NO account or invite. Find, share, and rotate it under the event's
+  Manage page (owner, managers, event creator, and co-hosts can see/rotate it, not
+  staff/crew). The code stops working about 2 hours after the event ends; rotating
+  kills the old one instantly.
 - **Line skips are scanned with the phone's regular camera**, NOT the in-app scanner:
   point the camera at the QR, tap the link, it shows valid or not.
 - **Tap-to-Pay door sales**: sell at the door with the phone as the card reader

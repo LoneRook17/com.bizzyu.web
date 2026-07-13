@@ -41,6 +41,15 @@ role. Who can manage the team:
 - **Only the owner** can remove or re-role another manager, and only the owner can
   transfer ownership or manage billing and Stripe.
 
+## Just working the door for one night?
+
+You don't have to add someone to the team at all. Every event has a **6-digit door
+code** a doorperson can type on the app's login screen to scan tickets and take
+door sales with **no account and no invite**. Use the team for ongoing access; use
+the door code for a one-night doorperson. See the "Scanning, door codes & door
+counters" article. (Owners, managers, the event creator, and co-hosts can see and
+rotate that code; staff and crew use it but can't view it in the dashboard.)
+
 ## Common gotchas
 
 - If a manager or staff member hits a "only the event owner or co-host can do this"
