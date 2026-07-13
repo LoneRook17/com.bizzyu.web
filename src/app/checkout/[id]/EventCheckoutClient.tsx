@@ -565,11 +565,25 @@ export default function EventCheckoutClient({
           )}
 
           <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-            <p className="mb-2 text-sm text-white/70">Download the Bizzy app to access your tickets</p>
+            <p className="mb-3 text-sm text-white/70">Access your tickets in the Bizzy app</p>
+            {/* PRIMARY: open straight into the app via the bizzy://event/:id
+                custom scheme. Tap-only — a plain <a> with no timer/redirect
+                fallback (an armed App Store timer would fire after the app takes
+                over and bounce the user out). The event deep-link arm ships in
+                the current TestFlight build (deep_link_service.dart:141), and
+                `eventId` here is the real numeric event_id (Node /checkout/event/:id
+                does Number(id) → events.getById), not a slug or encrypted id. */}
+            <a
+              href={`bizzy://event/${eventId}`}
+              className="mb-2.5 block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
+              style={{ backgroundColor: GOLD }}
+            >
+              Open in the Bizzy app
+            </a>
+            {/* SECONDARY: App Store, for users who don't have the app yet. */}
             <a
               href="https://apps.apple.com/app/id6683306360"
-              className="inline-block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
-              style={{ backgroundColor: GOLD }}
+              className="inline-block rounded-lg border border-white/20 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
               Get the App
             </a>
