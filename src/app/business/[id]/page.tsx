@@ -30,8 +30,13 @@ export default async function BusinessInterstitialPage({ params }: PageProps) {
   const { id } = await params;
   return (
     <AppInterstitial
-      title="Opening business…"
+      title="Open this business in Bizzy"
       deepLinkUrl={`https://bizzyu.com/business/${id}`}
+      // No customSchemeUrl: the shipped app has no bizzy://business scheme arm
+      // (deep_link_service.dart only maps bizzy://venue and bizzy://deal), so
+      // "Open in App" uses the universal link. Wiring a real business scheme is
+      // an app-side change tracked separately — do NOT point this at
+      // bizzy://business (dead link) or bizzy://venue (id-space mismatch).
     />
   );
 }
