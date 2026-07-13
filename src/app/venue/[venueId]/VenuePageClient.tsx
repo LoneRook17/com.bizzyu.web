@@ -570,12 +570,17 @@ export default function VenuePageClient({
             <SectionHeader title="Deals" count={deals.length} />
             <div className="grid gap-5 md:grid-cols-2">
               {deals.map((deal) => (
-                <div
+                // Same-domain navigation to the /deal/:id web interstitial — NOT
+                // a raw bizzy:// scheme. This page is served from bizzyu.com and
+                // the deal is on bizzyu.com too, so a Universal Link would be
+                // suppressed (iOS never fires a UL for the domain you're already
+                // on) AND a raw custom scheme throws "address is invalid" for the
+                // majority who don't have the app. The interstitial handles both:
+                // app users tap "Open in App" (custom scheme), everyone else gets
+                // the App Store. See src/app/deal/[id]/page.tsx.
+                <Link
                   key={deal.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openInApp(`bizzy://deal/${deal.id}`)}
-                  onKeyDown={(e) => { if (e.key === "Enter") openInApp(`bizzy://deal/${deal.id}`) }}
+                  href={`/deal/${deal.id}`}
                   className="flex cursor-pointer items-start gap-4 rounded-3xl border border-[#1e1e2e] bg-[#141420] p-6 transition-colors hover:border-[#05EB54]/40 active:scale-[0.99]"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#05EB54]/15 text-[#05EB54]">
@@ -599,7 +604,7 @@ export default function VenuePageClient({
                       <img src={deal.deal_image_path} alt={deal.deal_title} className="h-full w-full object-cover" />
                     </div>
                   )}
-                </div>
+                </Link>
               ))}
             </div>
           </section>
