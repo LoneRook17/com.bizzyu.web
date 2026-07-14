@@ -28,6 +28,7 @@ const NAME_MAX_LENGTH = 100
 
 const EMPTY_TICKET: TicketTier = {
   name: "General Admission",
+  description: "",
   price_usd: 0,
   quantity: 0,
   max_per_person: 0,
