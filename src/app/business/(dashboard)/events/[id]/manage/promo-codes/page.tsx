@@ -251,15 +251,18 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
                       <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
                       {/* Universal codes apply to every event at the venue, so current_redemptions / revenue_generated are venue-wide totals. Under a single event we lead with THIS event's slice and show the venue-wide total as a labelled subline — so neither number is a lie. Falls back to the venue-wide count if the API hasn't shipped the per-event fields yet. */}
                       <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                        {typeof code.event_redemptions === "number" ? (
+                        {code.event_redemptions != null ? (
+                          // NB: the API serves SUM()-derived fields as strings ("3", "25.00"),
+                          // so gate on presence (!= null) and coerce with Number() — a typeof
+                          // "number" check silently drops the per-event slice.
                           <div className="flex flex-col items-end leading-tight">
                             <span>
-                              This event: {code.event_redemptions}
-                              {typeof code.event_revenue_generated === "number" ? ` · $${code.event_revenue_generated.toFixed(2)}` : ""}
+                              This event: {Number(code.event_redemptions)}
+                              {code.event_revenue_generated != null ? ` · $${Number(code.event_revenue_generated).toFixed(2)}` : ""}
                             </span>
                             <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
                               All events: {code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}
-                              {typeof code.revenue_generated === "number" ? ` · $${code.revenue_generated.toFixed(2)}` : ""}
+                              {code.revenue_generated != null ? ` · $${Number(code.revenue_generated).toFixed(2)}` : ""}
                             </span>
                           </div>
                         ) : (
