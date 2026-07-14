@@ -71,6 +71,20 @@ const nextConfig: NextConfig = {
         source: "/api/proxy/:path*",
         destination: `${apiUrl}/:path*`,
       },
+      // Promoter tracking link. /p/:code is the ONE canonical promoter link,
+      // served by every host. The Node API's GET /p/:code already logs the
+      // click (INSERT IGNORE into tracking_link_clicks) and 302s to the
+      // Laravel checkout with ?ref=:code. Reverse-proxy to it so click logging
+      // AND the redirect target (Node's CHECKOUT_BASE_URL) stay a single source
+      // of truth — nothing about them is duplicated here. Next forwards the
+      // browser's real User-Agent to Node (so the logged row is non-Dart) and
+      // passes Node's 302 straight through to the browser. This is ONLY the
+      // browser / no-app fallback: /p/* is AASA-claimed, so an iPhone with the
+      // app opens the app via the universal link before this route is fetched.
+      {
+        source: "/p/:code",
+        destination: `${apiUrl}/p/:code`,
+      },
       {
         source: "/api/laravel/:path*",
         destination: `${laravelApiUrl}/api/:path*`,
