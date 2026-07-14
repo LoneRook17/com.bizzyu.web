@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useState, useEffect, useCallback } from "react"
-import { Plus, Ticket, MapPin, ChevronRight } from "lucide-react"
+import { Plus, Ticket, MapPin, ChevronRight, Info } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
@@ -64,6 +64,7 @@ export default function UniversalPromoCodesPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState("")
+  const [showPerUserInfo, setShowPerUserInfo] = useState(false)
 
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
@@ -416,7 +417,17 @@ export default function UniversalPromoCodesPage() {
             </div>
 
             <div>
-              <Label htmlFor="pc-per-user" className="mb-1.5 block">Max per user</Label>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <Label htmlFor="pc-per-user">Max per user</Label>
+                <button
+                  type="button"
+                  onClick={() => setShowPerUserInfo((v) => !v)}
+                  className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
+                  aria-label="How does Max per user work for a venue-wide code?"
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </div>
               <Input
                 id="pc-per-user"
                 type="number"
@@ -424,6 +435,11 @@ export default function UniversalPromoCodesPage() {
                 value={form.max_per_user}
                 onChange={(e) => setForm((f) => ({ ...f, max_per_user: e.target.value }))}
               />
+              {showPerUserInfo && (
+                <p className="mt-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
+                  Counted per event. A customer can use this code once per event — so if it applies to several of your events, they can redeem it at each one. Your total usage limit still applies across all events combined.
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-2">
