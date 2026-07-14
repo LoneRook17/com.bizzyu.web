@@ -467,6 +467,33 @@ export interface PromoCode {
   event_revenue_generated?: number
 }
 
+/**
+ * One event's slice of a universal code's usage — a row in the per-event
+ * breakdown (GET /business/venues/:venueId/promo-codes/:promoId/breakdown).
+ * INCLUDES zero-usage events. NOTE: redemptions / revenue_generated come from
+ * MySQL SUM() and MAY serialize as strings ("3", "25.00") — always coerce with
+ * Number() before math or display.
+ */
+export interface PromoEventBreakdownRow {
+  event_id: number
+  event_name: string | null
+  event_date: string | null
+  redemptions: number
+  revenue_generated: number
+}
+
+/**
+ * A universal code's usage decomposed across every event it applied to. The
+ * per-event rows reconcile to `aggregate`: sum(events[].redemptions) ===
+ * aggregate.redemptions and likewise for revenue.
+ */
+export interface PromoEventBreakdown {
+  promo_code_id: number
+  code: string
+  aggregate: { redemptions: number; revenue_generated: number }
+  events: PromoEventBreakdownRow[]
+}
+
 export interface CheckinEntry {
   ticket_instance_id: number
   uuid: string
