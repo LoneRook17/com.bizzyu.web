@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Privacy Policy</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> May 12, 2026 | <strong>Last Updated:</strong> May 17, 2026 | <strong>Version:</strong> 1.1
+          <strong>Effective Date:</strong> July 14, 2026 | <strong>Last Updated:</strong> July 14, 2026 | <strong>Version:</strong> 1.2
         </p>
 
         <p className="text-muted leading-relaxed">
@@ -90,6 +90,11 @@ export default function PrivacyPage() {
                 <td className="border border-gray-300 px-4 py-3">Reviews, ratings, photos, comments</td>
                 <td className="border border-gray-300 px-4 py-3">When you post content on the Platform</td>
               </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3"><strong>Door Code Operator Information</strong></td>
+                <td className="border border-gray-300 px-4 py-3">First name or name entered, and an event-scoped operator session</td>
+                <td className="border border-gray-300 px-4 py-3">When a person operates an event&apos;s door using a door code (no account required)</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -139,6 +144,26 @@ export default function PrivacyPage() {
                 <td className="border border-gray-300 px-4 py-3"><strong>Log Data</strong></td>
                 <td className="border border-gray-300 px-4 py-3">Access times, error logs, crash reports, performance data</td>
                 <td className="border border-gray-300 px-4 py-3">Troubleshooting, Platform stability</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3"><strong>Scan &amp; Admission Logs</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Each Ticket or pass scan: who scanned it (authorized staff or a Door Code Operator), timestamp, and outcome (valid, duplicate, invalid)</td>
+                <td className="border border-gray-300 px-4 py-3">Admission, capacity management, fraud prevention, event analytics</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3"><strong>Door Counter Data</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Per-tap door-counter records, including the count action and the operator attributed to it</td>
+                <td className="border border-gray-300 px-4 py-3">Headcount and occupancy tallies and event analytics for the business</td>
+              </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3"><strong>Marketing Send Log</strong></td>
+                <td className="border border-gray-300 px-4 py-3">An audit record of marketing messages sent through the Platform, including channel, timing, and recipient counts</td>
+                <td className="border border-gray-300 px-4 py-3">Compliance recordkeeping, delivery measurement, abuse prevention</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-300 px-4 py-3"><strong>Wallet Pass Device Registrations</strong></td>
+                <td className="border border-gray-300 px-4 py-3">Device registration tokens for Apple Wallet or Google Wallet passes</td>
+                <td className="border border-gray-300 px-4 py-3">Delivering pass updates to your wallet by push</td>
               </tr>
             </tbody>
           </table>
@@ -304,6 +329,11 @@ export default function PrivacyPage() {
                 <td className="border border-gray-300 px-4 py-3">.edu validation services</td>
                 <td className="border border-gray-300 px-4 py-3">Email or student-status data minimally necessary to verify enrollment</td>
               </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-3">AI support assistant</td>
+                <td className="border border-gray-300 px-4 py-3">Anthropic (Claude)</td>
+                <td className="border border-gray-300 px-4 py-3">The text of questions you type into the business dashboard assistant and related account context (e.g., your name and business name)</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -432,6 +462,7 @@ export default function PrivacyPage() {
           <li><strong>Closed accounts:</strong> After account closure, we may retain certain information for up to <strong>three (3) years</strong> to comply with legal obligations, resolve disputes, enforce our agreements, and maintain business records.</li>
           <li><strong>Transaction records:</strong> Purchase history, ticket records, deal redemption data, and Promoter payout records may be retained for up to <strong>seven (7) years</strong> for tax, accounting, and legal compliance purposes (including IRS 1099 reporting).</li>
           <li><strong>Marketing consent records:</strong> Opt-in and opt-out records for SMS, email, and push communications are retained for at least <strong>four (4) years</strong> after the most recent opt-out, consistent with TCPA recordkeeping guidance.</li>
+          <li><strong>Operational and audit logs:</strong> Scan and admission logs, door-counter taps, Door Code Operator session records, and marketing send logs are retained for the event and a limited period afterward for audit, dispute-resolution, and fraud-prevention purposes, then deleted or de-identified.</li>
           <li><strong>Anonymized data:</strong> Aggregated and de-identified data may be retained indefinitely for analytics and business purposes.</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
@@ -717,6 +748,9 @@ export default function PrivacyPage() {
         <p className="text-muted leading-relaxed">
           Marketing SMS messages from Bizzy or any business operating on the Platform are sent only with your prior express written consent as required by the Telephone Consumer Protection Act (47 U.S.C. § 227) and its implementing regulations. By providing your mobile phone number and affirmatively opting in to marketing SMS, you agree to receive recurring marketing SMS messages; message frequency varies; message and data rates may apply; consent is not a condition of any purchase. You may opt out at any time by replying STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, OPTOUT, or REVOKE to any marketing SMS, or by toggling SMS off in your account notification settings. Reply HELP for help. We maintain records of your opt-in and opt-out actions for compliance purposes (see Section 7).
         </p>
+        <p className="text-muted leading-relaxed mt-3">
+          Plain-language opt-out requests (such as &quot;stop texting me&quot; or &quot;remove me&quot;) are honored in addition to the keywords above, and you may re-subscribe by replying START. For guest checkout (purchasing without an account), we send a one-time SMS verification code to the phone number entered to verify the purchase, and we process that number and the message&apos;s delivery status; these verification messages are transactional, are rate-limited to prevent abuse, and are not marketing. Transactional and verification messages (including OTP and guest-checkout codes) are not affected by a marketing opt-out.
+        </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.4 Consent Records</h3>
         <p className="text-muted leading-relaxed">
@@ -731,7 +765,7 @@ export default function PrivacyPage() {
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li><strong>The business is the sender of record.</strong> Bizzy acts as the technology platform. The business is responsible for the content and accuracy of the communication, subject to Bizzy&apos;s content policies.</li>
           <li><strong>We process delivery and engagement data on the business&apos;s behalf.</strong> This includes phone numbers and email addresses for delivery, opt-out (STOP) signals from carriers, message delivery status, opens, clicks, and the message content itself. We do not use this data to build a Bizzy-side profile of you for unrelated advertising purposes.</li>
-          <li><strong>Following a business after a Ticket purchase.</strong> When you purchase a Ticket, the Platform may add you to the Event Organizer&apos;s follower list for transactional event communications. Marketing communications from that business still require a separate opt-in (see Section 16). Unfollowing is available in your account settings.</li>
+          <li><strong>Following a business after a Ticket purchase.</strong> When you purchase a Ticket, the Platform creates a follower relationship between you and the Event Organizer, with per-business notification preferences. This relationship enables transactional event communications and the business&apos;s announcements through the channels you have enabled (see Terms Section 16.2 and the channel-level rules in Section 16). You can adjust per-business notification preferences, mute an individual business, apply a global marketing mute, or unfollow the business at any time in your account settings.</li>
           <li><strong>10DLC and short-code compliance.</strong> SMS sent through the Platform on behalf of businesses is delivered over U.S. carrier-registered messaging campaigns (10DLC or short codes) so that you can identify the sender and the carrier can enforce STOP/HELP keywords.</li>
         </ul>
 
@@ -776,7 +810,7 @@ export default function PrivacyPage() {
         <ul className="text-muted space-y-1 list-disc pl-6">
           <li><strong>Ticket purchaser identity:</strong> Name, email, and phone number for order confirmation and event communication.</li>
           <li><strong>Transaction details:</strong> Event name, ticket type, quantity, price, fees, payment method (last four digits only), promo code applied, and order timestamp.</li>
-          <li><strong>Admission data:</strong> QR code scan records, time of entry, scanner identifier, and admission status (used for event operations, capacity management, and door counter analytics).</li>
+          <li><strong>Admission data:</strong> QR code scan records, time of entry, the identifier of the scanner or Door Code Operator, admission outcome (valid, duplicate, invalid), and per-tap door-counter records (used for event operations, capacity management, and door counter analytics).</li>
           <li><strong>Transfer records:</strong> If Tickets are transferred to another party (where permitted), we record the transfer for audit and fraud prevention purposes.</li>
         </ul>
 
@@ -795,6 +829,11 @@ export default function PrivacyPage() {
           We use ticket transaction data and device information to detect and prevent ticket fraud, including duplicate ticket use, unauthorized transfers, counterfeit tickets, and prohibited automated purchasing (consistent with the federal BOTS Act). Suspected fraud may result in ticket cancellation and account suspension.
         </p>
 
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">19.5 Door Code Operators</h3>
+        <p className="text-muted leading-relaxed">
+          An Event Organizer may allow individuals to work an event&apos;s door using a numeric door code, without a Bizzy account (see Terms Section 7.14). When a person operates the door in this way, we ask for and collect their <strong>name</strong> so that their Ticket scans, door sales, and door-counter activity can be attributed to them in the Event Organizer&apos;s analytics. This information is stored in an operator session record and is referenced by scan logs, orders, and door-counter taps for that event. We collect this information at the direction of the Event Organizer for that event&apos;s operations; the Event Organizer determines the purposes for which it is used within its analytics. We retain Door Code Operator session records for the duration of the event and a limited period afterward for audit, dispute-resolution, and fraud-prevention purposes, then delete or de-identify them in accordance with Section 7. Door Code Operators may contact us at {CONTACT_EMAIL} with privacy requests.
+        </p>
+
         {/* ── 20. Merchant & Event Organizer Data ── */}
         <h2 className="text-2xl font-bold text-ink mt-10 mb-4">20. Merchant &amp; Event Organizer Data</h2>
         <p className="text-muted leading-relaxed">
@@ -808,9 +847,13 @@ export default function PrivacyPage() {
           <li>Stripe Connect account information for payouts</li>
           <li>Marketing campaign data, including blast content, recipient counts, and engagement metrics</li>
           <li>Aggregated analytics about deal redemptions, ticket sales, and follower base</li>
+          <li>One or more payment-processor connected accounts (e.g., multiple Stripe Connect accounts) and any venue-to-account mappings used to route sale proceeds</li>
         </ul>
         <p className="text-muted leading-relaxed mt-3">
           We use this information to operate the Platform, facilitate transactions, provide analytics, and communicate with you about your account. Merchant and Event Organizer data is subject to the same security and retention practices described in this Privacy Policy.
+        </p>
+        <p className="text-muted leading-relaxed mt-3">
+          <strong>AI support assistant.</strong> The business dashboard may include an AI support assistant. When a business user submits a question, we process the text of that question and related account context (such as your name and business name) to generate a response from a knowledge base through our AI sub-processor (see Section 4.2), and we may retain the conversation to improve support quality. Business users should not enter another person&apos;s personal information into the assistant except as necessary for a support request. AI-generated responses are informational only and not binding (see Terms Section 3.8).
         </p>
 
         {/* ── 21. Data Transfers ── */}
@@ -855,6 +898,7 @@ export default function PrivacyPage() {
           This section lists material revisions to this Privacy Policy. Non-material changes (typographical corrections, formatting, or clarifications that do not alter your rights) may be made without notation.
         </p>
         <ul className="text-muted space-y-2 list-disc pl-6">
+          <li><strong>v1.2 &mdash; July 14, 2026:</strong> Disclosed collection of Door Code Operator names and operator session records from account-less door staff (Sections 19.5, 1.1); added scan and admission logs, per-tap door-counter records, the marketing send log, and Apple/Google Wallet device registrations to the collected-data categories and retention schedule (Sections 1.2, 19.1, 7); disclosed our AI support-assistant sub-processor (Sections 4.2, 20); clarified the follower relationship created on a Ticket purchase and per-business notification preferences (Section 17); added START re-subscribe and plain-language opt-out equivalents and disclosed guest-checkout verification messaging (Section 16.3); and noted per-venue connected accounts (Section 20).</li>
           <li><strong>v1.1 &mdash; May 17, 2026:</strong> Added OPTOUT and REVOKE to the list of recognized SMS opt-out keywords (Section 17); added this Revision History section.</li>
           <li><strong>v1.0 &mdash; May 12, 2026:</strong> Initial publication of this Privacy Policy, including expanded coverage of Promoter Program data, marketing communications, sub-processor disclosures, Apple Wallet pass data, and state-specific privacy rights (CA, VA, CO, CT, UT, NY, FL).</li>
         </ul>

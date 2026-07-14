@@ -18,7 +18,7 @@ export default function TermsPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Terms of Service</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> May 12, 2026 | <strong>Last Updated:</strong> May 17, 2026 | <strong>Version:</strong> 1.1
+          <strong>Effective Date:</strong> July 14, 2026 | <strong>Last Updated:</strong> July 14, 2026 | <strong>Version:</strong> 1.2
         </p>
 
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-10">
@@ -124,6 +124,11 @@ export default function TermsPage() {
           From time to time, Bizzy may introduce additional features, tools, or services. Such additions will be governed by these Terms unless separate terms are presented at the time of access, in which case those supplemental terms will also apply and will control in the event of a conflict with these Terms.
         </p>
 
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">3.8 Business Dashboard &amp; AI Support Assistant</h3>
+        <p className="text-muted leading-relaxed">
+          Merchants and Event Organizers may access a web-based business dashboard for team management, event and ticketing setup, marketing, analytics, and payouts. The dashboard may include an <strong>AI support assistant</strong> that generates answers to typed questions from a Bizzy knowledge base. Responses from the AI assistant are provided for <strong>general informational purposes only and are not a binding statement</strong> of fees, payout timing, policies, eligibility, or legal, tax, or financial advice. In the event of any conflict, these Terms, the Privacy Policy, the applicable business or Promoter agreement, and the payment processor&apos;s terms control over any AI-generated response. Do not rely on the AI assistant for decisions without confirming through official Platform settings or by contacting Bizzy. Questions you submit to the assistant are processed as described in the Privacy Policy.
+        </p>
+
         <p className="text-muted leading-relaxed mt-3">
           <strong>Important:</strong> Bizzy is a technology platform, not a retailer, merchant, event organizer, venue operator, employer, or marketing agency. Bizzy does not produce, manufacture, sell, resell, provide, control, manage, offer, deliver, or supply any of the Deals, Tickets, products, services, events, or marketing content listed on or distributed through the Platform. The Merchants, Event Organizers, and (where applicable) Promoters are solely responsible for their offerings and communications, subject to the rules in these Terms.
         </p>
@@ -174,7 +179,7 @@ export default function TermsPage() {
         </ul>
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">5.1 Account Verification &amp; Recovery</h3>
         <p className="text-muted leading-relaxed">
-          Bizzy may use SMS-based one-time passcodes (OTP) to verify your identity during account registration, login, or account recovery. By providing your phone number, you consent to receiving these verification messages. Standard message and data rates may apply. OTP codes are time-sensitive and should not be shared with anyone. Bizzy will never ask you for your OTP code outside of the in-app verification flow.
+          Bizzy may use SMS-based one-time passcodes (OTP) to verify your identity during account registration, login, or account recovery. By providing your phone number, you consent to receiving these verification messages. Standard message and data rates may apply. OTP codes are time-sensitive and should not be shared with anyone. Bizzy will never ask you for your OTP code outside of the in-app verification flow. Verification codes may also be sent during guest checkout without an account; see Section 7.18.
         </p>
         <p className="text-muted leading-relaxed mt-3">
           Bizzy is not liable for any loss or damage arising from your failure to comply with this section. You are responsible for all activities that occur under your account, whether or not you authorized such activities.
@@ -240,6 +245,9 @@ export default function TermsPage() {
         <p className="text-muted leading-relaxed">
           Ticket prices are set by Event Organizers. Bizzy Ticketing LLC may charge service fees, processing fees, or facility charges in addition to the face value of the Ticket. All applicable fees will be disclosed to you before you complete your purchase. Prices and fees are subject to change until the moment of confirmed purchase.
         </p>
+        <p className="text-muted leading-relaxed mt-3">
+          A platform service fee applies to sales made through the Platform. The fee rate is set by Bizzy and may be configured per business. For Tickets and <strong>line-skip passes</strong>, the service fee is charged to the <strong>buyer in addition to</strong> the price set by the Event Organizer, and the Event Organizer receives the face value of the item sold. All fees, including any buyer-borne service fee, are itemized and shown to you as part of an all-in total <strong>before you confirm and pay</strong>. Fees are subject to change until the moment of confirmed purchase.
+        </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.5 Ticket Refunds &amp; Cancellations</h3>
         <p className="text-muted leading-relaxed">
@@ -250,6 +258,9 @@ export default function TermsPage() {
           <li><strong>Postponed or Rescheduled Events:</strong> If an event is postponed or rescheduled, your Ticket will generally be valid for the new date. If you cannot attend the rescheduled event, refund availability will depend on the Event Organizer&#39;s policy.</li>
           <li><strong>Venue or Weather-Related Changes:</strong> Bizzy is not responsible for changes to an event due to weather, venue conditions, or other factors outside our control.</li>
         </ul>
+        <p className="text-muted leading-relaxed mt-3">
+          When a Ticket, line-skip, or door sale is refunded, Bizzy reverses the corresponding transfer to the connected account that originally received the proceeds (see Section 7.12). Where an event or sale is cancelled by the Event Organizer, Bizzy may also recover its payment-processing fee. Refunds to Users are not delayed by the reversal or by any related Promoter clawback (see Section 10.4).
+        </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.6 Ticket Transfers &amp; Resale Restrictions</h3>
         <p className="text-muted leading-relaxed">
@@ -280,15 +291,55 @@ export default function TermsPage() {
         <p className="text-muted leading-relaxed">
           When you purchase a Ticket, the applicable Event Organizer receives certain information about you, including your name, email address, phone number (where collected), Ticket purchase details, and any tags or notes the Event Organizer applies to your profile within the Bizzy business dashboard. Event Organizers agree under separate terms to use this information solely in connection with the event and applicable marketing communications you have opted in to. Bizzy is not responsible for an Event Organizer&apos;s use of attendee data outside the scope of the Platform.
         </p>
+        <p className="text-muted leading-relaxed mt-3">
+          For clarity: purchasing a Ticket exposes your identity and contact information to the Event Organizer, who may view your attendance, apply tags or notes to your profile in its business dashboard, contact you with transactional event communications, and&mdash;through the channels you have enabled&mdash;send you the business&apos;s announcements as described in Section 16.
+        </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.12 Event Organizer Payouts</h3>
         <p className="text-muted leading-relaxed">
           Bizzy facilitates payouts to Event Organizers through third-party payment platforms that provide connected account functionality (e.g., Stripe Connect). Event Organizers must establish and maintain a connected account with Bizzy&#39;s designated payment processor in order to receive payouts from Ticket sales. Payout timing, fees, and terms are governed by the agreement between the Event Organizer, Bizzy, and the applicable payment processor. Bizzy is not liable for delays, holds, or issues arising from the payment processor&#39;s policies or the Event Organizer&#39;s account status.
         </p>
+        <p className="text-muted leading-relaxed mt-3">
+          A business may connect <strong>more than one</strong> payment-processor connected account (e.g., multiple Stripe Connect accounts) and map specific venues to specific accounts. Proceeds from a sale route to the connected account mapped to that event&apos;s venue; if no venue-specific account applies, proceeds route to the business&apos;s default connected account. As between the parties, the business (Event Organizer) whose connected account receives the proceeds of a given sale is the <strong>merchant of record</strong> for that sale and is responsible for the underlying transaction, including refunds, chargebacks, and disputes arising from sales routed to its account. Bizzy is not the merchant of record for Ticket, line-skip, or door sales and does not bear chargeback liability for them, except as required by applicable law or the payment processor&apos;s terms. Bizzy may debit, offset, or reverse amounts (including from future proceeds or a Promoter or business balance) to recover refunded amounts, chargebacks, reversed transfers, and associated processing fees.
+        </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.13 Liability for Events</h3>
         <p className="text-muted leading-relaxed">
           Bizzy is not liable for any injury, loss, damage, or claim arising from your attendance at any event, including but not limited to personal injury, property damage, theft, illness, or exposure to communicable diseases. By attending an event, you assume all risks associated with attendance.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.14 Door Code Access &amp; Door Code Operators</h3>
+        <p className="text-muted leading-relaxed">
+          An Event Organizer may generate a numeric <strong>door code</strong> for an event and share it with individuals it authorizes to work that event&apos;s door (each, a <strong>&quot;Door Code Operator&quot;</strong>). A Door Code Operator does not need a Bizzy account; by entering a valid door code, the operator obtains a limited, event-scoped operational session on the Platform for the purpose of admitting attendees and supporting door operations for that event only.
+        </p>
+        <p className="text-muted leading-relaxed mt-3">
+          A Door Code Operator may scan and validate Tickets and line-skip passes; take in-person card payments at the door (including contactless &quot;tap-to-pay&quot;) for Tickets and passes; and create, rename, and increment door counters. A Door Code Operator may <strong>not</strong> delete or reset door counters; view, rotate, or regenerate the door code; edit the event; or view the event&apos;s revenue, settlement, or payout information. In-person card payments taken at the door are processed through Bizzy&apos;s payment processor and settle to the connected account associated with the event (see Section 7.12); a Door Code Operator has no access to funds, balances, or payout destinations.
+        </p>
+        <p className="text-muted leading-relaxed mt-3">
+          The Event Organizer is solely responsible for selecting, authorizing, supervising, and (if applicable) compensating its Door Code Operators, and for their conduct on the Platform, including any card payments they take and any information they enter. Door Code Operators act on behalf of the Event Organizer, not Bizzy. <strong>Bizzy is not the employer, principal, or agent of any Door Code Operator</strong> and is not responsible for their acts or omissions. By generating and distributing a door code, the Event Organizer represents that it is authorized to grant each operator access, that each operator is authorized to work the event, and that it has made the operator aware of the terms and privacy practices applicable to their use of the Platform.
+        </p>
+        <p className="text-muted leading-relaxed mt-3">
+          A door code expires a short period after its event ends and may be rotated by the Event Organizer at any time. Rotating or expiring a code terminates the access previously granted through that code, including any active operator session, on the next attempted action.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.15 Recurring Events</h3>
+        <p className="text-muted leading-relaxed">
+          An Event Organizer may create a recurring event or series that automatically generates individual event occurrences (each, an &quot;occurrence&quot; or &quot;night&quot;). <strong>Each occurrence is a separate event</strong> with its own inventory, capacity, pricing, promotional codes, door code, admission, and settlement. A Ticket or pass is valid only for the specific occurrence for which it was purchased. Cancellation, postponement, and refund terms (Section 7.5) apply per occurrence.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.16 Line-Skip Passes</h3>
+        <p className="text-muted leading-relaxed">
+          A line-skip pass is a purchasable, scannable pass that allows the holder to use an expedited or priority entry lane for a specified event occurrence, subject to the venue&apos;s rules and capacity. Line-skip passes are sold per occurrence, may have their own capacity limits and promotional codes, and <strong>do not guarantee admission</strong> or waive the Event Organizer&apos;s or venue&apos;s admission discretion (see Section 7.8). Line-skip passes are Tickets for purposes of these Terms, including the anti-bot and purchase-limit rules (Section 7.7), the transfer restrictions (Section 7.6), and the fee disclosure (Section 7.4). Line-skip passes are generally non-refundable except as provided in Section 7.5 or as required by law.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.17 Promotional Codes</h3>
+        <p className="text-muted leading-relaxed">
+          Event Organizers may issue promotional codes that reduce the price of Tickets or line-skip passes. A code may be <strong>event-specific</strong> or <strong>universal</strong> (applicable across every event at a given venue). Universal codes are subject to usage limits that are counted <strong>across all events to which the code applies</strong>. Promotional codes have no cash value, may be modified or withdrawn at any time, may not be combined unless expressly permitted, and are void where prohibited. Bizzy and the Event Organizer may void a code and reverse the associated discount where a code is obtained or used through fraud, error, or in violation of these Terms.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">7.18 Guest Checkout &amp; Verification</h3>
+        <p className="text-muted leading-relaxed">
+          The Platform may allow you to purchase a Ticket or pass without creating an account (&quot;guest checkout&quot;). To verify a guest purchase, the Platform sends a one-time SMS verification code to the phone number you enter. This is a <strong>transactional verification message, not marketing</strong>, and is sent to the number you provide in order to complete your purchase. By entering a phone number at checkout, you represent that you are authorized to receive messages at that number. To protect against abuse, verification requests are rate-limited (including by phone number, by network address, and by overall volume). Standard message and data rates may apply.
         </p>
 
         {/* ── 8. Merchant Relationships & Disclaimers ── */}
@@ -346,12 +397,20 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">9.6 Taxes</h3>
         <p className="text-muted leading-relaxed">
-          You are responsible for paying any applicable taxes, including sales tax, use tax, or other governmental charges associated with your purchases on the Platform, unless Bizzy is legally required to collect and remit such taxes on your behalf.
+          You are responsible for paying any applicable taxes, including sales tax, use tax, or other governmental charges associated with your purchases on the Platform, unless Bizzy is legally required to collect and remit such taxes on your behalf. Where Bizzy is required to collect tax on a purchase (for example, as a marketplace facilitator under applicable state law), the applicable tax is calculated and shown as part of your itemized total before you confirm and pay. The taxability of Tickets, line-skip passes, admissions, and cover charges varies by jurisdiction.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">9.7 Promoter Payouts (Cross-Reference)</h3>
         <p className="text-muted leading-relaxed">
           Promoter Program payouts are governed by Section 14 and are subject to separate Stripe Connect onboarding, tax reporting, and clawback rules described therein.
+        </p>
+
+        <h3 className="text-lg font-semibold text-ink mt-6 mb-2">9.8 Seller Taxes &amp; Marketplace Facilitator Collection</h3>
+        <p className="text-muted leading-relaxed">
+          As between Bizzy and a Merchant or Event Organizer, the Merchant or Event Organizer is <strong>solely responsible</strong> for determining, charging, collecting, reporting, and remitting all sales, use, admission, amusement, excise, and other transaction taxes applicable to its Deals, Tickets, line-skip passes, and other sales made through the Platform, and for determining whether any such sale is taxable. Bizzy does not provide tax advice and does not determine the taxability of any Merchant or Event Organizer offering.
+        </p>
+        <p className="text-muted leading-relaxed mt-3">
+          Where applicable law&mdash;including a state marketplace-facilitator statute&mdash;requires Bizzy to collect and remit tax on a facilitated sale, Bizzy will do so for those sales, and the Merchant or Event Organizer authorizes Bizzy to calculate, collect, add to the buyer&apos;s total, and remit such tax, and to report the associated transaction information to the relevant tax authority. Except where Bizzy is the legally required collector, the Merchant or Event Organizer will indemnify and hold Bizzy harmless from any taxes, interest, penalties, or costs assessed in connection with its sales. Each party will provide the other with information and documentation reasonably necessary to determine and satisfy applicable tax obligations.
         </p>
 
         {/* ── 10. Refund, Cancellation & Chargeback Policy ── */}
@@ -380,6 +439,9 @@ export default function TermsPage() {
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">10.5 Chargebacks</h3>
         <p className="text-muted leading-relaxed">
           Filing a fraudulent or unwarranted chargeback with your bank or payment provider constitutes a violation of these Terms. If you initiate a chargeback, Bizzy reserves the right to immediately suspend or terminate your account, dispute the chargeback with the payment processor, and pursue recovery of the disputed amount, including any associated fees or costs.
+        </p>
+        <p className="text-muted leading-relaxed mt-3">
+          For Ticket, line-skip, and door sales, a chargeback is resolved against the connected account that received the proceeds of the disputed sale (see Section 7.12). Bizzy may recover the disputed amount and associated fees from the applicable business or User balance.
         </p>
 
         {/* ── 11. Savings & Pricing Disclaimer ── */}
@@ -556,7 +618,7 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.3 SMS Opt-Out and Help</h3>
         <p className="text-muted leading-relaxed">
-          You may opt out of marketing SMS messages at any time by replying <strong>STOP</strong>, <strong>STOPALL</strong>, <strong>UNSUBSCRIBE</strong>, <strong>CANCEL</strong>, <strong>END</strong>, <strong>QUIT</strong>, <strong>OPTOUT</strong>, or <strong>REVOKE</strong> to any marketing SMS, or by toggling SMS off in your account notification settings. You will receive a single confirmation message and no further marketing SMS from the sender from which you opted out. Reply <strong>HELP</strong> to any Bizzy SMS for help, or contact us at {CONTACT_EMAIL}. Opting out of marketing SMS does not opt you out of transactional or security SMS (including OTP codes), which are necessary for account operation.
+          You may opt out of marketing SMS messages at any time by replying <strong>STOP</strong>, <strong>STOPALL</strong>, <strong>UNSUBSCRIBE</strong>, <strong>CANCEL</strong>, <strong>END</strong>, <strong>QUIT</strong>, <strong>OPTOUT</strong>, or <strong>REVOKE</strong>&mdash;or a plain-language equivalent such as &quot;stop texting me&quot; or &quot;remove me&quot;&mdash;to any marketing SMS, or by toggling SMS off in your account notification settings. You will receive a single confirmation message and no further marketing SMS from the sender from which you opted out. You may re-subscribe by replying <strong>START</strong>. Reply <strong>HELP</strong> to any Bizzy SMS for help, or contact us at {CONTACT_EMAIL}. Opting out of marketing SMS does not opt you out of transactional or security SMS (including OTP and purchase-verification codes), which are necessary for account and order operation.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">15.4 Quiet Hours &amp; Timing</h3>
@@ -589,7 +651,7 @@ export default function TermsPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.2 Following Through a Ticket Purchase</h3>
         <p className="text-muted leading-relaxed">
-          When you purchase a Ticket from an Event Organizer, the Platform may add you to that Event Organizer&apos;s follower list to enable transactional event communications (e.g., event reminders, schedule changes, day-of logistics) related to your Ticket. By default, this follow does <strong>not</strong> opt you in to marketing communications from the Event Organizer; marketing communications are governed by the separate opt-ins in Section 15. You may unfollow the Event Organizer after the event through your account settings; transactional event communications related to the specific Ticket you hold may continue until the event has concluded.
+          When you purchase a Ticket, the Platform adds you to the Event Organizer&apos;s follower list. Following enables the Event Organizer to send you (a) transactional event communications related to your Ticket (e.g., event reminders, schedule changes, day-of logistics) and (b) that business&apos;s announcements through the channels you have enabled, subject to the channel-level rules in Section 15. You control these communications: you can adjust per-business notification preferences, mute an individual business, apply a global marketing mute, or unfollow the business at any time in your account settings. Marketing SMS remains subject to the consent and opt-out rules in Sections 15.2&ndash;15.3. Transactional event communications related to the specific Ticket you hold may continue until the event has concluded.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.3 Business as Sender; Bizzy as Platform</h3>
@@ -931,6 +993,7 @@ export default function TermsPage() {
           This section lists material revisions to these Terms. Non-material changes (typographical corrections, formatting, or clarifications that do not alter your rights) may be made without notation.
         </p>
         <ul className="text-muted space-y-2 list-disc pl-6">
+          <li><strong>v1.2 &mdash; July 14, 2026:</strong> Added the business dashboard and AI support assistant disclaimer (Section 3.8); disclosed the buyer-borne service fee, the configurable platform fee, and its itemized all-in disclosure at checkout (Section 7.4); added refund transfer-reversal mechanics (Section 7.5); clarified attendee exposure to businesses (Section 7.11); clarified per-venue connected accounts, merchant of record, and chargeback allocation (Sections 7.12, 10.5); added door-code access and Door Code Operator terms (Section 7.14), recurring events (Section 7.15), line-skip pass terms (Section 7.16), promotional and universal codes (Section 7.17), and guest-checkout SMS verification (Sections 7.18, 5.1); added START re-subscribe and plain-language opt-out equivalents for marketing SMS (Section 15.3); reconciled following through a Ticket purchase to reflect that a purchase follows the business and can send its announcements through the channels you enable (Section 16.2); and clarified seller tax responsibility, indemnity, and marketplace-facilitator tax collection (Sections 9.6, 9.8).</li>
           <li><strong>v1.1 &mdash; May 17, 2026:</strong> Added OPTOUT and REVOKE to the list of recognized SMS opt-out keywords (Section 16); updated accessibility commitment from WCAG 2.1 to WCAG 2.2 Level AA (Section 32); clarified Designated Copyright Agent contact and added reference to the U.S. Copyright Office DMCA Directory (Section 33); added this Revision History section.</li>
           <li><strong>v1.0 &mdash; May 12, 2026:</strong> Initial publication of these Terms, including the Promoter Program, marketing communications and TCPA/CAN-SPAM provisions, Apple Wallet integration, and state-specific privacy and consumer protection notices.</li>
         </ul>
