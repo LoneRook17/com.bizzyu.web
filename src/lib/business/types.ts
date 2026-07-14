@@ -447,7 +447,24 @@ export interface PromoCode {
   is_active: boolean
   created_by: number
   created_at: string
+  /**
+   * Revenue attributed to this code. For universal (venue) codes this is the
+   * venue-wide total across EVERY event ("All events"). See event_revenue_generated
+   * for the per-event slice returned by the event-scoped endpoint.
+   */
   revenue_generated?: number
+  /**
+   * Universal codes viewed under ONE event: redemptions of this code on THAT
+   * event only. Present only in the /business/events/:id/promo-codes payload;
+   * undefined for event-scoped rows and older API responses. Pairs with
+   * current_redemptions (venue-wide "All events" count).
+   */
+  event_redemptions?: number
+  /**
+   * Universal codes viewed under ONE event: revenue on THAT event only. Pairs
+   * with revenue_generated (venue-wide total).
+   */
+  event_revenue_generated?: number
 }
 
 export interface CheckinEntry {
