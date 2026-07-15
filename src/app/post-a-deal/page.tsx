@@ -200,65 +200,70 @@ export default async function PostADealPage() {
 
       {/* ─── The one rule ─────────────────────────────────────── */}
       <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
+        <div className="max-w-4xl mx-auto px-6 py-20 md:py-24">
           <AnimatedSection>
-            <div className="text-center max-w-2xl mx-auto mb-10">
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-3">
+            <div className="text-center max-w-xl mx-auto mb-10 md:mb-12">
+              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
                 The one rule
               </p>
-              <h2 className="text-3xl md:text-4xl font-bold text-ink tracking-tight mb-3">
+              {/* Ink, not muted. The highlighter sits UNDER dark letters; run it
+                  beneath grey ones and the band reads as a strikethrough, which
+                  on this sentence says precisely the opposite of the rule. */}
+              <h2 className="text-3xl md:text-5xl font-bold text-ink tracking-tight leading-[1.1] mb-4">
                 It has to be{" "}
-                <span className="font-display-italic font-normal text-muted">
-                  <span className="marker-underline">Bizzy only</span>
-                </span>
-                .
+                <span className="marker-underline marker-draw whitespace-nowrap">Bizzy only</span>.
               </h2>
-              <p className="text-muted">
+              <p className="text-muted leading-relaxed">
                 If a student can get the same offer without Bizzy, it is not a Bizzy deal. That
                 exclusivity is the whole reason students open the app.
               </p>
             </div>
           </AnimatedSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto">
-            <AnimatedSection>
-              <div className="h-full bg-white rounded-2xl border border-primary/30 p-6">
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="w-3.5 h-3.5 text-ink" />
+          {/* One object, split, rather than two cards floating apart: this is a
+              single comparison and should read as one. */}
+          <AnimatedSection delay={0.1}>
+            <div className="rounded-3xl bg-white border border-gray-200 shadow-sm shadow-black/[0.03] overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                <div className="p-7 md:p-8 border-b md:border-b-0 md:border-r border-gray-100">
+                  <div className="flex items-center gap-2.5 mb-5">
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-ink" />
+                    </div>
+                    <h3 className="font-bold text-ink text-sm uppercase tracking-wider">This works</h3>
                   </div>
-                  <h3 className="font-bold text-ink">This works</h3>
+                  <ul className="space-y-3.5">
+                    {QUALIFIES.map((item) => (
+                      <li key={item} className="flex items-start gap-3 text-sm">
+                        <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-dark" />
+                        <span className="text-ink leading-relaxed">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="space-y-3">
-                  {QUALIFIES.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5 text-sm">
-                      <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-dark" />
-                      <span className="text-ink leading-relaxed">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </AnimatedSection>
 
-            <AnimatedSection delay={0.1}>
-              <div className="h-full bg-white rounded-2xl border border-gray-200 p-6">
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center">
-                    <Cross className="w-3.5 h-3.5 text-white" />
+                {/* Tinted back a shade so the eye lands on the allowed column first. */}
+                <div className="p-7 md:p-8 bg-gray-50/70">
+                  <div className="flex items-center gap-2.5 mb-5">
+                    <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                      <Cross className="w-3 h-3 text-ink" />
+                    </div>
+                    <h3 className="font-bold text-muted text-sm uppercase tracking-wider">
+                      This doesn&apos;t
+                    </h3>
                   </div>
-                  <h3 className="font-bold text-ink">This doesn&apos;t</h3>
+                  <ul className="space-y-3.5">
+                    {DOES_NOT.map((item) => (
+                      <li key={item} className="flex items-start gap-3 text-sm">
+                        <Cross className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted" />
+                        <span className="text-muted leading-relaxed">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="space-y-3">
-                  {DOES_NOT.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5 text-sm">
-                      <Cross className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
-                      <span className="text-muted leading-relaxed">{item}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
-            </AnimatedSection>
-          </div>
+            </div>
+          </AnimatedSection>
         </div>
       </section>
 

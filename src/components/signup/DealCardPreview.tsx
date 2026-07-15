@@ -64,7 +64,7 @@ export default function DealCardPreview({ data }: DealCardPreviewProps) {
               className="object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
               <svg
                 width="40"
                 height="40"

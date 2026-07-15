@@ -31,7 +31,7 @@ export default function StepProgress({ currentStep }: StepProgressProps) {
                 ? "bg-primary text-ink shadow-sm shadow-primary/20"
                 : currentStep > step.num
                   ? "bg-primary/10 text-primary-dark"
-                  : "bg-gray-100 text-gray-400"
+                  : "bg-gray-100 text-gray-600"
             }`}
           >
             {currentStep > step.num ? (

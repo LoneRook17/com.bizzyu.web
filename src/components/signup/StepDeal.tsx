@@ -129,7 +129,7 @@ export default function StepDeal({
             <button
               type="button"
               onClick={() => setShowInfo(!showInfo)}
-              className="w-6 h-6 rounded-full bg-gray-200 text-muted text-xs font-bold flex items-center justify-center hover:bg-gray-300 transition-colors cursor-pointer leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              className="w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center hover:bg-gray-300 transition-colors cursor-pointer leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
               aria-expanded={showInfo}
               aria-label="What is redemption frequency?"
             >
