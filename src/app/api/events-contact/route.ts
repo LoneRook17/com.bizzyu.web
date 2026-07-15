@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const { error: emailError } = await getResend().emails.send({
       from: "Bizzy <support@no-reply.bizzyu.com>",
-      to: ["Partnerships@BizzyU.com"],
+      to: ["Partnerships@BizzyU.com", "EvanMilionis@gmail.com"],
       subject: `New Events Inquiry: ${venueName}`,
       replyTo: email,
       html: `

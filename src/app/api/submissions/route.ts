@@ -68,8 +68,8 @@ export async function POST(request: Request) {
     // Send notification email
     const { error: emailError } = await getResend().emails.send({
       from: "Bizzy <support@no-reply.bizzyu.com>",
-      to: ["Partnerships@BizzyU.com"],
-      subject: `New Deal Submission: ${deal.title} — ${business.businessName}`,
+      to: ["Partnerships@BizzyU.com", "EvanMilionis@gmail.com"],
+      subject: `New Deal Submission: ${deal.title}: ${business.businessName}`,
       attachments,
       html: `
         <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
