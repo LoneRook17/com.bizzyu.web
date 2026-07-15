@@ -3,6 +3,7 @@ import Link from "next/link";
 import SignupFlow from "@/components/signup/SignupFlow";
 import CouponFan from "@/components/signup/CouponFan";
 import AnimatedSection from "@/components/ui/AnimatedSection";
+import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
 import Parallax from "@/components/ui/Parallax";
 import { CONTACT_EMAIL } from "@/lib/constants";
 import { fetchTrendingDeals } from "@/lib/deals";
@@ -138,23 +139,61 @@ export default async function PostADealPage() {
         </div>
       </section>
 
-      {/* ─── How it works ─────────────────────────────────────── */}
-      <section className="bg-ink">
-        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-            {STEPS.map((s, i) => (
-              <AnimatedSection key={s.n} delay={i * 0.1}>
-                <div className="flex md:block items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary text-ink font-bold flex items-center justify-center flex-shrink-0 md:mb-4">
-                    {s.n}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white mb-1.5">{s.t}</h3>
-                    <p className="text-white/60 text-sm leading-relaxed">{s.d}</p>
-                  </div>
-                </div>
-              </AnimatedSection>
-            ))}
+      {/* ─── What happens next ────────────────────────────────
+          The video is step 3 actually happening, so it carries this section
+          and the steps become the caption beside it. */}
+      <section className="relative overflow-hidden bg-ink">
+        <div className="absolute -left-40 top-1/2 -translate-y-1/2 w-[34rem] h-[34rem] bg-primary/12 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative max-w-6xl mx-auto px-6 py-20 md:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <AnimatedSection>
+              <div className="relative flex justify-center">
+                {/* A warm ring behind the phone so it lifts off the ink. */}
+                <div className="absolute -inset-8 bg-gradient-to-tr from-primary/25 via-emerald-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+                <Parallax distance={24} className="relative">
+                  <AutoLoopVideo
+                    src="/videos/bizzy-slice.mp4"
+                    poster="/images/bizzy-slice-poster.jpg"
+                    label="A student shows a deal on their phone at the counter of a local pizzeria near campus, and walks away with a slice."
+                    className="w-[270px] sm:w-[310px] rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/50"
+                  />
+                </Parallax>
+              </div>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.1} variant="fade-left">
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                What happens next
+              </p>
+              <h2 className="text-3xl md:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-5">
+                Post it once. Students do the{" "}
+                <span className="marker-sticker">
+                  <span>rest</span>
+                </span>
+                .
+              </h2>
+              <p className="text-lg text-white/60 leading-relaxed mb-9 max-w-lg">
+                Send us one offer and we handle the listing. It lands in the coupon book students
+                already carry, and then this happens.
+              </p>
+
+              <ol className="space-y-5">
+                {STEPS.map((s) => (
+                  <li key={s.n} className="flex items-start gap-4">
+                    <span
+                      className="w-8 h-8 rounded-lg bg-primary text-ink text-sm font-bold flex items-center justify-center flex-shrink-0"
+                      aria-hidden
+                    >
+                      {s.n}
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-white leading-snug">{s.t}</h3>
+                      <p className="text-white/50 text-sm leading-relaxed mt-0.5">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </AnimatedSection>
           </div>
         </div>
       </section>
