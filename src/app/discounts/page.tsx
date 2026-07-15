@@ -6,7 +6,6 @@ import AnimatedSection from "@/components/ui/AnimatedSection";
 import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
 import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
-import BizzyLogoCluster from "@/components/ui/BizzyLogoCluster";
 import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
 import Parallax from "@/components/ui/Parallax";
 import RevealLine from "@/components/ui/RevealLine";
@@ -325,10 +324,6 @@ export default async function DiscountsPage() {
                     </li>
                   ))}
                 </ul>
-
-                <BizzyLogoCluster className="mt-9 pt-8 border-t border-gray-100">
-                  <span className="font-semibold text-ink">20+ local spots near campus</span> are already on Bizzy.
-                </BizzyLogoCluster>
               </AnimatedSection>
             </div>
 
