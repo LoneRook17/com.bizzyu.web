@@ -130,15 +130,16 @@ export default async function Home() {
                     Everything happening around campus
                   </p>
 
-                  <h1 className="text-4xl md:text-6xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
-                    Find the deal. Get the ticket.
-                    <br />
-                    Make the{" "}
-                    <span className="marker-underline marker-draw">night happen</span>.
+                  <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
+                    Your college town in{" "}
+                    <span className="marker-underline marker-draw whitespace-nowrap">one app</span>.
                   </h1>
 
+                  {/* The headline now carries "one app", so the sub says WHAT is
+                      in it and WHERE, rather than repeating the phrase. */}
                   <p className="text-lg md:text-xl text-muted mb-8 max-w-xl leading-relaxed">
-                    Discover student-only deals, campus events, tickets, and line skips in one app.
+                    Student-only deals, campus events, tickets, and line skips at the spots right
+                    around you.
                   </p>
 
                   <div className="flex flex-wrap gap-3">
