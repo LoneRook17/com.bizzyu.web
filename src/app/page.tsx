@@ -399,11 +399,16 @@ export default function Home() {
 
             <AnimatedSection delay={0.15} variant="fade-left">
               <div className="relative flex items-center justify-center min-h-[420px]">
-                <div className="relative">
-                  <div className="text-[260px] md:text-[340px] lg:text-[400px] font-black leading-none bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent select-none">
+                {/* The label used to be absolutely positioned inside the
+                    numeral's own box, so on a 400px leading-none glyph it
+                    landed on top of the "0%" instead of under it. It sits in
+                    normal flow now and the numeral is capped so the pair reads
+                    as one lockup. */}
+                <div className="flex flex-col items-center">
+                  <div className="text-[200px] md:text-[260px] lg:text-[300px] font-black leading-[0.85] bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent select-none">
                     0%
                   </div>
-                  <p className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 text-white/60 text-sm md:text-base font-semibold uppercase tracking-[0.2em] whitespace-nowrap">
+                  <p className="mt-5 text-white/60 text-sm md:text-base font-semibold uppercase tracking-[0.25em] whitespace-nowrap">
                     Platform fees
                   </p>
                 </div>
@@ -421,7 +426,12 @@ export default function Home() {
               <div className="relative overflow-hidden rounded-3xl border border-gray-100 bg-gradient-to-br from-white via-primary-light/30 to-white px-8 py-12 md:px-14 md:py-16">
                 <div className="absolute -top-20 -right-20 w-[300px] h-[300px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-                <div className="relative grid grid-cols-1 md:grid-cols-[auto_1fr] gap-8 md:gap-12 items-center">
+                {/* Three tracks, one per child. This was two tracks with three
+                    children: the rule auto-placed into r1c2 and the paragraph
+                    was explicitly sent to r1c2 as well, so they occupied the
+                    same cell and overlapped, which is what put a stray vertical
+                    line through the copy. Nothing here is manually placed now. */}
+                <div className="relative grid grid-cols-1 md:grid-cols-[auto_1px_1fr] gap-6 md:gap-12 items-center">
                   <div className="flex flex-col items-center md:items-start">
                     <p className="text-primary-dark text-[11px] font-bold uppercase tracking-[0.2em] mb-3">
                       Partnership
@@ -434,12 +444,11 @@ export default function Home() {
                     </span>
                   </div>
 
-                  <div className="hidden md:block w-px h-20 bg-gray-200 self-center" />
+                  <div className="hidden md:block w-px h-20 bg-gray-200" aria-hidden />
 
-                  <p className="text-ink text-lg md:text-xl leading-relaxed text-center md:text-left md:col-start-2 md:row-start-1">
-                    We&apos;re working with{" "}
-                    <span className="font-semibold">Chartwells</span> to help
-                    local businesses reach students on and off campus.
+                  <p className="text-ink text-lg md:text-xl leading-relaxed text-center md:text-left">
+                    We&apos;re working with <span className="font-semibold">Chartwells</span> to help
+                    university dining services connect with local students.
                   </p>
                 </div>
               </div>
