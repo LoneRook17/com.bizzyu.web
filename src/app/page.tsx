@@ -3,9 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
+import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
+import Parallax from "@/components/ui/Parallax";
 import Button from "@/components/ui/Button";
 import FAQ from "@/components/ui/FAQ";
 import JsonLd from "@/components/seo/JsonLd";
+import { fetchTrendingDeals } from "@/lib/deals";
 import {
   APP_STORE_URL,
   CALENDLY_DEMO_URL,
@@ -48,12 +51,6 @@ const LOGOS = [
   { src: "/images/logos/pei-wei.svg", alt: "Pei Wei", width: 220, height: "h-14" },
 ];
 
-const HERO_STATS = [
-  { value: "25K+", label: "students" },
-  { value: "400+", label: "local businesses" },
-  { value: "0%", label: "platform fees" },
-];
-
 function CheckIcon({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -93,119 +90,178 @@ function ArrowRight({ className = "" }: { className?: string }) {
   );
 }
 
-export default function Home() {
+const REDEEM_STEPS = [
+  { n: "1", t: "Find a deal", d: "Browse student-only offers around your campus." },
+  { n: "2", t: "Show the offer", d: "Open the deal before ordering or paying." },
+  { n: "3", t: "Staff confirms it", d: "The employee taps the green button and honors the offer." },
+  { n: "4", t: "Start saving", d: "The redemption is recorded right in Bizzy." },
+];
+
+export default async function Home() {
+  // One real deal for the hero's floating card. A marketing page must never 500
+  // because a deals API blipped, so failure just drops the card.
+  let heroDeal: Awaited<ReturnType<typeof fetchTrendingDeals>>[number] | undefined;
+  try {
+    heroDeal = (await fetchTrendingDeals())[0];
+  } catch (err) {
+    console.warn("[home] deal fetch failed", err);
+  }
+
   return (
     <>
       <JsonLd data={faqJsonLd} />
 
-      {/* 1. HERO ------------------------------------------------------------ */}
-      <section className="relative overflow-hidden bg-white">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-light via-white to-white pointer-events-none" />
-        <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        {/* 1. HERO ------------------------------------------------------------
+            Split screen: the pitch holds the left, a real redemption plays on
+            the right. The old right column was a phone screenshot ringed by
+            three deal-card PNGs; it showed the software and none of the
+            experience. NOTE: no stat line under the CTA. Stats were cut from
+            this page deliberately. */}
+        <section className="relative overflow-hidden bg-white">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-light via-white to-white pointer-events-none" />
+          <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(110%_80%_at_10%_0%,black,transparent_70%)] [-webkit-mask-image:radial-gradient(110%_80%_at_10%_0%,black,transparent_70%)] pointer-events-none opacity-70" />
 
-        <SectionContainer className="relative !py-14 md:!py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
-            <div className="lg:col-span-6">
-              <AnimatedSection>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-primary/20 rounded-full text-xs font-semibold mb-6 shadow-sm">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-                  </span>
-                  <span className="text-ink">Trusted by 25K+ college students</span>
-                </div>
+          <SectionContainer className="relative !py-14 md:!py-24">
+            <div className="grid grid-cols-1 lg:grid-cols-[11fr_9fr] gap-12 lg:gap-14 items-center">
+              <div>
+                <AnimatedSection>
+                  <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-5">
+                    Everything happening around campus
+                  </p>
 
-                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.05] tracking-tight mb-6">
-                  Your campus.
-                  <br />
-                  <span className="bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent">
-                    One app.
-                  </span>
-                </h1>
+                  <h1 className="text-4xl md:text-6xl font-bold text-ink leading-[1.04] tracking-tight mb-6">
+                    Find the deal. Get the ticket.
+                    <br />
+                    Make the{" "}
+                    <span className="marker-underline marker-draw">night happen</span>.
+                  </h1>
 
-                <p className="text-lg md:text-xl text-muted mb-8 max-w-xl leading-relaxed">
-                  Bizzy connects college students with the events, tickets, and exclusive deals at the local businesses near them.
-                </p>
+                  <p className="text-lg md:text-xl text-muted mb-8 max-w-xl leading-relaxed">
+                    Discover student-only deals, campus events, tickets, and line skips in one app.
+                  </p>
 
-                <div className="flex flex-wrap gap-3 mb-8">
-                  <Button href={APP_STORE_URL} variant="primary" size="lg" external>
-                    Get the App
-                  </Button>
-                  <Button href="/businesses" variant="outline" size="lg">
-                    For Businesses
-                  </Button>
-                </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button href={APP_STORE_URL} variant="primary" size="lg" className="!text-ink" external>
+                      Download Bizzy
+                    </Button>
+                    <Button href="/businesses" variant="outline" size="lg">
+                      For Businesses
+                    </Button>
+                  </div>
+                </AnimatedSection>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
-                  {HERO_STATS.map((s) => (
-                    <div key={s.label} className="flex items-baseline gap-1.5">
-                      <span className="text-2xl md:text-3xl font-bold text-ink">{s.value}</span>
-                      <span className="text-sm text-muted">{s.label}</span>
+              {/* Mobile puts the video under the headline and CTA, per the brief. */}
+              <div>
+                <AnimatedSection delay={0.15} variant="fade-left">
+                  <div className="relative flex justify-center lg:justify-end">
+                    <div className="absolute -inset-6 bg-gradient-to-tr from-primary/25 via-emerald-300/15 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
+                    <div className="relative">
+                      <AutoLoopVideo
+                        src="/videos/bizzy-slice.mp4"
+                        poster="/images/bizzy-slice-poster.jpg"
+                        label="A student shows a deal on their phone at the counter of a local pizzeria near campus, and walks away with a slice."
+                        className="w-[280px] sm:w-[320px] lg:w-[360px] rounded-[2rem] ring-1 ring-black/5 shadow-2xl shadow-black/20"
+                      />
+
+                      {/* Floating deal card. Real deal from the live feed, never
+                          a hardcoded offer against a real business's name. */}
+                      {heroDeal && (
+                        <div className="absolute -left-6 sm:-left-10 bottom-10 w-[210px] rounded-2xl bg-white border border-gray-100 shadow-2xl shadow-black/10 overflow-hidden animate-float">
+                          <div className="relative aspect-[16/10] bg-gray-100">
+                            <Image src={heroDeal.image} alt="" fill sizes="210px" className="object-cover" />
+                            {heroDeal.savings > 0 && (
+                              <span className="absolute top-2 right-2 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
+                                Save ${heroDeal.savings}
+                              </span>
+                            )}
+                          </div>
+                          <div className="px-3 py-2.5">
+                            <p className="text-[13px] font-bold text-ink leading-snug line-clamp-2">
+                              {heroDeal.title}
+                            </p>
+                            <p className="text-[11px] text-muted mt-0.5 truncate">{heroDeal.business}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </AnimatedSection>
+                  </div>
+                </AnimatedSection>
+              </div>
             </div>
+          </SectionContainer>
+        </section>
 
-            <div className="lg:col-span-6">
-              <AnimatedSection delay={0.15} variant="fade-left">
-                <div className="relative w-full h-[480px] md:h-[560px] lg:h-[620px]">
-                  <div className="absolute left-1/2 -translate-x-1/2 top-0 w-[260px] md:w-[300px] z-20 drop-shadow-2xl">
-                    <Image
-                      src="/images/screen-2.png"
-                      alt="Bizzy home feed on iPhone"
-                      width={300}
-                      height={640}
-                      className="rounded-[2.2rem] w-full"
-                      priority
-                    />
-                  </div>
+      {/* 1b. REDEMPTION -----------------------------------------------------
+          Sits directly under the hero because a visitor can grasp "Bizzy has
+          deals" and still have no idea how redeeming one works. One photograph
+          answers it: the phone is readable, the offer is real, and she is
+          holding what she got. Interface AND outcome in a single frame. */}
+      <section className="relative overflow-hidden bg-white">
+        <div className="absolute inset-0 bg-[radial-gradient(70%_50%_at_20%_50%,rgba(5,235,84,0.10),transparent_60%)] pointer-events-none" />
+        <SectionContainer className="relative !py-16 md:!py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <AnimatedSection>
+              <div className="relative flex justify-center">
+                <div className="absolute -inset-6 bg-gradient-to-tr from-primary/20 via-emerald-300/10 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
+                <Parallax distance={22} className="relative">
+                  <Image
+                    src="/images/student-redeem-urbanbuzz.png"
+                    alt="A student holding up her phone showing a live Bizzy deal, one dollar off any medium drink at Urban Buzz, with the Staff Member Tap Here button on screen, and holding the drink she redeemed in her other hand."
+                    width={1086}
+                    height={1448}
+                    sizes="(max-width: 640px) 320px, (max-width: 1024px) 400px, 460px"
+                    className="w-[320px] sm:w-[400px] lg:w-[460px] h-auto rounded-[2rem] shadow-2xl shadow-black/15 ring-1 ring-black/5"
+                  />
+                </Parallax>
+              </div>
+            </AnimatedSection>
 
-                  <div className="absolute right-2 md:right-6 top-8 md:top-12 w-[180px] md:w-[220px] z-30 rotate-[6deg] animate-float drop-shadow-2xl">
-                    <Image
-                      src="/images/deal-card-tacobell.png"
-                      alt="Taco Bell deal on Bizzy"
-                      width={220}
-                      height={140}
-                      className="rounded-2xl w-full"
-                    />
-                  </div>
+            <AnimatedSection delay={0.1} variant="fade-left">
+              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                From your phone to the counter
+              </p>
+              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
+                See it. Show it.{" "}
+                <span className="marker-underline marker-draw">Save</span>.
+              </h2>
+              <p className="text-lg text-muted leading-relaxed mb-9 max-w-lg">
+                Open your deal in Bizzy, show it to staff, and redeem it in seconds. No codes, no
+                printing, nothing to set up.
+              </p>
 
-                  <div
-                    className="absolute left-0 md:left-4 bottom-16 md:bottom-12 w-[180px] md:w-[220px] z-30 -rotate-[8deg] animate-float drop-shadow-2xl"
-                    style={{ animationDelay: "1s" }}
-                  >
-                    <Image
-                      src="/images/deal-card-bubbakoos.png"
-                      alt="Bubbakoo's deal on Bizzy"
-                      width={220}
-                      height={140}
-                      className="rounded-2xl w-full"
-                    />
-                  </div>
+              <ol className="space-y-5">
+                {REDEEM_STEPS.map((s) => (
+                  <li key={s.n} className="flex items-start gap-4">
+                    <span
+                      className="w-8 h-8 rounded-lg bg-primary text-ink text-sm font-bold flex items-center justify-center flex-shrink-0"
+                      aria-hidden
+                    >
+                      {s.n}
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-ink leading-snug">{s.t}</h3>
+                      <p className="text-muted text-sm leading-relaxed mt-0.5">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
 
-                  <div
-                    className="absolute right-4 md:right-10 bottom-4 w-[170px] md:w-[200px] z-10 rotate-[4deg] animate-float opacity-95 drop-shadow-2xl"
-                    style={{ animationDelay: "0.5s" }}
-                  >
-                    <Image
-                      src="/images/deal-card-urbanbuzz.png"
-                      alt="Urban Buzz deal on Bizzy"
-                      width={200}
-                      height={128}
-                      className="rounded-2xl w-full"
-                    />
-                  </div>
-                </div>
-              </AnimatedSection>
-            </div>
+              <div className="mt-9">
+                <Button href={APP_STORE_URL} variant="primary" size="lg" className="!text-ink" external>
+                  Find Deals Near Campus
+                </Button>
+              </div>
+            </AnimatedSection>
           </div>
         </SectionContainer>
       </section>
 
+
       {/* 2. LOGO MARQUEE ---------------------------------------------------- */}
       <section className="py-12 md:py-14 overflow-hidden border-t border-gray-100">
-        <p className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-[0.2em] mb-8">
+        <p className="text-center text-[11px] font-semibold text-muted uppercase tracking-[0.2em] mb-8">
           Deals from places students already go
         </p>
         <div className="relative">
@@ -234,7 +290,7 @@ export default function Home() {
       <SectionContainer className="!pt-12 md:!pt-20">
         <AnimatedSection>
           <div className="max-w-3xl mb-10 md:mb-14">
-            <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">
+            <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.18em] mb-3">
               Two sides. One platform.
             </p>
             <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight">
@@ -253,16 +309,16 @@ export default function Home() {
               className="group relative block overflow-hidden rounded-3xl bg-gradient-to-br from-primary-light via-white to-primary-light border border-primary/15 p-8 md:p-10 h-full min-h-[420px] hover:border-primary/40 hover:-translate-y-1 transition-all duration-300"
             >
               <div className="relative z-10 max-w-sm">
-                <div className="inline-flex items-center px-3 py-1 bg-white rounded-full text-primary text-xs font-bold mb-5 shadow-sm">
+                <div className="inline-flex items-center px-3 py-1 bg-white rounded-full text-primary-dark text-xs font-bold mb-5 shadow-sm">
                   For Students
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold text-ink mb-3 leading-tight">
                   Find what&apos;s happening on your campus.
                 </h3>
-                <p className="text-muted text-base leading-relaxed mb-6">
+                <p className="text-ink/70 text-base leading-relaxed mb-6">
                   Events, tickets, line skips, and local deals at the spots near you. Discover where to go, what to do, and how to save around campus.
                 </p>
-                <span className="inline-flex items-center gap-2 text-ink font-semibold group-hover:text-primary transition-colors">
+                <span className="inline-flex items-center gap-2 text-ink font-semibold group-hover:text-primary-dark transition-colors">
                   Download on the App Store
                   <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                 </span>
@@ -292,12 +348,12 @@ export default function Home() {
                   For Businesses
                 </div>
                 <h3 className="text-2xl md:text-3xl font-bold text-white mb-3 leading-tight">
-                  Get your business on <span className="text-primary">Bizzy</span>
+                  Get your business on <span className="text-primary-dark">Bizzy</span>
                 </h3>
                 <p className="text-white/70 text-base leading-relaxed mb-6">
                   List deals, promote events, and sell tickets to students near your campus. No setup fees, no monthly fees, and businesses keep 100% of ticket and cover revenue sold.
                 </p>
-                <span className="inline-flex items-center gap-2 text-white font-semibold group-hover:text-primary transition-colors">
+                <span className="inline-flex items-center gap-2 text-white font-semibold group-hover:text-primary-dark transition-colors">
                   See how it works
                   <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                 </span>
@@ -313,11 +369,92 @@ export default function Home() {
         </div>
       </SectionContainer>
 
+      {/* 3b. EVENTS & NIGHTLIFE ---------------------------------------------
+          Real footage of a real Bizzy-powered night, not a screenshot of the
+          events tab. The brief's rule: show the listing beside the actual
+          crowd. The clip carries the room; the stills carry the faces. */}
+      <section className="relative overflow-hidden bg-ink">
+        <div className="absolute -right-40 top-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-primary/12 rounded-full blur-3xl pointer-events-none" />
+        <SectionContainer className="relative !py-20 md:!py-28">
+          <div className="grid grid-cols-1 lg:grid-cols-[9fr_11fr] gap-12 lg:gap-16 items-center">
+            {/* The night itself */}
+            <AnimatedSection>
+              <div className="relative flex justify-center lg:justify-start">
+                <div className="absolute -inset-6 bg-gradient-to-tr from-primary/25 via-emerald-400/10 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
+                <div className="relative">
+                  <AutoLoopVideo
+                    src="/videos/bizzy-event-night.mp4"
+                    poster="/images/bizzy-event-poster.jpg"
+                    label="Students at a themed Bizzy event: neon lights, a packed crowd, phones out."
+                    className="w-[260px] sm:w-[300px] rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/50"
+                  />
+
+                  {/* Two stills, pinned off the clip, so the section has faces
+                      as well as a room. */}
+                  <div className="hidden sm:block absolute -right-16 top-8 w-[150px] rotate-3 rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-2xl shadow-black/50">
+                    <Image
+                      src="/images/event-friends.jpg"
+                      alt="Two students at a Bizzy event at night."
+                      width={1206}
+                      height={1171}
+                      sizes="150px"
+                      className="w-full h-auto"
+                    />
+                  </div>
+                  <div className="hidden sm:block absolute -right-10 bottom-6 w-[135px] -rotate-2 rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-2xl shadow-black/50">
+                    <Image
+                      src="/images/event-crowd.jpg"
+                      alt="A student in the crowd at a themed Bizzy event."
+                      width={811}
+                      height={763}
+                      sizes="135px"
+                      className="w-full h-auto"
+                    />
+                  </div>
+                </div>
+              </div>
+            </AnimatedSection>
+
+            {/* The pitch */}
+            <AnimatedSection delay={0.1} variant="fade-left">
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                Events and nightlife
+              </p>
+              <h2 className="text-3xl md:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-5">
+                From finding the event to getting{" "}
+                <span className="marker-sticker">
+                  <span>through the door</span>
+                </span>
+                .
+              </h2>
+              <p className="text-lg text-white/60 leading-relaxed mb-9 max-w-lg">
+                Discover campus events, buy tickets, and skip the line. Everything stays in Bizzy, so
+                there is nothing to print and nothing to lose at the door.
+              </p>
+
+              <div className="flex flex-wrap gap-3">
+                <Button href={APP_STORE_URL} variant="primary" size="lg" className="!text-ink" external>
+                  Get the App
+                </Button>
+                <Link
+                  href="/events"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-semibold text-base text-white border-2 border-white/25 hover:border-white/60 hover:bg-white/5 transition-all"
+                >
+                  For venues
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </AnimatedSection>
+          </div>
+        </SectionContainer>
+      </section>
+
+
       {/* 4. FOR STUDENTS - BENTO ------------------------------------------- */}
       <SectionContainer className="!pt-16 md:!pt-24">
         <AnimatedSection>
           <div className="max-w-2xl mb-10 md:mb-12">
-            <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">
+            <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.18em] mb-3">
               For Students
             </p>
             <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
@@ -360,19 +497,19 @@ export default function Home() {
           <AnimatedSection delay={0.1} className="md:col-span-2">
             <div className="relative h-full overflow-hidden rounded-3xl bg-primary-light p-7 md:p-8 flex items-center gap-6">
               <div className="flex-1">
-                <p className="text-primary text-xs font-bold uppercase tracking-widest mb-2">
+                <p className="text-primary-dark text-xs font-bold uppercase tracking-widest mb-2">
                   Line Skip
                 </p>
                 <h3 className="text-xl md:text-2xl font-bold text-ink leading-tight mb-2">
                   Walk past the wait.
                 </h3>
-                <p className="text-muted text-sm leading-relaxed max-w-md">
+                <p className="text-ink/70 text-sm leading-relaxed max-w-md">
                   Skip the line at participating venues with a tap.
                 </p>
               </div>
               <div className="hidden sm:flex flex-shrink-0 w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white items-center justify-center shadow-lg">
                 <svg
-                  className="text-primary w-10 h-10 md:w-12 md:h-12"
+                  className="text-primary-dark w-10 h-10 md:w-12 md:h-12"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -390,7 +527,7 @@ export default function Home() {
 
           <AnimatedSection delay={0.15}>
             <div className="relative h-full overflow-hidden rounded-3xl bg-white border border-gray-100 p-6 md:p-7 hover:border-primary/30 hover:-translate-y-1 transition-all duration-300">
-              <p className="text-primary text-xs font-bold uppercase tracking-widest mb-2">
+              <p className="text-primary-dark text-xs font-bold uppercase tracking-widest mb-2">
                 Exclusive Deals
               </p>
               <h3 className="text-xl font-bold text-ink leading-tight mb-2">
@@ -404,7 +541,7 @@ export default function Home() {
 
           <AnimatedSection delay={0.2}>
             <div className="relative h-full overflow-hidden rounded-3xl bg-white border border-gray-100 p-6 md:p-7 hover:border-primary/30 hover:-translate-y-1 transition-all duration-300">
-              <p className="text-primary text-xs font-bold uppercase tracking-widest mb-2">
+              <p className="text-primary-dark text-xs font-bold uppercase tracking-widest mb-2">
                 Local Spots
               </p>
               <h3 className="text-xl font-bold text-ink leading-tight mb-2">
@@ -453,7 +590,6 @@ export default function Home() {
                     "0% platform fees on deals and tickets",
                     "No POS integration",
                     "Setup in under 5 minutes",
-                    "Reach 25,000+ verified students",
                   ].map((point) => (
                     <div key={point} className="flex items-center gap-3">
                       <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
@@ -507,7 +643,7 @@ export default function Home() {
 
                 <div className="relative grid grid-cols-1 md:grid-cols-[auto_1fr] gap-8 md:gap-12 items-center">
                   <div className="flex flex-col items-center md:items-start">
-                    <p className="text-primary text-[11px] font-bold uppercase tracking-[0.2em] mb-3">
+                    <p className="text-primary-dark text-[11px] font-bold uppercase tracking-[0.2em] mb-3">
                       Partnership
                     </p>
                     <span
@@ -556,10 +692,10 @@ export default function Home() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)] pointer-events-none" />
         <SectionContainer className="relative text-center !py-20 md:!py-28">
           <AnimatedSection>
-            <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight tracking-tight mb-5">
+            <h2 className="text-4xl md:text-6xl font-bold text-ink leading-tight tracking-tight mb-5">
               Bring Bizzy to your campus.
             </h2>
-            <p className="text-white/90 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-ink/75 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
               Whether you&apos;re a student or a local business, Bizzy is the campus app you&apos;ve been waiting for.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -570,7 +706,7 @@ export default function Home() {
                 href="/businesses"
                 variant="white"
                 size="lg"
-                className="!bg-white/15 !text-white hover:!bg-white/25 backdrop-blur-sm"
+                className="!bg-white/25 !text-ink hover:!bg-white/40 backdrop-blur-sm"
               >
                 List Your Business
               </Button>

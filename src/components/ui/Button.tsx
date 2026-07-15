@@ -25,9 +25,14 @@ export default function Button({
   const base =
     "inline-flex items-center justify-center font-semibold rounded-full transition-all duration-200 cursor-pointer";
 
+  // Brand green only ever FILLS; ink letters it. White on #05EB54 is 1.61:1
+  // and on the gradient's dark end 2.15:1 — both fail AA at any size. Green
+  // text on white is 1.61:1 too, so `outline` uses the accessible green
+  // (#0A8038, 5.05:1). Fixed here rather than at each call site: this had been
+  // patched with `!text-ink` in seven places and still missed pages.
   const variants = {
-    primary: "bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white hover:brightness-110 shadow-lg shadow-primary/25",
-    outline: "border-2 border-primary text-primary hover:bg-primary hover:text-white",
+    primary: "bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-ink hover:brightness-105 shadow-lg shadow-primary/25",
+    outline: "border-2 border-primary text-primary-dark hover:bg-primary hover:text-ink",
     white: "bg-white text-ink hover:bg-gray-100 shadow-lg",
   };
 
