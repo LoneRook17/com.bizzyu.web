@@ -154,6 +154,14 @@ html {
   .animate-float {
     animation: none;
   }
+
+  /* Endlessly scrolling strips are a classic vestibular trigger. Components
+     that can reflow (CampusStrip) render a static list instead; these stop
+     where they are. */
+  .animate-marquee,
+  .animate-marquee-half {
+    animation: none;
+  }
 }
 
 /* Diagonal slash marker, for "do not" style strikethroughs or accents. */

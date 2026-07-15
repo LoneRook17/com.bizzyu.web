@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import SignupFlow from "@/components/signup/SignupFlow";
 import CouponFan from "@/components/signup/CouponFan";
+import CampusStrip from "@/components/signup/CampusStrip";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
 import Parallax from "@/components/ui/Parallax";
 import { CONTACT_EMAIL } from "@/lib/constants";
 import { fetchTrendingDeals } from "@/lib/deals";
+import { fetchUniversities } from "@/lib/universities";
 
 export const metadata: Metadata = {
   title: "Get Featured in Your University's Largest Coupon Book | Bizzy",
@@ -64,10 +66,14 @@ export default async function PostADealPage() {
   // The book, shown rather than described. A marketing page must never 500
   // because a deals API blipped, so failure degrades to no fan at all.
   let deals: Awaited<ReturnType<typeof fetchTrendingDeals>> = [];
+  let universities: Awaited<ReturnType<typeof fetchUniversities>> = [];
   try {
-    deals = (await fetchTrendingDeals()).slice(0, 3);
+    // Independent calls, so pay for the slower one rather than both.
+    const [d, u] = await Promise.all([fetchTrendingDeals(), fetchUniversities()]);
+    deals = d.slice(0, 3);
+    universities = u;
   } catch (err) {
-    console.warn("[post-a-deal] deal fetch failed", err);
+    console.warn("[post-a-deal] live data fetch failed", err);
   }
 
   return (
@@ -138,6 +144,22 @@ export default async function PostADealPage() {
           </div>
         </div>
       </section>
+
+      {/* ─── Campuses ─────────────────────────────────────────
+          The H1 says "your university's", so answer "is mine one of them?"
+          before anything else. Live from the API: names only, never crests. */}
+      {universities.length > 0 && (
+        <section className="border-y border-gray-100 bg-white overflow-hidden">
+          <div className="py-10 md:py-12">
+            <AnimatedSection>
+              <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-primary-dark mb-7 px-6">
+                Live on {universities.length} campuses
+              </p>
+            </AnimatedSection>
+            <CampusStrip universities={universities} />
+          </div>
+        </section>
+      )}
 
       {/* ─── What happens next ────────────────────────────────
           The video is step 3 actually happening, so it carries this section
