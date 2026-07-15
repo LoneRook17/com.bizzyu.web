@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ReactNode } from "react";
 
 import type { TargetAndTransition } from "framer-motion";
@@ -41,7 +41,14 @@ export default function AnimatedSection({
   variant = "fade-up",
   immediate = false,
 }: AnimatedSectionProps) {
-  if (immediate) {
+  // Must run before any early return (rules of hooks).
+  const reduced = useReducedMotion();
+
+  // Reduced motion, or opted out: render the content plainly. Every variant
+  // here translates or scales, which is exactly what triggers vestibular
+  // discomfort, so there is no "gentler" version worth keeping. Content still
+  // appears; it just does not move.
+  if (immediate || reduced) {
     return <div className={className}>{children}</div>;
   }
 

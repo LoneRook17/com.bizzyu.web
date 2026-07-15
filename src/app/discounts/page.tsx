@@ -8,6 +8,8 @@ import Button from "@/components/ui/Button";
 import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
 import BizzyLogoCluster from "@/components/ui/BizzyLogoCluster";
 import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
+import Parallax from "@/components/ui/Parallax";
+import RevealLine from "@/components/ui/RevealLine";
 import DiscountTestimonials from "@/components/discounts/DiscountTestimonials";
 import CouponBook from "@/components/discounts/CouponBook";
 import { BUSINESS_FAQ, CONTACT_EMAIL, PARTNERSHIPS_EMAIL } from "@/lib/constants";
@@ -368,160 +370,24 @@ export default async function DiscountsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 3. How a redemption works ────────────────────────── */}
-      <section className="bg-gray-50" id="how-it-works">
-        <SectionContainer className="!py-20 md:!py-28">
-          <AnimatedSection>
-            <div className="text-center max-w-2xl mx-auto mb-14 md:mb-16">
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-3">How it works</p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-                How a redemption works.
-              </h2>
-              <p className="text-lg text-muted">
-                From posting your deal to a student walking back in. Here&apos;s the whole loop.
-              </p>
-            </div>
-          </AnimatedSection>
-
-          {/* Connected step diagram */}
-          <div className="relative max-w-6xl mx-auto">
-            {/* horizontal connector (desktop) */}
-            <div className="hidden md:block absolute top-8 left-[12.5%] right-[12.5%] h-0.5 bg-primary/20" aria-hidden />
-            {/* vertical connector (mobile timeline) */}
-            <div className="md:hidden absolute top-8 bottom-8 left-8 w-0.5 bg-primary/20" aria-hidden />
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-7 md:gap-6 relative">
-              {REDEEM_STEPS.map((step, i) => (
-                <AnimatedSection key={step.num} delay={i * 0.08}>
-                  <div className="flex items-start gap-4 md:block md:text-center">
-                    <div className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-ink flex items-center justify-center shadow-lg shadow-primary/25 ring-8 ring-gray-50 flex-shrink-0 md:mx-auto md:mb-5">
-                      <StepIcon name={step.icon} className="w-7 h-7" />
-                    </div>
-                    <div className="pt-1 md:pt-0">
-                      <div className="text-[11px] font-bold text-primary-dark uppercase tracking-widest mb-1 md:mb-1.5">
-                        Step {step.num}
-                      </div>
-                      <h3 className="text-lg font-bold text-ink mb-1.5 md:mb-2 leading-tight">{step.title}</h3>
-                      <p className="text-sm text-muted leading-relaxed md:max-w-[15rem] md:mx-auto">{step.desc}</p>
-                    </div>
-                  </div>
-                </AnimatedSection>
-              ))}
-            </div>
-          </div>
-
-          {/* Frequency lock + auto-notify callout */}
-          <AnimatedSection delay={0.2}>
-            <div className="mt-14 md:mt-16 max-w-4xl mx-auto">
-              <div className="relative overflow-hidden rounded-3xl bg-ink p-8 md:p-10 text-white">
-                <div className="absolute -right-24 -top-24 w-80 h-80 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
-                <div className="relative flex flex-col sm:flex-row items-start gap-5">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
-                    <IconLock className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl md:text-2xl font-bold mb-2 text-white">Your cap runs on autopilot.</h3>
-                    <p className="text-white/70 leading-relaxed">
-                      The redemption frequency you set is enforced for you. Run a once-a-month deal and it locks on each
-                      student&apos;s phone for 30 days after they redeem, then it unlocks and pings them that it&apos;s
-                      back. You stay protected from overuse, and the reminder pulls them right back through your door.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </AnimatedSection>
-        </SectionContainer>
-      </section>
-
-      {/* ─── 4. Your deal, your terms ─────────────────────────── */}
-      <section className="relative overflow-hidden bg-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
-        <SectionContainer className="relative !py-20 md:!py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <AnimatedSection>
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">You set the rules</p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
-                Your deal.
-                <br />
-                <span className="font-display-italic font-normal text-muted">
-                  Your <span className="marker-underline">terms</span>.
-                </span>
-              </h2>
-              <p className="text-lg text-muted leading-relaxed mb-8 max-w-xl">
-                You decide what the offer is and exactly how it runs. The only rule: it has to be exclusive to Bizzy, a
-                deal students can&apos;t get anywhere else.
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {CONTROLS.map((c) => (
-                  <div key={c.title} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-                    <div className="w-8 h-8 rounded-xl bg-primary-light flex items-center justify-center mb-3">
-                      <CheckIcon className="text-primary-dark w-4 h-4" />
-                    </div>
-                    <h3 className="text-base font-bold text-ink leading-snug mb-1">{c.title}</h3>
-                    <p className="text-sm text-muted leading-relaxed">{c.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </AnimatedSection>
-
-            <AnimatedSection delay={0.15} variant="fade-left">
-              <div className="relative flex justify-center">
-                <div className="absolute -inset-8 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
-                {/* Interactive stand-in for the old static phone shot: owners can
-                    tap through a real redemption instead of reading about one. */}
-                <div className="relative w-full">
-                  <CouponBook deals={deals} notchClassName="bg-white" />
-                </div>
-              </div>
-            </AnimatedSection>
-          </div>
-        </SectionContainer>
-      </section>
-
-      {/* ─── 5. Deal types ────────────────────────────────────── */}
-      <section className="bg-gray-50">
-        <SectionContainer className="!py-20 md:!py-24">
-          <AnimatedSection>
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.18em] mb-3">Pick your play</p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-3">
-                Any kind of deal works.
-              </h2>
-              <p className="text-muted text-lg">
-                Run whatever fits your margins. Not sure what to post? We&apos;ll help you choose on signup.
-              </p>
-            </div>
-          </AnimatedSection>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 max-w-5xl mx-auto">
-            {DEAL_TYPES.map((deal, i) => (
-              <AnimatedSection key={deal.title} delay={i * 0.06}>
-                <div className="bg-white border border-gray-100 rounded-2xl p-6 text-center hover:shadow-lg hover:border-primary/30 transition-all duration-300 group h-full">
-                  <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">{deal.icon}</div>
-                  <h3 className="font-bold text-ink mb-1.5">{deal.title}</h3>
-                  <p className="text-muted text-sm leading-relaxed">{deal.desc}</p>
-                </div>
-              </AnimatedSection>
-            ))}
-          </div>
-        </SectionContainer>
-      </section>
-
-      {/* ─── 6. Why it works ──────────────────────────────────── */}
+      {/* ─── 3. Become their spot ─────────────────────────────
+          WHY, before any mechanics. A cold owner has to want this before a
+          four-step redemption tutorial means anything to them. */}
       <SectionContainer className="!py-20 md:!py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <AnimatedSection>
             <div className="relative flex justify-center lg:justify-start">
               <div className="absolute -inset-6 bg-gradient-to-tr from-primary/20 via-emerald-300/10 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
               {/* Real footage of a real redemption. Carries the argument that
-                  the icon cards next to it can only assert. */}
-              <AutoLoopVideo
-                src="/videos/bizzy-slice.mp4"
-                poster="/images/bizzy-slice-poster.jpg"
-                label="A student shows a deal on their phone at the counter of a local pizzeria near campus, and walks away with a slice."
-                className="relative w-[280px] sm:w-[320px] rounded-[2rem] ring-1 ring-black/5 shadow-2xl shadow-black/15"
-              />
+                  the reasons beside it can only assert. */}
+              <Parallax distance={28} className="relative">
+                <AutoLoopVideo
+                  src="/videos/bizzy-slice.mp4"
+                  poster="/images/bizzy-slice-poster.jpg"
+                  label="A student shows a deal on their phone at the counter of a local pizzeria near campus, and walks away with a slice."
+                  className="w-[280px] sm:w-[320px] rounded-[2rem] ring-1 ring-black/5 shadow-2xl shadow-black/15"
+                />
+              </Parallax>
             </div>
           </AnimatedSection>
 
@@ -552,12 +418,160 @@ export default async function DiscountsPage() {
         </div>
       </SectionContainer>
 
-      {/* ─── 7. Testimonials ──────────────────────────────────────
+      {/* ─── 4. How a redemption works ─────────────────────────
+          HOW, now that they care. The steps and the tappable demo of those
+          steps live together; they teach the same loop. */}
+      <section className="bg-gray-50" id="how-it-works">
+        <SectionContainer className="!py-20 md:!py-28">
+          <AnimatedSection>
+            <div className="text-center max-w-2xl mx-auto mb-14 md:mb-16">
+              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-3">How it works</p>
+              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
+                How a redemption works.
+              </h2>
+              <p className="text-lg text-muted">
+                From posting your deal to a student walking back in. Here&apos;s the whole loop.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          {/* Connected step diagram. The connectors stroke themselves in on
+              scroll, echoing the .marker-draw highlighter in the hero. */}
+          <div className="relative max-w-6xl mx-auto">
+            <RevealLine className="hidden md:block absolute top-8 left-[12.5%] right-[12.5%] h-0.5 bg-primary/25" />
+            <RevealLine
+              orientation="vertical"
+              className="md:hidden absolute top-8 bottom-8 left-8 w-0.5 bg-primary/25"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-7 md:gap-6 relative">
+              {REDEEM_STEPS.map((step, i) => (
+                <AnimatedSection key={step.num} delay={0.15 + i * 0.12}>
+                  <div className="flex items-start gap-4 md:block md:text-center">
+                    <div className="relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-emerald-500 text-ink flex items-center justify-center shadow-lg shadow-primary/25 ring-8 ring-gray-50 flex-shrink-0 md:mx-auto md:mb-5">
+                      <StepIcon name={step.icon} className="w-7 h-7" />
+                    </div>
+                    <div className="pt-1 md:pt-0">
+                      <div className="text-[11px] font-bold text-primary-dark uppercase tracking-widest mb-1 md:mb-1.5">
+                        Step {step.num}
+                      </div>
+                      <h3 className="text-lg font-bold text-ink mb-1.5 md:mb-2 leading-tight">{step.title}</h3>
+                      <p className="text-sm text-muted leading-relaxed md:max-w-[15rem] md:mx-auto">{step.desc}</p>
+                    </div>
+                  </div>
+                </AnimatedSection>
+              ))}
+            </div>
+          </div>
+
+          {/* Tap the demo and it locks; the callout beside it explains exactly
+              what that lock is. Same lesson, one glance apart. */}
+          <div className="mt-16 md:mt-20 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-14 items-center max-w-5xl mx-auto">
+            <AnimatedSection>
+              <div className="relative flex justify-center">
+                <div className="absolute -inset-8 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+                <Parallax distance={22} className="relative w-full">
+                  <CouponBook deals={deals} notchClassName="bg-gray-50" />
+                </Parallax>
+              </div>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.12} variant="fade-left">
+              <div className="relative overflow-hidden rounded-3xl bg-ink p-8 md:p-10 text-white">
+                <div className="absolute -right-24 -top-24 w-80 h-80 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center mb-5">
+                    <IconLock className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="text-xl md:text-2xl font-bold mb-2 text-white">Your cap runs on autopilot.</h3>
+                  <p className="text-white/70 leading-relaxed">
+                    The redemption frequency you set is enforced for you. Run a once-a-month deal and it locks on each
+                    student&apos;s phone for 30 days after they redeem, then it unlocks and pings them that it&apos;s
+                    back. You stay protected from overuse, and the reminder pulls them right back through your door.
+                  </p>
+                </div>
+              </div>
+            </AnimatedSection>
+          </div>
+        </SectionContainer>
+      </section>
+
+      {/* ─── 5. Your deal, your terms ──────────────────────────
+          Control, which is an objection that only surfaces once they
+          understand the mechanics above. */}
+      <section className="relative overflow-hidden bg-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_20%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
+        <SectionContainer className="relative !py-20 md:!py-28">
+          <AnimatedSection>
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-3">You set the rules</p>
+              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-4">
+                Your deal.{" "}
+                <span className="font-display-italic font-normal text-muted">
+                  Your <span className="marker-underline">terms</span>.
+                </span>
+              </h2>
+              <p className="text-lg text-muted leading-relaxed">
+                You decide what the offer is and exactly how it runs. The only rule: it has to be exclusive to Bizzy, a
+                deal students can&apos;t get anywhere else.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 max-w-6xl mx-auto">
+            {CONTROLS.map((c, i) => (
+              <AnimatedSection key={c.title} delay={i * 0.08}>
+                <div className="h-full bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+                  <div className="w-9 h-9 rounded-xl bg-primary-light flex items-center justify-center mb-4">
+                    <CheckIcon className="text-primary-dark w-4 h-4" />
+                  </div>
+                  <h3 className="text-base font-bold text-ink leading-snug mb-1.5">{c.title}</h3>
+                  <p className="text-sm text-muted leading-relaxed">{c.desc}</p>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </SectionContainer>
+      </section>
+
+      {/* ─── 6. Deal types ────────────────────────────────────── */}
+      <section className="bg-gray-50">
+        <SectionContainer className="!py-20 md:!py-24">
+          <AnimatedSection>
+            <div className="text-center max-w-2xl mx-auto mb-12">
+              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.18em] mb-3">Pick your play</p>
+              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-3">
+                Any kind of deal works.
+              </h2>
+              <p className="text-muted text-lg">
+                Run whatever fits your margins. Not sure what to post? We&apos;ll help you choose on signup.
+              </p>
+            </div>
+          </AnimatedSection>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 max-w-5xl mx-auto">
+            {DEAL_TYPES.map((deal, i) => (
+              <AnimatedSection key={deal.title} delay={i * 0.06}>
+                <div className="bg-white border border-gray-100 rounded-2xl p-6 text-center hover:shadow-lg hover:border-primary/30 transition-all duration-300 group h-full">
+                  <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">{deal.icon}</div>
+                  <h3 className="font-bold text-ink mb-1.5">{deal.title}</h3>
+                  <p className="text-muted text-sm leading-relaxed">{deal.desc}</p>
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </SectionContainer>
+      </section>
+
+      {/* ─── 7. Businesses already on Bizzy ────────────────────
+          Proof, right after we have made the case and shown the mechanics. */}
+      <BizzyVenuesMarquee label="Already on Bizzy" theme="light" />
+
+      {/* ─── 8. Testimonials ──────────────────────────────────────
           Renders nothing until each business approves its quote in writing.
           Drafts + the approval email: TESTIMONIAL_DRAFTS.md */}
       <DiscountTestimonials />
 
-      {/* ─── 8. A note from the founder ───────────────────────── */}
+      {/* ─── 9. A note from the founder ───────────────────────── */}
       <section className="relative overflow-hidden bg-ink">
         <div className="absolute -right-40 top-0 w-[32rem] h-[32rem] bg-primary/15 rounded-full blur-3xl pointer-events-none" />
         <SectionContainer className="relative !py-20 md:!py-28">
@@ -622,9 +636,6 @@ export default async function DiscountsPage() {
           </AnimatedSection>
         </SectionContainer>
       </section>
-
-      {/* ─── 9. Businesses already on Bizzy ───────────────────── */}
-      <BizzyVenuesMarquee label="Already on Bizzy" theme="light" />
 
       {/* ─── 10. FAQ ──────────────────────────────────────────── */}
       <section className="bg-gray-50">

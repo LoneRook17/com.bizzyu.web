@@ -34,6 +34,13 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* In-page anchors (e.g. "See how it works" -> #how-it-works) glide instead of
+   teleporting. scroll-padding keeps the target clear of the sticky navbar. */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0);
@@ -134,6 +141,17 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .marker-draw {
     background-size: 100% 100%;
+    animation: none;
+  }
+
+  /* Smooth scrolling is itself motion: a long glide is a common vestibular
+     trigger, so anchors jump instead. */
+  html {
+    scroll-behavior: auto;
+  }
+
+  /* The floating phone/card idle loop. */
+  .animate-float {
     animation: none;
   }
 }
