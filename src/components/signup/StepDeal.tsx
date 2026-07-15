@@ -2,8 +2,8 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import type { DealInfo, MediaInfo } from "@/lib/types";
-import { REDEMPTION_OPTIONS } from "@/lib/types";
+import type { DealAvailability, DealInfo, MediaInfo } from "@/lib/types";
+import { DAY_OPTIONS, REDEMPTION_OPTIONS, formatAvailability } from "@/lib/types";
 
 interface StepDealProps {
   data: DealInfo;
@@ -31,6 +31,23 @@ export default function StepDeal({
   const update = (field: keyof DealInfo, value: string) =>
     onChange({ ...data, [field]: value });
 
+  const availability: DealAvailability = data.availability ?? {
+    enabled: false,
+    startTime: "",
+    endTime: "",
+    days: [0, 1, 2, 3, 4, 5, 6],
+  };
+
+  const updateAvailability = (patch: Partial<DealAvailability>) =>
+    onChange({ ...data, availability: { ...availability, ...patch } });
+
+  const toggleDay = (day: number) => {
+    const days = availability.days.includes(day)
+      ? availability.days.filter((d) => d !== day)
+      : [...availability.days, day].sort((a, b) => a - b);
+    updateAvailability({ days });
+  };
+
   const selectedOption = REDEMPTION_OPTIONS.find(
     (o) => o.value === data.redemptionFrequency
   );
@@ -41,7 +58,11 @@ export default function StepDeal({
     data.estimatedSavings.trim() &&
     data.redemptionFrequency &&
     (data.redemptionFrequency !== "limited_supply" ||
-      data.limitedSupplyCount.trim());
+      data.limitedSupplyCount.trim()) &&
+    // A half-filled window is worse than none: it would reach us as a deal
+    // with hours nobody can act on.
+    (!availability.enabled ||
+      Boolean(availability.startTime && availability.endTime && availability.days.length > 0));
 
   return (
     <div className="space-y-4">
@@ -174,6 +195,102 @@ export default function StepDeal({
           onChange={(e) => update("startDate", e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
         />
+      </div>
+
+      {/* Availability window. Off by default: the common case is all-day, and
+          this is the lever for the "fill your slow hours" pitch. */}
+      <div className="rounded-xl border border-gray-200 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink" id="avail-label">
+              Only available during certain hours
+            </p>
+            <p className="text-xs text-muted mt-0.5 leading-relaxed">
+              Use this to steer students to your slow hours. Leave it off and the deal runs any time
+              you&apos;re open.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={availability.enabled}
+            aria-labelledby="avail-label"
+            onClick={() => updateAvailability({ enabled: !availability.enabled })}
+            className={`relative shrink-0 w-12 h-7 rounded-full transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+              availability.enabled ? "bg-primary" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                availability.enabled ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+
+        {availability.enabled && (
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="avail-from" className="block text-xs font-medium text-muted mb-1">
+                  From
+                </label>
+                <input
+                  id="avail-from"
+                  type="time"
+                  value={availability.startTime}
+                  onChange={(e) => updateAvailability({ startTime: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                />
+              </div>
+              <div>
+                <label htmlFor="avail-to" className="block text-xs font-medium text-muted mb-1">
+                  To
+                </label>
+                <input
+                  id="avail-to"
+                  type="time"
+                  value={availability.endTime}
+                  onChange={(e) => updateAvailability({ endTime: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                />
+              </div>
+            </div>
+
+            <fieldset>
+              <legend className="block text-xs font-medium text-muted mb-1.5">Days</legend>
+              <div className="flex flex-wrap gap-1.5">
+                {DAY_OPTIONS.map((d) => {
+                  const on = availability.days.includes(d.value);
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={d.label}
+                      onClick={() => toggleDay(d.value)}
+                      className={`min-w-11 h-11 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${
+                        on
+                          ? "bg-primary text-ink"
+                          : "bg-white text-muted border border-gray-200 hover:border-gray-400"
+                      }`}
+                    >
+                      {d.short}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            {/* Echo it back in plain words, so nobody has to decode 15:00. */}
+            <p className="text-xs text-ink bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+              {formatAvailability(availability) ||
+                (availability.days.length === 0
+                  ? "Pick at least one day."
+                  : "Add a start and end time.")}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Deal Image (optional) */}

@@ -2,7 +2,7 @@
 
 import { ReactNode, useState } from "react";
 import type { FormData } from "@/lib/types";
-import { REDEMPTION_OPTIONS } from "@/lib/types";
+import { REDEMPTION_OPTIONS, formatAvailability } from "@/lib/types";
 import DealCardPreview from "./DealCardPreview";
 
 interface StepReviewProps {
@@ -89,6 +89,7 @@ export default function StepReview({
         <InfoRow label="Description" value={data.deal.description} />
         <InfoRow label="Est. Savings" value={data.deal.estimatedSavings} />
         <InfoRow label="Redemption" value={freqLabel} />
+        <InfoRow label="Available" value={formatAvailability(data.deal.availability) || "All day"} />
         <InfoRow label="Start Date" value={data.deal.startDate} />
       </div>
 
