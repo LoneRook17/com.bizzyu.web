@@ -28,8 +28,28 @@ export interface Venue {
   is_active: boolean
   website: string | null
   instagram: string | null
+  // #9 venue-stripe: matched business_stripe_accounts row (null = default
+  // routing). Absent from envs that haven't run the V1 core migrations —
+  // the services GET /business/venues drift guard serves the old shape.
+  business_stripe_account_id?: number | null
   created_at: string
   updated_at: string
+}
+
+// #9 venue-stripe V3 — one business_stripe_accounts row as served by
+// GET /business/stripe-accounts (live-verified against Stripe per request:
+// a deauthorized/deleted account comes back with all flags false and
+// stripe_reconnect_required true, regardless of what the DB claims).
+export interface BusinessStripeAccount {
+  id: number
+  label: string | null
+  stripe_connect_id: string | null
+  stripe_connect_onboarded: boolean
+  charges_enabled: boolean
+  payouts_enabled: boolean
+  is_default: boolean
+  stripe_reconnect_required: boolean
+  matched_venue_ids: number[]
 }
 
 export interface AuthState {
@@ -131,6 +151,12 @@ export interface TicketTier {
   max_per_person?: number
   ticket_type: 'paid' | 'free' | 'guest'
   is_hidden?: boolean
+  // Operator "force sold out" flag. Unlike is_hidden, the tier stays visible on
+  // checkout but shows a Sold Out banner and can't be purchased. Quantity is
+  // untouched — clearing it restores sales.
+  force_sold_out?: boolean
+  // Derived signal from the API: force_sold_out OR a finite tier that ran out.
+  is_sold_out?: boolean
   // Scheduled tickets: optional sales/scan window (datetime-local strings, US/Eastern wall-clock). Empty/null = no limit.
   valid_from?: string | null
   valid_until?: string | null
@@ -148,6 +174,19 @@ export interface EventDetail extends EventListItem {
   promotion_enabled?: boolean | number
   promotion_commission_type?: 'percent' | 'fixed' | null
   promotion_commission_value?: number | null
+  lowstock_alerts_enabled?: boolean | number
+  lowstock_threshold_type?: 'percent' | 'count' | null
+  lowstock_threshold_value?: number | null
+  lowstock_notify_business_team?: boolean | number
+  // NOTE: the door code is intentionally NOT on this payload. It's a credential,
+  // so services keeps it off the broadly-fetched event and serves it from a
+  // dedicated GET /business/events/:id/door-code — DoorCodeCard fetches it there.
+  // Recurring series linkage (#5): set when this event is one night of a
+  // recurring series. series_customized_at marks a hand-edited night that
+  // template edits will never overwrite.
+  recurring_series_id?: number | null
+  series_customized_at?: string | null
+  occurrence_date?: string | null
 }
 
 export interface RecurringNight {
@@ -184,6 +223,10 @@ export interface EventFormData {
   promotion_commission_type?: 'percent' | 'fixed'
   promotion_commission_value?: number | null
   notify_followers_on_publish?: boolean
+  lowstock_alerts_enabled?: boolean
+  lowstock_threshold_type?: 'percent' | 'count'
+  lowstock_threshold_value?: number | null
+  lowstock_notify_business_team?: boolean
 }
 
 // Deal types
@@ -404,7 +447,51 @@ export interface PromoCode {
   is_active: boolean
   created_by: number
   created_at: string
+  /**
+   * Revenue attributed to this code. For universal (venue) codes this is the
+   * venue-wide total across EVERY event ("All events"). See event_revenue_generated
+   * for the per-event slice returned by the event-scoped endpoint.
+   */
   revenue_generated?: number
+  /**
+   * Universal codes viewed under ONE event: redemptions of this code on THAT
+   * event only. Present only in the /business/events/:id/promo-codes payload;
+   * undefined for event-scoped rows and older API responses. Pairs with
+   * current_redemptions (venue-wide "All events" count).
+   */
+  event_redemptions?: number
+  /**
+   * Universal codes viewed under ONE event: revenue on THAT event only. Pairs
+   * with revenue_generated (venue-wide total).
+   */
+  event_revenue_generated?: number
+}
+
+/**
+ * One event's slice of a universal code's usage — a row in the per-event
+ * breakdown (GET /business/venues/:venueId/promo-codes/:promoId/breakdown).
+ * INCLUDES zero-usage events. NOTE: redemptions / revenue_generated come from
+ * MySQL SUM() and MAY serialize as strings ("3", "25.00") — always coerce with
+ * Number() before math or display.
+ */
+export interface PromoEventBreakdownRow {
+  event_id: number
+  event_name: string | null
+  event_date: string | null
+  redemptions: number
+  revenue_generated: number
+}
+
+/**
+ * A universal code's usage decomposed across every event it applied to. The
+ * per-event rows reconcile to `aggregate`: sum(events[].redemptions) ===
+ * aggregate.redemptions and likewise for revenue.
+ */
+export interface PromoEventBreakdown {
+  promo_code_id: number
+  code: string
+  aggregate: { redemptions: number; revenue_generated: number }
+  events: PromoEventBreakdownRow[]
 }
 
 export interface CheckinEntry {
@@ -594,4 +681,104 @@ export interface BusinessProfile {
   /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
   stripe_reconnect_required?: boolean
   created_at: string
+}
+
+// Recurring event series (#5) — /business/recurring-series (services).
+// A series is the schedule + occurrence template; every occurrence is a normal
+// Event row stamped by core's generator and managed from the events surface.
+export interface RecurringTemplateTicket {
+  name: string
+  description?: string | null
+  price_usd: number
+  quantity: number // 0 = unlimited
+  max_per_person: number // 0 = unlimited
+  ticket_type: 'paid' | 'free'
+  is_hidden?: number
+  sort_order?: number
+  // Sales/scan windows are RELATIVE to each night: a time of day plus a day
+  // offset vs the occurrence date. Absolute datetimes are computed at stamp time.
+  valid_from_time: string | null // "HH:MM:SS"
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+}
+
+export interface RecurringSeriesListItem {
+  id: number
+  name: string
+  days_of_week: number[] // ISO weekdays, 1 = Mon … 7 = Sun
+  date_range_start: string // "YYYY-MM-DD"
+  date_range_end: string | null // null = runs until suspended
+  is_active: number | boolean
+  type: 'Ticketed' | 'Free' | 'RSVP'
+  venue_id: number | null
+  venue_name: string
+  start_time: string // "HH:MM:SS"
+  end_time: string
+  flyer_image_url: string | null
+  created_at: string
+  updated_at: string
+  occurrence_count: number
+  upcoming_count: number
+  next_occurrence_date: string | null // "YYYY-MM-DD"
+}
+
+export interface RecurringSeriesDetail extends RecurringSeriesListItem {
+  business_id: number
+  created_by: number
+  description: string | null
+  venue_address: string
+  is_21_plus: number
+  timezone: string | null
+  promotion_enabled: number
+  promotion_commission_type: 'percent' | 'fixed' | null
+  promotion_commission_value: number | null
+  notify_followers_on_publish: number
+  lowstock_alerts_enabled: number
+  lowstock_threshold_type: 'percent' | 'count' | null
+  lowstock_threshold_value: number | null
+  lowstock_notify_business_team: number
+  template_tickets: RecurringTemplateTicket[] | null
+}
+
+export interface RecurringOccurrence {
+  event_id: number
+  name: string
+  slug: string
+  occurrence_date: string // "YYYY-MM-DD"
+  status: string
+  start_date_time: string
+  end_date_time: string
+  /** events.series_customized_at IS NOT NULL — the operator edited this night directly. */
+  is_customized: boolean
+  tickets_sold: number
+  paid_orders: number
+}
+
+/** core topUpSeries — POST create + POST /:id/generate-now. */
+export interface RecurringGenerationSummary {
+  stamped: number[]
+  skipped_existing: number
+  status: string
+}
+
+/** core restampFutureOccurrences — returned by PUT /business/recurring-series/:id. All values are event ids. */
+export interface RecurringRestampSummary {
+  restamped: number[]
+  tiers_replaced: number[]
+  skipped_customized: number[]
+  skipped_tiers_with_sales: number[]
+  // Pattern shrink (weekday dropped / date range pulled in): nights that no
+  // longer match the schedule.
+  removed_from_pattern_cancelled: number[]
+  removed_from_pattern_skipped_customized: number[]
+  removed_from_pattern_skipped_with_sales: number[]
+}
+
+/** core suspendSeries — returned by POST /business/recurring-series/:id/suspend. */
+export interface RecurringSuspendSummary {
+  message?: string
+  cancelled: number[]
+  skipped_customized: number[]
+  skipped_with_sales: number[]
 }

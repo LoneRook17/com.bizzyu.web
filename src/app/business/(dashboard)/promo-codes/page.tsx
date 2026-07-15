@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { Plus, Ticket, MapPin } from "lucide-react"
+import { Fragment, useState, useEffect, useCallback } from "react"
+import { Plus, Ticket, MapPin, ChevronRight, Info } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import type { PromoCode } from "@/lib/business/types"
+import type { PromoCode, PromoEventBreakdown } from "@/lib/business/types"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -26,6 +26,13 @@ import {
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
+
+// SUM()-derived fields arrive as strings ("3", "25.00") — always coerce.
+function money(n: number | string) {
+  return `$${Number(n ?? 0).toFixed(2)}`
+}
+
+type BreakdownState = { loading: boolean; error: string; data: PromoEventBreakdown | null }
 
 const EMPTY_FORM = {
   code: "",
@@ -57,12 +64,20 @@ export default function UniversalPromoCodesPage() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [formError, setFormError] = useState("")
+  const [showPerUserInfo, setShowPerUserInfo] = useState(false)
 
   const [confirm, setConfirm] = useState<ConfirmState>(null)
   const [confirmBusy, setConfirmBusy] = useState(false)
   const [confirmError, setConfirmError] = useState("")
 
+  // Per-event breakdown expansion (universal codes only).
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [breakdowns, setBreakdowns] = useState<Record<number, BreakdownState>>({})
+
   const fetchCodes = useCallback(() => {
+    // Codes (and their cached breakdowns) are venue-scoped — drop them on reload.
+    setExpandedId(null)
+    setBreakdowns({})
     if (!venueReady) {
       setCodes([])
       setLoading(false)
@@ -75,6 +90,30 @@ export default function UniversalPromoCodesPage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load promo codes"))
       .finally(() => setLoading(false))
   }, [venueReady, selectedVenueId])
+
+  const toggleExpand = (code: PromoCode) => {
+    // Only universal (venue) codes have a per-event breakdown. Event-scoped codes
+    // live on one event — no dead affordance for them.
+    if (code.event_id !== null) return
+    const id = code.promo_code_id
+    if (expandedId === id) {
+      setExpandedId(null)
+      return
+    }
+    setExpandedId(id)
+    if (!breakdowns[id]) {
+      setBreakdowns((b) => ({ ...b, [id]: { loading: true, error: "", data: null } }))
+      apiClient
+        .get<PromoEventBreakdown>(`/business/venues/${selectedVenueId}/promo-codes/${id}/breakdown`)
+        .then((data) => setBreakdowns((b) => ({ ...b, [id]: { loading: false, error: "", data } })))
+        .catch((err) =>
+          setBreakdowns((b) => ({
+            ...b,
+            [id]: { loading: false, error: err instanceof ApiError ? err.message : "Failed to load breakdown", data: null },
+          })),
+        )
+    }
+  }
 
   useEffect(() => {
     setError("")
@@ -224,9 +263,30 @@ export default function UniversalPromoCodesPage() {
                       const isExpired = code.expires_at && new Date(code.expires_at) < new Date()
                       const isMaxed = code.max_redemptions && code.current_redemptions >= code.max_redemptions
                       const status = !code.is_active ? "Inactive" : isExpired ? "Expired" : isMaxed ? "Maxed" : "Active"
+                      // Every code on this page is universal (venue-scoped), so all
+                      // expand; gate on event_id anyway so an event-scoped row never
+                      // renders a dead affordance.
+                      const canExpand = code.event_id === null
+                      const isExpanded = expandedId === code.promo_code_id
                       return (
-                        <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800/60 last:border-0">
-                          <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">{code.code}</td>
+                        <Fragment key={code.promo_code_id}>
+                        <tr className="border-b border-neutral-50 dark:border-neutral-800/60 last:border-0">
+                          <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">
+                            {canExpand ? (
+                              <button
+                                type="button"
+                                onClick={() => toggleExpand(code)}
+                                aria-expanded={isExpanded}
+                                className="group inline-flex items-center gap-1.5 -ml-1 rounded px-1 py-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                title="Show per-event breakdown"
+                              >
+                                <ChevronRight className={`size-3.5 shrink-0 text-neutral-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                                {code.code}
+                              </button>
+                            ) : (
+                              code.code
+                            )}
+                          </td>
                           <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">
                             {code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}
                           </td>
@@ -272,6 +332,14 @@ export default function UniversalPromoCodesPage() {
                             )}
                           </td>
                         </tr>
+                        {isExpanded && (
+                          <tr className="border-b border-neutral-50 dark:border-neutral-800/60">
+                            <td colSpan={6} className="bg-neutral-50/60 dark:bg-neutral-800/20 px-5 py-4">
+                              <PromoBreakdown state={breakdowns[code.promo_code_id]} />
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       )
                     })}
                   </tbody>
@@ -349,7 +417,17 @@ export default function UniversalPromoCodesPage() {
             </div>
 
             <div>
-              <Label htmlFor="pc-per-user" className="mb-1.5 block">Max per user</Label>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <Label htmlFor="pc-per-user">Max per user</Label>
+                <button
+                  type="button"
+                  onClick={() => setShowPerUserInfo((v) => !v)}
+                  className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
+                  aria-label="How does Max per user work for a venue-wide code?"
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </div>
               <Input
                 id="pc-per-user"
                 type="number"
@@ -357,6 +435,11 @@ export default function UniversalPromoCodesPage() {
                 value={form.max_per_user}
                 onChange={(e) => setForm((f) => ({ ...f, max_per_user: e.target.value }))}
               />
+              {showPerUserInfo && (
+                <p className="mt-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
+                  Counted per event. A customer can use this code once per event — so if it applies to several of your events, they can redeem it at each one. Your total usage limit still applies across all events combined.
+                </p>
+              )}
             </div>
 
             <div className="sm:col-span-2">
@@ -447,5 +530,87 @@ export default function UniversalPromoCodesPage() {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+/**
+ * Per-event breakdown of a universal code: one row per event it applied to —
+ * INCLUDING zero-usage events — with the venue-wide total below, so a host can
+ * see the rows add up. Numbers are coerced (SUM() fields may be strings).
+ */
+function PromoBreakdown({ state }: { state: BreakdownState | undefined }) {
+  if (!state || state.loading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </div>
+    )
+  }
+  if (state.error) {
+    return <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+  }
+  const data = state.data
+  if (!data) return null
+
+  const rows = data.events
+  const aggUses = Number(data.aggregate?.redemptions ?? 0)
+  const aggRev = Number(data.aggregate?.revenue_generated ?? 0)
+  // Sum the rows ourselves and compare to the API's venue-wide total, so the
+  // "it adds up" claim is shown, not asserted. Compare revenue in cents.
+  const sumUses = rows.reduce((s, r) => s + Number(r.redemptions ?? 0), 0)
+  const sumRev = rows.reduce((s, r) => s + Number(r.revenue_generated ?? 0), 0)
+  const reconciles = sumUses === aggUses && Math.round(sumRev * 100) === Math.round(aggRev * 100)
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-neutral-500 dark:text-neutral-400">This code doesn’t apply to any events yet.</p>
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Per-event usage</p>
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
+              <th className="px-4 py-2 text-left font-medium">Event</th>
+              <th className="px-4 py-2 text-left font-medium">Date</th>
+              <th className="px-4 py-2 text-right font-medium">Uses</th>
+              <th className="px-4 py-2 text-right font-medium">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const uses = Number(r.redemptions ?? 0)
+              const rev = Number(r.revenue_generated ?? 0)
+              const isZero = uses === 0 && rev === 0
+              return (
+                <tr
+                  key={r.event_id}
+                  className={`border-b border-neutral-50 dark:border-neutral-800/60 last:border-0 ${isZero ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+                >
+                  <td className="px-4 py-2">{r.event_name ?? `Event #${r.event_id}`}</td>
+                  <td className="px-4 py-2 text-xs">{r.event_date ? formatDate(r.event_date) : "—"}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{uses}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{money(rev)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-neutral-200 dark:border-neutral-700 font-semibold text-neutral-900 dark:text-neutral-100">
+              <td className="px-4 py-2" colSpan={2}>All events</td>
+              <td className="px-4 py-2 text-right tabular-nums">{aggUses}</td>
+              <td className="px-4 py-2 text-right tabular-nums">{money(aggRev)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className={`mt-2 text-[11px] ${reconciles ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 dark:text-amber-400"}`}>
+        {reconciles
+          ? `The ${rows.length} row${rows.length === 1 ? "" : "s"} above add up to ${aggUses} ${aggUses === 1 ? "use" : "uses"} · ${money(aggRev)}.`
+          : `Rows sum to ${sumUses} · ${money(sumRev)} but the venue total is ${aggUses} · ${money(aggRev)} — these don’t reconcile.`}
+      </p>
+    </div>
   )
 }

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
-import { openInApp } from "@/lib/open-in-app"
 
 // How often the board silently re-fetches so newly-added events / tickets /
 // line skips appear on the mounted screen without a manual reload.
@@ -570,12 +569,17 @@ export default function VenuePageClient({
             <SectionHeader title="Deals" count={deals.length} />
             <div className="grid gap-5 md:grid-cols-2">
               {deals.map((deal) => (
-                <div
+                // Same-domain navigation to the /deal/:id web interstitial — NOT
+                // a raw bizzy:// scheme. This page is served from bizzyu.com and
+                // the deal is on bizzyu.com too, so a Universal Link would be
+                // suppressed (iOS never fires a UL for the domain you're already
+                // on) AND a raw custom scheme throws "address is invalid" for the
+                // majority who don't have the app. The interstitial handles both:
+                // app users tap "Open in App" (custom scheme), everyone else gets
+                // the App Store. See src/app/deal/[id]/page.tsx.
+                <Link
                   key={deal.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openInApp(`bizzy://deal/${deal.id}`)}
-                  onKeyDown={(e) => { if (e.key === "Enter") openInApp(`bizzy://deal/${deal.id}`) }}
+                  href={`/deal/${deal.id}`}
                   className="flex cursor-pointer items-start gap-4 rounded-3xl border border-[#1e1e2e] bg-[#141420] p-6 transition-colors hover:border-[#05EB54]/40 active:scale-[0.99]"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#05EB54]/15 text-[#05EB54]">
@@ -599,23 +603,29 @@ export default function VenuePageClient({
                       <img src={deal.deal_image_path} alt={deal.deal_title} className="h-full w-full object-cover" />
                     </div>
                   )}
-                </div>
+                </Link>
               ))}
             </div>
           </section>
         )}
 
-        {/* Open-in-app pill - mobile browsers only. Tries bizzy://venue/:id,
-            falls back to the App Store when the app isn't installed. */}
+        {/* Open-in-app pill - mobile browsers only. Tap-only by design: a plain
+            <a href="bizzy://venue/:id"> and NOTHING else. We deliberately do NOT
+            arm a setTimeout/meta-refresh App Store fallback here — on a device
+            WITH the app installed, the app takes over and any pending timer would
+            later fire in the background and yank the user into the App Store
+            (reproduced on device). Do not reintroduce an auto-navigation of any
+            kind. Users without the app can use the "Get the app" CTAs elsewhere
+            on the page. */}
         {isMobileUA && (
           <div className="fixed inset-x-0 bottom-5 z-50 flex justify-center px-5">
-            <button
-              onClick={() => openInApp(`bizzy://venue/${venue.id}`)}
+            <a
+              href={`bizzy://venue/${venue.id}`}
               className="flex items-center gap-2.5 rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-6 py-3.5 text-base font-extrabold text-black shadow-2xl shadow-[#05EB54]/40 ring-1 ring-black/10 transition active:scale-[0.97]"
             >
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
               Open in the Bizzy app
-            </button>
+            </a>
           </div>
         )}
 

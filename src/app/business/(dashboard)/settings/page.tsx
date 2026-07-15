@@ -27,6 +27,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/
 import LogoUpload from "@/components/business/v2/settings/LogoUpload"
 import ProfileForm from "@/components/business/v2/settings/ProfileForm"
 import StripeConnectCard, { StripeReturnBanner } from "@/components/business/v2/settings/StripeConnectCard"
+import VenuePayoutAccountsSection from "@/components/business/v2/settings/VenuePayoutAccountsSection"
 import VenueManagementSection from "@/components/business/v2/settings/VenueManagementSection"
 import VenuePageSection from "@/components/business/v2/settings/VenuePageSection"
 import DashboardPreferences, { AppearanceSettings } from "@/components/business/v2/settings/DashboardPreferences"
@@ -83,6 +84,10 @@ function SettingsContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const stripeParam = searchParams.get("stripe")
+  // #9 venue-stripe: an account_id on the Stripe return/refresh URL means the
+  // bounce belongs to a business_stripe_accounts row — VenuePayoutAccountsSection
+  // completes that row, not the legacy profile endpoint.
+  const stripeReturnIsAccountRow = !!searchParams.get("account_id")
 
   // Deep links pick the starting tab: ?stripe=return|refresh → Payments,
   // ?action=add-venue → Venues, ?tab=<name> → that tab.
@@ -240,7 +245,7 @@ function SettingsContent() {
         {/* --- Payments --- */}
         <TabsContent value="payments">
           <div id="stripe-connect" className="scroll-mt-20">
-            {(stripeParam === "return" || stripeParam === "refresh") && (
+            {(stripeParam === "return" || stripeParam === "refresh") && !stripeReturnIsAccountRow && (
               <StripeReturnBanner
                 onComplete={() => {
                   fetchProfile()
@@ -254,6 +259,7 @@ function SettingsContent() {
               reconnectRequired={profile.stripe_reconnect_required ?? false}
               onOnboardingComplete={() => { fetchProfile(); refreshProfile() }}
             />
+            <VenuePayoutAccountsSection />
           </div>
         </TabsContent>
 

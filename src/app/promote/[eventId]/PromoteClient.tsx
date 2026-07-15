@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { APP_STORE_URL } from "@/lib/constants"
-import { openInApp } from "@/lib/open-in-app"
 
 const API_URL = getApiBaseUrl()
 const TOKEN_STORAGE_KEY = "bz_auth_token"
@@ -249,13 +248,18 @@ export default function PromoteClient(props: Props) {
               ))}
             </ol>
 
+            {/* Tap-only by design: a plain <a href="bizzy://promote/:id"> with
+                NO setTimeout/meta-refresh App Store fallback. An armed timer
+                would fire in the background after the app takes over and yank
+                the user into the App Store. The App Store link below is the
+                only fallback, and it is user-tapped, never automatic. */}
             {isMobileUA && (
-              <button
-                onClick={() => openInApp(`bizzy://promote/${props.eventId}`)}
-                className="mb-3 w-full rounded-xl bg-primary px-6 py-3 font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
+              <a
+                href={`bizzy://promote/${props.eventId}`}
+                className="mb-3 block w-full rounded-xl bg-primary px-6 py-3 text-center font-semibold text-white transition hover:brightness-110 active:scale-[0.98]"
               >
                 Open in the Bizzy app
-              </button>
+              </a>
             )}
             <a
               href={APP_STORE_URL}

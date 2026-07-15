@@ -6,6 +6,8 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { nativeShare } from "@/lib/share"
+import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
+import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
@@ -168,6 +170,9 @@ export default function LineSkipCheckoutClient({
   const [hasAccount, setHasAccount] = useState(false)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // Venue payout account not ready (#9): line-skip sales at this venue are
+  // paused. Rendered as a full pause notice in place of the purchase CTA.
+  const [venueBlock, setVenueBlock] = useState<VenueStripeBlock | null>(null)
   // SMS marketing opt-in (default-checked, optional). Sent with the purchase so
   // the backend sets business_followers.sms_enabled. Unchecking doesn't block.
   const [smsOptIn, setSmsOptIn] = useState(true)
@@ -523,6 +528,13 @@ export default function LineSkipCheckoutClient({
         })
         const data = await res.json()
         if (!res.ok) {
+          const block = parseVenueStripeBlock(data)
+          if (block) {
+            setVenueBlock(block)
+            setCheckoutStep("idle")
+            setCheckoutError("")
+            return
+          }
           setCheckoutError(data.message || "Checkout failed")
           setCheckoutStep("phone")
           return
@@ -548,6 +560,13 @@ export default function LineSkipCheckoutClient({
       })
       const data = await res.json()
       if (!res.ok) {
+        const block = parseVenueStripeBlock(data)
+        if (block) {
+          setVenueBlock(block)
+          setCheckoutStep("idle")
+          setCheckoutError("")
+          return
+        }
         setCheckoutError(data.message || "Failed to create checkout")
         setCheckoutStep("phone")
         return
@@ -1114,8 +1133,12 @@ export default function LineSkipCheckoutClient({
             </div>
           )}
 
+          {/* Venue payout account not ready (#9): the pause notice replaces
+              the purchase CTA entirely — never rendered as a raw error. */}
+          {venueBlock && <VenueSalesPausedNotice block={venueBlock} />}
+
           {/* Get Line Skip CTA */}
-          {selectedInstanceId && (
+          {selectedInstanceId && !venueBlock && (
             <>
               <button
                 onClick={startCheckout}
@@ -1133,6 +1156,48 @@ export default function LineSkipCheckoutClient({
             </>
           )}
         </section>
+
+        {/* Open in the Bizzy app.
+            IMPORTANT (slug is NOT safe to pass through): the URL slug on this
+            route is documented as "the venue id, falling back to the business
+            id server-side" (services lineSkipCheckout.ts:828 uses businessId
+            when an instance has no venue_id). The Flutter app parses
+            bizzy://lineskip/:slug as an INTEGER VENUE ID and opens that venue
+            (deep_link_service.dart:271-277 → _handleVenueDeepLink). venue_id and
+            business_id are DIFFERENT id spaces, so a business-id slug would open
+            the WRONG venue with no visible error. We therefore emit the REAL
+            venue id from the page payload (venue.venue_id), and only render the
+            button when a venue is actually present — a business-only line-skip
+            page (venue === null) shows no app button rather than mis-routing.
+            Tap-only, no timer/fallback. The bizzy://lineskip arm ships in the
+            NEXT app build; on the current build this scheme is a no-op, so the
+            App Store link stays as the fallback. */}
+        {venue?.venue_id && (
+          <div className="mt-16 rounded-2xl border border-[#1e1e2e] bg-[#141420] p-6 text-center">
+            <h2 className="mb-2 text-xl font-extrabold text-white">Get your Line Skips in the app</h2>
+            <p className="mb-5 text-sm text-gray-400">
+              Manage your passes and skip the line from the Bizzy app.
+            </p>
+            <a
+              href={`bizzy://lineskip/${venue.venue_id}`}
+              className="mb-3 flex w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-3.5 text-base font-extrabold text-black transition hover:brightness-110 active:scale-[0.98]"
+              style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 16px 40px -12px ${GOLD}80` }}
+            >
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+              </svg>
+              Open in the Bizzy app
+            </a>
+            <a
+              href="https://apps.apple.com/app/id6683306360"
+              target="_blank"
+              rel="noreferrer"
+              className="block w-full rounded-2xl border border-white/15 px-6 py-3.5 text-base font-semibold text-white transition hover:bg-white/10"
+            >
+              Get the App
+            </a>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="mt-16 border-t border-white/5 pt-8 text-center">
