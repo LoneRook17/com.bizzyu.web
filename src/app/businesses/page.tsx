@@ -180,7 +180,7 @@ export default function BusinessesPage() {
                 </ul>
 
                 <div className="mt-auto flex flex-col sm:flex-row sm:items-center gap-4">
-                  <Button href="/business/signup" variant="primary" size="lg">
+                  <Button href="/post-a-deal" variant="primary" size="lg" className="!text-ink">
                     Post a Student Deal for Free
                   </Button>
                   <Link
@@ -244,12 +244,12 @@ export default function BusinessesPage() {
                 I run a bar → Book a call
               </Button>
               <Button
-                href="/business/signup"
+                href="/post-a-deal"
                 variant="white"
                 size="lg"
                 className="!bg-white/15 !text-white hover:!bg-white/25 backdrop-blur-sm"
               >
-                I run a restaurant → Sign up
+                I run a restaurant → Post a deal
               </Button>
             </div>
             <p className="mt-6 text-white/75 text-sm">
