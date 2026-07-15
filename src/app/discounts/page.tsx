@@ -477,11 +477,13 @@ export default async function DiscountsPage() {
                   <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/40 flex items-center justify-center mb-5">
                     <IconLock className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="text-xl md:text-2xl font-bold mb-2 text-white">Your cap runs on autopilot.</h3>
-                  <p className="text-white/70 leading-relaxed">
-                    The redemption frequency you set is enforced for you. Run a once-a-month deal and it locks on each
-                    student&apos;s phone for 30 days after they redeem, then it unlocks and pings them that it&apos;s
-                    back. You stay protected from overuse, and the reminder pulls them right back through your door.
+                  <h3 className="text-xl md:text-2xl font-bold mb-3 text-white">Your cap runs on autopilot.</h3>
+                  <p className="text-lg text-white leading-relaxed">
+                    You choose how often each student can claim. We do the rest.
+                  </p>
+                  <p className="mt-3 text-white/60 leading-relaxed">
+                    Pick once a month. After they redeem, it locks on their phone for 30 days. Then it unlocks and we
+                    remind them to come back.
                   </p>
                 </div>
               </div>
