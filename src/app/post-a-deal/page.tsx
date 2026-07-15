@@ -166,9 +166,9 @@ export default async function PostADealPage() {
                 What happens next
               </p>
               <h2 className="text-3xl md:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-5">
-                Post it once. Students do the{" "}
+                Post a Discount. Students Come{" "}
                 <span className="marker-sticker">
-                  <span>rest</span>
+                  <span>In Store</span>
                 </span>
                 .
               </h2>
