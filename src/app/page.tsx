@@ -111,7 +111,7 @@ export default async function Home() {
     <>
       <JsonLd data={faqJsonLd} />
 
-        {/* 1. HERO ------------------------------------------------------------
+        {/* 1. HERO: the promise, and a real redemption playing beside it ------
             Split screen: the pitch holds the left, a real redemption plays on
             the right. The old right column was a phone screenshot ringed by
             three deal-card PNGs; it showed the software and none of the
@@ -193,7 +193,7 @@ export default async function Home() {
           </SectionContainer>
         </section>
 
-      {/* 1b. REDEMPTION -----------------------------------------------------
+      {/* 2. DEALS: how a redemption actually works ---------------------------
           Sits directly under the hero because a visitor can grasp "Bizzy has
           deals" and still have no idea how redeeming one works. One photograph
           answers it: the phone is readable, the offer is real, and she is
@@ -259,34 +259,7 @@ export default async function Home() {
       </section>
 
 
-      {/* 2. LOGO MARQUEE ---------------------------------------------------- */}
-      <section className="py-12 md:py-14 overflow-hidden border-t border-gray-100">
-        <p className="text-center text-[11px] font-semibold text-muted uppercase tracking-[0.2em] mb-8">
-          Deals from places students already go
-        </p>
-        <div className="relative">
-          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-          <div className="flex animate-marquee" style={{ animationDuration: "30s" }}>
-            {[...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS].map((logo, i) => (
-              <div
-                key={`${logo.alt}-${i}`}
-                className="flex-shrink-0 mx-10 md:mx-12 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-300"
-              >
-                <Image
-                  src={logo.src}
-                  alt={logo.alt}
-                  width={logo.width}
-                  height={64}
-                  className={`${logo.height} w-auto`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 3b. EVENTS & NIGHTLIFE ---------------------------------------------
+      {/* 3. EVENTS: how a night actually works -------------------------------
           Real footage of a real Bizzy-powered night, not a screenshot of the
           events tab. The brief's rule: show the listing beside the actual
           crowd. The clip carries the room; the stills carry the faces. */}
@@ -367,120 +340,34 @@ export default async function Home() {
       </section>
 
 
-      {/* 4. FOR STUDENTS - BENTO ------------------------------------------- */}
-      <SectionContainer className="!pt-16 md:!pt-24">
-        <AnimatedSection>
-          <div className="max-w-2xl mb-10 md:mb-12">
-            <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.18em] mb-3">
-              For Students
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-              The whole college town in your pocket.
-            </h2>
-            <p className="text-muted text-lg leading-relaxed">
-              One feed for events, tickets, line skips, and exclusive deals at the spots near your school.
-            </p>
-          </div>
-        </AnimatedSection>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 auto-rows-[200px] md:auto-rows-[260px]">
-          <AnimatedSection className="md:row-span-2">
-            <div className="relative h-full overflow-hidden rounded-3xl bg-gradient-to-br from-ink to-gray-800 p-7 md:p-8 flex flex-col justify-between">
-              <div className="relative z-10">
-                <p className="text-primary text-xs font-bold uppercase tracking-widest mb-3">
-                  Events & Tickets
-                </p>
-                <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">
-                  Tonight, this weekend, all season.
-                </h3>
-                <p className="text-white/60 text-sm leading-relaxed max-w-[260px]">
-                  Discover events, buy tickets, and store them right in Bizzy. No third-party apps.
-                </p>
-              </div>
-
-              <div className="hidden md:block absolute -right-8 -bottom-12 w-[240px] rotate-[6deg] z-10">
+      {/* 4. PROOF: where the deals actually are ---------------------------- */}
+      <section className="py-12 md:py-14 overflow-hidden border-t border-gray-100">
+        <p className="text-center text-[11px] font-semibold text-muted uppercase tracking-[0.2em] mb-8">
+          Deals from places students already go
+        </p>
+        <div className="relative">
+          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+          <div className="flex animate-marquee" style={{ animationDuration: "30s" }}>
+            {[...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS].map((logo, i) => (
+              <div
+                key={`${logo.alt}-${i}`}
+                className="flex-shrink-0 mx-10 md:mx-12 flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-300"
+              >
                 <Image
-                  src="/images/screen-5.png"
-                  alt="Bizzy events screen"
-                  width={240}
-                  height={520}
-                  className="rounded-[2rem] shadow-2xl"
+                  src={logo.src}
+                  alt={logo.alt}
+                  width={logo.width}
+                  height={64}
+                  className={`${logo.height} w-auto`}
                 />
               </div>
-              <div className="absolute -right-10 top-1/2 w-[300px] h-[300px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.1} className="md:col-span-2">
-            <div className="relative h-full overflow-hidden rounded-3xl bg-primary-light p-7 md:p-8 flex items-center gap-6">
-              <div className="flex-1">
-                <p className="text-primary-dark text-xs font-bold uppercase tracking-widest mb-2">
-                  Line Skip
-                </p>
-                <h3 className="text-xl md:text-2xl font-bold text-ink leading-tight mb-2">
-                  Walk past the wait.
-                </h3>
-                <p className="text-ink/70 text-sm leading-relaxed max-w-md">
-                  Skip the line at participating venues with a tap.
-                </p>
-              </div>
-              <div className="hidden sm:flex flex-shrink-0 w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white items-center justify-center shadow-lg">
-                <svg
-                  className="text-primary-dark w-10 h-10 md:w-12 md:h-12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <polyline points="13 17 18 12 13 7" />
-                  <polyline points="6 17 11 12 6 7" />
-                </svg>
-              </div>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.15}>
-            <div className="relative h-full overflow-hidden rounded-3xl bg-white border border-gray-100 p-6 md:p-7 hover:border-primary/30 hover:-translate-y-1 transition-all duration-300">
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-widest mb-2">
-                Exclusive Deals
-              </p>
-              <h3 className="text-xl font-bold text-ink leading-tight mb-2">
-                BOGOs, meal deals, and more.
-              </h3>
-              <p className="text-muted text-sm leading-relaxed">
-                Bizzy-only offers from the places you actually go.
-              </p>
-            </div>
-          </AnimatedSection>
-
-          <AnimatedSection delay={0.2}>
-            <div className="relative h-full overflow-hidden rounded-3xl bg-white border border-gray-100 p-6 md:p-7 hover:border-primary/30 hover:-translate-y-1 transition-all duration-300">
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-widest mb-2">
-                Local Spots
-              </p>
-              <h3 className="text-xl font-bold text-ink leading-tight mb-2">
-                Restaurants, bars, and hangouts.
-              </h3>
-              <p className="text-muted text-sm leading-relaxed">
-                All the student-friendly spots in one feed.
-              </p>
-            </div>
-          </AnimatedSection>
-        </div>
-
-        <AnimatedSection delay={0.2}>
-          <div className="flex flex-wrap gap-3 mt-8">
-            <Button href={APP_STORE_URL} variant="primary" size="md" external>
-              Get the App
-            </Button>
+            ))}
           </div>
-        </AnimatedSection>
-      </SectionContainer>
+        </div>
+      </section>
 
-      {/* 5. FOR BUSINESSES - 0% block -------------------------------------- */}
+      {/* 5. THE OTHER SIDE: for businesses --------------------------------- */}
       <section className="bg-ink relative overflow-hidden mt-16 md:mt-24">
         <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
