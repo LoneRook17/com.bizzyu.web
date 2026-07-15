@@ -299,7 +299,7 @@ export default async function DiscountsPage() {
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button
-                    href="/business/signup"
+                    href="/post-a-deal"
                     variant="primary"
                     size="lg"
                     className={`w-full sm:w-auto ${GREEN_BUTTON_INK}`}
@@ -614,7 +614,7 @@ export default async function DiscountsPage() {
 
               <div className="mt-10 flex flex-col sm:flex-row gap-3">
                 <Button
-                  href="/business/signup"
+                  href="/post-a-deal"
                   variant="primary"
                   size="lg"
                   className={`w-full sm:w-auto ${GREEN_BUTTON_INK}`}
@@ -662,7 +662,7 @@ export default async function DiscountsPage() {
             <p className="text-ink/75 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
               Free to list, you keep every sale, live in minutes.
             </p>
-            <Button href="/business/signup" variant="white" size="lg">
+            <Button href="/post-a-deal" variant="white" size="lg">
               Get Started Free
             </Button>
             <p className="mt-6 text-ink/70 text-sm">

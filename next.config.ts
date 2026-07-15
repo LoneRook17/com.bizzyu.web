@@ -34,9 +34,16 @@ const nextConfig: NextConfig = {
       process.env.CHECKOUT_REDIRECT_BASE || "https://bizzy-deals.com";
     return [
       {
+        // /signup was the deal-submission form until it was pointed at account
+        // signup. It now goes back to the form, at its new home.
+        // NOTE: the old rule was permanent (308), which browsers cache more or
+        // less forever. Anyone who hit /signup while that was live will keep
+        // landing on /business/signup from their own cache no matter what this
+        // says, which is why the form lives at a fresh path instead of /signup.
+        // Temporary (307) here so this is never cached against us again.
         source: "/signup",
-        destination: "/business/signup",
-        permanent: true,
+        destination: "/post-a-deal",
+        permanent: false,
       },
       {
         source: "/events-contact",
