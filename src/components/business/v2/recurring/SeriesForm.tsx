@@ -205,10 +205,16 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
     if (type === "Ticketed") {
       payload.lowstock_alerts_enabled = lowstockEnabled
       payload.lowstock_notify_business_team = lowstockNotifyTeam
-      const { value: lowstockValue } = lowstockInputToStored(lowstockType, lowstockValueInput)
-      if (lowstockValue != null) {
-        payload.lowstock_threshold_type = lowstockType
-        payload.lowstock_threshold_value = lowstockValue
+      if (lowstockEnabled) {
+        const { value: lowstockValue } = lowstockInputToStored(lowstockType, lowstockValueInput)
+        if (lowstockValue != null) {
+          payload.lowstock_threshold_type = lowstockType
+          payload.lowstock_threshold_value = lowstockValue
+        } else {
+          // Explicit null so an edit that BLANKS the threshold clears it —
+          // the series update applies only the keys present in the payload.
+          payload.lowstock_threshold_value = null
+        }
       }
     } else {
       payload.lowstock_alerts_enabled = false
@@ -643,7 +649,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Stock alerts</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a night&apos;s ticket tier is running low.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a night&apos;s ticket tier sells out — and optionally before it does.</p>
           </CardHeader>
           <CardContent className="pt-0">
             <label className="flex cursor-pointer items-center gap-2">
@@ -653,14 +659,18 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
                 onChange={(e) => { setLowstockEnabled(e.target.checked); setErrors((p) => ({ ...p, lowstock_threshold_value: "" })) }}
                 className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
               />
-              <span className="text-sm text-neutral-700 dark:text-neutral-300">Enable low-stock alerts</span>
+              <span className="text-sm text-neutral-700 dark:text-neutral-300">Notify me when a ticket tier sells out</span>
             </label>
 
             {lowstockEnabled && (
               <div className="mt-4 space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Also warn me when it&apos;s running low</p>
+                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional — leave blank to only be notified on sell-out.</p>
+                </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <Label htmlFor="series_lowstock_type" className="mb-1.5 block">Alert on</Label>
+                    <Label htmlFor="series_lowstock_type" className="mb-1.5 block">Warn on</Label>
                     <Select
                       id="series_lowstock_type"
                       value={lowstockType}

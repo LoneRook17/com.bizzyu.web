@@ -4,8 +4,9 @@ import { useState } from "react"
 import { Info, Plus, Trash2 } from "lucide-react"
 import type { RecurringTemplateTicket } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
-import { Input, Select } from "@/components/business/v2/ui/input"
+import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
+import { TICKET_DESCRIPTION_MAX } from "@/components/business/v2/events/TicketTierForm"
 import { cn } from "@/lib/v2/utils"
 
 /**
@@ -177,6 +178,22 @@ export function RecurringTierEditor({
                 onBlur={() => { if (tier.quantityInput === "" || isNaN(parseInt(tier.quantityInput))) update(i, { quantityInput: "0" }) }}
               />
             </div>
+          </div>
+
+          <div className="mt-3">
+            <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+              Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+            </Label>
+            <Textarea
+              value={tier.description}
+              onChange={(e) => update(i, { description: e.target.value })}
+              rows={2}
+              maxLength={TICKET_DESCRIPTION_MAX}
+              placeholder="What's included in this tier? e.g. Includes a free drink"
+            />
+            <p className="mt-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
+              {tier.description.length}/{TICKET_DESCRIPTION_MAX}
+            </p>
           </div>
 
           <div className="mt-3 flex items-center gap-1.5">
