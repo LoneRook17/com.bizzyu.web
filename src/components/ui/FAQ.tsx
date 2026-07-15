@@ -32,7 +32,7 @@ export default function FAQ({ items }: FAQProps) {
             <motion.span
               animate={{ rotate: openIndex === index ? 45 : 0 }}
               transition={{ duration: 0.2 }}
-              className="text-2xl text-primary flex-shrink-0 leading-none"
+              className="text-2xl text-primary-dark flex-shrink-0 leading-none"
             >
               +
             </motion.span>

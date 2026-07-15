@@ -1,10 +1,5 @@
 import Image from "next/image";
-
-interface BizzyLogo {
-  id: number;
-  name: string;
-  logo_url: string;
-}
+import { fetchPublicLogos } from "@/lib/publicLogos";
 
 interface BizzyVenuesMarqueeProps {
   /** Override the marquee eyebrow label. */
@@ -30,21 +25,7 @@ export default async function BizzyVenuesMarquee({
   theme = "light",
   limit = 30,
 }: BizzyVenuesMarqueeProps) {
-  const apiBase =
-    process.env.INTERNAL_API_URL || "http://localhost:3000";
-
-  let logos: BizzyLogo[] = [];
-  try {
-    const res = await fetch(`${apiBase}/business/auth/public-logos`, {
-      next: { revalidate: 300 },
-    });
-    if (res.ok) {
-      const data: { logos: BizzyLogo[] } = await res.json();
-      logos = (data.logos || []).slice(0, limit);
-    }
-  } catch (err) {
-    console.warn("[BizzyVenuesMarquee] fetch failed", err);
-  }
+  const logos = await fetchPublicLogos(limit);
 
   if (logos.length === 0) return null;
 

@@ -4,6 +4,7 @@ export const APP_STORE_URL =
 export const INSTAGRAM_URL = "https://instagram.com/Bizzy.University";
 export const TIKTOK_URL = "https://tiktok.com/@bizzyapp";
 export const CONTACT_EMAIL = "Contact@BizzyU.com";
+export const PARTNERSHIPS_EMAIL = "Partnerships@BizzyU.com";
 
 export const CALENDLY_DEMO_URL =
   "https://calendly.com/partnerships-bizzyu/bizzy-bar-intro";
