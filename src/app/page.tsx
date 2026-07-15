@@ -8,7 +8,6 @@ import Parallax from "@/components/ui/Parallax";
 import Button from "@/components/ui/Button";
 import FAQ from "@/components/ui/FAQ";
 import JsonLd from "@/components/seo/JsonLd";
-import { fetchTrendingDeals } from "@/lib/deals";
 import {
   APP_STORE_URL,
   CALENDLY_DEMO_URL,
@@ -97,16 +96,7 @@ const REDEEM_STEPS = [
   { n: "4", t: "Start saving", d: "The redemption is recorded right in Bizzy." },
 ];
 
-export default async function Home() {
-  // One real deal for the hero's floating card. A marketing page must never 500
-  // because a deals API blipped, so failure just drops the card.
-  let heroDeal: Awaited<ReturnType<typeof fetchTrendingDeals>>[number] | undefined;
-  try {
-    heroDeal = (await fetchTrendingDeals())[0];
-  } catch (err) {
-    console.warn("[home] deal fetch failed", err);
-  }
-
+export default function Home() {
   return (
     <>
       <JsonLd data={faqJsonLd} />
@@ -157,35 +147,16 @@ export default async function Home() {
               <div>
                 <AnimatedSection delay={0.15} variant="fade-left">
                   <div className="relative flex justify-center lg:justify-end">
-                    <div className="absolute -inset-6 bg-gradient-to-tr from-primary/25 via-emerald-300/15 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
+                    <div className="absolute -inset-8 bg-gradient-to-tr from-primary/25 via-emerald-300/15 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
                     <div className="relative">
+                      {/* Nothing floats over it: the footage is the argument, so
+                          it gets the whole column. */}
                       <AutoLoopVideo
                         src="/videos/bizzy-slice.mp4"
                         poster="/images/bizzy-slice-poster.jpg"
                         label="A student shows a deal on their phone at the counter of a local pizzeria near campus, and walks away with a slice."
-                        className="w-[280px] sm:w-[320px] lg:w-[360px] rounded-[2rem] ring-1 ring-black/5 shadow-2xl shadow-black/20"
+                        className="w-[300px] sm:w-[380px] lg:w-[460px] rounded-[2.5rem] ring-1 ring-black/5 shadow-2xl shadow-black/20"
                       />
-
-                      {/* Floating deal card. Real deal from the live feed, never
-                          a hardcoded offer against a real business's name. */}
-                      {heroDeal && (
-                        <div className="absolute -left-6 sm:-left-10 bottom-10 w-[210px] rounded-2xl bg-white border border-gray-100 shadow-2xl shadow-black/10 overflow-hidden animate-float">
-                          <div className="relative aspect-[16/10] bg-gray-100">
-                            <Image src={heroDeal.image} alt="" fill sizes="210px" className="object-cover" />
-                            {heroDeal.savings > 0 && (
-                              <span className="absolute top-2 right-2 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
-                                Save ${heroDeal.savings}
-                              </span>
-                            )}
-                          </div>
-                          <div className="px-3 py-2.5">
-                            <p className="text-[13px] font-bold text-ink leading-snug line-clamp-2">
-                              {heroDeal.title}
-                            </p>
-                            <p className="text-[11px] text-muted mt-0.5 truncate">{heroDeal.business}</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </AnimatedSection>
