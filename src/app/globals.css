@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* v2 dashboard dark mode — class-scoped, only ever applied by the /business dashboard ThemeProvider */
+/* v2 dashboard dark mode: class-scoped, only ever applied by the /business dashboard ThemeProvider */
 @custom-variant dark (&:where(.v2-dark, .v2-dark *));
 
 :root {
@@ -13,13 +13,13 @@
   --color-foreground: var(--foreground);
   --color-primary: #05EB54;
   /* Accessible green for SMALL text on white. Brand #05EB54 is only 1.61:1
-     against white — it fails WCAG AA for text at any size, so it may fill
+     against white. It fails WCAG AA for text at any size, so it may fill
      shapes but must never letter them. This darker green is 5.05:1. Use for
      eyebrows, links, and any green copy under 24px. */
   --color-primary-dark: #0A8038;
   --color-primary-light: rgba(5, 235, 84, 0.15);
   --color-secondary: #EDEDED;
-  /* 4.88:1 on white, 4.67:1 on gray-50 — clears WCAG AA for body text on both
+  /* 4.88:1 on white, 4.67:1 on gray-50, clearing WCAG AA for body text on both
      surfaces. The old #7E7E7E was 4.06:1 and failed everywhere it was used. */
   --color-muted: #717171;
   --color-ink: #030303;
@@ -84,7 +84,7 @@ body {
   background: radial-gradient(ellipse at center, rgba(5, 235, 84, 0.12) 0%, transparent 70%);
 }
 
-/* Display accent — Fredoka, the same chunky rounded sans as the Bizzy
+/* Display accent: Fredoka, the same chunky rounded sans as the Bizzy
    logo wordmark. Apply to ONE accent word/phrase per headline. Creates
    on-brand contrast against Geist body type without the italic-serif feel. */
 .font-display-italic {
@@ -166,7 +166,7 @@ body {
 }
 .marker-sticker > * { display: inline-block; transform: skew(4deg); }
 
-/* Bizzy brand wordmark — matches the nav logo: rounded chunky sans
+/* Bizzy brand wordmark, matching the nav logo: rounded chunky sans
    (Fredoka), white text on solid green pill. Use ONLY when "Bizzy"
    appears as a brand stamp in a headline. Never inside flowing body
    copy (it would feel like every Bizzy mention is shouting). */

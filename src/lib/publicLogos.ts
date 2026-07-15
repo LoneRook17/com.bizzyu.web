@@ -8,7 +8,7 @@ export interface BizzyLogo {
  * Approved businesses' uploaded logos, from the Node services public endpoint.
  * Cached 5 min.
  *
- * Returns [] rather than throwing when the API is unreachable — every caller
+ * Returns [] rather than throwing when the API is unreachable. Every caller
  * is decorative social proof, so a dead API must degrade to "render nothing",
  * never to a broken strip or a 500 on a marketing page.
  */

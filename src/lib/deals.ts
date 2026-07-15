@@ -25,7 +25,7 @@ export interface Deal {
   image: string;
   category: string;
   tag: string;
-  /** Bizzy's own cadence label — "Weekly Wins", "Daily", "Monthly Specials".
+  /** Bizzy's own cadence label: "Weekly Wins", "Daily", "Monthly Specials".
       Real data; do NOT read it as the enforced claim frequency (the API's
       `uses` field is empty on every deal, so that isn't exposed here). */
   type: string;
@@ -34,7 +34,7 @@ export interface Deal {
 /**
  * Live deals from the V1 Laravel API, top 10 per school.
  *
- * Read-only, public, and already how the production homepage works — this is
+ * Read-only, public, and already how the production homepage works. This is
  * the same call `/api/trending-deals` has always made, lifted out so server
  * components can use it without fetching our own route.
  */

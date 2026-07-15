@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Deal } from "@/lib/deals";
 
 /**
- * Interactive "digital coupon book" — the business-facing demo of the student
+ * Interactive "digital coupon book": the business-facing demo of the student
  * experience. An owner reading /discounts flips through the book their deal
  * would live in, then taps through a redemption: tap → verifying → verified.
  *
@@ -23,7 +23,7 @@ import type { Deal } from "@/lib/deals";
 type Status = "idle" | "verifying" | "redeemed";
 
 /** Notches read as bites out of the card, so they're painted the colour of
-    whatever sits BEHIND it — hence the caller-supplied class. */
+    whatever sits BEHIND it, hence the caller-supplied class. */
 function TicketPerforation({ notchClassName }: { notchClassName: string }) {
   return (
     <div className="relative h-0" aria-hidden>
@@ -81,7 +81,7 @@ export default function CouponBook({
     timers.current.push(
       setTimeout(
         () => {
-          // Client-only, set on tap — never during render, so no hydration mismatch.
+          // Client-only, set on tap, never during render, so no hydration mismatch.
           setStamp(new Date().toLocaleTimeString("en-US", { hour12: true }));
           setStatus("redeemed");
         },
@@ -90,7 +90,7 @@ export default function CouponBook({
     );
   }, [status]);
 
-  // Live data — the API can return nothing, and a broken frame is worse than none.
+  // Live data: the API can return nothing, and a broken frame is worse than none.
   if (deals.length === 0) return null;
 
   const deal = deals[index];

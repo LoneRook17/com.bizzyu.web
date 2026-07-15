@@ -16,7 +16,7 @@ interface BizzyLogoClusterProps {
  * up, so the proof is verifiable. Stock faces here would imply endorsements
  * from people who never gave one.
  *
- * The sentence renders even when the logo API is down — it's a standalone
+ * The sentence renders even when the logo API is down. It's a standalone
  * claim, so the hero row never collapses to nothing.
  */
 export default async function BizzyLogoCluster({

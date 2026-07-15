@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
 };
 
-/* Brand green (#05EB54) is 1.61:1 on white — it fails WCAG AA for text at any
+/* Brand green (#05EB54) is 1.61:1 on white. It fails WCAG AA for text at any
    size, and white-on-green fails too. So on this page green FILLS shapes and
    dark ink LETTERS them: `text-primary-dark` (5.05:1) for small green copy,
    `!text-ink` on green buttons (12.8:1). See globals.css. */
@@ -112,7 +112,7 @@ const WHY_IT_WORKS = [
 ];
 
 /* Reassurance strip. Every claim is true: free to list, no cut of sales, no
-   hardware/POS, cancel anytime. Appears ONCE, in the hero — repeating it down
+   hardware/POS, cancel anytime. Appears ONCE, in the hero. Repeating it down
    the page was the main source of the old page's noise. */
 const REASSURE_POINTS = ["No credit card", "No cut of your sales", "No POS or hardware", "Cancel anytime"];
 
@@ -292,8 +292,8 @@ export default async function DiscountsPage() {
 
                 <p className="text-lg md:text-xl text-muted mb-8 max-w-xl leading-relaxed">
                   You&apos;re invited to put a student-only deal in front of thousands of students near campus.
-                  Fill your slow hours, turn first visits into regulars —{" "}
-                  <span className="text-ink font-semibold">free to list, and you keep every sale.</span>
+                  Fill your slow hours, turn first visits into regulars.{" "}
+                  <span className="text-ink font-semibold">Free to list, and you keep every sale.</span>
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -336,7 +336,7 @@ export default async function DiscountsPage() {
                   <div className="absolute inset-0 -m-6 bg-gradient-to-tr from-primary/25 via-emerald-300/15 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
                   <PhonePhoto
                     src="/images/bizzy-card-deal.png"
-                    alt="The Bizzy app showing a student deal at a Taco Bell near campus — one free medium drink, claim once per day — with a Staff Member Tap Here button for staff to verify it at checkout"
+                    alt="The Bizzy app showing a student deal at a Taco Bell near campus: one free medium drink, claim once per day, with a Staff Member Tap Here button for staff to verify it at checkout"
                     priority
                     className="relative"
                   />
@@ -572,7 +572,7 @@ export default async function DiscountsPage() {
                 <p>
                   Bizzy helps students near campus find local deals, and it&apos;s 100% free for businesses to add a
                   student-only offer. We work closely with campus partners to put participating businesses in front of
-                  students — and more than 20 nearby spots have already signed up.
+                  students, and more than 20 nearby spots have already signed up.
                 </p>
                 <p className="text-white">
                   If you&apos;re interested, just send over the deals you&apos;d like listed and we&apos;ll set
@@ -586,7 +586,7 @@ export default async function DiscountsPage() {
               </div>
 
               {/* Founder card. TODO: swap the monogram for a real photo of
-                  Cooper at /public/images/founder-cooper.jpg — a face here is
+                  Cooper at /public/images/founder-cooper.jpg. A face here is
                   the single biggest warmth win left on this page. */}
               <div className="mt-10 flex items-center gap-4">
                 <div

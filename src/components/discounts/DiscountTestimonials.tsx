@@ -15,19 +15,19 @@ interface Testimonial {
  * Empty until each business has APPROVED its quote in writing.
  *
  * Publishing a testimonial the named business never agreed to is a fabricated
- * endorsement — barred by the FTC's Rule on Consumer Reviews and Testimonials
+ * endorsement, barred by the FTC's Rule on Consumer Reviews and Testimonials
  * (16 CFR Part 465), which carries per-violation civil penalties, and it
  * borrows the reputation of a real business that could object. Drafting the
  * wording for them is fine and normal; publishing before they sign off is not.
  *
  * Drafted wording awaiting approval lives in TESTIMONIAL_DRAFTS.md, along with
  * the email to send. Once a business replies "approved", move its entry here
- * and drop the photo in — the section renders itself.
+ * and drop the photo in, and the section renders itself.
  */
 const TESTIMONIALS: Testimonial[] = [];
 
 export default function DiscountTestimonials() {
-  // No approved quotes yet — render nothing rather than filler.
+  // No approved quotes yet, so render nothing rather than filler.
   if (TESTIMONIALS.length === 0) return null;
 
   return (
