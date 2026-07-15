@@ -26,17 +26,17 @@ export const metadata: Metadata = {
    them. Small green copy uses text-primary-dark (5.05:1). See globals.css. */
 
 const QUALIFIES = [
-  "BOGO margaritas only for Bizzy users",
-  "Free appetizer with entree, only through Bizzy",
-  "Monthly student special only redeemable in the app",
-  "A meal deal available only for Bizzy users",
+  "Buy one, get one margarita",
+  "Free appetizer with an entrée",
+  "Monthly student-only special",
+  "Exclusive meal or drink bundle",
 ];
 
 const DOES_NOT = [
-  "A deal already posted on Instagram or other social media",
-  "A general happy hour anyone can get",
-  "A standing in-store special open to the public",
-  "A public student discount offered without Bizzy",
+  "An existing Instagram promotion",
+  "A regular happy hour",
+  "A permanent public special",
+  "A discount already offered to all students",
 ];
 
 const STEPS = [
@@ -220,96 +220,104 @@ export default async function PostADealPage() {
         </div>
       </section>
 
-      {/* ─── The one rule ─────────────────────────────────────── */}
+      {/* ─── The only requirement ─────────────────────────────
+          The rule holds the left at size; the two cards sit tight on the
+          right. No dividers: bordered lists read as terms and conditions, and
+          this is a conversion page. */}
       <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-4xl mx-auto px-6 py-20 md:py-24">
-          <AnimatedSection>
-            <div className="text-center max-w-xl mx-auto mb-10 md:mb-12">
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
-                The one rule
-              </p>
-              {/* Ink, not muted. The highlighter sits UNDER dark letters; run it
-                  beneath grey ones and the band reads as a strikethrough, which
-                  on this sentence says precisely the opposite of the rule. */}
-              <h2 className="text-3xl md:text-5xl font-bold text-ink tracking-tight leading-[1.1] mb-4">
-                It has to be{" "}
-                <span className="marker-underline marker-draw whitespace-nowrap">Bizzy only</span>.
-              </h2>
-              <p className="text-muted leading-relaxed">
-                If a student can get the same offer without Bizzy, it is not a Bizzy deal. That
-                exclusivity is the whole reason students open the app.
-              </p>
+        <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-[11fr_9fr] gap-10 lg:gap-14 items-center">
+            {/* The rule, 55% */}
+            <div>
+              <AnimatedSection>
+                <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                  The only requirement
+                </p>
+                {/* Ink, never muted, and only under the one word that matters.
+                    The highlighter sits UNDER dark letters; beneath grey ones
+                    the band reads as a strikethrough, which on this sentence
+                    would say the exact opposite of the rule. */}
+                <h2 className="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-ink tracking-tight leading-[1.05] mb-5">
+                  Make it <span className="marker-underline marker-draw">exclusive</span> to Bizzy.
+                </h2>
+                <p className="text-lg text-muted leading-relaxed max-w-lg">
+                  The offer should only be available through Bizzy. If students can get the same deal
+                  elsewhere, there is no reason to open the app.
+                </p>
+              </AnimatedSection>
             </div>
-          </AnimatedSection>
 
-          {/* One object, split, rather than two cards floating apart: this is a
-              single comparison and should read as one. */}
-          <AnimatedSection delay={0.1}>
-            <div className="rounded-3xl bg-white border border-gray-200 shadow-sm shadow-black/[0.03] overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="p-7 md:p-8 border-b md:border-b-0 md:border-r border-gray-100">
-                  <div className="flex items-center gap-2.5 mb-5">
+            {/* The examples, 45% */}
+            <div className="space-y-4">
+              <AnimatedSection delay={0.1}>
+                <div className="rounded-2xl bg-white border border-gray-200 p-6 shadow-sm shadow-black/[0.03]">
+                  <div className="flex items-center gap-2.5 mb-4">
                     <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                       <Check className="w-3 h-3 text-ink" />
                     </div>
-                    <h3 className="font-bold text-ink text-sm uppercase tracking-wider">This works</h3>
+                    <h3 className="font-bold text-ink text-sm">Good Bizzy offers</h3>
                   </div>
-                  <ul className="space-y-3.5">
+                  <ul className="space-y-2">
                     {QUALIFIES.map((item) => (
-                      <li key={item} className="flex items-start gap-3 text-sm">
-                        <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary-dark" />
-                        <span className="text-ink leading-relaxed">{item}</span>
+                      <li key={item} className="text-sm text-ink leading-snug">
+                        {item}
                       </li>
                     ))}
                   </ul>
                 </div>
+              </AnimatedSection>
 
-                {/* Tinted back a shade so the eye lands on the allowed column first. */}
-                <div className="p-7 md:p-8 bg-gray-50/70">
-                  <div className="flex items-center gap-2.5 mb-5">
+              <AnimatedSection delay={0.16}>
+                <div className="rounded-2xl bg-white border border-gray-200 p-6 shadow-sm shadow-black/[0.03]">
+                  <div className="flex items-center gap-2.5 mb-4">
                     <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
                       <Cross className="w-3 h-3 text-ink" />
                     </div>
-                    <h3 className="font-bold text-muted text-sm uppercase tracking-wider">
-                      This doesn&apos;t
-                    </h3>
+                    <h3 className="font-bold text-muted text-sm">Not exclusive enough</h3>
                   </div>
-                  <ul className="space-y-3.5">
+                  <ul className="space-y-2">
                     {DOES_NOT.map((item) => (
-                      <li key={item} className="flex items-start gap-3 text-sm">
-                        <Cross className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted" />
-                        <span className="text-muted leading-relaxed">{item}</span>
+                      <li key={item} className="text-sm text-muted leading-snug">
+                        {item}
                       </li>
                     ))}
                   </ul>
                 </div>
-              </div>
+              </AnimatedSection>
             </div>
-          </AnimatedSection>
+          </div>
         </div>
       </section>
 
       {/* ─── The form ─────────────────────────────────────────── */}
-      <section id="your-deal" className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.07),transparent_45%)] pointer-events-none" />
+      <section id="your-deal" className="relative overflow-hidden bg-white">
+        {/* The page ends on its loudest section, not its palest: green washes
+            down from the top edge over the bulletin texture, and the preview
+            card is dark, so the form reads as the destination. */}
+        <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(100%_55%_at_50%_0%,black,transparent_75%)] [-webkit-mask-image:radial-gradient(100%_55%_at_50%_0%,black,transparent_75%)] pointer-events-none opacity-60" />
+        <div className="absolute inset-0 bg-[radial-gradient(85%_45%_at_50%_0%,rgba(5,235,84,0.16),transparent_65%)] pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent pointer-events-none" />
         <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24">
           <AnimatedSection>
             <div className="text-center max-w-xl mx-auto mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-ink tracking-tight mb-3">
-                Build your deal.
+                Build your <span className="marker-underline marker-draw">deal</span>.
               </h2>
               <p className="text-muted leading-relaxed">
-                It appears on the right exactly as students will see it. We review every listing to
-                keep the book worth opening, then post it for you.
+                Watch it build itself as you type, exactly as students will see it. We review every
+                listing to keep the book worth opening, then post it for you.
               </p>
             </div>
           </AnimatedSection>
-          <SignupFlow />
+          <AnimatedSection delay={0.08}>
+            <SignupFlow />
+          </AnimatedSection>
         </div>
       </section>
 
       {/* ─── Help ─────────────────────────────────────────────── */}
       <section className="border-t border-gray-100 py-8 px-6">
+        <AnimatedSection>
         <p className="text-center text-sm text-muted">
           Questions first?{" "}
           <a
@@ -319,6 +327,7 @@ export default async function PostADealPage() {
             {CONTACT_EMAIL}
           </a>
         </p>
+        </AnimatedSection>
       </section>
     </main>
   );

@@ -102,7 +102,9 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-gray-500 text-sm">
+        {/* gray-400, not gray-500: on ink, 500 is 4.24:1 and misses AA. This
+            colour is inherited by the copyright line and both legal links. */}
+        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-gray-400 text-sm">
           <span>&copy; {new Date().getFullYear()} Bizzy Deals LLC. All rights reserved.</span>
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-primary transition-colors">

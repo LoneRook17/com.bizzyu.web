@@ -9,6 +9,10 @@ import { NAV_LINKS, CALENDLY_DEMO_URL } from "@/lib/constants";
 export default function Navbar() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // At the top the bar is invisible and the hero runs behind it; once you
+  // scroll it earns a frosted panel and a hairline. Otherwise it floats over
+  // the page with nothing separating it from the content.
+  const [scrolled, setScrolled] = useState(false);
 
   // The discounts landing page is a focused signup funnel - keep "Book a Call"
   // (a bar-intro Calendly) off it so it doesn't compete with "Get Started Free".
@@ -33,9 +37,24 @@ export default function Navbar() {
     closeDrawer();
   }, [pathname, closeDrawer]);
 
+  useEffect(() => {
+    // Passive: this must never block scrolling. Threshold is well past 0 so a
+    // trackpad twitch at the top doesn't flicker the panel on and off.
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <>
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl">
+      <nav
+        className={`sticky top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300 border-b ${
+          scrolled
+            ? "bg-white/85 backdrop-blur-xl border-gray-200/70"
+            : "bg-transparent border-transparent"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0 mr-8">
@@ -94,7 +113,9 @@ export default function Navbar() {
                 href={CALENDLY_DEMO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-5 py-2 bg-primary text-white text-sm font-semibold rounded-full hover:brightness-110 transition-all"
+                // Ink, not white: white on #05EB54 is 1.61:1 and fails AA at
+                // any size. Green fills the pill, ink letters it.
+                className="inline-flex items-center px-5 py-2 bg-primary text-ink text-sm font-semibold rounded-full hover:brightness-105 transition-all"
               >
                 Book a Call
               </a>
@@ -168,7 +189,7 @@ export default function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={closeDrawer}
-              className="mt-3 inline-flex items-center justify-center px-6 py-3 bg-primary text-white text-base font-semibold rounded-full hover:brightness-110 transition-all"
+              className="mt-3 inline-flex items-center justify-center px-6 py-3 bg-primary text-ink text-base font-semibold rounded-full hover:brightness-105 transition-all"
             >
               Book a Call
             </a>

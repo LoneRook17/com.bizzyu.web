@@ -43,8 +43,16 @@ export default function CampusStrip({ universities }: { universities: University
       <div className="absolute left-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
       {/* The list is decorative repetition; the heading above states the count,
-          so screen readers get the fact without four passes of 35 names. */}
-      <div className="flex animate-marquee items-center gap-7" style={{ animationDuration: "90s" }} aria-hidden>
+          so screen readers get the fact without four passes of 35 names.
+
+          Duration is set per breakpoint because .animate-marquee moves a
+          PERCENTAGE, so a single duration means the wider desktop lane travels
+          faster than the mobile one. These land both near ~170px/s.
+          Pauses on hover so a name can actually be read. */}
+      <div
+        className="flex animate-marquee items-center gap-7 [--marquee-duration:48s] md:[--marquee-duration:56s] hover:[animation-play-state:paused]"
+        aria-hidden
+      >
         {lane.map((u, i) => (
           <div key={`${u.id}-${i}`} className="flex items-center gap-7 flex-shrink-0">
             <span className="text-base md:text-lg font-semibold text-ink/70 whitespace-nowrap">

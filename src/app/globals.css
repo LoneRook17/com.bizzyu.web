@@ -50,8 +50,12 @@ html {
   }
 }
 
+/* Duration lives in a custom property so callers can set it from a class
+   (and therefore per breakpoint). The `animation` shorthand resets
+   animation-duration to 0s, which silently beats any utility class trying to
+   set it on its own; only an inline style or this var gets through. */
 .animate-marquee {
-  animation: marquee linear infinite;
+  animation: marquee var(--marquee-duration, 40s) linear infinite;
 }
 
 @keyframes marquee-half {
@@ -64,7 +68,7 @@ html {
 }
 
 .animate-marquee-half {
-  animation: marquee-half linear infinite;
+  animation: marquee-half var(--marquee-duration, 12s) linear infinite;
 }
 
 @keyframes float {
