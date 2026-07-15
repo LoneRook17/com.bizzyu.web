@@ -149,13 +149,17 @@ export default function Home() {
                   <div className="relative flex justify-center lg:justify-end">
                     <div className="absolute -inset-8 bg-gradient-to-tr from-primary/25 via-emerald-300/15 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
                     <div className="relative">
-                      {/* Nothing floats over it: the footage is the argument, so
-                          it gets the whole column. */}
+                      {/* Nothing floats over it: the footage is the argument.
+                          A 9:16 clip is 1.78x its width tall, so width alone
+                          drove the hero to 1010px against a 900px fold. The
+                          height cap is what actually makes it fit; object-cover
+                          trims a little off the top and bottom rather than
+                          letterboxing, and the action sits centre-frame. */}
                       <AutoLoopVideo
                         src="/videos/bizzy-slice.mp4"
                         poster="/images/bizzy-slice-poster.jpg"
                         label="A student shows a deal on their phone at the counter of a local pizzeria near campus, and walks away with a slice."
-                        className="w-[300px] sm:w-[380px] lg:w-[460px] rounded-[2.5rem] ring-1 ring-black/5 shadow-2xl shadow-black/20"
+                        className="w-[260px] sm:w-[320px] lg:w-[380px] max-h-[min(62vh,600px)] object-cover rounded-[2.5rem] ring-1 ring-black/5 shadow-2xl shadow-black/20"
                       />
                     </div>
                   </div>
