@@ -26,7 +26,7 @@ const EMPTY_TIER: TicketTier = {
 }
 
 // Matches the mobile app's ticket-description field (optional, 64-char cap).
-const TICKET_DESCRIPTION_MAX = 64
+export const TICKET_DESCRIPTION_MAX = 64
 
 const TICKET_TYPE_LABELS: Record<string, string> = {
   paid: "Paid",
