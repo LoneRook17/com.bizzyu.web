@@ -30,8 +30,14 @@ export default async function DealInterstitialPage({ params }: PageProps) {
   const { id } = await params;
   return (
     <AppInterstitial
-      title="Opening deal…"
+      title="Open this deal in Bizzy"
       deepLinkUrl={`https://bizzyu.com/deal/${id}`}
+      // The "Open in App" button prefers this custom scheme. It's the ONLY thing
+      // that opens the app when the user arrives from a same-domain tap (e.g. the
+      // venue page on bizzyu.com), where a Universal Link is suppressed. The
+      // scheme fires only on an explicit "Open in App" tap — never automatically
+      // — so non-app users never hit Safari's "address is invalid" error.
+      customSchemeUrl={`bizzy://deal/${id}`}
     />
   );
 }

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
 import { isAppleWalletCapable } from "@/lib/apple-wallet"
+import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
+import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
 const API_URL = getApiBaseUrl()
 const GOLD = "#D4AF37"
@@ -61,6 +63,11 @@ interface TicketTier {
   event_timezone?: string | null
   sales_state?: "open" | "not_open" | "closed" | string
   is_purchasable?: boolean
+  // Authoritative sold-out signal from the API: force_sold_out OR a finite tier
+  // that has run out. Prefer this over local available_quantity math — it also
+  // covers UNLIMITED tiers the operator has force-sold-out (where
+  // available_quantity is null and can't signal sold-out on its own).
+  is_sold_out?: boolean
 }
 
 interface FeePreview {
@@ -166,6 +173,9 @@ export default function EventCheckoutClient({
   const [userName, setUserName] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // Venue payout account not ready (#9): sales at this venue are paused.
+  // Rendered as a full pause notice in place of the purchase CTA.
+  const [venueBlock, setVenueBlock] = useState<VenueStripeBlock | null>(null)
 
   // Promoter tracking code (PRD §7.4). On mount, hydrate from URL ?ref=
   // (writing the cookie) or from any prior bz_ref cookie. Survives page
@@ -422,6 +432,13 @@ export default function EventCheckoutClient({
       })
       const data = await res.json()
       if (!res.ok) {
+        const block = parseVenueStripeBlock(data)
+        if (block) {
+          setVenueBlock(block)
+          setCheckoutStep("idle")
+          setCheckoutError("")
+          return
+        }
         setCheckoutError(data.message || "Failed to create checkout")
         setCheckoutStep("phone")
         return
@@ -548,11 +565,25 @@ export default function EventCheckoutClient({
           )}
 
           <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-center">
-            <p className="mb-2 text-sm text-white/70">Download the Bizzy app to access your tickets</p>
+            <p className="mb-3 text-sm text-white/70">Access your tickets in the Bizzy app</p>
+            {/* PRIMARY: open straight into the app via the bizzy://event/:id
+                custom scheme. Tap-only — a plain <a> with no timer/redirect
+                fallback (an armed App Store timer would fire after the app takes
+                over and bounce the user out). The event deep-link arm ships in
+                the current TestFlight build (deep_link_service.dart:141), and
+                `eventId` here is the real numeric event_id (Node /checkout/event/:id
+                does Number(id) → events.getById), not a slug or encrypted id. */}
+            <a
+              href={`bizzy://event/${eventId}`}
+              className="mb-2.5 block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
+              style={{ backgroundColor: GOLD }}
+            >
+              Open in the Bizzy app
+            </a>
+            {/* SECONDARY: App Store, for users who don't have the app yet. */}
             <a
               href="https://apps.apple.com/app/id6683306360"
-              className="inline-block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
-              style={{ backgroundColor: GOLD }}
+              className="inline-block rounded-lg border border-white/20 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
               Get the App
             </a>
@@ -605,11 +636,16 @@ export default function EventCheckoutClient({
             <div className="space-y-3">
               {[...paidTickets, ...freeTickets].map((ticket) => {
                 const qty = getQty(ticket.ticket_id)
+                // Prefer the server's is_sold_out (covers unlimited tiers the
+                // operator forced sold-out); fall back to available_quantity
+                // math for compatibility with older API responses.
                 const isSoldOut =
-                  !!ticket.quantity &&
-                  ticket.available_quantity !== null &&
-                  ticket.available_quantity !== undefined &&
-                  ticket.available_quantity <= 0
+                  ticket.is_sold_out !== undefined
+                    ? ticket.is_sold_out
+                    : !!ticket.quantity &&
+                      ticket.available_quantity !== null &&
+                      ticket.available_quantity !== undefined &&
+                      ticket.available_quantity <= 0
                 const remaining = ticket.quantity ? ticket.available_quantity : null
                 // Scheduled tickets: the window is the REDEEM/scan window, and a
                 // ticket stays BUYABLE until it CLOSES (buying before it opens is
@@ -773,8 +809,12 @@ export default function EventCheckoutClient({
           </div>
         )}
 
+        {/* Venue payout account not ready (#9): the pause notice replaces the
+            purchase CTA entirely — the buyer must never see a raw error. */}
+        {venueBlock && <VenueSalesPausedNotice block={venueBlock} />}
+
         {/* Get Tickets Button */}
-        {totalQty > 0 && (
+        {totalQty > 0 && !venueBlock && (
           <button
             onClick={startCheckout}
             disabled={feeLoading}
@@ -788,7 +828,7 @@ export default function EventCheckoutClient({
         )}
 
         {/* Refund policy */}
-        {totalQty > 0 && (
+        {totalQty > 0 && !venueBlock && (
           <p className="mt-3 text-center text-[10px] text-white/30 leading-relaxed">
             By purchasing, you agree that all sales are final. No refunds or exchanges.
             If the event is cancelled by the host, you will receive a full refund.

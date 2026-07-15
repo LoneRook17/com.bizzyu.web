@@ -28,6 +28,34 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url) // clone keeps the query string (invite/reset tokens)
   }
 
+  // The invite email path moved to the unclaimed root-level /accept-invite so the
+  // iOS app (which universal-links /business/*) can't hijack invite links into an
+  // app that has no invite handler. Invites already sitting in inboxes still point
+  // at /business/accept-invite - redirect them, keeping ?token=. The AASA excludes
+  // /business/accept-invite* so this old link reaches the browser to be redirected.
+  if (
+    pathname === "/business/accept-invite" ||
+    pathname.startsWith("/business/accept-invite/")
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/accept-invite"
+    return NextResponse.redirect(url) // clone keeps the query string (invite token)
+  }
+
+  // Same AASA-hijack fix for email verification: verification emails now point at
+  // the unclaimed root-level /verify-email. Verification links already sitting in
+  // inboxes still point at /business/verify-email - redirect them, keeping ?token=.
+  // The AASA excludes /business/verify-email* so the old link reaches the browser
+  // to be redirected instead of being swallowed into the (handler-less) iOS app.
+  if (
+    pathname === "/business/verify-email" ||
+    pathname.startsWith("/business/verify-email/")
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/verify-email"
+    return NextResponse.redirect(url) // clone keeps the query string (verify token)
+  }
+
   const isAuthPage = AUTH_PAGES.some(
     (page) => pathname === page || pathname.startsWith(page + "/")
   )

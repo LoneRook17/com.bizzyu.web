@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, useRef, use } from "react"
+import { Reorder, useDragControls } from "framer-motion"
 import { Eye, EyeOff, Loader2, Plus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { TicketTier } from "@/lib/business/types"
@@ -63,7 +64,9 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
   const [editing, setEditing] = useState<FormState | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
-  const [togglingId, setTogglingId] = useState<number | null>(null)
+  // Which per-row toggle (if any) has an in-flight request. Tracks the field so
+  // only the button that was clicked shows a spinner.
+  const [toggling, setToggling] = useState<{ id: number; field: "hidden" | "sold_out" } | null>(null)
 
   const fetchTickets = async () => {
     try {
@@ -80,6 +83,68 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
     fetchTickets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // ── Drag-to-reorder ticket tiers (July 2026 QoL #2) ──────────────────
+  // Optimistic: framer-motion mutates the local order live as you drag; we
+  // persist the full order (active + hidden) on drop and revert if the PUT
+  // fails. ticketsRef mirrors state so the drag-end handler reads the freshest
+  // order without a stale closure. The full order is always active-then-hidden,
+  // which matches how the two sections render.
+  const ticketsRef = useRef<TicketTier[]>([])
+  useEffect(() => {
+    ticketsRef.current = tickets
+  }, [tickets])
+  const preDragRef = useRef<TicketTier[] | null>(null)
+  const [reorderError, setReorderError] = useState("")
+  const [savingOrder, setSavingOrder] = useState(false)
+
+  // Rebuild the full list when one section is dragged, keeping the other
+  // section's order intact. onReorder can fire many times mid-drag; the
+  // functional update always merges against the latest state.
+  const handleReorder = (section: "active" | "hidden", next: TicketTier[]) => {
+    if (reorderError) setReorderError("")
+    setTickets((prev) => {
+      const others = prev.filter((t) => (section === "active" ? t.is_hidden : !t.is_hidden))
+      return section === "active" ? [...next, ...others] : [...others, ...next]
+    })
+  }
+
+  const handleDragStart = () => {
+    preDragRef.current = ticketsRef.current
+  }
+
+  const handleDragEnd = async () => {
+    const snapshot = preDragRef.current
+    preDragRef.current = null
+    if (!snapshot) return
+
+    const orderedIds = ticketsRef.current
+      .map((t) => t.ticket_id)
+      .filter((x): x is number => typeof x === "number")
+    const prevIds = snapshot
+      .map((t) => t.ticket_id)
+      .filter((x): x is number => typeof x === "number")
+
+    // Picked up and dropped in the same spot → nothing to save.
+    if (orderedIds.length === prevIds.length && orderedIds.every((v, i) => v === prevIds[i])) {
+      return
+    }
+
+    setSavingOrder(true)
+    setReorderError("")
+    try {
+      const data = await apiClient.put<{ tickets: TicketTier[] }>(
+        `/business/events/${id}/tickets/reorder`,
+        { ticket_ids: orderedIds },
+      )
+      setTickets(data.tickets ?? [])
+    } catch (err) {
+      setTickets(snapshot) // revert to the pre-drag order
+      setReorderError(err instanceof ApiError ? err.message : "Couldn't save the new order")
+    } finally {
+      setSavingOrder(false)
+    }
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -121,14 +186,32 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
 
   const handleToggleHidden = async (t: TicketTier) => {
     if (!t.ticket_id) return
-    setTogglingId(t.ticket_id)
+    setToggling({ id: t.ticket_id, field: "hidden" })
     try {
       await apiClient.put(`/business/events/${id}/tickets/${t.ticket_id}`, { is_hidden: !t.is_hidden })
       await fetchTickets()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to update visibility")
     } finally {
-      setTogglingId(null)
+      setToggling(null)
+    }
+  }
+
+  // Force a tier sold out without touching its quantity. Buyers see the
+  // sold-out banner and can't purchase; clearing it restores sales.
+  const handleToggleSoldOut = async (t: TicketTier) => {
+    if (!t.ticket_id) return
+    const next = !t.force_sold_out
+    setToggling({ id: t.ticket_id, field: "sold_out" })
+    try {
+      await apiClient.put(`/business/events/${id}/tickets/${t.ticket_id}`, {
+        force_sold_out: next,
+      })
+      await fetchTickets()
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to update sold-out status")
+    } finally {
+      setToggling(null)
     }
   }
 
@@ -154,6 +237,12 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
       />
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {(savingOrder || reorderError) && (
+        <p className={`text-xs mb-4 ${reorderError ? "text-red-500" : "text-gray-500"}`}>
+          {reorderError || "Saving order…"}
+        </p>
+      )}
 
       {editing && (
         <Card>
@@ -212,15 +301,32 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
         </Card>
       )}
 
-      <TicketSection title="Active tickets" tickets={active} onEdit={(t) => { setSaveError(""); setEditing(tierToForm(t)) }} onToggle={handleToggleHidden} togglingId={togglingId} emptyText="No active tickets yet." />
+      <TicketSection
+        title="Active tickets"
+        section="active"
+        tickets={active}
+        onReorder={handleReorder}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onEdit={(t) => { setSaveError(""); setEditing(tierToForm(t)) }}
+        onToggleHidden={handleToggleHidden}
+        onToggleSoldOut={handleToggleSoldOut}
+        toggling={toggling}
+        emptyText="No active tickets yet."
+      />
 
       {hidden.length > 0 && (
         <TicketSection
           title="Hidden tickets"
+          section="hidden"
           tickets={hidden}
+          onReorder={handleReorder}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
           onEdit={(t) => { setSaveError(""); setEditing(tierToForm(t)) }}
-          onToggle={handleToggleHidden}
-          togglingId={togglingId}
+          onToggleHidden={handleToggleHidden}
+          onToggleSoldOut={handleToggleSoldOut}
+          toggling={toggling}
           note="Hidden tickets cannot be purchased. Existing ticket holders can still scan in."
           dimmed
         />
@@ -230,17 +336,35 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
 }
 
 function TicketSection({
-  title, tickets, onEdit, onToggle, togglingId, emptyText, note, dimmed,
+  title,
+  section,
+  tickets,
+  onReorder,
+  onDragStart,
+  onDragEnd,
+  onEdit,
+  onToggleHidden,
+  onToggleSoldOut,
+  toggling,
+  emptyText,
+  note,
+  dimmed,
 }: {
   title: string
+  section: "active" | "hidden"
   tickets: TicketTier[]
+  onReorder: (section: "active" | "hidden", next: TicketTier[]) => void
+  onDragStart: () => void
+  onDragEnd: () => void
   onEdit: (t: TicketTier) => void
-  onToggle: (t: TicketTier) => void
-  togglingId: number | null
+  onToggleHidden: (t: TicketTier) => void
+  onToggleSoldOut: (t: TicketTier) => void
+  toggling: { id: number; field: "hidden" | "sold_out" } | null
   emptyText?: string
   note?: string
   dimmed?: boolean
 }) {
+  const draggable = tickets.length > 1
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
@@ -248,31 +372,130 @@ function TicketSection({
       {tickets.length === 0 ? (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{emptyText}</p>
       ) : (
-        tickets.map((t) => {
-          const priceLabel = t.ticket_type === "free" || (t.price_usd ?? 0) === 0 ? "Free" : usd(t.price_usd)
-          const qtyLabel = t.quantity === 0 || t.quantity == null ? "Unlimited" : `${t.quantity} qty`
-          return (
-            <Card key={t.ticket_id ?? t.name} className={dimmed ? "opacity-70" : undefined}>
-              <div className="flex items-center justify-between p-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t.name}</p>
-                    <Badge variant="outline" size="sm">{t.ticket_type}</Badge>
-                  </div>
-                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{priceLabel} · {qtyLabel} · Sold {t.sold_count ?? 0}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => onEdit(t)}>Edit</Button>
-                  <Button variant="secondary" size="sm" disabled={togglingId === t.ticket_id} onClick={() => onToggle(t)}>
-                    {togglingId === t.ticket_id ? <Loader2 className="size-3.5 animate-spin" /> : t.is_hidden ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                    {t.is_hidden ? "Unhide" : "Hide"}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          )
-        })
+        <>
+          {draggable && (
+            <p className="-mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+              Drag the handle to change the order buyers see.
+            </p>
+          )}
+          <Reorder.Group
+            as="ul"
+            axis="y"
+            values={tickets}
+            onReorder={(next) => onReorder(section, next)}
+            className="flex flex-col gap-3"
+          >
+            {tickets.map((t) => (
+              <TicketRow
+                key={t.ticket_id ?? t.name}
+                t={t}
+                draggable={draggable}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
+                onEdit={() => onEdit(t)}
+                onToggleHidden={() => onToggleHidden(t)}
+                onToggleSoldOut={() => onToggleSoldOut(t)}
+                togglingField={toggling && toggling.id === t.ticket_id ? toggling.field : null}
+                dimmed={dimmed}
+              />
+            ))}
+          </Reorder.Group>
+        </>
       )}
     </div>
+  )
+}
+
+function TicketRow({
+  t,
+  onEdit,
+  onToggleHidden,
+  onToggleSoldOut,
+  togglingField,
+  dimmed,
+  draggable,
+  onDragStart,
+  onDragEnd,
+}: {
+  t: TicketTier
+  onEdit: () => void
+  onToggleHidden: () => void
+  onToggleSoldOut: () => void
+  togglingField: "hidden" | "sold_out" | null
+  dimmed?: boolean
+  draggable?: boolean
+  onDragStart?: () => void
+  onDragEnd?: () => void
+}) {
+  const controls = useDragControls()
+  const priceLabel =
+    t.ticket_type === "free" || (t.price_usd ?? 0) === 0 ? "Free" : usd(t.price_usd)
+  const qtyLabel = t.quantity === 0 || t.quantity == null ? "Unlimited" : `${t.quantity} qty`
+  const busy = togglingField !== null
+
+  return (
+    <Reorder.Item
+      value={t}
+      dragListener={false}
+      dragControls={controls}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={dimmed ? "opacity-70" : undefined}
+    >
+      <Card>
+        <div className="flex items-center justify-between p-4">
+          <div className="flex min-w-0 items-center gap-2">
+            {draggable && (
+              <button
+                type="button"
+                aria-label="Drag to reorder"
+                onPointerDown={(e) => controls.start(e)}
+                className="-ml-1 shrink-0 cursor-grab touch-none rounded p-1 text-neutral-300 hover:text-neutral-500 active:cursor-grabbing dark:text-neutral-600 dark:hover:text-neutral-400"
+              >
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <circle cx="7" cy="5" r="1.6" />
+                  <circle cx="13" cy="5" r="1.6" />
+                  <circle cx="7" cy="10" r="1.6" />
+                  <circle cx="13" cy="10" r="1.6" />
+                  <circle cx="7" cy="15" r="1.6" />
+                  <circle cx="13" cy="15" r="1.6" />
+                </svg>
+              </button>
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t.name}</p>
+                <Badge variant="outline" size="sm">{t.ticket_type}</Badge>
+                {t.force_sold_out && (
+                  <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-600 dark:bg-red-950 dark:text-red-400">
+                    Sold out
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+                {priceLabel} · {qtyLabel} · Sold {t.sold_count ?? 0}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={onEdit}>Edit</Button>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={onToggleSoldOut}>
+              {togglingField === "sold_out" ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {t.force_sold_out ? "Mark available" : "Mark sold out"}
+            </Button>
+            <Button variant="secondary" size="sm" disabled={busy} onClick={onToggleHidden}>
+              {togglingField === "hidden" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : t.is_hidden ? (
+                <Eye className="size-3.5" />
+              ) : (
+                <EyeOff className="size-3.5" />
+              )}
+              {t.is_hidden ? "Unhide" : "Hide"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </Reorder.Item>
   )
 }

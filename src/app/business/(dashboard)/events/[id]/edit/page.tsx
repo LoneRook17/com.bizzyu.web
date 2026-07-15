@@ -9,11 +9,13 @@ import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { Button } from "@/components/business/v2/ui/button"
 import { EventForm } from "@/components/business/v2/events/EventForm"
 import { toDatetimeLocal } from "@/components/business/v2/events/eventStatus"
+import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
 import { CalendarOff } from "lucide-react"
 
 export default function V2EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [initialData, setInitialData] = useState<Partial<EventFormData> | null>(null)
+  const [seriesInfo, setSeriesInfo] = useState<Pick<EventDetail, "recurring_series_id" | "series_customized_at"> | null>(null)
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -22,6 +24,10 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
     async function load() {
       try {
         const event = await apiClient.get<EventDetail>(`/business/events/${id}`)
+        setSeriesInfo({
+          recurring_series_id: event.recurring_series_id ?? null,
+          series_customized_at: event.series_customized_at ?? null,
+        })
         setInitialData({
           name: event.name,
           description: event.description,
@@ -37,6 +43,10 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
           promotion_enabled: !!event.promotion_enabled,
           promotion_commission_type: event.promotion_commission_type ?? undefined,
           promotion_commission_value: event.promotion_commission_value ?? null,
+          lowstock_alerts_enabled: !!event.lowstock_alerts_enabled,
+          lowstock_threshold_type: event.lowstock_threshold_type ?? undefined,
+          lowstock_threshold_value: event.lowstock_threshold_value ?? null,
+          lowstock_notify_business_team: !!event.lowstock_notify_business_team,
         })
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load event")
@@ -71,5 +81,10 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
     )
   }
 
-  return <EventForm initialData={initialData} eventId={Number(id)} stripeOnboarded={stripeOnboarded} />
+  return (
+    <div className="flex flex-col gap-5">
+      {seriesInfo?.recurring_series_id != null && <SeriesNightBanner event={seriesInfo} />}
+      <EventForm initialData={initialData} eventId={Number(id)} stripeOnboarded={stripeOnboarded} />
+    </div>
+  )
 }

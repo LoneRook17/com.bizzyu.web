@@ -19,6 +19,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from "@/components/business/v2/ui/dialog"
 import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2/events/eventStatus"
+import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
 
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -181,6 +182,8 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
+
+      <SeriesNightBanner event={event} />
 
       {event.status === "pending_review" && event.moderation_reason && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">

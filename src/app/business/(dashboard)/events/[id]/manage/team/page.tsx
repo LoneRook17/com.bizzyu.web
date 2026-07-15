@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, use } from "react"
-import { Loader2, Plus, Users } from "lucide-react"
+import Link from "next/link"
+import { ArrowRight, DoorOpen, Loader2, Plus, Users } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { EventTeamMember } from "@/lib/business/types"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
@@ -92,15 +93,35 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
     <>
       <ManageSubheader
         eventId={id}
-        title="Event team"
-        subtitle="Co-hosts, crew, and promoters for this event."
-        actions={<Button onClick={() => setShowAdd(true)}><Plus /> Add member</Button>}
+        title="Managers & co-hosts"
+        subtitle="Teammates with a Bizzy account and dashboard access — co-hosts and crew."
+        actions={<Button onClick={() => setShowAdd(true)}><Plus /> Add teammate</Button>}
       />
+
+      {/* Door-staff intent lands here by habit. Redirect it: door staff don't
+          need an account — they need the door code. This is the reframe. */}
+      <Link
+        href={`/business/events/${id}/manage`}
+        className="group flex items-start gap-3 rounded-xl border border-[#05EB54]/30 bg-green-50/50 p-4 transition-colors hover:border-[#05EB54]/60 dark:border-green-900/50 dark:bg-green-950/20"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#05EB54]/15 text-[#05EB54]">
+          <DoorOpen className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            Just need someone scanning tickets tonight?
+          </p>
+          <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">
+            Door staff don’t need an account or an invite — share your event’s <span className="font-medium text-neutral-800 dark:text-neutral-200">door code</span> instead. Add teammates here only if they need dashboard access.
+          </p>
+        </div>
+        <ArrowRight className="mt-1 size-4 shrink-0 text-[#05EB54] transition-transform group-hover:translate-x-0.5" />
+      </Link>
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {members.length === 0 ? (
-        <EmptyState icon={Users} title="No team members yet" description="Add co-hosts, crew, or promoters for this event." />
+        <EmptyState icon={Users} title="No managers or co-hosts yet" description="Add a teammate who needs a Bizzy account and dashboard access. For door staff who just scan tickets, use the door code instead." />
       ) : (
         <Card className="overflow-hidden">
           <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -133,8 +154,8 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
       <Dialog open={showAdd} onOpenChange={(o) => { setShowAdd(o); if (!o) { setEmail(""); setAddError("") } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add team member</DialogTitle>
-            <DialogDescription>Search for an existing Bizzy user and assign a role.</DialogDescription>
+            <DialogTitle>Add a manager or co-host</DialogTitle>
+            <DialogDescription>For teammates who need dashboard access. Search for an existing Bizzy user and assign a role. (Door staff who only scan tickets don’t need this — use the door code.)</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

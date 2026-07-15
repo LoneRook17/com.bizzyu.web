@@ -5,7 +5,7 @@ import { Info, Plus, Trash2 } from "lucide-react"
 import { TICKET_TYPES } from "@/lib/business/constants"
 import type { TicketTier } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
-import { Input, Select } from "@/components/business/v2/ui/input"
+import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { cn } from "@/lib/v2/utils"
 
@@ -16,6 +16,7 @@ interface TicketTierFormProps {
 
 const EMPTY_TIER: TicketTier = {
   name: "",
+  description: "",
   price_usd: 0,
   quantity: 0,
   max_per_person: 0,
@@ -23,6 +24,9 @@ const EMPTY_TIER: TicketTier = {
   valid_from: "",
   valid_until: "",
 }
+
+// Matches the mobile app's ticket-description field (optional, 64-char cap).
+const TICKET_DESCRIPTION_MAX = 64
 
 const TICKET_TYPE_LABELS: Record<string, string> = {
   paid: "Paid",
@@ -115,6 +119,22 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
                 }}
               />
             </div>
+          </div>
+
+          <div className="mt-3">
+            <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+              Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+            </Label>
+            <Textarea
+              value={tier.description ?? ""}
+              onChange={(e) => updateTier(i, "description", e.target.value)}
+              rows={2}
+              maxLength={TICKET_DESCRIPTION_MAX}
+              placeholder="What's included in this tier? e.g. Includes a free drink"
+            />
+            <p className="mt-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
+              {(tier.description ?? "").length}/{TICKET_DESCRIPTION_MAX}
+            </p>
           </div>
 
           <div className="mt-3 flex items-center gap-1.5">
