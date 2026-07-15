@@ -130,7 +130,7 @@ export default function StepMedia({
         </button>
         <button
           onClick={onNext}
-          className="flex-1 py-3.5 bg-primary text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer"
+          className="flex-1 py-3.5 bg-primary text-ink font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer"
         >
           Continue to Review
         </button>

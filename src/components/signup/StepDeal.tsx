@@ -83,7 +83,7 @@ export default function StepDeal({
 
       <div>
         <label className="block text-sm font-medium text-ink mb-1.5">
-          Deal Title <span className="text-primary">*</span>
+          Deal Title <span className="text-primary-dark">*</span>
         </label>
         <input
           type="text"
@@ -97,7 +97,7 @@ export default function StepDeal({
 
       <div>
         <label className="block text-sm font-medium text-ink mb-1.5">
-          Deal Description <span className="text-primary">*</span>
+          Deal Description <span className="text-primary-dark">*</span>
         </label>
         <textarea
           value={data.description}
@@ -111,7 +111,7 @@ export default function StepDeal({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-ink mb-1.5">
-            Estimated Savings <span className="text-primary">*</span>
+            Estimated Savings <span className="text-primary-dark">*</span>
           </label>
           <input
             type="text"
@@ -124,12 +124,13 @@ export default function StepDeal({
         <div>
           <div className="flex items-center gap-1.5 mb-1.5">
             <label className="text-sm font-medium text-ink">
-              Redemption Frequency <span className="text-primary">*</span>
+              Redemption Frequency <span className="text-primary-dark">*</span>
             </label>
             <button
               type="button"
               onClick={() => setShowInfo(!showInfo)}
-              className="w-4.5 h-4.5 rounded-full bg-gray-200 text-muted text-xs font-bold flex items-center justify-center hover:bg-gray-300 transition-colors cursor-pointer leading-none"
+              className="w-6 h-6 rounded-full bg-gray-200 text-muted text-xs font-bold flex items-center justify-center hover:bg-gray-300 transition-colors cursor-pointer leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+              aria-expanded={showInfo}
               aria-label="What is redemption frequency?"
             >
               ?
@@ -172,7 +173,7 @@ export default function StepDeal({
       {data.redemptionFrequency === "limited_supply" && (
         <div>
           <label className="block text-sm font-medium text-ink mb-1.5">
-            Total Claims Available <span className="text-primary">*</span>
+            Total Claims Available <span className="text-primary-dark">*</span>
           </label>
           <input
             type="number"
@@ -362,7 +363,7 @@ export default function StepDeal({
         <button
           onClick={onNext}
           disabled={!canContinue}
-          className={`${onBack ? "flex-1" : "w-full"} py-3.5 bg-primary text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer`}
+          className={`${onBack ? "flex-1" : "w-full"} py-3.5 bg-primary text-ink font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer`}
         >
           Continue
         </button>

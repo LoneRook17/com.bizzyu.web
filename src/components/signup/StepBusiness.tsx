@@ -25,7 +25,7 @@ function Field({
     <div>
       <label className="block text-sm font-medium text-ink mb-1.5">
         {label}
-        {required && <span className="text-primary ml-0.5">*</span>}
+        {required && <span className="text-primary-dark ml-0.5">*</span>}
       </label>
       {children}
     </div>
@@ -164,7 +164,7 @@ export default function StepBusiness({
         <button
           onClick={onNext}
           disabled={!canContinue}
-          className={`${onBack ? "flex-1" : "w-full"} py-3.5 bg-primary text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer`}
+          className={`${onBack ? "flex-1" : "w-full"} py-3.5 bg-primary text-ink font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer`}
         >
           Continue
         </button>

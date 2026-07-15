@@ -36,19 +36,19 @@ export default function StepSuccess({ onReset }: StepSuccessProps) {
         <h3 className="font-bold text-ink mb-2">What happens next?</h3>
         <ol className="text-sm text-muted text-left space-y-2">
           <li className="flex gap-2">
-            <span className="text-primary font-bold">1.</span>
+            <span className="text-primary-dark font-bold">1.</span>
             We review your submission
           </li>
           <li className="flex gap-2">
-            <span className="text-primary font-bold">2.</span>
+            <span className="text-primary-dark font-bold">2.</span>
             We may reach out with questions
           </li>
           <li className="flex gap-2">
-            <span className="text-primary font-bold">3.</span>
+            <span className="text-primary-dark font-bold">3.</span>
             Your deal goes live on Bizzy
           </li>
           <li className="flex gap-2">
-            <span className="text-primary font-bold">4.</span>
+            <span className="text-primary-dark font-bold">4.</span>
             Students start claiming!
           </li>
         </ol>
@@ -57,7 +57,7 @@ export default function StepSuccess({ onReset }: StepSuccessProps) {
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <button
           onClick={onReset}
-          className="px-8 py-3.5 bg-primary text-white font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer"
+          className="px-8 py-3.5 bg-primary text-ink font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 cursor-pointer"
         >
           Submit Another Deal
         </button>

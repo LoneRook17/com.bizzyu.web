@@ -28,9 +28,9 @@ export default function StepProgress({ currentStep }: StepProgressProps) {
             key={step.num}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
               currentStep === step.num
-                ? "bg-primary text-white shadow-sm shadow-primary/20"
+                ? "bg-primary text-ink shadow-sm shadow-primary/20"
                 : currentStep > step.num
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary/10 text-primary-dark"
                   : "bg-gray-100 text-gray-400"
             }`}
           >

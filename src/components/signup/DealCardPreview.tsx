@@ -33,7 +33,7 @@ export default function DealCardPreview({ data }: DealCardPreviewProps) {
               />
             ) : (
               <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-white text-xs font-bold">B</span>
+                <span className="text-ink text-xs font-bold">B</span>
               </div>
             )}
             <span className="text-xs text-muted font-medium">
@@ -64,7 +64,7 @@ export default function DealCardPreview({ data }: DealCardPreviewProps) {
               className="object-cover"
             />
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
               <svg
                 width="40"
                 height="40"
@@ -82,7 +82,7 @@ export default function DealCardPreview({ data }: DealCardPreviewProps) {
           )}
           {/* Savings badge */}
           {deal.estimatedSavings && (
-            <div className="absolute top-2 right-2 bg-primary text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
+            <div className="absolute top-2 right-2 bg-primary text-ink text-xs font-bold px-2.5 py-1 rounded-full shadow-md">
               Save {deal.estimatedSavings}
             </div>
           )}

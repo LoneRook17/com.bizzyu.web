@@ -17,7 +17,7 @@ export default function MobilePreviewSheet({ data }: MobilePreviewSheetProps) {
       {/* Toggle button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 bg-gradient-to-br from-primary to-emerald-500 text-white w-14 h-14 rounded-full shadow-lg shadow-primary/30 flex items-center justify-center hover:brightness-110 transition-all cursor-pointer"
+        className="fixed bottom-6 right-6 z-50 bg-gradient-to-br from-primary to-emerald-500 text-ink w-14 h-14 rounded-full shadow-lg shadow-primary/30 flex items-center justify-center hover:brightness-110 transition-all cursor-pointer"
         aria-label="Preview deal"
       >
         {open ? (
