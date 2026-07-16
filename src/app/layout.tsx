@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Fredoka, Fira_Sans } from "next/font/google";
 import LayoutShell from "@/components/layout/LayoutShell";
+import ScrollProgress from "@/components/ui/gsap/ScrollProgress";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_STORE_URL } from "@/lib/constants";
 import "./globals.css";
@@ -176,6 +177,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${fredoka.variable} ${firaSans.variable} antialiased`}
       >
+        <ScrollProgress />
         <LayoutShell>{children}</LayoutShell>
       </body>
     </html>
