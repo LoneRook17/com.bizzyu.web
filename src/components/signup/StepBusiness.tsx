@@ -3,13 +3,26 @@
 import { useState } from "react";
 import type { BusinessInfo } from "@/lib/types";
 
-const UNIVERSITIES = ["FGCU", "USF", "OSU", "ASU", "UGA"];
+/** Last-resort list if the university API is unreachable. The form must never
+    lose a lead because a lookup blipped; "My university isn't listed" still
+    catches anything missing. */
+const FALLBACK_UNIVERSITIES = [
+  { name: "FGCU", fullName: "Florida Gulf Coast University" },
+  { name: "USF", fullName: "University of South Florida" },
+  { name: "UGA", fullName: "University of Georgia" },
+  { name: "ASU", fullName: "Arizona State University" },
+  { name: "OSU", fullName: "The Ohio State University" },
+];
 
 interface StepBusinessProps {
   data: BusinessInfo;
   onChange: (data: BusinessInfo) => void;
   onNext: () => void;
   onBack?: () => void;
+  /** Live campuses, fetched server-side from the same endpoint the app reads.
+      This list used to be five hardcoded handles while 35 were live, so a
+      business at Michigan State had to file itself under "not listed". */
+  universities?: { name: string; fullName: string }[];
 }
 
 function Field({
@@ -40,8 +53,10 @@ export default function StepBusiness({
   onChange,
   onNext,
   onBack,
+  universities,
 }: StepBusinessProps) {
-  const isOther = data.campus !== "" && !UNIVERSITIES.includes(data.campus);
+  const campuses = universities?.length ? universities : FALLBACK_UNIVERSITIES;
+  const isOther = data.campus !== "" && !campuses.some((u) => u.name === data.campus);
   const [showOtherInput, setShowOtherInput] = useState(isOther);
 
   const update = (field: keyof BusinessInfo, value: string) =>
@@ -133,8 +148,12 @@ export default function StepBusiness({
           className={inputClass}
         >
           <option value="">Select a university...</option>
-          {UNIVERSITIES.map((u) => (
-            <option key={u} value={u}>{u}</option>
+          {/* Value stays the handle (what the API and admin store); the label
+              is the proper name, which is what a business owner recognises. */}
+          {campuses.map((u) => (
+            <option key={u.name} value={u.name}>
+              {u.fullName}
+            </option>
           ))}
           <option value="other">My university isn&apos;t listed</option>
         </select>

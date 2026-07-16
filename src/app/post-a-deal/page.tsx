@@ -310,7 +310,7 @@ export default async function PostADealPage() {
             </div>
           </AnimatedSection>
           <AnimatedSection delay={0.08}>
-            <SignupFlow />
+            <SignupFlow universities={universities} />
           </AnimatedSection>
         </div>
       </section>

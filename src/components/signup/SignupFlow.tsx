@@ -13,7 +13,12 @@ import DealCardPreview from "./DealCardPreview";
 import MobilePreviewSheet from "./MobilePreviewSheet";
 import TurnstileWidget from "@/components/ui/TurnstileWidget";
 
-export default function SignupFlow() {
+interface SignupFlowProps {
+  /** Live campuses from the university API, fetched server-side by the page. */
+  universities?: { name: string; fullName: string }[];
+}
+
+export default function SignupFlow({ universities }: SignupFlowProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
@@ -84,6 +89,7 @@ export default function SignupFlow() {
               )}
               {step === 2 && (
                 <StepBusiness
+                  universities={universities}
                   data={formData.business}
                   onChange={(business: BusinessInfo) =>
                     setFormData((prev) => ({ ...prev, business }))
