@@ -534,7 +534,7 @@ export default async function EventsPage() {
       </section>
 
       {/* ─── 4. Bizzy brings the names ──────────────────────── */}
-      <section className="relative overflow-hidden bg-white">
+      <section className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
 
         <SectionContainer className="relative !py-20 md:!py-28">
@@ -543,15 +543,15 @@ export default async function EventsPage() {
               <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">
                 Talent Network
               </p>
-              <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
+              <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-5">
                 We bring the names.
                 <br />
-                <span className="font-display-italic font-normal text-muted">
+                <span className="font-display-italic font-normal text-white/45">
                   You host the night.
                 </span>
               </h2>
-              <p className="text-lg md:text-xl text-muted leading-relaxed mb-8 max-w-xl">
-                Over <span className="text-ink font-bold">100 major influencer events</span> brought to top college bars nationwide. DJs with real followings. Creators with real reach. We bring the talent. Your bar gets the night.
+              <p className="text-lg md:text-xl text-white/60 leading-relaxed mb-8 max-w-xl">
+                Over <span className="text-white font-bold">100 major influencer events</span> brought to top college bars nationwide. DJs with real followings. Creators with real reach. We bring the talent. Your bar gets the night.
               </p>
 
               <div className="space-y-3 mb-8">
@@ -562,10 +562,10 @@ export default async function EventsPage() {
                   "Always scouting for new partner venues",
                 ].map((line) => (
                   <div key={line} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-primary-light flex items-center justify-center flex-shrink-0">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
                       <CheckIcon className="text-primary w-3 h-3" />
                     </div>
-                    <span className="text-ink/85 text-base">{line}</span>
+                    <span className="text-white/85 text-base">{line}</span>
                   </div>
                 ))}
               </div>
@@ -583,7 +583,7 @@ export default async function EventsPage() {
                     src="/videos/bizzy-event-night.mp4"
                     poster="/images/bizzy-event-poster.jpg"
                     label="A packed themed night at a Bizzy venue: neon lights, a full crowd, phones out."
-                    className="w-[260px] sm:w-[300px] lg:w-[340px] max-h-[min(66vh,620px)] object-cover rounded-[2.5rem] ring-1 ring-black/10 shadow-2xl shadow-black/25"
+                    className="w-[260px] sm:w-[300px] lg:w-[340px] max-h-[min(66vh,620px)] object-cover rounded-[2.5rem] ring-1 ring-white/15 shadow-2xl shadow-black/50"
                   />
                 </div>
               </div>
@@ -592,7 +592,7 @@ export default async function EventsPage() {
         </SectionContainer>
 
         {/* Talent category ticker */}
-        <div className="border-y border-gray-100 bg-gray-50 py-6 md:py-8 overflow-hidden">
+        <div className="border-y border-white/10 bg-white/[0.03] py-6 md:py-8 overflow-hidden">
           <div
             className="flex animate-marquee gap-10 md:gap-14 whitespace-nowrap"
             style={{ animationDuration: "40s" }}
@@ -601,7 +601,7 @@ export default async function EventsPage() {
               TALENT_MARQUEE.flatMap((label, i) => [
                 <span
                   key={`${repeat}-${i}-label`}
-                  className="text-xl md:text-3xl font-bold text-ink/25 tracking-tight"
+                  className="text-xl md:text-3xl font-bold text-white/30 tracking-tight"
                 >
                   {label}
                 </span>,
