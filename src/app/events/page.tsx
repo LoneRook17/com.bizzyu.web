@@ -11,14 +11,14 @@ import BizzyMark from "@/components/ui/BizzyMark";
 import { EVENTS_FAQ, CALENDLY_DEMO_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Fill Your Bar. Keep 100%. | Bizzy for College Venues",
+  title: "Fill Your Bar. Keep Every Dollar. | Bizzy for College Venues",
   description:
     "Bizzy gives college bars an unfair advantage: 0% platform fees, an auto-paid promoter army, SMS blasts to past attendees, and geofenced push to every nearby student. Book a 15-min demo.",
   alternates: {
     canonical: "https://bizzyu.com/events",
   },
   openGraph: {
-    title: "Fill Your Bar. Keep 100%. | Bizzy for College Venues",
+    title: "Fill Your Bar. Keep Every Dollar. | Bizzy for College Venues",
     description:
       "0% platform fees. Auto-paid promoter program. SMS blasts. Geofenced push. Built for college bars.",
   },
@@ -300,10 +300,13 @@ export default function EventsPage() {
                 </div>
 
                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-[0.95] tracking-tight mb-6 text-white">
-                  Fill the bar.
+                  Fill Your Bar.
                   <br />
+                  {/* The sticker moves to "Every Dollar": that is the promise
+                      now, and it says the same thing as 100% in words a room
+                      full of cash understands. */}
                   <span className="font-display-italic font-normal text-white">
-                    Keep <span className="marker-sticker"><span>100%</span></span>.
+                    Keep <span className="marker-sticker"><span>Every Dollar</span></span>.
                   </span>
                 </h1>
 
