@@ -388,7 +388,95 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 2. Savings calculator ───────────────────────────── */}
+      {/* ─── 2. Bizzy brings the names ────────────────────────
+          Moved up from sixth (~5,000px down). The packed-room footage is
+          the strongest thing on this page, so it now lands straight after
+          the hero: promise, then proof, then the money math. */}
+      <section className="relative overflow-hidden bg-ink text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
+
+        <SectionContainer className="relative !py-20 md:!py-28">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <AnimatedSection>
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                Talent Network
+              </p>
+              <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-5">
+                We bring the names.
+                <br />
+                <span className="font-display-italic font-normal text-white/45">
+                  You host the night.
+                </span>
+              </h2>
+              <p className="text-lg md:text-xl text-white/60 leading-relaxed mb-8 max-w-xl">
+                Over <span className="text-white font-bold">100 major influencer events</span> brought to top college bars nationwide. DJs with real followings. Creators with real reach. We bring the talent. Your bar gets the night.
+              </p>
+
+              <div className="space-y-3 mb-8">
+                {[
+                  "DJs with charting tracks and tour history",
+                  "TikTok + Instagram creators with college-aged audiences",
+                  "Influencer-driven theme nights and bar takeovers",
+                  "Always scouting for new partner venues",
+                ].map((line) => (
+                  <div key={line} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
+                      <CheckIcon className="text-primary w-3 h-3" />
+                    </div>
+                    <span className="text-white/85 text-base">{line}</span>
+                  </div>
+                ))}
+              </div>
+
+              <DemoButton>Bring a name to your bar</DemoButton>
+            </AnimatedSection>
+
+            {/* Was a "100+ major influencer events" numeral. A packed room is
+                the better argument, and it is one we can actually show. */}
+            <AnimatedSection delay={0.15} variant="fade-left">
+              <div className="relative flex items-center justify-center min-h-[380px]">
+                <div className="absolute -inset-12 bg-gradient-to-br from-primary/10 via-emerald-500/5 to-transparent rounded-full blur-3xl" />
+                <div className="relative">
+                  <AutoLoopVideo
+                    src="/videos/bizzy-event-night.mp4"
+                    poster="/images/bizzy-event-poster.jpg"
+                    label="A packed themed night at a Bizzy venue: neon lights, a full crowd, phones out."
+                    className="w-[290px] sm:w-[340px] lg:w-[400px] max-h-[min(72vh,680px)] object-cover rounded-[2.5rem] ring-1 ring-white/15 shadow-2xl shadow-black/50"
+                  />
+                </div>
+              </div>
+            </AnimatedSection>
+          </div>
+        </SectionContainer>
+
+        {/* Talent category ticker */}
+        <div className="border-y border-white/10 bg-white/[0.03] py-6 md:py-8 overflow-hidden">
+          <div
+            className="flex animate-marquee gap-10 md:gap-14 whitespace-nowrap"
+            style={{ animationDuration: "18s" }}
+          >
+            {[...Array(4)].flatMap((_, repeat) =>
+              TALENT_MARQUEE.flatMap((label, i) => [
+                <span
+                  key={`${repeat}-${i}-label`}
+                  className="text-xl md:text-3xl font-bold text-white/40 tracking-tight"
+                >
+                  {label}
+                </span>,
+                <span
+                  key={`${repeat}-${i}-star`}
+                  className="text-xl md:text-3xl text-primary/40"
+                  aria-hidden
+                >
+                  ★
+                </span>,
+              ])
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 3. Savings calculator ───────────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white border-y border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_50%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
         <SectionContainer className="relative !py-16 md:!py-20">
@@ -411,16 +499,16 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 2.5 The venues themselves ───────────────────────
+      {/* ─── 4. The venues themselves ─────────────────────────
           Was a generic strip of every approved business logo, which on a
           nightlife page included every café and burrito shop. This is the
           actual bars, with photos of the actual rooms. */}
       <VenueCarousel venues={venuesWithPhotos(venues)} />
 
-      {/* ─── 2.6 Real events, running right now ────────────── */}
+      {/* ─── 5. Real events, running right now ─────────────── */}
       <LiveEvents venues={venues} />
 
-      {/* ─── 3. FILL THE BAR (Promoter + SMS + Push) ────────── */}
+      {/* ─── 6. FILL THE BAR (Promoter + SMS + Push) ───────── */}
       <section id="fill-the-bar" className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
@@ -538,92 +626,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 4. Bizzy brings the names ──────────────────────── */}
-      <section className="relative overflow-hidden bg-ink text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
-
-        <SectionContainer className="relative !py-20 md:!py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <AnimatedSection>
-              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">
-                Talent Network
-              </p>
-              <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-5">
-                We bring the names.
-                <br />
-                <span className="font-display-italic font-normal text-white/45">
-                  You host the night.
-                </span>
-              </h2>
-              <p className="text-lg md:text-xl text-white/60 leading-relaxed mb-8 max-w-xl">
-                Over <span className="text-white font-bold">100 major influencer events</span> brought to top college bars nationwide. DJs with real followings. Creators with real reach. We bring the talent. Your bar gets the night.
-              </p>
-
-              <div className="space-y-3 mb-8">
-                {[
-                  "DJs with charting tracks and tour history",
-                  "TikTok + Instagram creators with college-aged audiences",
-                  "Influencer-driven theme nights and bar takeovers",
-                  "Always scouting for new partner venues",
-                ].map((line) => (
-                  <div key={line} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
-                      <CheckIcon className="text-primary w-3 h-3" />
-                    </div>
-                    <span className="text-white/85 text-base">{line}</span>
-                  </div>
-                ))}
-              </div>
-
-              <DemoButton>Bring a name to your bar</DemoButton>
-            </AnimatedSection>
-
-            {/* Was a "100+ major influencer events" numeral. A packed room is
-                the better argument, and it is one we can actually show. */}
-            <AnimatedSection delay={0.15} variant="fade-left">
-              <div className="relative flex items-center justify-center min-h-[380px]">
-                <div className="absolute -inset-12 bg-gradient-to-br from-primary/10 via-emerald-500/5 to-transparent rounded-full blur-3xl" />
-                <div className="relative">
-                  <AutoLoopVideo
-                    src="/videos/bizzy-event-night.mp4"
-                    poster="/images/bizzy-event-poster.jpg"
-                    label="A packed themed night at a Bizzy venue: neon lights, a full crowd, phones out."
-                    className="w-[260px] sm:w-[300px] lg:w-[340px] max-h-[min(66vh,620px)] object-cover rounded-[2.5rem] ring-1 ring-white/15 shadow-2xl shadow-black/50"
-                  />
-                </div>
-              </div>
-            </AnimatedSection>
-          </div>
-        </SectionContainer>
-
-        {/* Talent category ticker */}
-        <div className="border-y border-white/10 bg-white/[0.03] py-6 md:py-8 overflow-hidden">
-          <div
-            className="flex animate-marquee gap-10 md:gap-14 whitespace-nowrap"
-            style={{ animationDuration: "40s" }}
-          >
-            {[...Array(4)].flatMap((_, repeat) =>
-              TALENT_MARQUEE.flatMap((label, i) => [
-                <span
-                  key={`${repeat}-${i}-label`}
-                  className="text-xl md:text-3xl font-bold text-white/40 tracking-tight"
-                >
-                  {label}
-                </span>,
-                <span
-                  key={`${repeat}-${i}-star`}
-                  className="text-xl md:text-3xl text-primary/40"
-                  aria-hidden
-                >
-                  ★
-                </span>,
-              ])
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 5a. Self-Serve Dashboard ──────────────────────── */}
+      {/* ─── 7. Self-Serve Dashboard ───────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
@@ -674,7 +677,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 5. Run your whole night ────────────────────────── */}
+      {/* ─── 8. Run your whole night ───────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
@@ -712,7 +715,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 6. How it works ────────────────────────────────── */}
+      {/* ─── 9. How it works ─────────────────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white border-t border-white/10" id="how-it-works">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
         <SectionContainer className="relative !py-20 md:!py-28">
@@ -753,7 +756,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 7. Use cases ───────────────────────────────────── */}
+      {/* ─── 10. Use cases ──────────────────────────────────── */}
       <section className="bg-ink text-white">
         <SectionContainer className="!py-16 md:!py-20">
           <AnimatedSection>
@@ -780,7 +783,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 9. Founding Venue Program ───────────────────────── */}
+      {/* ─── 11. Founding Venue Program ─────────────────────── */}
       <section className="bg-ink text-white">
         <SectionContainer className="!py-20 md:!py-28">
           <AnimatedSection>
@@ -824,7 +827,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 10. FAQ ───────────────────────────────────────────── */}
+      {/* ─── 12. FAQ ─────────────────────────────────────────── */}
       <section className="bg-ink text-white border-t border-white/10" id="faq">
         <SectionContainer className="!py-20 md:!py-24">
           <AnimatedSection>
@@ -841,7 +844,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 11. Final CTA ──────────────────────────────────────
+      {/* ─── 13. Final CTA ─────────────────────────────────────
           Was a full-bleed green band with white text on it, which is where
           the page's only real contrast failures lived: the h2 read 1.61:1,
           the subhead 1.51:1, the footnote 1.42:1. Green is now the glow and

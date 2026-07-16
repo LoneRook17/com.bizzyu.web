@@ -5,24 +5,39 @@ interface VenueCarouselProps {
   venues: Venue[];
 }
 
+/** Card + gap, per breakpoint. Must match the classes on the card below. */
+const CARD_SM = 210 + 16; // w-[210px] + gap-4
+const CARD_MD = 260 + 20; // md:w-[260px] + md:gap-5
+
+/** How fast the strip actually travels. Tune speed here, never duration. */
+const SPEED_SM = 210; // px/sec
+const SPEED_MD = 230;
+
 /**
  * Every venue Bizzy runs, scrolling past.
  *
- * Photo-led on purpose: 21 of 23 live venues have a room photo, only 8 have a
- * business logo, so a logo strip would render two thirds empty. A photo of a
- * packed room is also the better argument on a nightlife page. Where a logo
- * exists it rides on the photo as a badge.
+ * Photo-led on purpose: most live venues have a room photo and only a third
+ * have a business logo, so a logo strip would render two thirds empty. A photo
+ * of a packed room is also the better argument on a nightlife page. Where a
+ * logo exists it rides on the photo as a badge.
  *
- * Duration is set per breakpoint because .animate-marquee moves a PERCENTAGE,
- * so one duration would make the wider desktop lane travel faster. Pauses on
- * hover so a name can be read.
+ * Duration is DERIVED, not chosen. The strip travels exactly one copy of
+ * itself, so a hardcoded duration silently re-times the whole thing whenever a
+ * venue is added or drops off. Fixing px/sec and solving for duration keeps it
+ * moving at the same speed forever. Two breakpoints because the mobile card is
+ * smaller, so an equal duration would crawl on a phone.
+ *
+ * Pauses on hover so a name can be read.
  */
 export default function VenueCarousel({ venues }: VenueCarouselProps) {
   if (venues.length === 0) return null;
 
   // 4 copies: .animate-marquee translates -25%, so it needs 4x the width to
-  // hide the seam.
+  // hide the seam. One "copy" is therefore exactly the travel distance.
   const lane = [...venues, ...venues, ...venues, ...venues];
+
+  const durSm = Math.max(8, Math.round((venues.length * CARD_SM) / SPEED_SM));
+  const durMd = Math.max(8, Math.round((venues.length * CARD_MD) / SPEED_MD));
 
   return (
     <section className="relative overflow-hidden bg-ink py-14 md:py-20">
@@ -44,10 +59,18 @@ export default function VenueCarousel({ venues }: VenueCarouselProps) {
           <div className="absolute left-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-r from-ink to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-l from-ink to-transparent z-10 pointer-events-none" />
 
-          {/* --marquee-duration, NOT animation-duration: .animate-marquee sets
+          {/* Custom properties, NOT animation-duration: .animate-marquee sets
               the animation SHORTHAND, which resets duration and beats a
-              utility class. globals.css reads this custom property. */}
-          <div className="flex animate-marquee items-stretch gap-4 md:gap-5 [--marquee-duration:44s] md:[--marquee-duration:52s] hover:[animation-play-state:paused]">
+              utility class. .marquee-responsive picks sm or md from these. */}
+          <div
+            className="flex animate-marquee marquee-responsive items-stretch gap-4 md:gap-5 hover:[animation-play-state:paused]"
+            style={
+              {
+                "--marquee-dur-sm": `${durSm}s`,
+                "--marquee-dur-md": `${durMd}s`,
+              } as React.CSSProperties
+            }
+          >
             {lane.map((v, i) => (
               <div
                 key={`${v.id}-${i}`}

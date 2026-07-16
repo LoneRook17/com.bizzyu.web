@@ -4,7 +4,7 @@ import { fetchPublicLogos } from "@/lib/publicLogos";
 interface BizzyVenuesMarqueeProps {
   /** Override the marquee eyebrow label. */
   label?: string;
-  /** Speed in seconds for one full loop. */
+  /** Seconds for one full loop. Lower is faster. */
   durationSec?: number;
   /** Light or dark theme controls fade overlay color. */
   theme?: "light" | "dark";
@@ -21,7 +21,7 @@ interface BizzyVenuesMarqueeProps {
  */
 export default async function BizzyVenuesMarquee({
   label = "On Bizzy",
-  durationSec = 40,
+  durationSec = 20,
   theme = "light",
   limit = 30,
 }: BizzyVenuesMarqueeProps) {

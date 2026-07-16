@@ -341,7 +341,7 @@ export default async function Home() {
         <div className="relative">
           <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-          <div className="flex animate-marquee" style={{ animationDuration: "30s" }}>
+          <div className="flex animate-marquee" style={{ animationDuration: "16s" }}>
             {[...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS].map((logo, i) => (
               <div
                 key={`${logo.alt}-${i}`}

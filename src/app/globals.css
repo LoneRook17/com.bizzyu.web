@@ -58,6 +58,22 @@ html {
   animation: marquee var(--marquee-duration, 40s) linear infinite;
 }
 
+/* Marquee speed as px/sec instead of a guessed duration.
+   A marquee travels one copy of its content, so a fixed duration means the
+   speed silently changes every time the content count changes: add venues and
+   the strip speeds up, lose one and it drags. Components that know their own
+   card width compute a duration per breakpoint and hand it over here, and this
+   picks the right one. Same reason the two values are needed at all: mobile
+   cards are narrower, so an equal duration is a slower strip. */
+.marquee-responsive {
+  --marquee-duration: var(--marquee-dur-sm);
+}
+@media (min-width: 768px) {
+  .marquee-responsive {
+    --marquee-duration: var(--marquee-dur-md);
+  }
+}
+
 @keyframes marquee-half {
   0% {
     transform: translateX(0);

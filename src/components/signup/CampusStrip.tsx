@@ -50,7 +50,7 @@ export default function CampusStrip({ universities }: { universities: University
           faster than the mobile one. These land both near ~170px/s.
           Pauses on hover so a name can actually be read. */}
       <div
-        className="flex animate-marquee items-center gap-7 [--marquee-duration:48s] md:[--marquee-duration:56s] hover:[animation-play-state:paused]"
+        className="flex animate-marquee items-center gap-7 [--marquee-duration:24s] md:[--marquee-duration:28s] hover:[animation-play-state:paused]"
         aria-hidden
       >
         {lane.map((u, i) => (
