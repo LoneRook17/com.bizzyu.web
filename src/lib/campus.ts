@@ -28,9 +28,19 @@ const itemCount = (c: Campus) => c.deals.length + c.venues.length;
 /** True once a school has enough real content to be worth a page. */
 export const isPublishable = (c: Campus) => itemCount(c) >= MIN_ITEMS;
 
+/**
+ * Deals key off the handle, venues off the numeric id.
+ *
+ * Both throw on failure and this does NOT catch, on purpose. The publish gate
+ * below counts items, so a swallowed error returning [] would read as "this
+ * school has nothing" and silently unpublish a live page. The V1 API is
+ * genuinely flaky (a sequential sweep of 34 schools produced 8 failures), so
+ * this is a routine event, not a hypothetical.
+ *
+ * Rejecting means "unknown", which callers handle deliberately. It never means
+ * "empty".
+ */
 async function hydrate(u: University): Promise<Campus> {
-  // Deals key off the handle, venues off the numeric id. Both already degrade
-  // to [] internally, so one dead endpoint costs a section, not the page.
   const [deals, venues] = await Promise.all([
     fetchDealsForSchool(u.name),
     fetchVenuesForUniversity(u),
@@ -49,6 +59,18 @@ export async function fetchCampuses(): Promise<Campus[]> {
   if (universities.length === 0) return [];
 
   const settled = await Promise.allSettled(universities.map(hydrate));
+
+  // A rejected school is unknown, not empty, so it drops out of THIS list and
+  // says so. It keeps its page: [campus]/page.tsx sets dynamicParams=true, so a
+  // slug missed by a flaky build still renders on demand rather than 404ing.
+  const failed = settled.filter((r) => r.status === "rejected");
+  if (failed.length > 0) {
+    console.warn(
+      `[campus] ${failed.length}/${universities.length} schools failed to hydrate; omitted from the list this pass`,
+      (failed[0] as PromiseRejectedResult).reason,
+    );
+  }
+
   return settled
     .filter((r): r is PromiseFulfilledResult<Campus> => r.status === "fulfilled")
     .map((r) => r.value)
@@ -64,6 +86,15 @@ export async function fetchCampuses(): Promise<Campus[]> {
  */
 export async function fetchCampus(slug: string): Promise<Campus | null> {
   const universities = await fetchUniversities();
+
+  // fetchUniversities swallows its own errors and returns []. Without this
+  // guard an outage on the university-list endpoint would make every slug
+  // "not found" and 404 every campus page at once. Empty means broken here,
+  // never "no such school": Bizzy always has universities.
+  if (universities.length === 0) {
+    throw new Error("[campus] university list empty or unavailable; refusing to 404");
+  }
+
   const match = universities.find((u) => u.slug === slug);
   if (!match) return null;
 

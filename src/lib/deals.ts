@@ -1,3 +1,5 @@
+import { fetchRetry } from "./fetchRetry";
+
 const SCHOOLS = ["FGCU", "UGA", "ASU", "USF", "Southern"];
 const API_URL = "https://bizzy-deals.com/api/home_deals";
 
@@ -47,24 +49,24 @@ const toDeal = (d: RawDeal): Deal => ({
  * Live active deals for one school, by its handle ("FGCU", "UGA").
  *
  * The endpoint caps at 10 per school, so this is the top of the list rather
- * than everything that school runs. Returns [] on failure: a campus page must
- * degrade to "no deals section", never to a 500.
+ * than everything that school runs.
+ *
+ * THROWS on failure rather than returning []. This API is intermittently flaky,
+ * and campus.ts decides whether a school gets a page based on how much it has:
+ * if a blip returned [] here, that gate would read it as "this school has
+ * nothing" and silently unpublish a real page. An empty array from this
+ * function now means the school genuinely has no deals.
  */
 export async function fetchDealsForSchool(school: string): Promise<Deal[]> {
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ university: school }),
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const rows = (json.data?.top10_Deals ?? []) as RawDeal[];
-    return rows.filter((d) => d.is_active === 1).map(toDeal);
-  } catch {
-    return [];
-  }
+  const res = await fetchRetry(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ university: school }),
+    next: { revalidate: 300 },
+  });
+  const json = await res.json();
+  const rows = (json.data?.top10_Deals ?? []) as RawDeal[];
+  return rows.filter((d) => d.is_active === 1).map(toDeal);
 }
 
 /**
@@ -73,6 +75,9 @@ export async function fetchDealsForSchool(school: string): Promise<Deal[]> {
  * Read-only, public, and already how the production homepage works.
  */
 export async function fetchTrendingDeals(): Promise<Deal[]> {
+  // allSettled, and fetchDealsForSchool now throws: a school that blips just
+  // drops out of the mix here. This strip is decorative, so a partial list is
+  // fine, unlike the campus gate which must not misread a blip as "no deals".
   const results = await Promise.allSettled(SCHOOLS.map(fetchDealsForSchool));
 
   const allDeals = results

@@ -1,4 +1,5 @@
 import { fetchUniversities, type University } from "./universities";
+import { fetchRetry } from "./fetchRetry";
 
 interface RawVenue {
   venue_id: number;
@@ -44,53 +45,56 @@ export interface Venue {
 const API_BASE = "https://services.bizzy-deals.com";
 
 /**
- * Every venue Bizzy has live, across every campus, with its next event.
+ * Venues for one campus. Naperville can't reach here: fetchUniversities drops it.
  *
- * Reads GET /ui/venues/popular, which the V2 router mounts explicitly as
- * public ("// Public: popular venues (no auth)"). It takes one university_id
- * at a time, so this fans out across the university list and flattens.
- *
- * Returns [] rather than throwing: this feeds marketing sections, and a dead
- * API must degrade to "render nothing", never to a 500 on a public page.
+ * THROWS on failure, like fetchDealsForSchool and for the same reason: campus.ts
+ * gates publication on item count, so a blip returning [] would unpublish a
+ * live page. [] from here means the school genuinely has no venues.
  */
-/** Venues for one campus. Naperville can't reach here: fetchUniversities drops it. */
 export async function fetchVenuesForUniversity(u: University): Promise<Venue[]> {
-  try {
-    const res = await fetch(`${API_BASE}/ui/venues/popular?university_id=${u.id}`, {
-      next: { revalidate: 900 },
-    });
-    if (!res.ok) return [];
-    const rows: unknown = await res.json();
-    if (!Array.isArray(rows)) return [];
+  const res = await fetchRetry(`${API_BASE}/ui/venues/popular?university_id=${u.id}`, {
+    next: { revalidate: 900 },
+  });
+  const rows: unknown = await res.json();
+  if (!Array.isArray(rows)) return [];
 
-    return (rows as RawVenue[])
-      .filter((v) => v?.venue_id && v?.venue_name)
-      .map((v): Venue => ({
-        id: v.venue_id,
-        name: v.venue_name as string,
-        campus: u.name,
-        campusFullName: u.fullName,
-        campusSlug: u.slug,
-        photo: v.venue_photo_url || null,
-        logo: v.business_image_url || null,
-        upcomingEvents: Number(v.upcoming_event_count) || 0,
-        lineSkips: Number(v.active_line_skip_count) || 0,
-        nextEvent:
-          v.event_id && v.event_name
-            ? {
-                id: v.event_id,
-                name: v.event_name,
-                startsAt: v.start_date_time || "",
-                coverPrice: v.cover_price != null ? Number(v.cover_price) : null,
-                flyer: v.flyer_image_url || null,
-              }
-            : null,
-      }));
-  } catch {
-    return [];
-  }
+  return (rows as RawVenue[])
+    .filter((v) => v?.venue_id && v?.venue_name)
+    .map((v): Venue => ({
+      id: v.venue_id,
+      name: v.venue_name as string,
+      campus: u.name,
+      campusFullName: u.fullName,
+      campusSlug: u.slug,
+      photo: v.venue_photo_url || null,
+      logo: v.business_image_url || null,
+      upcomingEvents: Number(v.upcoming_event_count) || 0,
+      lineSkips: Number(v.active_line_skip_count) || 0,
+      nextEvent:
+        v.event_id && v.event_name
+          ? {
+              id: v.event_id,
+              name: v.event_name,
+              startsAt: v.start_date_time || "",
+              coverPrice: v.cover_price != null ? Number(v.cover_price) : null,
+              flyer: v.flyer_image_url || null,
+            }
+          : null,
+    }));
 }
 
+/**
+ * Every venue Bizzy has live, across every campus, with its next event.
+ *
+ * Reads GET /ui/venues/popular, which the V2 router mounts explicitly as public
+ * ("// Public: popular venues (no auth)"). One university_id at a time, so this
+ * fans out and flattens.
+ *
+ * Swallows failure: this feeds marketing sections, where a dead API must
+ * degrade to "render nothing" rather than 500 a public page. The campus gate
+ * uses fetchVenuesForUniversity directly, precisely because it must NOT
+ * swallow it.
+ */
 export async function fetchVenues(): Promise<Venue[]> {
   let universities: University[] = [];
   try {

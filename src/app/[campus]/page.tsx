@@ -25,10 +25,16 @@ import { APP_STORE_URL } from "@/lib/constants";
  */
 export const revalidate = 1800;
 
-// Only the slugs generateStaticParams returns exist. Anything else 404s rather
-// than being built on demand, which is what keeps a school with no content from
-// getting a URL just because someone guessed it.
-export const dynamicParams = false;
+// TRUE, not false. The V1 API is flaky, so generateStaticParams' output varies
+// build to build: one bad pass and a real campus vanishes from the list. With
+// dynamicParams=false that vanished slug becomes a hard 404 on a page that was
+// live an hour ago.
+//
+// Letting it render on demand costs nothing, because fetchCampus applies the
+// same content gate at request time: a school with no data, a made-up slug, and
+// the test university all still return null and 404 below. The gate is the
+// guard, not this flag.
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const campuses = await fetchCampuses();
