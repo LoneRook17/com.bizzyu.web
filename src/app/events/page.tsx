@@ -202,42 +202,6 @@ function SMSMockup() {
   );
 }
 
-function PushMockup() {
-  return (
-    <PhoneFrame className="rotate-[3deg]">
-      {/* Lock screen */}
-      <div className="absolute inset-0 bg-gradient-to-b from-purple-900 via-indigo-900 to-black">
-        {/* Time */}
-        <div className="text-center pt-14 pb-2">
-          <p className="text-white text-[14px] font-medium">Friday, May 18</p>
-          <p className="text-white text-[68px] font-light leading-none tracking-tight">10:47</p>
-        </div>
-        {/* Push notification */}
-        <div className="absolute left-2.5 right-2.5 top-[200px]">
-          <div className="bg-white/15 backdrop-blur-xl rounded-2xl p-3 border border-white/10">
-            <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-                <span className="text-ink font-bold text-sm">B</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-baseline mb-0.5">
-                  <p className="text-[11px] font-semibold text-white">BIZZY</p>
-                  <p className="text-[10px] text-white/60">now</p>
-                </div>
-                <p className="text-[12px] font-semibold text-white leading-tight mb-0.5">
-                  🎉 DJ on at 11 @ McShane&apos;s
-                </p>
-                <p className="text-[11px] text-white/80 leading-snug">
-                  Line forming. Grab a line skip →
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </PhoneFrame>
-  );
-}
 
 function PromoterMockup() {
   return (
@@ -365,21 +329,22 @@ export default async function EventsPage() {
               </AnimatedSection>
             </div>
 
-            {/* Hero visual: stacked SMS + push mockups */}
+            {/* Hero visual: a real night at a real Bizzy bar.
+                Was a stack of SMS + push phone mockups, which drew the same
+                phone the SMS Blast section draws further down, and sold the
+                software rather than the night. Footage of a full room is the
+                argument this page is making. */}
             <div className="lg:col-span-5">
               <AnimatedSection delay={0.15} variant="fade-left">
-                {/* Mobile: single centered phone. Desktop: stacked SMS + push. */}
-                <div className="md:hidden flex justify-center">
-                  <div className="scale-90 origin-top">
-                    <SMSMockup />
-                  </div>
-                </div>
-                <div className="hidden md:block relative h-[600px]">
-                  <div className="absolute right-0 top-0">
-                    <SMSMockup />
-                  </div>
-                  <div className="absolute left-0 bottom-0 scale-90 z-10">
-                    <PushMockup />
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute -inset-12 bg-gradient-to-br from-primary/15 via-emerald-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+                  <div className="relative">
+                    <AutoLoopVideo
+                      src="/videos/bizzy-event-night.mp4"
+                      poster="/images/bizzy-event-poster.jpg"
+                      label="A packed themed night at a Bizzy venue: neon lights, a full crowd, phones out."
+                      className="w-[290px] sm:w-[340px] lg:w-[420px] max-h-[min(74vh,700px)] object-cover rounded-[2.5rem] ring-1 ring-white/15 shadow-2xl shadow-black/50"
+                    />
                   </div>
                 </div>
               </AnimatedSection>
@@ -388,95 +353,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 2. Bizzy brings the names ────────────────────────
-          Moved up from sixth (~5,000px down). The packed-room footage is
-          the strongest thing on this page, so it now lands straight after
-          the hero: promise, then proof, then the money math. */}
-      <section className="relative overflow-hidden bg-ink text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
-
-        <SectionContainer className="relative !py-20 md:!py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <AnimatedSection>
-              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">
-                Talent Network
-              </p>
-              <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-5">
-                We bring the names.
-                <br />
-                <span className="font-display-italic font-normal text-white/45">
-                  You host the night.
-                </span>
-              </h2>
-              <p className="text-lg md:text-xl text-white/60 leading-relaxed mb-8 max-w-xl">
-                Over <span className="text-white font-bold">100 major influencer events</span> brought to top college bars nationwide. DJs with real followings. Creators with real reach. We bring the talent. Your bar gets the night.
-              </p>
-
-              <div className="space-y-3 mb-8">
-                {[
-                  "DJs with charting tracks and tour history",
-                  "TikTok + Instagram creators with college-aged audiences",
-                  "Influencer-driven theme nights and bar takeovers",
-                  "Always scouting for new partner venues",
-                ].map((line) => (
-                  <div key={line} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
-                      <CheckIcon className="text-primary w-3 h-3" />
-                    </div>
-                    <span className="text-white/85 text-base">{line}</span>
-                  </div>
-                ))}
-              </div>
-
-              <DemoButton>Bring a name to your bar</DemoButton>
-            </AnimatedSection>
-
-            {/* Was a "100+ major influencer events" numeral. A packed room is
-                the better argument, and it is one we can actually show. */}
-            <AnimatedSection delay={0.15} variant="fade-left">
-              <div className="relative flex items-center justify-center min-h-[380px]">
-                <div className="absolute -inset-12 bg-gradient-to-br from-primary/10 via-emerald-500/5 to-transparent rounded-full blur-3xl" />
-                <div className="relative">
-                  <AutoLoopVideo
-                    src="/videos/bizzy-event-night.mp4"
-                    poster="/images/bizzy-event-poster.jpg"
-                    label="A packed themed night at a Bizzy venue: neon lights, a full crowd, phones out."
-                    className="w-[290px] sm:w-[340px] lg:w-[400px] max-h-[min(72vh,680px)] object-cover rounded-[2.5rem] ring-1 ring-white/15 shadow-2xl shadow-black/50"
-                  />
-                </div>
-              </div>
-            </AnimatedSection>
-          </div>
-        </SectionContainer>
-
-        {/* Talent category ticker */}
-        <div className="border-y border-white/10 bg-white/[0.03] py-6 md:py-8 overflow-hidden">
-          <div
-            className="flex animate-marquee gap-10 md:gap-14 whitespace-nowrap"
-            style={{ animationDuration: "12s" }}
-          >
-            {[...Array(4)].flatMap((_, repeat) =>
-              TALENT_MARQUEE.flatMap((label, i) => [
-                <span
-                  key={`${repeat}-${i}-label`}
-                  className="text-xl md:text-3xl font-bold text-white/40 tracking-tight"
-                >
-                  {label}
-                </span>,
-                <span
-                  key={`${repeat}-${i}-star`}
-                  className="text-xl md:text-3xl text-primary/40"
-                  aria-hidden
-                >
-                  ★
-                </span>,
-              ])
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 3. Savings calculator ───────────────────────────── */}
+      {/* ─── 2. Savings calculator ───────────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white border-y border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_50%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
         <SectionContainer className="relative !py-16 md:!py-20">
@@ -499,16 +376,16 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 4. The venues themselves ─────────────────────────
+      {/* ─── 3. The venues themselves ─────────────────────────
           Was a generic strip of every approved business logo, which on a
           nightlife page included every café and burrito shop. This is the
           actual bars, with photos of the actual rooms. */}
       <VenueCarousel venues={venuesWithPhotos(venues)} />
 
-      {/* ─── 5. Real events, running right now ─────────────── */}
+      {/* ─── 4. Real events, running right now ─────────────── */}
       <LiveEvents venues={venues} />
 
-      {/* ─── 6. FILL THE BAR (Promoter + SMS + Push) ───────── */}
+      {/* ─── 5. FILL THE BAR (Promoter + SMS + Push) ───────── */}
       <section id="fill-the-bar" className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
@@ -626,7 +503,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 7. Self-Serve Dashboard ───────────────────────── */}
+      {/* ─── 6. Self-Serve Dashboard ───────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
@@ -677,7 +554,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 8. Run your whole night ───────────────────────── */}
+      {/* ─── 7. Run your whole night ───────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(5,235,84,0.15),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(168,85,247,0.1),transparent_60%)] pointer-events-none" />
@@ -715,7 +592,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 9. How it works ─────────────────────────────────── */}
+      {/* ─── 8. How it works ─────────────────────────────────── */}
       <section className="relative overflow-hidden bg-ink text-white border-t border-white/10" id="how-it-works">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
         <SectionContainer className="relative !py-20 md:!py-28">
@@ -756,7 +633,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 10. Use cases ──────────────────────────────────── */}
+      {/* ─── 9. Use cases ──────────────────────────────────── */}
       <section className="bg-ink text-white">
         <SectionContainer className="!py-16 md:!py-20">
           <AnimatedSection>
@@ -783,7 +660,7 @@ export default async function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 11. Founding Venue Program ─────────────────────── */}
+      {/* ─── 10. Founding Venue Program ─────────────────────── */}
       <section className="bg-ink text-white">
         <SectionContainer className="!py-20 md:!py-28">
           <AnimatedSection>
@@ -825,6 +702,84 @@ export default async function EventsPage() {
             </div>
           </AnimatedSection>
         </SectionContainer>
+      </section>
+
+      {/* ─── 11. Bizzy brings the names ───────────────────────
+          Sits at the bottom now. Its video was the best thing on the page
+          and was buried here, so it leads the hero instead; what remains is
+          the talent pitch, which belongs late, after the product argument
+          has landed. */}
+      <section className="relative overflow-hidden bg-ink text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
+
+        <SectionContainer className="relative !py-20 md:!py-28">
+          {/* Headline left, proof right. The right column used to be the
+              nightlife video, which is now the hero of this page; splitting the
+              copy across the row keeps the section from sitting half empty. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+            <AnimatedSection>
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                Talent Network
+              </p>
+              <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-5">
+                We bring the names.
+                <br />
+                <span className="font-display-italic font-normal text-white/45">
+                  You host the night.
+                </span>
+              </h2>
+              <p className="text-lg md:text-xl text-white/60 leading-relaxed max-w-xl">
+                Over <span className="text-white font-bold">100 major influencer events</span> brought to top college bars nationwide. DJs with real followings. Creators with real reach. We bring the talent. Your bar gets the night.
+              </p>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.1} variant="fade-left">
+              <div className="space-y-3 mb-8">
+                {[
+                  "DJs with charting tracks and tour history",
+                  "TikTok + Instagram creators with college-aged audiences",
+                  "Influencer-driven theme nights and bar takeovers",
+                  "Always scouting for new partner venues",
+                ].map((line) => (
+                  <div key={line} className="flex items-center gap-3">
+                    <div className="w-5 h-5 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0">
+                      <CheckIcon className="text-primary w-3 h-3" />
+                    </div>
+                    <span className="text-white/85 text-base">{line}</span>
+                  </div>
+                ))}
+              </div>
+
+              <DemoButton>Bring a name to your bar</DemoButton>
+            </AnimatedSection>
+          </div>
+        </SectionContainer>
+
+        {/* Talent category ticker */}
+        <div className="border-y border-white/10 bg-white/[0.03] py-6 md:py-8 overflow-hidden">
+          <div
+            className="flex animate-marquee gap-10 md:gap-14 whitespace-nowrap"
+            style={{ animationDuration: "12s" }}
+          >
+            {[...Array(4)].flatMap((_, repeat) =>
+              TALENT_MARQUEE.flatMap((label, i) => [
+                <span
+                  key={`${repeat}-${i}-label`}
+                  className="text-xl md:text-3xl font-bold text-white/40 tracking-tight"
+                >
+                  {label}
+                </span>,
+                <span
+                  key={`${repeat}-${i}-star`}
+                  className="text-xl md:text-3xl text-primary/40"
+                  aria-hidden
+                >
+                  ★
+                </span>,
+              ])
+            )}
+          </div>
+        </div>
       </section>
 
       {/* ─── 12. FAQ ─────────────────────────────────────────── */}
