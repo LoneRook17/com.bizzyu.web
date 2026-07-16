@@ -1,9 +1,26 @@
 import type { MetadataRoute } from "next";
+import { fetchCampuses } from "@/lib/campus";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://bizzyu.com";
 
+  // Only campuses that cleared the content bar. Listing a school with nothing
+  // on it is the difference between a sitemap and a doorway farm, and it is
+  // also how the test university would have reached Google.
+  let campuses: MetadataRoute.Sitemap = [];
+  try {
+    campuses = (await fetchCampuses()).map((c) => ({
+      url: `${baseUrl}/${c.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
+  } catch {
+    // A dead API must not take the sitemap down with it.
+  }
+
   return [
+    ...campuses,
     {
       url: baseUrl,
       lastModified: new Date("2026-03-15"),

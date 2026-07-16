@@ -12,6 +12,47 @@ export interface University {
   name: string;
   /** Proper name, e.g. "Michigan State University". Falls back to the handle. */
   fullName: string;
+  /** URL segment, e.g. "florida-gulf-coast". */
+  slug: string;
+}
+
+/**
+ * Naperville is the internal test university. Its venue and its "Yellow" event
+ * are fixtures, and they were already reaching the live events page and the
+ * app's campus picker.
+ *
+ * Filtered here, in the one call every caller goes through, rather than at each
+ * call site: a per-page filter is one someone forgets to add. Matched on id AND
+ * handle AND full name so a rename or a reseed with a new id still can't leak
+ * it.
+ */
+const TEST_UNIVERSITY_IDS = new Set([91]);
+const TEST_UNIVERSITY_NAME = /^(nap|naperville)$/i;
+
+function isTestUniversity(u: RawUniversity): boolean {
+  return (
+    TEST_UNIVERSITY_IDS.has(u.id) ||
+    TEST_UNIVERSITY_NAME.test((u.name ?? "").trim()) ||
+    TEST_UNIVERSITY_NAME.test((u.full_name ?? "").trim())
+  );
+}
+
+/**
+ * "Florida Gulf Coast University" -> "florida-gulf-coast".
+ *
+ * Only a leading "The" and a trailing "University" come off. "University of X"
+ * keeps its prefix, because "/university-of-florida" is what a student
+ * searches and "/florida" is a state.
+ */
+export function campusSlug(fullName: string): string {
+  return fullName
+    .trim()
+    .replace(/^the\s+/i, "")
+    .replace(/\s+university$/i, "")
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -39,12 +80,11 @@ export async function fetchUniversities(): Promise<University[]> {
     const json = await res.json();
     const rows: RawUniversity[] = json.data ?? [];
     return rows
-      .filter((u) => u?.name)
-      .map((u) => ({
-        id: u.id,
-        name: u.name,
-        fullName: u.full_name?.trim() || u.name,
-      }));
+      .filter((u) => u?.name && !isTestUniversity(u))
+      .map((u) => {
+        const fullName = u.full_name?.trim() || u.name;
+        return { id: u.id, name: u.name, fullName, slug: campusSlug(fullName) };
+      });
   } catch (err) {
     console.warn("[universities] fetch failed", err);
     return [];

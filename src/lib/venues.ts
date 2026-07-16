@@ -1,4 +1,4 @@
-import { fetchUniversities } from "./universities";
+import { fetchUniversities, type University } from "./universities";
 
 interface RawVenue {
   venue_id: number;
@@ -21,6 +21,10 @@ export interface Venue {
   name: string;
   /** The school this venue sits next to, e.g. "UF". */
   campus: string;
+  /** e.g. "University of Florida". */
+  campusFullName: string;
+  /** e.g. "university-of-florida". */
+  campusSlug: string;
   /** Photo of the room. 21 of 23 live venues have one; only 8 have a logo,
       which is why this page leans on photos. */
   photo: string | null;
@@ -49,46 +53,53 @@ const API_BASE = "https://services.bizzy-deals.com";
  * Returns [] rather than throwing: this feeds marketing sections, and a dead
  * API must degrade to "render nothing", never to a 500 on a public page.
  */
+/** Venues for one campus. Naperville can't reach here: fetchUniversities drops it. */
+export async function fetchVenuesForUniversity(u: University): Promise<Venue[]> {
+  try {
+    const res = await fetch(`${API_BASE}/ui/venues/popular?university_id=${u.id}`, {
+      next: { revalidate: 900 },
+    });
+    if (!res.ok) return [];
+    const rows: unknown = await res.json();
+    if (!Array.isArray(rows)) return [];
+
+    return (rows as RawVenue[])
+      .filter((v) => v?.venue_id && v?.venue_name)
+      .map((v): Venue => ({
+        id: v.venue_id,
+        name: v.venue_name as string,
+        campus: u.name,
+        campusFullName: u.fullName,
+        campusSlug: u.slug,
+        photo: v.venue_photo_url || null,
+        logo: v.business_image_url || null,
+        upcomingEvents: Number(v.upcoming_event_count) || 0,
+        lineSkips: Number(v.active_line_skip_count) || 0,
+        nextEvent:
+          v.event_id && v.event_name
+            ? {
+                id: v.event_id,
+                name: v.event_name,
+                startsAt: v.start_date_time || "",
+                coverPrice: v.cover_price != null ? Number(v.cover_price) : null,
+                flyer: v.flyer_image_url || null,
+              }
+            : null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchVenues(): Promise<Venue[]> {
-  let universities: Awaited<ReturnType<typeof fetchUniversities>> = [];
+  let universities: University[] = [];
   try {
     universities = await fetchUniversities();
   } catch {
     return [];
   }
 
-  const results = await Promise.allSettled(
-    universities.map(async (u) => {
-      const res = await fetch(`${API_BASE}/ui/venues/popular?university_id=${u.id}`, {
-        next: { revalidate: 900 },
-      });
-      if (!res.ok) return [] as Venue[];
-      const rows: unknown = await res.json();
-      if (!Array.isArray(rows)) return [] as Venue[];
-
-      return (rows as RawVenue[])
-        .filter((v) => v?.venue_id && v?.venue_name)
-        .map((v): Venue => ({
-          id: v.venue_id,
-          name: v.venue_name as string,
-          campus: u.name,
-          photo: v.venue_photo_url || null,
-          logo: v.business_image_url || null,
-          upcomingEvents: Number(v.upcoming_event_count) || 0,
-          lineSkips: Number(v.active_line_skip_count) || 0,
-          nextEvent:
-            v.event_id && v.event_name
-              ? {
-                  id: v.event_id,
-                  name: v.event_name,
-                  startsAt: v.start_date_time || "",
-                  coverPrice: v.cover_price != null ? Number(v.cover_price) : null,
-                  flyer: v.flyer_image_url || null,
-                }
-              : null,
-        }));
-    }),
-  );
+  const results = await Promise.allSettled(universities.map(fetchVenuesForUniversity));
 
   const venues = results
     .filter((r): r is PromiseFulfilledResult<Venue[]> => r.status === "fulfilled")

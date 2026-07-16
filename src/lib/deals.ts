@@ -31,32 +31,53 @@ export interface Deal {
   type: string;
 }
 
+const toDeal = (d: RawDeal): Deal => ({
+  id: d.id,
+  title: d.description || d.deal_title,
+  business: d.display_name || d.business_name,
+  school: d.university_name,
+  savings: d.total_saving,
+  image: d.deal_image_path,
+  category: d.deal_category,
+  tag: d.tag_name,
+  type: d.deal_type,
+});
+
 /**
- * Live deals from the V1 Laravel API, top 10 per school.
+ * Live active deals for one school, by its handle ("FGCU", "UGA").
  *
- * Read-only, public, and already how the production homepage works. This is
- * the same call `/api/trending-deals` has always made, lifted out so server
- * components can use it without fetching our own route.
+ * The endpoint caps at 10 per school, so this is the top of the list rather
+ * than everything that school runs. Returns [] on failure: a campus page must
+ * degrade to "no deals section", never to a 500.
+ */
+export async function fetchDealsForSchool(school: string): Promise<Deal[]> {
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ university: school }),
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const rows = (json.data?.top10_Deals ?? []) as RawDeal[];
+    return rows.filter((d) => d.is_active === 1).map(toDeal);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Live deals across the homepage's five schools, mixed.
+ *
+ * Read-only, public, and already how the production homepage works.
  */
 export async function fetchTrendingDeals(): Promise<Deal[]> {
-  const results = await Promise.allSettled(
-    SCHOOLS.map(async (school) => {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ university: school }),
-        next: { revalidate: 300 },
-      });
-      if (!res.ok) return [];
-      const json = await res.json();
-      return (json.data?.top10_Deals ?? []) as RawDeal[];
-    }),
-  );
+  const results = await Promise.allSettled(SCHOOLS.map(fetchDealsForSchool));
 
   const allDeals = results
-    .filter((r): r is PromiseFulfilledResult<RawDeal[]> => r.status === "fulfilled")
-    .flatMap((r) => r.value)
-    .filter((d) => d.is_active === 1);
+    .filter((r): r is PromiseFulfilledResult<Deal[]> => r.status === "fulfilled")
+    .flatMap((r) => r.value);
 
   // Shuffle so schools are mixed rather than clumped by request order.
   for (let i = allDeals.length - 1; i > 0; i--) {
@@ -64,15 +85,5 @@ export async function fetchTrendingDeals(): Promise<Deal[]> {
     [allDeals[i], allDeals[j]] = [allDeals[j], allDeals[i]];
   }
 
-  return allDeals.map((d) => ({
-    id: d.id,
-    title: d.description || d.deal_title,
-    business: d.display_name || d.business_name,
-    school: d.university_name,
-    savings: d.total_saving,
-    image: d.deal_image_path,
-    category: d.deal_category,
-    tag: d.tag_name,
-    type: d.deal_type,
-  }));
+  return allDeals;
 }
