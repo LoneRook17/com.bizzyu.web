@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { NAV_LINKS, CALENDLY_DEMO_URL } from "@/lib/constants";
+import { NAV_LINKS, APP_STORE_URL, CALENDLY_DEMO_URL } from "@/lib/constants";
+import GetBizzyMenu from "./GetBizzyMenu";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -13,10 +14,6 @@ export default function Navbar() {
   // scroll it earns a frosted panel and a hairline. Otherwise it floats over
   // the page with nothing separating it from the content.
   const [scrolled, setScrolled] = useState(false);
-
-  // The discounts landing page is a focused signup funnel - keep "Book a Call"
-  // (a bar-intro Calendly) off it so it doesn't compete with "Get Started Free".
-  const hideBookACall = pathname === "/discounts";
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
@@ -41,9 +38,15 @@ export default function Navbar() {
     // Passive: this must never block scrolling. Threshold is well past 0 so a
     // trackpad twitch at the top doesn't flicker the panel on and off.
     const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
+    // Deferred, not called inline: setState synchronously in an effect body can
+    // cascade renders. rAF also means the first read happens after paint, so a
+    // page restored mid-scroll still gets its panel.
+    const raf = requestAnimationFrame(onScroll);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   return (
@@ -108,18 +111,7 @@ export default function Navbar() {
             >
               Business Portal
             </Link>
-            {!hideBookACall && (
-              <a
-                href={CALENDLY_DEMO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                // Ink, not white: white on #05EB54 is 1.61:1 and fails AA at
-                // any size. Green fills the pill, ink letters it.
-                className="inline-flex items-center px-5 py-2 bg-primary text-ink text-sm font-semibold rounded-full hover:brightness-105 transition-all"
-              >
-                Book a Call
-              </a>
-            )}
+            <GetBizzyMenu />
           </div>
         </div>
       </nav>
@@ -183,17 +175,36 @@ export default function Navbar() {
             Business Portal
           </Link>
 
-          {!hideBookACall && (
-            <a
-              href={CALENDLY_DEMO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={closeDrawer}
-              className="mt-3 inline-flex items-center justify-center px-6 py-3 bg-primary text-ink text-base font-semibold rounded-full hover:brightness-105 transition-all"
-            >
-              Book a Call
-            </a>
-          )}
+          {/* The three paths spelled out, not a dropdown: a popover inside a
+              drawer is two taps and a guess. Mirrors GetBizzyMenu's options. */}
+          <p className="mt-4 mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-dark">
+            Get Bizzy
+          </p>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={closeDrawer}
+            className="inline-flex items-center justify-center px-6 py-3 bg-primary text-ink text-base font-semibold rounded-full hover:brightness-105 transition-all"
+          >
+            Download the app
+          </a>
+          <Link
+            href="/post-a-deal"
+            onClick={closeDrawer}
+            className="mt-2 block py-2.5 text-base font-medium text-ink"
+          >
+            Post a free deal
+          </Link>
+          <a
+            href={CALENDLY_DEMO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={closeDrawer}
+            className="block py-2.5 text-base font-medium text-ink"
+          >
+            Book a venue demo
+          </a>
         </div>
       </div>
     </>

@@ -9,9 +9,14 @@ export const PARTNERSHIPS_EMAIL = "Partnerships@BizzyU.com";
 export const CALENDLY_DEMO_URL =
   "https://calendly.com/partnerships-bizzyu/bizzy-bar-intro";
 
+/* One path per audience. "For Businesses" lumped a café owner and a nightclub
+   together, and they share almost nothing operationally: one wants five-minute
+   setup and students through the door, the other wants ticketing economics and
+   door tools. /students redirects to "/", so the homepage IS the student page. */
 export const NAV_LINKS = [
-  { label: "Home", href: "/" },
-  { label: "For Businesses", href: "/businesses" },
+  { label: "Students", href: "/" },
+  { label: "Restaurants", href: "/discounts" },
+  { label: "Bars & Events", href: "/events" },
   { label: "About", href: "/about" },
 ];
 
