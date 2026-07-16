@@ -31,17 +31,25 @@ const SPEED_MD = 330;
  * moving at the same speed forever. Two breakpoints because the mobile card is
  * smaller, so an equal duration would crawl on a phone.
  *
- * Pauses on hover so a name can be read.
+ * Does NOT pause on hover. It used to, and the strip is full-bleed and ~250px
+ * tall, so a cursor resting anywhere near the middle of the screen froze it and
+ * the loop read as broken rather than paused.
  */
 export default function VenueCarousel({ venues }: VenueCarouselProps) {
   if (venues.length === 0) return null;
 
-  // 4 copies: .animate-marquee translates -25%, so it needs 4x the width to
-  // hide the seam. One "copy" is therefore exactly the travel distance.
+  // 4 copies, so there is always a card on screen while the lane travels one
+  // copy's width and resets.
   const lane = [...venues, ...venues, ...venues, ...venues];
 
-  const durSm = Math.max(8, Math.round((venues.length * CARD_SM) / SPEED_SM));
-  const durMd = Math.max(8, Math.round((venues.length * CARD_MD) / SPEED_MD));
+  // Distance from a card's left edge to its counterpart one copy later: n cards
+  // and the n gaps that follow them. Exact, unlike 25% of a lane whose width
+  // includes one fewer gap than that.
+  const shiftSm = venues.length * CARD_SM;
+  const shiftMd = venues.length * CARD_MD;
+
+  const durSm = Math.max(8, Math.round(shiftSm / SPEED_SM));
+  const durMd = Math.max(8, Math.round(shiftMd / SPEED_MD));
 
   return (
     <section className="relative overflow-hidden bg-ink py-14 md:py-20">
@@ -74,15 +82,17 @@ export default function VenueCarousel({ venues }: VenueCarouselProps) {
           <div className="absolute left-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-r from-ink to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-l from-ink to-transparent z-10 pointer-events-none" />
 
-          {/* Custom properties, NOT animation-duration: .animate-marquee sets
-              the animation SHORTHAND, which resets duration and beats a
-              utility class. .marquee-responsive picks sm or md from these. */}
+          {/* Custom properties, NOT animation-duration: .animate-marquee-shift
+              sets the animation SHORTHAND, which resets duration and beats a
+              utility class. .marquee-responsive picks the sm or md pair. */}
           <div
-            className="flex animate-marquee marquee-responsive items-stretch gap-4 md:gap-5 hover:[animation-play-state:paused]"
+            className="flex animate-marquee-shift marquee-responsive items-stretch gap-4 md:gap-5"
             style={
               {
                 "--marquee-dur-sm": `${durSm}s`,
                 "--marquee-dur-md": `${durMd}s`,
+                "--marquee-shift-sm": `${shiftSm}px`,
+                "--marquee-shift-md": `${shiftMd}px`,
               } as React.CSSProperties
             }
           >

@@ -58,6 +58,24 @@ html {
   animation: marquee var(--marquee-duration, 40s) linear infinite;
 }
 
+/* Marquee that travels an EXACT distance instead of a percentage.
+   translateX(-25%) is 25% of the LANE, and a flex lane with `gap` carries one
+   gap between every card, so 25% of 4 copies is one gap-quarter short of one
+   copy: the loop lands ~5px off and hops every cycle. A component that knows
+   its own card width knows exactly how wide one copy is, so it passes the
+   number and this moves precisely that far. Seam is then pixel-exact. */
+@keyframes marquee-shift {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc(var(--marquee-shift) * -1));
+  }
+}
+.animate-marquee-shift {
+  animation: marquee-shift var(--marquee-duration, 40s) linear infinite;
+}
+
 /* Marquee speed as px/sec instead of a guessed duration.
    A marquee travels one copy of its content, so a fixed duration means the
    speed silently changes every time the content count changes: add venues and
@@ -67,10 +85,12 @@ html {
    cards are narrower, so an equal duration is a slower strip. */
 .marquee-responsive {
   --marquee-duration: var(--marquee-dur-sm);
+  --marquee-shift: var(--marquee-shift-sm);
 }
 @media (min-width: 768px) {
   .marquee-responsive {
     --marquee-duration: var(--marquee-dur-md);
+    --marquee-shift: var(--marquee-shift-md);
   }
 }
 
@@ -179,7 +199,8 @@ html {
      that can reflow (CampusStrip) render a static list instead; these stop
      where they are. */
   .animate-marquee,
-  .animate-marquee-half {
+  .animate-marquee-half,
+  .animate-marquee-shift {
     animation: none;
   }
 }
