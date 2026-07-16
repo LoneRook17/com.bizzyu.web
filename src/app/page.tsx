@@ -8,7 +8,6 @@ import Parallax from "@/components/ui/Parallax";
 import Button from "@/components/ui/Button";
 import FAQ from "@/components/ui/FAQ";
 import JsonLd from "@/components/seo/JsonLd";
-import { fetchCampuses } from "@/lib/campus";
 import {
   APP_STORE_URL,
   STUDENT_FAQ,
@@ -83,16 +82,7 @@ const REDEEM_STEPS = [
   { n: "4", t: "Start saving", d: "The redemption is recorded right in Bizzy." },
 ];
 
-export default async function Home() {
-  // Campuses that earned a page. Degrades to [] so a dead API costs the strip,
-  // never the homepage.
-  let campuses: Awaited<ReturnType<typeof fetchCampuses>> = [];
-  try {
-    campuses = await fetchCampuses();
-  } catch (err) {
-    console.warn("[home] campus fetch failed", err);
-  }
-
+export default function Home() {
   return (
     <>
       <JsonLd data={faqJsonLd} />
@@ -396,56 +386,20 @@ export default async function Home() {
         </SectionContainer>
       </section>
 
-      {/* 6. CAMPUSES -------------------------------------------------------
-          The only route into the per-campus pages from the marketing site.
-          Sitemap-only pages are orphans, and orphans do not rank. The homepage
-          is the highest-authority page here, so the link is worth the most from
-          this spot, and "find my school" is a real thing a student wants.
+      {/* The "Your campus / See what's live at your school" strip lived here
+          and linked out to every /[campus] page. Deliberately removed: the
+          campus pages stay live and indexed, they are just not reachable from
+          the site, which is what makes them SEO landing pages rather than a
+          navigation surface.
 
-          The list is fetched, never hardcoded: it renders exactly the campuses
-          that earned a page, so this can never link to an empty one or to the
-          test school. */}
-      {campuses.length > 0 && (
-        <section className="bg-white border-t border-gray-100">
-          <SectionContainer className="!py-14 md:!py-20">
-            <AnimatedSection>
-              <div className="max-w-2xl mb-8">
-                <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.18em] mb-3">
-                  Your campus
-                </p>
-                <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
-                  See what&apos;s live at your school.
-                </h2>
-                <p className="text-muted text-lg leading-relaxed">
-                  Every deal and every bar we run, campus by campus.
-                </p>
-              </div>
-            </AnimatedSection>
+          They survive that on purpose. sitemap.ts still lists every published
+          campus, so Google discovers them, and each one links to all its
+          siblings ("Bizzy is also live at"), so the cluster stays crawlable
+          from any entry point. What they give up is link equity from this page,
+          the strongest on the domain, which means they climb slower than they
+          would have. That is the trade being made, not an oversight. */}
 
-            <AnimatedSection delay={0.1}>
-              <div className="flex flex-wrap gap-3">
-                {campuses.map((c) => (
-                  <Link
-                    key={c.slug}
-                    href={`/${c.slug}`}
-                    className="group inline-flex items-center gap-3 pl-5 pr-4 py-3 bg-white border border-gray-200 rounded-2xl hover:border-primary/50 hover:-translate-y-0.5 transition-all duration-200"
-                  >
-                    <span className="font-semibold text-ink text-sm">{c.fullName}</span>
-                    <span className="text-[11px] font-bold text-primary-dark bg-primary-light rounded-full px-2 py-0.5">
-                      {c.deals.length + c.venues.length}
-                    </span>
-                    <span className="text-muted group-hover:text-primary-dark transition-colors" aria-hidden>
-                      →
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </AnimatedSection>
-          </SectionContainer>
-        </section>
-      )}
-
-      {/* 7. FAQ ------------------------------------------------------------- */}
+      {/* 6. FAQ ------------------------------------------------------------- */}
       <section className="bg-gray-50">
         <SectionContainer>
           <AnimatedSection>
@@ -464,7 +418,7 @@ export default async function Home() {
         </SectionContainer>
       </section>
 
-      {/* 8. FINAL CTA ------------------------------------------------------- */}
+      {/* 7. FINAL CTA ------------------------------------------------------- */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary to-emerald-500">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)] pointer-events-none" />
         <SectionContainer className="relative text-center !py-12 md:!py-28">
