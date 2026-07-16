@@ -47,21 +47,28 @@ RULES, in order of importance:
 6. Do not invent a claim frequency ("every Tuesday"), a time, or an address
    unless it is in the data.
 7. Do not repeat the school name more than once. The reader knows where they are.
-8. Do not tell the reader to download the app. The page already does that.`;
+8. Do not tell the reader to download the app. The page already does that.
+9. Never give a total ("45 deals across 31 spots"). You are not told the totals,
+   so you cannot know them, and the page counts them live right above you.
+   Name specific offers instead.`;
 
 /**
- * What the model gets. Note what is NOT here: `category`.
+ * What the model gets. Note what is NOT here.
  *
- * The API's deal_category is unreliable, and demonstrably so on live rows: at
- * UGA a free game of bowling is categorised "Food" and a breakfast bagel is
- * "Night Out". Handing that to the model invites a confidently wrong sentence
+ * `category`: the API's deal_category is unreliable, and demonstrably so on live
+ * rows — at UGA a free game of bowling is categorised "Food" and a breakfast
+ * bagel is "Night Out". Handing that over invites a confidently wrong sentence
  * about a real business. The offer text is accurate, so let it speak.
+ *
+ * Totals (deal count, business count): the paragraph is cached for a week while
+ * the cards under it revalidate every 30 minutes, and the count genuinely moves
+ * because picked_Deals is `inRandomOrder()` — 44 and 45 on two calls minutes
+ * apart. A frozen "45 deals across 31 spots" is a number the page below it will
+ * contradict by midweek. The hero already counts them live, from the rendered
+ * rows. Prose should not race it.
  */
 interface SummaryPayload {
   school: string;
-  dealCount: number;
-  businessCount: number;
-  venueCount: number;
   deals: { business: string; offer: string; savesDollars: number }[];
   events: { name: string; venue: string | null; when: string; priceFrom: number | null }[];
 }
@@ -74,9 +81,6 @@ function buildPayload(campus: Campus, until: string): SummaryPayload {
 
   return {
     school: campus.name,
-    dealCount: campus.deals.length,
-    businessCount: new Set(campus.deals.map((d) => d.business)).size,
-    venueCount: campus.venues.length,
     // Best savings first: gives the model the strongest concrete hook up top.
     deals: [...durable]
       .sort((a, b) => (Number(b.savings) || 0) - (Number(a.savings) || 0))
@@ -143,6 +147,12 @@ async function callClaude(payload: SummaryPayload): Promise<string | null> {
   }
 }
 
+export interface WeeklySummary {
+  paragraph: string;
+  /** When the prose was actually WRITTEN, not when the page rendered. */
+  generatedAt: string;
+}
+
 /**
  * This week's paragraph for a campus, written by Claude from that campus's real
  * deals and events.
@@ -151,10 +161,17 @@ async function callClaude(payload: SummaryPayload): Promise<string | null> {
  * than once per render, and the page's own 30-minute ISR keeps the deal cards
  * underneath fresh in between.
  *
+ * generatedAt is captured INSIDE the cached function, so it freezes with the
+ * paragraph it describes. Stamping it at render time instead (the obvious
+ * mistake, and the one this shipped with first) makes the dateline read
+ * "Updated today" every day for prose written on Monday — a freshness claim the
+ * page has not earned, on the one line whose entire job is being the honest
+ * signal that the paragraph is current.
+ *
  * Returns null on any failure, including a missing API key, which is the local
  * case: the section then renders nothing and the page is unaffected.
  */
-export async function fetchWeeklySummary(campus: Campus): Promise<string | null> {
+export async function fetchWeeklySummary(campus: Campus): Promise<WeeklySummary | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   if (campus.deals.length === 0 && campus.events.length === 0) return null;
 
@@ -163,9 +180,11 @@ export async function fetchWeeklySummary(campus: Campus): Promise<string | null>
   const payload = buildPayload(campus, weekEnd(now));
 
   const cached = unstable_cache(
-    async () => {
+    async (): Promise<WeeklySummary | null> => {
       try {
-        return await callClaude(payload);
+        const paragraph = await callClaude(payload);
+        if (!paragraph) return null;
+        return { paragraph, generatedAt: new Date().toISOString() };
       } catch (err) {
         console.warn(`[weekly] generation failed for ${campus.slug}`, err);
         return null;

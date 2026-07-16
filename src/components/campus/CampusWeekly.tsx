@@ -1,11 +1,10 @@
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
+import type { WeeklySummary } from "@/lib/weekly";
 
 interface CampusWeeklyProps {
-  summary: string | null;
+  summary: WeeklySummary | null;
   campusName: string;
-  /** ISO date the copy was generated. Rendered as the dateline. */
-  updatedAt: string;
 }
 
 /**
@@ -26,14 +25,14 @@ interface CampusWeeklyProps {
  * Renders nothing when generation fails or no key is configured, which is the
  * local-dev case.
  */
-export default function CampusWeekly({ summary, campusName, updatedAt }: CampusWeeklyProps) {
+export default function CampusWeekly({ summary, campusName }: CampusWeeklyProps) {
   if (!summary) return null;
 
   const dateline = new Intl.DateTimeFormat("en-US", {
     month: "long",
     day: "numeric",
     timeZone: "America/New_York",
-  }).format(new Date(updatedAt));
+  }).format(new Date(summary.generatedAt));
 
   return (
     <section className="bg-gray-50 border-b border-gray-100">
@@ -51,14 +50,14 @@ export default function CampusWeekly({ summary, campusName, updatedAt }: CampusW
                 •
               </span>
               <time
-                dateTime={updatedAt.slice(0, 10)}
+                dateTime={summary.generatedAt.slice(0, 10)}
                 className="text-muted text-xs font-medium"
               >
                 Updated {dateline}
               </time>
             </div>
 
-            <p className="text-ink text-lg md:text-xl leading-relaxed">{summary}</p>
+            <p className="text-ink text-lg md:text-xl leading-relaxed">{summary.paragraph}</p>
           </div>
         </AnimatedSection>
       </SectionContainer>

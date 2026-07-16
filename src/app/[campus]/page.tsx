@@ -175,11 +175,7 @@ export default async function CampusPage({
           Sits above the cards: it is the only part of the page that reads as
           "right now" rather than "a catalog", and it is what a reader landing
           from a "what's happening at X this week" search came for. */}
-      <CampusWeekly
-        summary={weekly}
-        campusName={campus.name}
-        updatedAt={new Date().toISOString()}
-      />
+      <CampusWeekly summary={weekly} campusName={campus.name} />
 
       {/* ─── The deals ─────────────────────────────────────── */}
       <CampusDeals campus={campus} />
