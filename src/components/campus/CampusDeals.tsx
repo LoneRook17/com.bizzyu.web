@@ -76,12 +76,16 @@ export default function CampusDeals({ campus }: { campus: Campus }) {
           ))}
         </StaggerGrid>
 
-        {/* The endpoint caps at 10 per school, so say so rather than implying
-            this is the whole list. */}
-        {campus.deals.length >= 10 && (
+        {/* Was "Showing the top N. There are more in the app.", written for a
+            10-deal cap that turned out not to exist: the cap was us reading the
+            claims leaderboard. The union is now 86-100% of what the database
+            says is live, so "the top N" would understate it. It still is not
+            provably everything (see DEAL_BUCKETS), so this points to the app
+            without claiming a number either way. */}
+        {campus.deals.length >= 12 && (
           <AnimatedSection delay={0.2}>
             <p className="text-muted text-sm mt-8">
-              Showing the top {campus.deals.length}. There are more in the app.
+              Plus more around {campus.name}, in the app.
             </p>
           </AnimatedSection>
         )}
