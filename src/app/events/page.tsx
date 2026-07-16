@@ -176,22 +176,24 @@ function SMSMockup() {
         </div>
         {/* Messages header */}
         <div className="px-4 py-3 flex items-center gap-3 border-b border-zinc-300/60 bg-zinc-100/80 backdrop-blur">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center text-ink font-bold text-sm">
             B
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold text-black leading-tight">Bizzy</p>
-            <p className="text-[10px] text-zinc-500 leading-tight">via McShane&apos;s</p>
+            {/* zinc-600/blue-700, not 500/600: this mockup's own zinc-200 bubble
+                is a light surface, and at 10-12px these need 4.5:1. */}
+            <p className="text-[10px] text-zinc-600 leading-tight">via McShane&apos;s</p>
           </div>
         </div>
         {/* Message bubble */}
         <div className="px-3 py-4 space-y-2">
-          <p className="text-[9px] text-center text-zinc-500 uppercase tracking-wider">Now</p>
+          <p className="text-[9px] text-center text-zinc-600 uppercase tracking-wider">Now</p>
           <div className="max-w-[85%] bg-zinc-200 rounded-2xl rounded-bl-md px-3.5 py-2.5">
             <p className="text-[12px] text-black leading-snug">
               🍻 DJ Lava TONIGHT @ McShane&apos;s. Line forming. Grab a line skip $15:
               <br />
-              <span className="text-blue-600 underline">bzy.app/m/r5d8</span>
+              <span className="text-blue-700 underline">bzy.app/m/r5d8</span>
             </p>
           </div>
         </div>
@@ -215,7 +217,7 @@ function PushMockup() {
           <div className="bg-white/15 backdrop-blur-xl rounded-2xl p-3 border border-white/10">
             <div className="flex items-start gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-sm">B</span>
+                <span className="text-ink font-bold text-sm">B</span>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline mb-0.5">
@@ -272,8 +274,10 @@ function PromoterMockup() {
             </div>
           </div>
           <div className="mt-2 pt-2 border-t border-zinc-100">
-            <p className="text-[9px] text-zinc-400 uppercase tracking-wider mb-1">Your link</p>
-            <p className="text-[10px] text-primary font-mono truncate">bzy.app/m/alex</p>
+            <p className="text-[9px] text-zinc-500 uppercase tracking-wider mb-1">Your link</p>
+            {/* primary-dark, not primary: this is the one white surface left on
+                the page (a phone screen), and #05EB54 on white is 1.61:1. */}
+            <p className="text-[10px] text-primary-dark font-mono truncate">bzy.app/m/alex</p>
           </div>
         </div>
       </div>
@@ -385,15 +389,16 @@ export default async function EventsPage() {
       </section>
 
       {/* ─── 2. Savings calculator ───────────────────────────── */}
-      <section className="bg-gray-50 border-b border-gray-100">
-        <SectionContainer className="!py-16 md:!py-20">
+      <section className="relative overflow-hidden bg-ink text-white border-y border-white/10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_50%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
+        <SectionContainer className="relative !py-16 md:!py-20">
           <AnimatedSection>
             <div className="text-center max-w-2xl mx-auto mb-10">
               <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">The 0% Pitch</p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
+              <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-4">
                 See what you keep with Bizzy.
               </h2>
-              <p className="text-muted text-lg">
+              <p className="text-white/60 text-lg">
                 Plug in your monthly ticket + cover volume and your current platform fee. The difference is what stays with your venue.
               </p>
             </div>
@@ -601,7 +606,7 @@ export default async function EventsPage() {
               TALENT_MARQUEE.flatMap((label, i) => [
                 <span
                   key={`${repeat}-${i}-label`}
-                  className="text-xl md:text-3xl font-bold text-white/30 tracking-tight"
+                  className="text-xl md:text-3xl font-bold text-white/40 tracking-tight"
                 >
                   {label}
                 </span>,
@@ -708,15 +713,16 @@ export default async function EventsPage() {
       </section>
 
       {/* ─── 6. How it works ────────────────────────────────── */}
-      <section className="bg-gray-50" id="how-it-works">
-        <SectionContainer className="!py-20 md:!py-28">
+      <section className="relative overflow-hidden bg-ink text-white border-t border-white/10" id="how-it-works">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(5,235,84,0.08),transparent_55%)] pointer-events-none" />
+        <SectionContainer className="relative !py-20 md:!py-28">
           <AnimatedSection>
             <div className="text-center max-w-2xl mx-auto mb-14">
               <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Onboarding</p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-4">
+              <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-4">
                 One call. You&apos;re live.
               </h2>
-              <p className="text-lg text-muted">
+              <p className="text-lg text-white/60">
                 Onboarding is hands-on. We get you live without the headache.
               </p>
             </div>
@@ -725,12 +731,15 @@ export default async function EventsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto mb-12">
             {HOW_IT_WORKS.map((step, i) => (
               <AnimatedSection key={step.num} delay={i * 0.08}>
-                <div className="relative bg-white rounded-2xl p-7 border border-gray-100 h-full">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-emerald-500 text-white rounded-2xl flex items-center justify-center text-xl font-bold mb-4 shadow-lg shadow-primary/25">
+                <div className="relative bg-white/5 backdrop-blur rounded-2xl p-7 border border-white/10 h-full">
+                  {/* text-ink on the green chip: white on this gradient is
+                      1.61:1, and the numeral is the one thing in the card that
+                      has to read at a glance. */}
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-emerald-500 text-ink rounded-2xl flex items-center justify-center text-xl font-bold mb-4 shadow-lg shadow-primary/25">
                     {step.num}
                   </div>
-                  <h3 className="text-lg font-bold text-ink mb-2 leading-tight">{step.title}</h3>
-                  <p className="text-sm text-muted leading-relaxed">{step.desc}</p>
+                  <h3 className="text-lg font-bold text-white mb-2 leading-tight">{step.title}</h3>
+                  <p className="text-sm text-white/70 leading-relaxed">{step.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -745,34 +754,39 @@ export default async function EventsPage() {
       </section>
 
       {/* ─── 7. Use cases ───────────────────────────────────── */}
-      <SectionContainer className="!py-16 md:!py-20">
-        <AnimatedSection>
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Every kind of night</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-ink leading-tight tracking-tight">
-              Cover, tickets, line skip, or RSVP.
-            </h2>
-          </div>
-        </AnimatedSection>
+      <section className="bg-ink text-white">
+        <SectionContainer className="!py-16 md:!py-20">
+          <AnimatedSection>
+            <div className="text-center max-w-2xl mx-auto mb-10">
+              <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Every kind of night</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight tracking-tight">
+                Cover, tickets, line skip, or RSVP.
+              </h2>
+            </div>
+          </AnimatedSection>
 
-        <AnimatedSection delay={0.1}>
-          <div className="flex flex-wrap justify-center gap-2.5 max-w-4xl mx-auto">
-            {USE_CASES.map((u) => (
-              <span
-                key={u}
-                className="inline-flex items-center px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-ink hover:border-primary/40 hover:text-primary transition-colors"
-              >
-                {u}
-              </span>
-            ))}
-          </div>
-        </AnimatedSection>
-      </SectionContainer>
+          <AnimatedSection delay={0.1}>
+            <div className="flex flex-wrap justify-center gap-2.5 max-w-4xl mx-auto">
+              {USE_CASES.map((u) => (
+                <span
+                  key={u}
+                  className="inline-flex items-center px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-medium text-white/85 hover:border-primary/40 hover:text-primary transition-colors"
+                >
+                  {u}
+                </span>
+              ))}
+            </div>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
 
       {/* ─── 9. Founding Venue Program ───────────────────────── */}
-      <SectionContainer className="!py-20 md:!py-28">
-        <AnimatedSection>
-          <div className="max-w-5xl mx-auto relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-ink via-zinc-900 to-ink p-10 md:p-16 text-white">
+      <section className="bg-ink text-white">
+        <SectionContainer className="!py-20 md:!py-28">
+          <AnimatedSection>
+            {/* ring-1: this card was a dark slab on a white page, where its own
+                edge was the contrast. On an ink page it needs a drawn one. */}
+            <div className="max-w-5xl mx-auto relative overflow-hidden rounded-[2rem] ring-1 ring-white/10 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-10 md:p-16 text-white">
             <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-primary/15 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -803,42 +817,48 @@ export default async function EventsPage() {
                 ))}
               </div>
 
-              <DemoButton>Apply for founding access</DemoButton>
+                <DemoButton>Apply for founding access</DemoButton>
+              </div>
             </div>
-          </div>
-        </AnimatedSection>
-      </SectionContainer>
+          </AnimatedSection>
+        </SectionContainer>
+      </section>
 
       {/* ─── 10. FAQ ───────────────────────────────────────────── */}
-      <section className="bg-gray-50" id="faq">
+      <section className="bg-ink text-white border-t border-white/10" id="faq">
         <SectionContainer className="!py-20 md:!py-24">
           <AnimatedSection>
             <div className="max-w-2xl mx-auto text-center mb-12">
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-3">
+              <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight mb-3">
                 Common questions.
               </h2>
-              <p className="text-muted text-lg">Everything bar owners ask before they book a call.</p>
+              <p className="text-white/60 text-lg">Everything bar owners ask before they book a call.</p>
             </div>
           </AnimatedSection>
           <div className="max-w-3xl mx-auto">
-            <FAQ items={EVENTS_FAQ} />
+            <FAQ items={EVENTS_FAQ} tone="dark" />
           </div>
         </SectionContainer>
       </section>
 
-      {/* ─── 11. Final CTA ──────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary to-emerald-500">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_50%)] pointer-events-none" />
+      {/* ─── 11. Final CTA ──────────────────────────────────────
+          Was a full-bleed green band with white text on it, which is where
+          the page's only real contrast failures lived: the h2 read 1.61:1,
+          the subhead 1.51:1, the footnote 1.42:1. Green is now the glow and
+          the button, not the paper. */}
+      <section className="relative overflow-hidden bg-ink text-white border-t border-white/10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(5,235,84,0.30),transparent_60%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(168,85,247,0.10),transparent_55%)] pointer-events-none" />
         <SectionContainer className="relative text-center !py-20 md:!py-28">
           <AnimatedSection>
             <h2 className="text-4xl md:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-5">
               Ready to fill your bar?
             </h2>
-            <p className="text-white/90 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-white/70 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
               15 minutes. We&apos;ll show you the promoter program, the SMS blast composer, and exactly how much you&apos;d keep with 0% fees.
             </p>
-            <DemoButton variant="white" size="lg">Book a 15-Min Call</DemoButton>
-            <p className="mt-6 text-white/80 text-sm">
+            <DemoButton size="lg">Book a 15-Min Call</DemoButton>
+            <p className="mt-6 text-white/60 text-sm">
               Free setup. Direct Stripe payouts. Built for college bars.
             </p>
           </AnimatedSection>
