@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import StaggerGrid from "@/components/ui/gsap/StaggerGrid";
@@ -80,37 +81,43 @@ export default function CampusNights({ campus }: { campus: Campus }) {
                 Already on the books
               </h3>
             </AnimatedSection>
+            {/* Same /event/:id link as the /events page: app-claimed in AASA so
+                an iPhone opens the app, everyone else 307s to the checkout. */}
             <StaggerGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
               {campus.events.map((e) => (
-                <div key={e.id} className="rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] flex flex-col h-full">
-                    <div className="relative aspect-[4/5] bg-white/5">
-                      {(e.flyer || e.venuePhoto) && (
-                        <Image
-                          src={(e.flyer || e.venuePhoto) as string}
-                          alt=""
-                          fill
-                          sizes="(max-width: 768px) 45vw, 200px"
-                          className="object-cover"
-                        />
-                      )}
-                      {e.coverPrice != null && e.coverPrice > 0 && (
-                        <span className="absolute top-2 right-2 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
-                          ${e.coverPrice.toFixed(0)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-3 flex-1 flex flex-col">
-                      <p className="text-white font-bold text-xs leading-snug line-clamp-2">
-                        {e.name}
+                <Link
+                  key={e.id}
+                  href={`/event/${e.id}`}
+                  className="group rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] flex flex-col h-full hover:ring-primary/50 hover:-translate-y-1 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <div className="relative aspect-[4/5] bg-white/5">
+                    {(e.flyer || e.venuePhoto) && (
+                      <Image
+                        src={(e.flyer || e.venuePhoto) as string}
+                        alt=""
+                        fill
+                        sizes="(max-width: 768px) 45vw, 200px"
+                        className="object-cover"
+                      />
+                    )}
+                    {e.coverPrice != null && e.coverPrice > 0 && (
+                      <span className="absolute top-2 right-2 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
+                        ${e.coverPrice.toFixed(0)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3 flex-1 flex flex-col">
+                    <p className="text-white font-bold text-xs leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                      {e.name}
+                    </p>
+                    <p className="text-white/50 text-[11px] mt-1 truncate">{e.venue}</p>
+                    {fmt(e.startsAt) && (
+                      <p className="text-primary text-[11px] font-semibold mt-auto pt-2">
+                        {fmt(e.startsAt)}
                       </p>
-                      <p className="text-white/50 text-[11px] mt-1 truncate">{e.venue}</p>
-                      {fmt(e.startsAt) && (
-                        <p className="text-primary text-[11px] font-semibold mt-auto pt-2">
-                          {fmt(e.startsAt)}
-                        </p>
-                      )}
-                    </div>
-                </div>
+                    )}
+                  </div>
+                </Link>
               ))}
             </StaggerGrid>
           </>

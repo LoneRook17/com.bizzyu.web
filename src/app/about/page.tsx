@@ -142,13 +142,23 @@ export default function AboutPage() {
                   the company forward myself.
                 </p>
                 <p>
-                  A few months later, Bizzy began gaining real traction. I
-                  reached out to my close friend and mentor, Evangelos
-                  Milionis, who believed in the vision early and invested
-                  $20,000 into the company. With his experience in the
-                  college bar and events market, we saw what Bizzy could
-                  become: not just a deals app, but the platform students use
-                  to unlock campus life.
+                  Within a few weeks, Bizzy had thousands of users. That is when
+                  I called Evan.
+                </p>
+                <p>
+                  We go back. Evangelos Milionis is about four years ahead of me,
+                  and he founded DadBod Hospitality Group. I worked for him
+                  through college, running multiple campuses and helping grow the
+                  company, which is where I learned how college nightlife
+                  actually operates: how a venue fills a room, what students
+                  actually turn up for, and how much of it still ran on group
+                  chats and paper lists.
+                </p>
+                <p>
+                  He believed in the vision early and invested $20,000. With his
+                  experience in the college bar and events market, we saw what
+                  Bizzy could become: not just a deals app, but the platform
+                  students use to unlock campus life.
                 </p>
                 <p>Bizzy was built from a simple belief:</p>
                 <blockquote className="border-l-4 border-primary pl-6 py-2 text-ink font-medium italic text-xl">

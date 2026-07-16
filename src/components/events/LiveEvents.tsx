@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { Venue } from "@/lib/venues";
 import { upcomingEvents } from "@/lib/venues";
 
@@ -55,35 +56,49 @@ export default function LiveEvents({ venues, limit = 6 }: LiveEventsProps) {
 
         <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
           {events.map((e) => (
-            <li
-              key={e.id}
-              className="rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] flex flex-col"
-            >
-              <div className="relative aspect-[4/5] bg-white/5">
-                {(e.flyer || e.venuePhoto) && (
-                  <Image
-                    src={(e.flyer || e.venuePhoto) as string}
-                    alt=""
-                    fill
-                    sizes="(max-width: 768px) 45vw, 200px"
-                    className="object-cover"
-                  />
-                )}
-                {e.coverPrice != null && e.coverPrice > 0 && (
-                  <span className="absolute top-2 right-2 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
-                    ${e.coverPrice.toFixed(0)}
-                  </span>
-                )}
-              </div>
-              <div className="p-3 flex-1 flex flex-col">
-                <p className="text-white font-bold text-xs leading-snug line-clamp-2">{e.name}</p>
-                <p className="text-white/50 text-[11px] mt-1 truncate">{e.venue}</p>
-                {fmt(e.startsAt) && (
-                  <p className="text-primary text-[11px] font-semibold mt-auto pt-2">
-                    {fmt(e.startsAt)}
+            <li key={e.id} className="flex">
+              {/* /event/:id, NOT the checkout URL directly. That path is
+                  app-claimed in the AASA file, so an iPhone with Bizzy opens
+                  the event in the app, and everyone else gets 307'd to the
+                  Laravel checkout by next.config's redirect. One href, both
+                  behaviours, and the checkout host stays configurable per
+                  deploy rather than hardcoded here.
+
+                  Whole card is the target: at this size a text-only link would
+                  be a ~120px hit area next to a 200px flyer that reads as the
+                  button. */}
+              <Link
+                href={`/event/${e.id}`}
+                className="group rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] flex flex-col w-full hover:ring-primary/50 hover:-translate-y-1 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <div className="relative aspect-[4/5] bg-white/5">
+                  {(e.flyer || e.venuePhoto) && (
+                    <Image
+                      src={(e.flyer || e.venuePhoto) as string}
+                      alt=""
+                      fill
+                      sizes="(max-width: 768px) 45vw, 200px"
+                      className="object-cover"
+                    />
+                  )}
+                  {e.coverPrice != null && e.coverPrice > 0 && (
+                    <span className="absolute top-2 right-2 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
+                      ${e.coverPrice.toFixed(0)}
+                    </span>
+                  )}
+                </div>
+                <div className="p-3 flex-1 flex flex-col">
+                  <p className="text-white font-bold text-xs leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                    {e.name}
                   </p>
-                )}
-              </div>
+                  <p className="text-white/50 text-[11px] mt-1 truncate">{e.venue}</p>
+                  {fmt(e.startsAt) && (
+                    <p className="text-primary text-[11px] font-semibold mt-auto pt-2">
+                      {fmt(e.startsAt)}
+                    </p>
+                  )}
+                </div>
+              </Link>
             </li>
           ))}
         </ul>
