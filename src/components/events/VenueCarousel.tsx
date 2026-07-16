@@ -21,6 +21,10 @@ const SPEED_MD = 230;
  * of a packed room is also the better argument on a nightlife page. Where a
  * logo exists it rides on the photo as a badge.
  *
+ * The heading names what these rooms are rather than counting them. A count
+ * reads as small while the list is short and dates itself the moment a venue is
+ * added or drops off; the rooms themselves are the argument.
+ *
  * Duration is DERIVED, not chosen. The strip travels exactly one copy of
  * itself, so a hardcoded duration silently re-times the whole thing whenever a
  * venue is added or drops off. Fixing px/sec and solving for duration keeps it
@@ -49,12 +53,23 @@ export default function VenueCarousel({ venues }: VenueCarouselProps) {
             Already running on Bizzy
           </p>
           <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
-            {venues.length} college {venues.length === 1 ? "bar" : "bars"} and counting.
+            Some of the largest nightlife venues across the U.S.
           </h2>
         </div>
 
-        {/* Decorative repetition; the heading above states the count, so screen
-            readers get the fact without four passes of the list. */}
+        {/* The lane is aria-hidden because it repeats the list four times to
+            hide the marquee seam, and nobody should hear it four times. That
+            used to be covered by the heading stating the count; the heading no
+            longer does, so the real names go here instead. Better information
+            than the count was: a reader gets the venues, not a total. */}
+        <ul className="sr-only">
+          {venues.map((v) => (
+            <li key={v.id}>
+              {v.name}, {v.campus}
+            </li>
+          ))}
+        </ul>
+
         <div className="relative" aria-hidden>
           <div className="absolute left-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-r from-ink to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-24 md:w-40 bg-gradient-to-l from-ink to-transparent z-10 pointer-events-none" />
