@@ -7,6 +7,7 @@ import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
 import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
 import { BUSINESS_FAQ, CALENDLY_DEMO_URL, CONTACT_EMAIL } from "@/lib/constants";
+import { og } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
@@ -15,11 +16,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://bizzyu.com/businesses",
   },
-  openGraph: {
+  // Copy unchanged from what this page already shipped; og() is only here to
+  // restore the image, siteName and type that a bare openGraph block drops.
+  // NOTE: the "25K+ Students" here is the same unverified claim that was cut
+  // from the homepage, and it still rides on every share of this link. Left as
+  // it is on purpose: on the business page that number is the pitch, so it is a
+  // call to make rather than a cleanup to slip in.
+  ...og({
     title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
     description:
       "Bars & venues book a 15-min call. Restaurants & retail sign up free in 5 minutes. Both pay 0% to Bizzy.",
-  },
+  }),
 };
 
 function ArrowRight({ className = "" }: { className?: string }) {

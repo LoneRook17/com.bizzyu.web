@@ -4,6 +4,7 @@ import LayoutShell from "@/components/layout/LayoutShell";
 import ScrollProgress from "@/components/ui/gsap/ScrollProgress";
 import JsonLd from "@/components/seo/JsonLd";
 import { APP_STORE_URL } from "@/lib/constants";
+import { og } from "@/lib/og";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -47,8 +48,11 @@ export const metadata: Metadata = {
     default: "Bizzy: Student Deals & Discounts at Your College Campus",
     template: "%s | Bizzy",
   },
+  // Was "Bizzy is the #1 student deals app." Dropped: that is an unsubstantiated
+  // superlative, and it rode on every page that did not override it, including
+  // every share card. Same family as the hardcoded star rating below.
   description:
-    "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
+    "Student-only deals at the spots around your campus, plus event tickets and line skips. Free to use, no membership.",
   keywords: [
     "college deals",
     "student discounts",
@@ -63,29 +67,14 @@ export const metadata: Metadata = {
     "BOGO deals near me",
     "college bar specials",
   ],
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    siteName: "Bizzy",
-    title: "Bizzy: Student Deals & Discounts at Your College Campus",
+  // The fallback card, for any route that does not build its own. Pages should
+  // still call og() rather than rely on this: a page that declares its own
+  // openGraph REPLACES this whole object, it does not merge into it.
+  ...og({
+    title: "Your college town in one app",
     description:
-      "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
-    images: [
-      {
-        url: "/images/og-default.png",
-        width: 1200,
-        height: 630,
-        alt: "Bizzy: Student Deals & Discounts at Your College Campus",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Bizzy: Student Deals & Discounts at Your College Campus",
-    description:
-      "Bizzy is the #1 student deals app. Get exclusive discounts at local restaurants, bars, and shops near your college campus.",
-    images: ["/images/og-default.png"],
-  },
+      "Student-only deals at the spots around your campus, plus event tickets and line skips. Free to use, no membership, no coupons.",
+  }),
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

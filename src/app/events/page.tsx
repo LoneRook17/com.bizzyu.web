@@ -12,6 +12,7 @@ import BizzyMark from "@/components/ui/BizzyMark";
 import { EVENTS_FAQ, CALENDLY_DEMO_URL } from "@/lib/constants";
 import { fetchVenues, venuesWithPhotos } from "@/lib/venues";
 import { fetchAllEvents } from "@/lib/events";
+import { og } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "Fill Your Bar. Keep Every Dollar. | Bizzy for College Venues",
@@ -20,11 +21,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://bizzyu.com/events",
   },
-  openGraph: {
+  ...og({
     title: "Fill Your Bar. Keep Every Dollar. | Bizzy for College Venues",
     description:
       "0% platform fees. Auto-paid promoter program. SMS blasts. Geofenced push. Built for college bars.",
-  },
+  }),
 };
 
 const VENUE_CAPABILITIES = [

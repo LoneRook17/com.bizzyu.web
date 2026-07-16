@@ -14,6 +14,7 @@ import CampusWeekly from "@/components/campus/CampusWeekly";
 import { fetchCampus, fetchCampuses } from "@/lib/campus";
 import { fetchWeeklySummary } from "@/lib/weekly";
 import { APP_STORE_URL } from "@/lib/constants";
+import { og } from "@/lib/og";
 
 /**
  * One page per campus, built from that campus's live deals and venues.
@@ -73,9 +74,10 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: `https://bizzyu.com/${campus.slug}` },
-    // openGraph gets the suffix explicitly: title.template does not apply to
-    // it, so without this the share card reads bare.
-    openGraph: { title: `${title} | Bizzy`, description },
+    // Through og(), not a bare openGraph object: Next replaces rather than
+    // merges, so a hand-rolled block here silently ships a card with no image.
+    // The suffix is explicit because title.template does not apply to og:title.
+    ...og({ title: `${title} | Bizzy`, description }),
   };
 }
 

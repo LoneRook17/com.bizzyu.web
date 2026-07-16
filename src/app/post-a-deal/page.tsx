@@ -14,16 +14,17 @@ import Parallax from "@/components/ui/Parallax";
 import { CONTACT_EMAIL, PARTNERSHIPS_EMAIL, BUSINESS_FAQ } from "@/lib/constants";
 import { fetchTrendingDeals } from "@/lib/deals";
 import { fetchUniversities } from "@/lib/universities";
+import { og } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "Get Featured in Your University's Largest Coupon Book | Bizzy",
   description:
     "Add a student-only deal to the coupon book thousands of students near campus already carry. Free to list, you keep every sale, no POS or contracts. Takes about 5 minutes.",
-  openGraph: {
+  ...og({
     title: "Get Featured in Your University's Largest Coupon Book | Bizzy",
     description:
       "Add a student-only deal to the coupon book students near campus already carry. Free to list, you keep every sale.",
-  },
+  }),
 };
 
 /* Brand green (#05EB54) is 1.61:1 on white: it fails WCAG AA for text at any

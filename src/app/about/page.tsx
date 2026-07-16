@@ -3,6 +3,7 @@ import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import Button from "@/components/ui/Button";
 import { APP_STORE_URL } from "@/lib/constants";
+import { og } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "About Bizzy: The Campus App for Events, Tickets, Deals & Local Spots",
@@ -11,11 +12,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://bizzyu.com/about",
   },
-  openGraph: {
+  ...og({
     title: "About Bizzy: The Campus App for Events, Tickets, Deals & Local Spots",
     description:
       "Bizzy is the campus app that connects students with events, tickets, deals, and local spots around their school. Learn our story and mission.",
-  },
+  }),
 };
 
 export default function AboutPage() {

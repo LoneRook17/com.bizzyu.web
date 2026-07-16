@@ -10,6 +10,7 @@ import FAQ from "@/components/ui/FAQ";
 import JsonLd from "@/components/seo/JsonLd";
 import LiveEvents from "@/components/events/LiveEvents";
 import { fetchAllEvents } from "@/lib/events";
+import { og } from "@/lib/og";
 import {
   APP_STORE_URL,
   STUDENT_FAQ,
@@ -40,6 +41,14 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://bizzyu.com/",
   },
+  // The card someone sees when this link is texted to them. Deliberately the
+  // hero's line, not the <title>: the tap should land on the same sentence it
+  // promised. Titles are for search, cards are for people.
+  ...og({
+    title: "Your college town in one app",
+    description:
+      "Student-only deals at the spots around campus, plus event tickets and line skips. Free to use, no membership, no coupons.",
+  }),
 };
 
 const LOGOS = [
