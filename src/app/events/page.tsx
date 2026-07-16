@@ -310,8 +310,15 @@ export default function EventsPage() {
                   </span>
                 </h1>
 
+                {/* "0% platform fees" is a claim an owner has to take on
+                    faith. Naming the three things they actually sell, and the
+                    two places they sell them, is checkable, and it mirrors the
+                    headline: the first sentence is "Keep Every Dollar", the
+                    second is "Fill Your Bar". */}
                 <p className="text-lg md:text-xl text-white/70 mb-10 max-w-xl leading-relaxed">
-                  0% platform fees. An auto-paid promoter army. SMS blasts that fill the room in 60 seconds. The unfair advantage your competitors don&apos;t have.
+                  Whatever you charge for a presale ticket, a line skip, or cover at the door is
+                  exactly what you keep. Online or in your hand, Bizzy takes nothing. Then an
+                  auto-paid promoter army and SMS blasts fill the room.
                 </p>
 
                 <div className="flex flex-wrap gap-3">
