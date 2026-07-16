@@ -11,7 +11,6 @@ import JsonLd from "@/components/seo/JsonLd";
 import { fetchCampuses } from "@/lib/campus";
 import {
   APP_STORE_URL,
-  CALENDLY_DEMO_URL,
   STUDENT_FAQ,
 } from "@/lib/constants";
 
@@ -28,10 +27,15 @@ const faqJsonLd = {
   })),
 };
 
+// Was "The Campus App for Students & Local Businesses", described as "Local
+// businesses reach 25,000+ students with zero platform fees." Two problems, both
+// already ruled on elsewhere: it is a business pitch on the students page, and
+// it published the 25,000+ claim that was cut from this page's body. Invisible
+// on screen but it IS the Google snippet, so it was the most-read copy here.
 export const metadata: Metadata = {
-  title: "Bizzy: The Campus App for Students & Local Businesses",
+  title: "Bizzy: Student Deals, Events & Tickets Near Campus",
   description:
-    "Students discover events, tickets, line skips, and exclusive deals near campus. Local businesses reach 25,000+ students with zero platform fees.",
+    "Claim student-only deals at the spots around your campus, grab event tickets, and skip the line. Free to download, free to use, no membership.",
   alternates: {
     canonical: "https://bizzyu.com/",
   },
@@ -51,24 +55,6 @@ const LOGOS = [
   { src: "/images/logos/pei-wei.svg", alt: "Pei Wei", width: 220, height: "h-14" },
 ];
 
-function CheckIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
 function ArrowRight({ className = "" }: { className?: string }) {
   return (
@@ -362,84 +348,16 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 5. THE OTHER SIDE: for businesses --------------------------------- */}
-      <section className="bg-ink relative overflow-hidden mt-16 md:mt-24">
-        <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
+      {/* The "For Local Businesses / Reach the students near you. Keep 100%."
+          pitch lived here: a full business sales section, 0% numeral and all,
+          dropped into the middle of the student page. It dates from when one
+          page had to serve both audiences. The nav splits by audience now, so
+          that pitch is what /post-a-deal and /events are FOR, and it is better
+          told there than in a compressed detour a student scrolls past.
+          Businesses still reach it from the nav, the hero's "For Businesses"
+          button, and the footer. */}
 
-        <SectionContainer className="relative !py-12 md:!py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <AnimatedSection>
-              <div className="max-w-xl">
-                <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-4">
-                  For Local Businesses
-                </p>
-                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-6">
-                  Reach the students near you.{" "}
-                  <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-                    Keep 100%.
-                  </span>
-                </h2>
-                <p className="text-white/70 text-lg leading-relaxed mb-8">
-                  Bizzy is the only campus platform that takes zero cut. List deals, sell tickets, fill your venue. Free forever.
-                </p>
-
-                <div className="space-y-3 mb-8">
-                  {[
-                    "0% platform fees on deals and tickets",
-                    "No POS integration",
-                    "Setup in under 5 minutes",
-                  ].map((point) => (
-                    <div key={point} className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                        <CheckIcon className="text-primary w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-white/90 text-base">{point}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button href="/businesses" variant="primary" size="lg">
-                    List Your Business
-                  </Button>
-                  <Button
-                    href={CALENDLY_DEMO_URL}
-                    variant="white"
-                    size="lg"
-                    external
-                    className="!bg-white/10 !text-white hover:!bg-white/20 backdrop-blur-sm"
-                  >
-                    Book a Call
-                  </Button>
-                </div>
-              </div>
-            </AnimatedSection>
-
-            <AnimatedSection delay={0.15} variant="fade-left">
-              {/* min-h was 420px unconditionally, which on a phone is half a
-                  screen reserved for one number. */}
-              <div className="relative flex items-center justify-center min-h-[180px] md:min-h-[420px]">
-                {/* The label used to be absolutely positioned inside the
-                    numeral's own box, so on a 400px leading-none glyph it
-                    landed on top of the "0%" instead of under it. It sits in
-                    normal flow now and the numeral is capped so the pair reads
-                    as one lockup. */}
-                <div className="flex flex-col items-center">
-                  <div className="text-[112px] md:text-[260px] lg:text-[300px] font-black leading-[0.85] bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent select-none">
-                    0%
-                  </div>
-                  <p className="mt-3 md:mt-5 text-white/60 text-xs md:text-base font-semibold uppercase tracking-[0.25em] whitespace-nowrap">
-                    Platform fees
-                  </p>
-                </div>
-              </div>
-            </AnimatedSection>
-          </div>
-        </SectionContainer>
-      </section>
-
-      {/* 6. PARTNERSHIP ----------------------------------------------------- */}
+      {/* 5. PARTNERSHIP ----------------------------------------------------- */}
       <section className="bg-white">
         <SectionContainer className="!py-12 md:!py-24">
           <AnimatedSection>
@@ -478,7 +396,7 @@ export default async function Home() {
         </SectionContainer>
       </section>
 
-      {/* 6.5 CAMPUSES -------------------------------------------------------
+      {/* 6. CAMPUSES -------------------------------------------------------
           The only route into the per-campus pages from the marketing site.
           Sitemap-only pages are orphans, and orphans do not rank. The homepage
           is the highest-authority page here, so the link is worth the most from
@@ -554,20 +472,18 @@ export default async function Home() {
             <h2 className="text-4xl md:text-6xl font-bold text-ink leading-tight tracking-tight mb-5">
               Bring Bizzy to your campus.
             </h2>
+            {/* Was "Whether you're a student or a local business...", and paired
+                Get the App with List Your Business. Same leftover as the
+                business section above: a page that hedges between two audiences
+                closes weakly for both. This page is for students, so it asks
+                students for one thing. */}
             <p className="text-ink/75 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
-              Whether you&apos;re a student or a local business, Bizzy is the campus app you&apos;ve been waiting for.
+              Free to download, free to use, and free to claim every deal on it. No membership, no
+              coupon book, no catch.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex justify-center">
               <Button href={APP_STORE_URL} variant="white" size="lg" external>
-                Get the App
-              </Button>
-              <Button
-                href="/businesses"
-                variant="white"
-                size="lg"
-                className="!bg-white/25 !text-ink hover:!bg-white/40 backdrop-blur-sm"
-              >
-                List Your Business
+                Get Bizzy Free
               </Button>
             </div>
           </AnimatedSection>
