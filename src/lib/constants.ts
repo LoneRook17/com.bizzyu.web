@@ -15,7 +15,7 @@ export const CALENDLY_DEMO_URL =
    door tools. /students redirects to "/", so the homepage IS the student page. */
 export const NAV_LINKS = [
   { label: "Students", href: "/" },
-  { label: "Restaurants", href: "/discounts" },
+  { label: "Restaurants", href: "/post-a-deal" },
   { label: "Bars & Events", href: "/events" },
   { label: "About", href: "/about" },
 ];

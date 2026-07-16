@@ -43,6 +43,20 @@ const nextConfig: NextConfig = {
       "https://bizzy-deals.com";
     return [
       {
+        // /discounts and /post-a-deal both sold restaurants on posting a deal.
+        // /post-a-deal won (it has the form), and its FAQ, founder note and
+        // logo marquee were ported over, so nothing here is lost.
+        //
+        // Permanent (308) deliberately, unlike /signup below: this is a real,
+        // final merge, so Google should pass /discounts' link equity to the
+        // survivor rather than treat it as a temporary detour. The tradeoff is
+        // that browsers cache 308s more or less forever, which is exactly why
+        // the destination must be the page we intend to keep.
+        source: "/discounts",
+        destination: "/post-a-deal",
+        permanent: true,
+      },
+      {
         // /signup was the deal-submission form until it was pointed at account
         // signup. It now goes back to the form, at its new home.
         // NOTE: the old rule was permanent (308), which browsers cache more or

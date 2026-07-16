@@ -184,7 +184,7 @@ export default function BusinessesPage() {
                     Post a Student Deal for Free
                   </Button>
                   <Link
-                    href="/discounts#how-it-works"
+                    href="/post-a-deal"
                     className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
                   >
                     See how it works

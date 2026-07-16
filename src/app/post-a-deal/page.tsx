@@ -3,10 +3,15 @@ import Link from "next/link";
 import SignupFlow from "@/components/signup/SignupFlow";
 import CouponFan from "@/components/signup/CouponFan";
 import CampusStrip from "@/components/signup/CampusStrip";
+import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
+import DiscountTestimonials from "@/components/discounts/DiscountTestimonials";
+import SectionContainer from "@/components/ui/SectionContainer";
+import Button from "@/components/ui/Button";
+import FAQ from "@/components/ui/FAQ";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
 import Parallax from "@/components/ui/Parallax";
-import { CONTACT_EMAIL } from "@/lib/constants";
+import { CONTACT_EMAIL, PARTNERSHIPS_EMAIL, BUSINESS_FAQ } from "@/lib/constants";
 import { fetchTrendingDeals } from "@/lib/deals";
 import { fetchUniversities } from "@/lib/universities";
 
@@ -313,6 +318,105 @@ export default async function PostADealPage() {
             <SignupFlow universities={universities} />
           </AnimatedSection>
         </div>
+      </section>
+
+      {/* ─── Testimonials ─────────────────────────────────────
+          Renders nothing until a business approves its quote in writing.
+          Carried over from /discounts so the slot survives the merge.
+          Drafts + the approval email: TESTIMONIAL_DRAFTS.md */}
+      <DiscountTestimonials />
+
+      {/* ─── Proof: businesses already on Bizzy ───────────────
+          Ported from /discounts, which this page replaces. Real approved
+          logos from the API, not a hardcoded strip. */}
+      <BizzyVenuesMarquee label="Already on Bizzy" theme="light" />
+
+      {/* ─── 9. A note from the founder ───────────────────────── */}
+      <section className="relative overflow-hidden bg-ink">
+      <div className="absolute -right-40 top-0 w-[32rem] h-[32rem] bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+      <SectionContainer className="relative !py-20 md:!py-28">
+        <AnimatedSection>
+          <div className="max-w-3xl mx-auto">
+            <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-4">A note from the founder</p>
+            <h2 className="text-3xl md:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-8">
+              You&apos;re invited to be featured this school year.
+            </h2>
+
+            <div className="space-y-5 text-lg text-white/70 leading-relaxed">
+              <p>
+                Bizzy helps students near campus find local deals, and it&apos;s 100% free for businesses to add a
+                student-only offer. We work closely with campus partners to put participating businesses in front of
+                students, and more than 20 nearby spots have already signed up.
+              </p>
+              <p className="text-white">
+                If you&apos;re interested, just send over the deals you&apos;d like listed and we&apos;ll set
+                everything up for you.
+              </p>
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-white/15 bg-white/5 px-6 py-5">
+              <p className="text-sm text-white/50 mb-1.5">Example</p>
+              <p className="text-lg text-white font-medium">Buy any entrée, get a free soft drink.</p>
+            </div>
+
+            {/* Founder card. TODO: swap the monogram for a real photo of
+                Cooper at /public/images/founder-cooper.jpg. A face here is
+                the single biggest warmth win left on this page. */}
+            <div className="mt-10 flex items-center gap-4">
+              <div
+                className="w-14 h-14 rounded-full bg-primary text-ink flex items-center justify-center font-bold text-lg flex-shrink-0"
+                aria-hidden
+              >
+                CA
+              </div>
+              <div>
+                <p className="font-bold text-white">Cooper Aiello</p>
+                <p className="text-white/50 text-sm">Founder, Bizzy</p>
+              </div>
+            </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-3">
+              {/* On /discounts this pointed at /post-a-deal. That page IS this
+                  page now, so it scrolls to the form rather than reloading. */}
+              <Button
+                href="#your-deal"
+                variant="primary"
+                size="lg"
+                className="w-full sm:w-auto !text-ink"
+              >
+                List my deal free
+              </Button>
+              <a
+                href={`mailto:${PARTNERSHIPS_EMAIL}`}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full font-semibold text-base text-white border-2 border-white/25 hover:border-white/60 hover:bg-white/5 transition-all"
+              >
+                Email us your deals
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </AnimatedSection>
+      </SectionContainer>
+      </section>
+
+      {/* ─── 10. FAQ ──────────────────────────────────────────── */}
+      <section className="bg-gray-50">
+      <SectionContainer className="!py-20 md:!py-24">
+        <AnimatedSection>
+          <div className="max-w-2xl mx-auto text-center mb-12">
+            <h2 className="text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight mb-3">
+              Common questions.
+            </h2>
+            <p className="text-muted text-lg">Everything restaurants and retail ask before they post a deal.</p>
+          </div>
+        </AnimatedSection>
+        <div className="max-w-3xl mx-auto">
+          <FAQ items={BUSINESS_FAQ} />
+        </div>
+      </SectionContainer>
       </section>
 
       {/* ─── Help ─────────────────────────────────────────────── */}
