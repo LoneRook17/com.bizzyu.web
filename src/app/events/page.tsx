@@ -323,7 +323,10 @@ export default function EventsPage() {
                   </Button>
                 </div>
 
-                <div className="mt-12 grid grid-cols-3 gap-6 max-w-md">
+                {/* Two columns, not three with a gap: "25K+ students
+                    reachable" is gone. The two that remain are facts about
+                    your own pricing, which is what a venue is weighing. */}
+                <div className="mt-12 grid grid-cols-2 gap-6 max-w-xs">
                   <div>
                     <p className="text-3xl md:text-4xl font-bold text-primary leading-none">0%</p>
                     <p className="text-xs text-white/60 mt-1.5">Platform fees</p>
@@ -331,10 +334,6 @@ export default function EventsPage() {
                   <div>
                     <p className="text-3xl md:text-4xl font-bold text-white leading-none">100%</p>
                     <p className="text-xs text-white/60 mt-1.5">Of ticket sales</p>
-                  </div>
-                  <div>
-                    <p className="text-3xl md:text-4xl font-bold text-white leading-none">25K+</p>
-                    <p className="text-xs text-white/60 mt-1.5">Students reachable</p>
                   </div>
                 </div>
               </AnimatedSection>
