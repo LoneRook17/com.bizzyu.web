@@ -11,6 +11,7 @@ import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
 import BizzyMark from "@/components/ui/BizzyMark";
 import { EVENTS_FAQ, CALENDLY_DEMO_URL } from "@/lib/constants";
 import { fetchVenues, venuesWithPhotos } from "@/lib/venues";
+import { fetchAllEvents } from "@/lib/events";
 
 export const metadata: Metadata = {
   title: "Fill Your Bar. Keep Every Dollar. | Bizzy for College Venues",
@@ -254,11 +255,14 @@ export default async function EventsPage() {
   // public endpoint. A marketing page must never 500 because an API blipped,
   // so failure degrades to no carousel and no events section.
   let venues: Awaited<ReturnType<typeof fetchVenues>> = [];
-  try {
-    venues = await fetchVenues();
-  } catch (err) {
-    console.warn("[events] venue fetch failed", err);
-  }
+  let events: Awaited<ReturnType<typeof fetchAllEvents>> = [];
+  // Independent: the carousel needs venues, the events grid needs events, and
+  // one failing must not blank the other. Events no longer come through venues.
+  const [v, e] = await Promise.allSettled([fetchVenues(), fetchAllEvents()]);
+  if (v.status === "fulfilled") venues = v.value;
+  else console.warn("[events] venue fetch failed", v.reason);
+  if (e.status === "fulfilled") events = e.value;
+  else console.warn("[events] events fetch failed", e.reason);
 
   return (
     <>
@@ -383,7 +387,7 @@ export default async function EventsPage() {
       <VenueCarousel venues={venuesWithPhotos(venues)} />
 
       {/* ─── 4. Real events, running right now ─────────────── */}
-      <LiveEvents venues={venues} />
+      <LiveEvents events={events} />
 
       {/* ─── 5. FILL THE BAR (Promoter + SMS + Push) ───────── */}
       <section id="fill-the-bar" className="relative overflow-hidden bg-ink text-white">

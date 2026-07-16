@@ -9,6 +9,7 @@ import SplitHeading from "@/components/ui/gsap/SplitHeading";
 import CountUp from "@/components/ui/gsap/CountUp";
 import CampusDeals from "@/components/campus/CampusDeals";
 import CampusNights from "@/components/campus/CampusNights";
+import CampusEvents from "@/components/campus/CampusEvents";
 import { fetchCampus, fetchCampuses } from "@/lib/campus";
 import { APP_STORE_URL } from "@/lib/constants";
 
@@ -167,7 +168,12 @@ export default async function CampusPage({
       {/* ─── The deals ─────────────────────────────────────── */}
       <CampusDeals campus={campus} />
 
-      {/* ─── Bars + nights (only where they exist) ─────────── */}
+      {/* ─── Upcoming events ──────────────────────────────
+          Separate from CampusNights on purpose: events key off university_id,
+          venues do not, and a campus can have one without the other. */}
+      <CampusEvents campus={campus} />
+
+      {/* ─── Bars (only where they exist) ─────────────────── */}
       <CampusNights campus={campus} />
 
       {/* ─── Other campuses ────────────────────────────────

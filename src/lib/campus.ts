@@ -1,11 +1,12 @@
 import { fetchUniversities, type University } from "./universities";
 import { fetchDealsForSchool, type Deal } from "./deals";
-import { fetchVenuesForUniversity, upcomingEvents, type Venue } from "./venues";
+import { fetchVenuesForUniversity, type Venue } from "./venues";
+import { fetchAllEvents, eventsForUniversity, type CampusEvent } from "./events";
 
 export interface Campus extends University {
   deals: Deal[];
   venues: Venue[];
-  events: ReturnType<typeof upcomingEvents>;
+  events: CampusEvent[];
 }
 
 /**
@@ -40,12 +41,16 @@ export const isPublishable = (c: Campus) => itemCount(c) >= MIN_ITEMS;
  * Rejecting means "unknown", which callers handle deliberately. It never means
  * "empty".
  */
-async function hydrate(u: University): Promise<Campus> {
+async function hydrate(u: University, allEvents: CampusEvent[]): Promise<Campus> {
   const [deals, venues] = await Promise.all([
     fetchDealsForSchool(u.name),
     fetchVenuesForUniversity(u),
   ]);
-  return { ...u, deals, venues, events: upcomingEvents(venues) };
+  // Events are passed in, not fetched per school: /ui/events returns every
+  // campus at once, so fetching it inside here would make the same call 34
+  // times. They key off university_id rather than coming through venues, which
+  // is what makes venue-less events (the White Lies tour) visible at all.
+  return { ...u, deals, venues, events: eventsForUniversity(allEvents, u.id) };
 }
 
 /**
@@ -58,7 +63,17 @@ export async function fetchCampuses(): Promise<Campus[]> {
   const universities = await fetchUniversities();
   if (universities.length === 0) return [];
 
-  const settled = await Promise.allSettled(universities.map(hydrate));
+  // One call for every campus's events. Failure costs the events sections, not
+  // the pages: a school qualifies on deals and venues, so an empty list here
+  // cannot unpublish anything.
+  let allEvents: CampusEvent[] = [];
+  try {
+    allEvents = await fetchAllEvents();
+  } catch (err) {
+    console.warn("[campus] events fetch failed; pages render without them", err);
+  }
+
+  const settled = await Promise.allSettled(universities.map((u) => hydrate(u, allEvents)));
 
   // A rejected school is unknown, not empty, so it drops out of THIS list and
   // says so. It keeps its page: [campus]/page.tsx sets dynamicParams=true, so a
@@ -98,6 +113,13 @@ export async function fetchCampus(slug: string): Promise<Campus | null> {
   const match = universities.find((u) => u.slug === slug);
   if (!match) return null;
 
-  const campus = await hydrate(match);
+  let allEvents: CampusEvent[] = [];
+  try {
+    allEvents = await fetchAllEvents();
+  } catch (err) {
+    console.warn("[campus] events fetch failed; page renders without them", err);
+  }
+
+  const campus = await hydrate(match, allEvents);
   return isPublishable(campus) ? campus : null;
 }

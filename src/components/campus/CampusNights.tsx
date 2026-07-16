@@ -1,17 +1,19 @@
 import Image from "next/image";
-import Link from "next/link";
 import SectionContainer from "@/components/ui/SectionContainer";
-import AnimatedSection from "@/components/ui/AnimatedSection";
 import StaggerGrid from "@/components/ui/gsap/StaggerGrid";
 import SplitHeading from "@/components/ui/gsap/SplitHeading";
 import type { Campus } from "@/lib/campus";
 
 /**
- * The bars Bizzy runs at this campus, and any nights already on the books.
+ * The bars Bizzy runs at this campus.
  *
- * Renders nothing when a campus has no venues, which is most of them: UF has 10
- * and FGCU has 4, while the rest of the published campuses are deals-only. A
- * "Nightlife" heading over an empty grid is worse than no heading.
+ * Venues ONLY. Events used to live here too, gated behind this component's
+ * "no venues, render nothing" rule, which meant a campus with a real ticketed
+ * event but no venue row showed neither. They are CampusEvents' job now.
+ *
+ * Still returns null with no venues, which is most campuses: UF has 10 and FGCU
+ * has 4, the rest are deals-only. A "Nights out" heading over an empty grid is
+ * worse than no heading.
  */
 export default function CampusNights({ campus }: { campus: Campus }) {
   if (campus.venues.length === 0) return null;
@@ -74,54 +76,6 @@ export default function CampusNights({ campus }: { campus: Campus }) {
           ))}
         </StaggerGrid>
 
-        {campus.events.length > 0 && (
-          <>
-            <AnimatedSection>
-              <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight mb-6">
-                Already on the books
-              </h3>
-            </AnimatedSection>
-            {/* Same /event/:id link as the /events page: app-claimed in AASA so
-                an iPhone opens the app, everyone else 307s to the checkout. */}
-            <StaggerGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-              {campus.events.map((e) => (
-                <Link
-                  key={e.id}
-                  href={`/event/${e.id}`}
-                  className="group rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/[0.04] flex flex-col h-full hover:ring-primary/50 hover:-translate-y-1 transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                  <div className="relative aspect-[4/5] bg-white/5">
-                    {(e.flyer || e.venuePhoto) && (
-                      <Image
-                        src={(e.flyer || e.venuePhoto) as string}
-                        alt=""
-                        fill
-                        sizes="(max-width: 768px) 45vw, 200px"
-                        className="object-cover"
-                      />
-                    )}
-                    {e.coverPrice != null && e.coverPrice > 0 && (
-                      <span className="absolute top-2 right-2 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
-                        ${e.coverPrice.toFixed(0)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-3 flex-1 flex flex-col">
-                    <p className="text-white font-bold text-xs leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-                      {e.name}
-                    </p>
-                    <p className="text-white/50 text-[11px] mt-1 truncate">{e.venue}</p>
-                    {fmt(e.startsAt) && (
-                      <p className="text-primary text-[11px] font-semibold mt-auto pt-2">
-                        {fmt(e.startsAt)}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              ))}
-            </StaggerGrid>
-          </>
-        )}
       </SectionContainer>
     </section>
   );
