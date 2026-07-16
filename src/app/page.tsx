@@ -112,7 +112,7 @@ export default function Home() {
           <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(110%_80%_at_10%_0%,black,transparent_70%)] [-webkit-mask-image:radial-gradient(110%_80%_at_10%_0%,black,transparent_70%)] pointer-events-none opacity-70" />
 
-          <SectionContainer className="relative !py-14 md:!py-24">
+          <SectionContainer className="relative !py-10 md:!py-24">
             <div className="grid grid-cols-1 lg:grid-cols-[11fr_9fr] gap-12 lg:gap-14 items-center">
               <div>
                 <AnimatedSection>
@@ -176,7 +176,7 @@ export default function Home() {
           holding what she got. Interface AND outcome in a single frame. */}
       <section className="relative overflow-hidden bg-white">
         <div className="absolute inset-0 bg-[radial-gradient(70%_50%_at_20%_50%,rgba(5,235,84,0.10),transparent_60%)] pointer-events-none" />
-        <SectionContainer className="relative !py-16 md:!py-24">
+        <SectionContainer className="relative !py-12 md:!py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <AnimatedSection>
               <div className="relative flex justify-center">
@@ -241,7 +241,7 @@ export default function Home() {
           crowd. The clip carries the room; the stills carry the faces. */}
       <section className="relative overflow-hidden bg-ink">
         <div className="absolute -right-40 top-1/2 -translate-y-1/2 w-[36rem] h-[36rem] bg-primary/12 rounded-full blur-3xl pointer-events-none" />
-        <SectionContainer className="relative !py-20 md:!py-28">
+        <SectionContainer className="relative !py-12 md:!py-28">
           <div className="grid grid-cols-1 lg:grid-cols-[9fr_11fr] gap-12 lg:gap-16 items-center">
             {/* The night itself */}
             <AnimatedSection>
@@ -317,7 +317,7 @@ export default function Home() {
 
 
       {/* 4. PROOF: where the deals actually are ---------------------------- */}
-      <section className="py-12 md:py-14 overflow-hidden border-t border-gray-100">
+      <section className="py-8 md:py-14 overflow-hidden border-t border-gray-100">
         <p className="text-center text-[11px] font-semibold text-muted uppercase tracking-[0.2em] mb-8">
           Deals from places students already go
         </p>
@@ -348,7 +348,7 @@ export default function Home() {
         <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-primary/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
 
-        <SectionContainer className="relative !py-16 md:!py-24">
+        <SectionContainer className="relative !py-12 md:!py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <AnimatedSection>
               <div className="max-w-xl">
@@ -398,17 +398,19 @@ export default function Home() {
             </AnimatedSection>
 
             <AnimatedSection delay={0.15} variant="fade-left">
-              <div className="relative flex items-center justify-center min-h-[420px]">
+              {/* min-h was 420px unconditionally, which on a phone is half a
+                  screen reserved for one number. */}
+              <div className="relative flex items-center justify-center min-h-[180px] md:min-h-[420px]">
                 {/* The label used to be absolutely positioned inside the
                     numeral's own box, so on a 400px leading-none glyph it
                     landed on top of the "0%" instead of under it. It sits in
                     normal flow now and the numeral is capped so the pair reads
                     as one lockup. */}
                 <div className="flex flex-col items-center">
-                  <div className="text-[200px] md:text-[260px] lg:text-[300px] font-black leading-[0.85] bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent select-none">
+                  <div className="text-[112px] md:text-[260px] lg:text-[300px] font-black leading-[0.85] bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent select-none">
                     0%
                   </div>
-                  <p className="mt-5 text-white/60 text-sm md:text-base font-semibold uppercase tracking-[0.25em] whitespace-nowrap">
+                  <p className="mt-3 md:mt-5 text-white/60 text-xs md:text-base font-semibold uppercase tracking-[0.25em] whitespace-nowrap">
                     Platform fees
                   </p>
                 </div>
@@ -420,7 +422,7 @@ export default function Home() {
 
       {/* 6. PARTNERSHIP ----------------------------------------------------- */}
       <section className="bg-white">
-        <SectionContainer className="!py-16 md:!py-24">
+        <SectionContainer className="!py-12 md:!py-24">
           <AnimatedSection>
             <div className="max-w-4xl mx-auto">
               <div className="relative overflow-hidden rounded-3xl border border-gray-100 bg-gradient-to-br from-white via-primary-light/30 to-white px-8 py-12 md:px-14 md:py-16">
@@ -479,7 +481,7 @@ export default function Home() {
       {/* 8. FINAL CTA ------------------------------------------------------- */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary to-emerald-500">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)] pointer-events-none" />
-        <SectionContainer className="relative text-center !py-20 md:!py-28">
+        <SectionContainer className="relative text-center !py-12 md:!py-28">
           <AnimatedSection>
             <h2 className="text-4xl md:text-6xl font-bold text-ink leading-tight tracking-tight mb-5">
               Bring Bizzy to your campus.

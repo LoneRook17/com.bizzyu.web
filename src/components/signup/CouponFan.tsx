@@ -26,7 +26,11 @@ export default function CouponFan({ deals }: { deals: Deal[] }) {
       {shown.map((deal, i) => (
         <div
           key={deal.id}
-          className={`${tilt[i % 3]} ${nudge[i % 3]} w-[220px] rounded-2xl bg-white border border-gray-200 shadow-xl shadow-black/5 overflow-hidden transition-transform duration-300 hover:rotate-0 hover:scale-[1.03]`}
+          // Cards stack vertically, so on a phone all four cost ~790px: a full
+          // screen of decoration between a business owner and the form. One
+          // real coupon plus the empty slot makes the same point. The rest
+          // return at sm.
+          className={`${i > 0 ? "hidden sm:block" : ""} ${tilt[i % 3]} ${nudge[i % 3]} w-[200px] sm:w-[220px] rounded-2xl bg-white border border-gray-200 shadow-xl shadow-black/5 overflow-hidden transition-transform duration-300 hover:rotate-0 hover:scale-[1.03]`}
         >
           <div className="relative aspect-[16/10] bg-gray-100">
             <Image
@@ -50,8 +54,8 @@ export default function CouponFan({ deals }: { deals: Deal[] }) {
       ))}
 
       {/* The ask, in the same shape as the answer. */}
-      <div className="rotate-2 -translate-x-4 w-[220px] rounded-2xl border-2 border-dashed border-primary/60 bg-primary/5 px-4 py-6 flex flex-col items-center justify-center text-center">
-        <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center mb-2">
+      <div className="rotate-2 -translate-x-4 w-[200px] sm:w-[220px] rounded-2xl border-2 border-dashed border-primary/60 bg-primary/5 px-4 py-4 sm:py-6 flex flex-col items-center justify-center text-center">
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary flex items-center justify-center mb-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#030303" strokeWidth="3" strokeLinecap="round" aria-hidden>
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />

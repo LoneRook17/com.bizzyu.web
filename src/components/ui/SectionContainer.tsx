@@ -12,7 +12,7 @@ export default function SectionContainer({
   id,
 }: SectionContainerProps) {
   return (
-    <section id={id} className={`max-w-7xl mx-auto px-6 py-16 md:py-24 ${className}`}>
+    <section id={id} className={`max-w-7xl mx-auto px-6 py-12 md:py-24 ${className}`}>
       {children}
     </section>
   );

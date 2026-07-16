@@ -85,7 +85,7 @@ export default async function PostADealPage() {
         <div className="absolute inset-0 bg-[radial-gradient(65%_50%_at_95%_0%,rgba(5,235,84,0.16),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-6 pt-24 pb-16 md:pt-28 md:pb-24">
+        <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-10 md:pt-28 md:pb-24">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
             <div className="lg:col-span-7">
               <AnimatedSection>
@@ -150,7 +150,7 @@ export default async function PostADealPage() {
           before anything else. Live from the API: names only, never crests. */}
       {universities.length > 0 && (
         <section className="border-y border-gray-100 bg-white overflow-hidden">
-          <div className="py-10 md:py-12">
+          <div className="py-8 md:py-12">
             <AnimatedSection>
               <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-primary-dark mb-7 px-6">
                 Live on {universities.length} campuses
@@ -166,7 +166,7 @@ export default async function PostADealPage() {
           and the steps become the caption beside it. */}
       <section className="relative overflow-hidden bg-ink">
         <div className="absolute -left-40 top-1/2 -translate-y-1/2 w-[34rem] h-[34rem] bg-primary/12 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative max-w-6xl mx-auto px-6 py-20 md:py-24">
+        <div className="relative max-w-6xl mx-auto px-6 py-12 md:py-24">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <AnimatedSection>
               <div className="relative flex justify-center">
@@ -225,7 +225,7 @@ export default async function PostADealPage() {
           right. No dividers: bordered lists read as terms and conditions, and
           this is a conversion page. */}
       <section className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+        <div className="max-w-6xl mx-auto px-6 py-10 md:py-20">
           <div className="grid grid-cols-1 lg:grid-cols-[11fr_9fr] gap-10 lg:gap-14 items-center">
             {/* The rule, 55% */}
             <div>
@@ -297,7 +297,7 @@ export default async function PostADealPage() {
         <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(100%_55%_at_50%_0%,black,transparent_75%)] [-webkit-mask-image:radial-gradient(100%_55%_at_50%_0%,black,transparent_75%)] pointer-events-none opacity-60" />
         <div className="absolute inset-0 bg-[radial-gradient(85%_45%_at_50%_0%,rgba(5,235,84,0.16),transparent_65%)] pointer-events-none" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent pointer-events-none" />
-        <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24">
+        <div className="relative max-w-6xl mx-auto px-6 py-12 md:py-24">
           <AnimatedSection>
             <div className="text-center max-w-xl mx-auto mb-10">
               <h2 className="text-3xl md:text-4xl font-bold text-ink tracking-tight mb-3">
