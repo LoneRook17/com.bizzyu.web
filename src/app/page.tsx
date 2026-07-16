@@ -179,80 +179,7 @@ export default async function Home() {
           </SectionContainer>
         </section>
 
-      {/* 2. DEALS: how a redemption actually works ---------------------------
-          The photo is DESKTOP ONLY, and the breakpoint is the whole point.
-          On mobile everything is one column, so the hero video lands directly
-          above this photo and the two tell the same story back to back (sees
-          it, shows it, gets it). On desktop the video sits BESIDE the hero
-          copy, two columns up and to the right, so it never touches this: here
-          the photo is the column companion to the steps, and the section needs
-          it. Same asset, opposite effect, decided by the layout. */}
-      <section className="relative overflow-hidden bg-white">
-        <div className="absolute inset-0 bg-[radial-gradient(70%_50%_at_20%_50%,rgba(5,235,84,0.10),transparent_60%)] pointer-events-none" />
-        <SectionContainer className="relative !py-12 md:!py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            <AnimatedSection className="hidden lg:block">
-              <div className="relative flex justify-center">
-                <div className="absolute -inset-6 bg-gradient-to-tr from-primary/20 via-emerald-300/10 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
-                <Parallax distance={22} className="relative">
-                  <Image
-                    src="/images/student-redeem-urbanbuzz.png"
-                    alt="A student holding up her phone showing a live Bizzy deal, one dollar off any medium drink at Urban Buzz, with the Staff Member Tap Here button on screen, and holding the drink she redeemed in her other hand."
-                    width={1086}
-                    height={1448}
-                    sizes="(max-width: 1024px) 0px, 460px"
-                    className="w-[460px] h-auto rounded-[2rem] shadow-2xl shadow-black/15 ring-1 ring-black/5"
-                  />
-                </Parallax>
-              </div>
-            </AnimatedSection>
-
-            <AnimatedSection delay={0.1} variant="fade-left">
-              <div className="mb-9">
-                <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
-                  From your phone to the counter
-                </p>
-                <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
-                  See it. Show it.{" "}
-                  <span className="marker-underline marker-draw">Save</span>.
-                </h2>
-                <p className="text-lg text-muted leading-relaxed max-w-lg">
-                  Open your deal in Bizzy, show it to staff, and redeem it in seconds. No codes, no
-                  printing, nothing to set up.
-                </p>
-              </div>
-
-              {/* Vertical again: the photo has the other half of the grid
-                  back, so four across would crush them. */}
-              <ol className="space-y-5">
-                {REDEEM_STEPS.map((s) => (
-                  <li key={s.n} className="flex items-start gap-4">
-                    <span
-                      className="w-8 h-8 rounded-lg bg-primary text-ink text-sm font-bold flex items-center justify-center flex-shrink-0"
-                      aria-hidden
-                    >
-                      {s.n}
-                    </span>
-                    <div>
-                      <h3 className="font-bold text-ink leading-snug">{s.t}</h3>
-                      <p className="text-muted text-sm leading-relaxed mt-0.5">{s.d}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-
-              <div className="mt-9">
-                <Button href={APP_STORE_URL} variant="primary" size="lg" className="!text-ink" external>
-                  Find Deals Near Campus
-                </Button>
-              </div>
-            </AnimatedSection>
-          </div>
-        </SectionContainer>
-      </section>
-
-
-      {/* 3. EVENTS: how a night actually works -------------------------------
+      {/* 2. EVENTS: how a night actually works -------------------------------
           Real footage of a real Bizzy-powered night, not a screenshot of the
           events tab. The brief's rule: show the listing beside the actual
           crowd. The clip carries the room; the stills carry the faces. */}
@@ -327,6 +254,80 @@ export default async function Home() {
                   For venues
                   <ArrowRight className="w-4 h-4" />
                 </Link>
+              </div>
+            </AnimatedSection>
+          </div>
+        </SectionContainer>
+      </section>
+
+
+      {/* 3. DEALS: how a redemption actually works ---------------------------
+          The photo is DESKTOP ONLY, and the breakpoint is the whole point.
+          On mobile everything is one column, so the hero video lands directly
+          above this photo and the two tell the same story back to back (sees
+          it, shows it, gets it). On desktop the video sits BESIDE the hero
+          copy, two columns up and to the right, so it never touches this: here
+          the photo is the column companion to the steps, and the section needs
+          it. Same asset, opposite effect, decided by the layout. */}
+      <section className="relative overflow-hidden bg-white">
+        <div className="absolute inset-0 bg-[radial-gradient(70%_50%_at_20%_50%,rgba(5,235,84,0.10),transparent_60%)] pointer-events-none" />
+        <SectionContainer className="relative !py-12 md:!py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <AnimatedSection className="hidden lg:block">
+              <div className="relative flex justify-center">
+                <div className="absolute -inset-6 bg-gradient-to-tr from-primary/20 via-emerald-300/10 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
+                <Parallax distance={22} className="relative">
+                  <Image
+                    src="/images/student-redeem-urbanbuzz.png"
+                    alt="A student holding up her phone showing a live Bizzy deal, one dollar off any medium drink at Urban Buzz, with the Staff Member Tap Here button on screen, and holding the drink she redeemed in her other hand."
+                    width={1086}
+                    height={1448}
+                    sizes="(max-width: 1024px) 0px, 460px"
+                    className="w-[460px] h-auto rounded-[2rem] shadow-2xl shadow-black/15 ring-1 ring-black/5"
+                  />
+                </Parallax>
+              </div>
+            </AnimatedSection>
+
+            <AnimatedSection delay={0.1} variant="fade-left">
+              <div className="mb-9">
+                <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                  Deals and discounts
+                </p>
+                <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
+                  Student-only discounts from{" "}
+                  <span className="marker-underline marker-draw">places you love</span>.
+                </h2>
+                <p className="text-lg text-muted leading-relaxed max-w-lg">
+                  Coffee before class, wings after the game, the burrito spot you are at every week
+                  anyway. Open the deal, show your phone, save. No codes, no printing, nothing to
+                  set up.
+                </p>
+              </div>
+
+              {/* Vertical again: the photo has the other half of the grid
+                  back, so four across would crush them. */}
+              <ol className="space-y-5">
+                {REDEEM_STEPS.map((s) => (
+                  <li key={s.n} className="flex items-start gap-4">
+                    <span
+                      className="w-8 h-8 rounded-lg bg-primary text-ink text-sm font-bold flex items-center justify-center flex-shrink-0"
+                      aria-hidden
+                    >
+                      {s.n}
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-ink leading-snug">{s.t}</h3>
+                      <p className="text-muted text-sm leading-relaxed mt-0.5">{s.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <div className="mt-9">
+                <Button href={APP_STORE_URL} variant="primary" size="lg" className="!text-ink" external>
+                  Find Deals Near Campus
+                </Button>
               </div>
             </AnimatedSection>
           </div>
