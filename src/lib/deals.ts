@@ -1,4 +1,4 @@
-import { fetchRetry } from "./fetchRetry";
+import { fetchJSONRetry } from "./fetchRetry";
 
 const SCHOOLS = ["FGCU", "UGA", "ASU", "USF", "Southern"];
 const API_URL = "https://bizzy-deals.com/api/home_deals";
@@ -61,6 +61,11 @@ export interface Deal {
       Real data; do NOT read it as the enforced claim frequency (the API's
       `uses` field is empty on every deal, so that isn't exposed here). */
   type: string;
+  /** "YYYY-MM-DD", or null. Sorts lexicographically, so compare as a string.
+      Carried through so callers can ask "is this still live NEXT week?", which
+      the weekly summary needs: naming a deal that lapses mid-week leaves the
+      page promising something the counter will refuse. */
+  expiresOn: string | null;
 }
 
 const toDeal = (d: RawDeal): Deal => ({
@@ -73,6 +78,7 @@ const toDeal = (d: RawDeal): Deal => ({
   category: d.deal_category,
   tag: d.tag_name,
   type: d.deal_type,
+  expiresOn: d.expired_date || null,
 });
 
 /**
@@ -96,13 +102,12 @@ const toDeal = (d: RawDeal): Deal => ({
  * function now means the school genuinely has no deals.
  */
 export async function fetchDealsForSchool(school: string): Promise<Deal[]> {
-  const res = await fetchRetry(API_URL, {
+  const json = await fetchJSONRetry<{ data?: Record<string, unknown> }>(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ university: school }),
     next: { revalidate: 300 },
   });
-  const json = await res.json();
   const data = json.data ?? {};
 
   // Date-only string compare: expired_date is "YYYY-MM-DD", which sorts

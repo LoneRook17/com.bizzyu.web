@@ -1,4 +1,4 @@
-import { fetchRetry } from "./fetchRetry";
+import { fetchJSONRetry } from "./fetchRetry";
 
 const API_BASE = "https://services.bizzy-deals.com";
 
@@ -48,10 +48,9 @@ export interface CampusEvent {
  * re-deriving "upcoming" here. Status is still checked defensively.
  */
 export async function fetchAllEvents(): Promise<CampusEvent[]> {
-  const res = await fetchRetry(`${API_BASE}/ui/events`, {
+  const rows = await fetchJSONRetry<unknown>(`${API_BASE}/ui/events`, {
     next: { revalidate: 900 },
   });
-  const rows: unknown = await res.json();
   if (!Array.isArray(rows)) return [];
 
   return (rows as RawEvent[])
