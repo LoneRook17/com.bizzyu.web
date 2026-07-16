@@ -4,7 +4,6 @@ import Link from "next/link";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
-import Parallax from "@/components/ui/Parallax";
 import Button from "@/components/ui/Button";
 import FAQ from "@/components/ui/FAQ";
 import JsonLd from "@/components/seo/JsonLd";
@@ -170,48 +169,39 @@ export default function Home() {
         </section>
 
       {/* 2. DEALS: how a redemption actually works ---------------------------
-          Sits directly under the hero because a visitor can grasp "Bizzy has
-          deals" and still have no idea how redeeming one works. One photograph
-          answers it: the phone is readable, the offer is real, and she is
-          holding what she got. Interface AND outcome in a single frame. */}
+          This used to pair the steps with a photo of a student holding her
+          phone and her drink. The hero video directly above already shows that
+          exact arc (sees it, shows it, gets it), so on mobile the two stacked
+          back to back and told the same story twice. The photo went; the words
+          it was illustrating stayed. */}
       <section className="relative overflow-hidden bg-white">
         <div className="absolute inset-0 bg-[radial-gradient(70%_50%_at_20%_50%,rgba(5,235,84,0.10),transparent_60%)] pointer-events-none" />
         <SectionContainer className="relative !py-12 md:!py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="max-w-5xl mx-auto">
             <AnimatedSection>
-              <div className="relative flex justify-center">
-                <div className="absolute -inset-6 bg-gradient-to-tr from-primary/20 via-emerald-300/10 to-transparent rounded-[3rem] blur-3xl pointer-events-none" />
-                <Parallax distance={22} className="relative">
-                  <Image
-                    src="/images/student-redeem-urbanbuzz.png"
-                    alt="A student holding up her phone showing a live Bizzy deal, one dollar off any medium drink at Urban Buzz, with the Staff Member Tap Here button on screen, and holding the drink she redeemed in her other hand."
-                    width={1086}
-                    height={1448}
-                    sizes="(max-width: 640px) 320px, (max-width: 1024px) 400px, 460px"
-                    className="w-[320px] sm:w-[400px] lg:w-[460px] h-auto rounded-[2rem] shadow-2xl shadow-black/15 ring-1 ring-black/5"
-                  />
-                </Parallax>
+              <div className="max-w-2xl mb-10 md:mb-12">
+                <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                  From your phone to the counter
+                </p>
+                <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
+                  See it. Show it.{" "}
+                  <span className="marker-underline marker-draw">Save</span>.
+                </h2>
+                <p className="text-lg text-muted leading-relaxed max-w-lg">
+                  Open your deal in Bizzy, show it to staff, and redeem it in seconds. No codes, no
+                  printing, nothing to set up.
+                </p>
               </div>
             </AnimatedSection>
 
-            <AnimatedSection delay={0.1} variant="fade-left">
-              <p className="text-primary-dark text-xs font-bold uppercase tracking-[0.2em] mb-4">
-                From your phone to the counter
-              </p>
-              <h2 className="text-3xl md:text-5xl font-bold text-ink leading-[1.05] tracking-tight mb-5">
-                See it. Show it.{" "}
-                <span className="marker-underline marker-draw">Save</span>.
-              </h2>
-              <p className="text-lg text-muted leading-relaxed mb-9 max-w-lg">
-                Open your deal in Bizzy, show it to staff, and redeem it in seconds. No codes, no
-                printing, nothing to set up.
-              </p>
-
-              <ol className="space-y-5">
-                {REDEEM_STEPS.map((s) => (
-                  <li key={s.n} className="flex items-start gap-4">
+            {/* Without the photo taking half the width, the steps stop being a
+                narrow column and read across. */}
+            <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+              {REDEEM_STEPS.map((s, i) => (
+                <AnimatedSection key={s.n} delay={i * 0.08}>
+                  <li className="flex items-start gap-4 lg:block">
                     <span
-                      className="w-8 h-8 rounded-lg bg-primary text-ink text-sm font-bold flex items-center justify-center flex-shrink-0"
+                      className="w-8 h-8 rounded-lg bg-primary text-ink text-sm font-bold flex items-center justify-center flex-shrink-0 lg:mb-3"
                       aria-hidden
                     >
                       {s.n}
@@ -221,10 +211,12 @@ export default function Home() {
                       <p className="text-muted text-sm leading-relaxed mt-0.5">{s.d}</p>
                     </div>
                   </li>
-                ))}
-              </ol>
+                </AnimatedSection>
+              ))}
+            </ol>
 
-              <div className="mt-9">
+            <AnimatedSection delay={0.3}>
+              <div className="mt-10">
                 <Button href={APP_STORE_URL} variant="primary" size="lg" className="!text-ink" external>
                   Find Deals Near Campus
                 </Button>
