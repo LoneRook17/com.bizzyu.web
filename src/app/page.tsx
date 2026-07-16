@@ -8,6 +8,8 @@ import Parallax from "@/components/ui/Parallax";
 import Button from "@/components/ui/Button";
 import FAQ from "@/components/ui/FAQ";
 import JsonLd from "@/components/seo/JsonLd";
+import LiveEvents from "@/components/events/LiveEvents";
+import { fetchAllEvents } from "@/lib/events";
 import {
   APP_STORE_URL,
   STUDENT_FAQ,
@@ -82,7 +84,17 @@ const REDEEM_STEPS = [
   { n: "4", t: "Start saving", d: "The redemption is recorded right in Bizzy." },
 ];
 
-export default function Home() {
+export default async function Home() {
+  // Real events, so a student can tap one and buy. One call, cached 15 min:
+  // this is not the 34-school fan-out the campus strip used to run here.
+  // Degrades to [] so a dead API costs the shelf, never the homepage.
+  let events: Awaited<ReturnType<typeof fetchAllEvents>> = [];
+  try {
+    events = await fetchAllEvents();
+  } catch (err) {
+    console.warn("[home] events fetch failed", err);
+  }
+
   return (
     <>
       <JsonLd data={faqJsonLd} />
@@ -310,6 +322,22 @@ export default function Home() {
         </SectionContainer>
       </section>
 
+
+      {/* 3.5 REAL EVENTS -----------------------------------------------------
+          The section above promises "find the biggest events and buy tickets
+          near you", and then asked the reader to take that on faith. These are
+          the actual nights, and each one is a tap to the checkout.
+
+          Student wording, not the /events default: there the same grid is proof
+          for a venue owner that other rooms already run on Bizzy, here it is a
+          shelf to buy from. */}
+      <LiveEvents
+        events={events}
+        limit={6}
+        eyebrow="Happening near campus"
+        heading="Get a ticket before you go."
+        subhead="Real nights at real bars, on sale right now. Tap one to grab a ticket."
+      />
 
       {/* 4. PROOF: where the deals actually are ---------------------------- */}
       <section className="py-8 md:py-14 overflow-hidden border-t border-gray-100">

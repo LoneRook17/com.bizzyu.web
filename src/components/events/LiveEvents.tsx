@@ -6,6 +6,15 @@ interface LiveEventsProps {
   events: CampusEvent[];
   /** How many cards to show. Beyond ~12 this stops being proof and starts being a list. */
   limit?: number;
+  /**
+   * Copy, because the same grid argues two different things. On /events it is
+   * proof for a venue owner that other rooms already run on Bizzy. On the
+   * students page it is a shelf to buy from. Defaults are the venue-owner
+   * wording, so /events reads exactly as before.
+   */
+  eyebrow?: string;
+  heading?: string;
+  subhead?: string;
 }
 
 /**
@@ -21,7 +30,13 @@ interface LiveEventsProps {
  * pulled from the same endpoint the app reads, so the section is right by
  * construction and can never go stale.
  */
-export default function LiveEvents({ events, limit = 12 }: LiveEventsProps) {
+export default function LiveEvents({
+  events,
+  limit = 12,
+  eyebrow = "On Bizzy right now",
+  heading = "Tonight, and the rest of the week.",
+  subhead = "Real nights, running at real venues, pulled live from the app.",
+}: LiveEventsProps) {
   const shown = events.slice(0, limit);
   if (shown.length === 0) return null;
 
@@ -44,14 +59,10 @@ export default function LiveEvents({ events, limit = 12 }: LiveEventsProps) {
       <div className="relative max-w-7xl mx-auto px-6 py-14 md:py-20">
         <div className="mb-8 md:mb-10">
           <p className="text-primary text-xs font-bold uppercase tracking-[0.2em] mb-3">
-            On Bizzy right now
+            {eyebrow}
           </p>
-          <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
-            Tonight, and the rest of the week.
-          </h2>
-          <p className="text-white/60 mt-3 max-w-lg leading-relaxed">
-            Real nights, running at real venues, pulled live from the app.
-          </p>
+          <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tight">{heading}</h2>
+          <p className="text-white/60 mt-3 max-w-lg leading-relaxed">{subhead}</p>
         </div>
 
         <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
