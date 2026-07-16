@@ -1,40 +1,25 @@
 import type { Metadata } from "next";
 
 /**
- * The share card. Real students, in a real bar, holding the app.
+ * The share card: the Bizzy logo lockup on brand green.
  *
- * Replaces a 1MB logo-on-green with "Live College For Less!" baked in, which was
- * a fourth tagline competing with the hero, and was 1920x1080 with black bars in
- * the file while the metadata declared 1200x630. This is the actual spec ratio,
- * from a real photo, at a sixth of the weight.
+ * Rebuilt rather than restored. The original og-default.png was 1920x1080 with
+ * black letterbox bars baked into the file, while the metadata declared
+ * 1200x630 — so platforms were told one aspect ratio and handed another, and
+ * the bars shipped as part of the picture. This is the same artwork at the
+ * real 1.91:1 spec: bars cropped off, the card scaled to full height, and the
+ * 71px remainder filled with the green sampled from the art itself, so it runs
+ * edge to edge. 292KB against the original 1MB.
  *
- * It works for every audience the site has, which is why it is the default: a
- * student sees what using it looks like, and a bar owner sees customers in a bar
- * using it. The three phones carry the logo, so the card brands itself without
- * an overlay.
+ * PNG, not JPEG: flat colour behind hard-edged type is exactly where JPEG rings.
  */
-export const OG_IMAGES = {
-  /** Four students at a bar, phones showing a claimed deal. The default. */
-  students: {
-    url: "/images/og-students.jpg",
-    alt: "Four students at a bar near campus holding up phones showing a claimed Bizzy deal.",
-  },
-  /** A customer holding the product AND the live deal on her phone, in the
-      shop. The best asset on the site for the restaurant pitch: it shows an
-      owner exactly what a Bizzy customer looks like at their own counter. */
-  restaurants: {
-    url: "/images/og-restaurants.jpg",
-    alt: "A student at Playa Bowls holding an acai bowl and a phone showing the $3 off deal she just claimed.",
-  },
-  /** Two students mid-purchase at a local gelato counter. */
-  local: {
-    url: "/images/og-local.jpg",
-    alt: "Two students at the counter of a local gelato shop near campus, holding drinks.",
-  },
+const LOGO_CARD = {
+  url: "/images/og-logo.png",
+  alt: "Bizzy",
 } as const;
 
-const DEFAULT_IMAGE = OG_IMAGES.students.url;
-const DEFAULT_ALT = OG_IMAGES.students.alt;
+const DEFAULT_IMAGE = LOGO_CARD.url;
+const DEFAULT_ALT = LOGO_CARD.alt;
 
 interface OgInput {
   /** Card headline. Exactly as written; no suffix is added. */

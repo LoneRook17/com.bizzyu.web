@@ -7,7 +7,7 @@ import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
 import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
 import { BUSINESS_FAQ, CALENDLY_DEMO_URL, CONTACT_EMAIL } from "@/lib/constants";
-import { og, OG_IMAGES } from "@/lib/og";
+import { og } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
@@ -23,8 +23,6 @@ export const metadata: Metadata = {
     title: "Two ways onto students' phones. Both free.",
     description:
       "Bars and venues run tickets, line skips and cover at 0%. Restaurants and retail list a student deal in about five minutes. Bizzy takes nothing either way.",
-    image: OG_IMAGES.local.url,
-    imageAlt: OG_IMAGES.local.alt,
   }),
 };
 

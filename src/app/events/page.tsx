@@ -22,11 +22,7 @@ export const metadata: Metadata = {
     canonical: "https://bizzyu.com/events",
   },
   // Card carries the page's own hero line, so the tap lands on the sentence it
-  // promised. Image is the students-in-a-bar shot: it is the only real
-  // landscape asset that shows a venue with customers in it. The nightlife
-  // video is 720x1280 portrait and handheld, so a 1.91:1 card crop from it is a
-  // blurry strip of one face. A landscape shot of a full room would be better
-  // here and does not exist yet.
+  // promised.
   ...og({
     title: "Fill your bar. Keep every dollar.",
     description:
