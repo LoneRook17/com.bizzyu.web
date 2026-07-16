@@ -10,7 +10,9 @@ import CountUp from "@/components/ui/gsap/CountUp";
 import CampusDeals from "@/components/campus/CampusDeals";
 import CampusNights from "@/components/campus/CampusNights";
 import CampusEvents from "@/components/campus/CampusEvents";
+import CampusWeekly from "@/components/campus/CampusWeekly";
 import { fetchCampus, fetchCampuses } from "@/lib/campus";
+import { fetchWeeklySummary } from "@/lib/weekly";
 import { APP_STORE_URL } from "@/lib/constants";
 
 /**
@@ -85,6 +87,10 @@ export default async function CampusPage({
   const { campus: slug } = await params;
   const campus = await fetchCampus(slug);
   if (!campus) notFound();
+
+  // Written weekly by Claude from this campus's real rows; null when it fails or
+  // no key is set, and the section then renders nothing.
+  const weekly = await fetchWeeklySummary(campus);
 
   const siblings = (await fetchCampuses()).filter((c) => c.slug !== campus.slug);
   const businesses = new Set(campus.deals.map((d) => d.business)).size;
@@ -164,6 +170,16 @@ export default async function CampusPage({
           </AnimatedSection>
         </SectionContainer>
       </section>
+
+      {/* ─── This week, in prose ───────────────────────────
+          Sits above the cards: it is the only part of the page that reads as
+          "right now" rather than "a catalog", and it is what a reader landing
+          from a "what's happening at X this week" search came for. */}
+      <CampusWeekly
+        summary={weekly}
+        campusName={campus.name}
+        updatedAt={new Date().toISOString()}
+      />
 
       {/* ─── The deals ─────────────────────────────────────── */}
       <CampusDeals campus={campus} />
