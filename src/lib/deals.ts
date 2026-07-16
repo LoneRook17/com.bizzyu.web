@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { fetchJSONRetry } from "./fetchRetry";
 
 const SCHOOLS = ["FGCU", "UGA", "ASU", "USF", "Southern"];
@@ -101,7 +102,7 @@ const toDeal = (d: RawDeal): Deal => ({
  * nothing" and silently unpublish a real page. An empty array from this
  * function now means the school genuinely has no deals.
  */
-export async function fetchDealsForSchool(school: string): Promise<Deal[]> {
+async function fetchDealsForSchoolUncached(school: string): Promise<Deal[]> {
   const json = await fetchJSONRetry<{ data?: Record<string, unknown> }>(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -127,6 +128,22 @@ export async function fetchDealsForSchool(school: string): Promise<Deal[]> {
   }
   return [...byId.values()];
 }
+
+/**
+ * Cached per school. POST, so Next's data cache does not cover it: without this
+ * every caller hit the network, and a build fanned 34 of these out once per
+ * campus page. That is what rate-limited the V1 API (HTTP 429) and killed a
+ * production deploy. unstable_cache keys on the argument, so it is one request
+ * per school per revalidate window, however many pages ask.
+ *
+ * Errors are NOT cached, so a blip still retries on the next call rather than
+ * being frozen in for the window.
+ */
+export const fetchDealsForSchool = unstable_cache(
+  fetchDealsForSchoolUncached,
+  ["deals-for-school"],
+  { revalidate: 300 },
+);
 
 /**
  * Live deals across SCHOOLS, mixed together.

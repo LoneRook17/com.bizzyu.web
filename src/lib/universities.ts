@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 const API_URL = "https://bizzy-deals.com/api/university-list";
 
 interface RawUniversity {
@@ -68,7 +70,7 @@ export function campusSlug(fullName: string): string {
  *
  * Returns [] on failure so callers render nothing rather than a broken strip.
  */
-export async function fetchUniversities(): Promise<University[]> {
+async function fetchUniversitiesUncached(): Promise<University[]> {
   try {
     const res = await fetch(API_URL, {
       method: "POST",
@@ -90,3 +92,17 @@ export async function fetchUniversities(): Promise<University[]> {
     return [];
   }
 }
+
+/**
+ * Cached because this is a POST, and Next's data cache only covers GET.
+ *
+ * Every fetch() here went to the network, every time. A single build calls this
+ * from generateStaticParams, the sitemap, and once per campus page, so the same
+ * unchanging list of 34 schools was fetched a dozen-plus times. unstable_cache
+ * memoises the function itself, which is what POST needs.
+ */
+export const fetchUniversities = unstable_cache(
+  fetchUniversitiesUncached,
+  ["universities"],
+  { revalidate: 3600 },
+);

@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { mapLimit } from "./mapLimit";
 import { fetchUniversities, type University } from "./universities";
 import { fetchDealsForSchool, type Deal } from "./deals";
 import { fetchVenuesForUniversity, type Venue } from "./venues";
@@ -59,7 +61,7 @@ async function hydrate(u: University, allEvents: CampusEvent[]): Promise<Campus>
  * Naperville is already gone: fetchUniversities drops the test school before
  * this ever sees it.
  */
-export async function fetchCampuses(): Promise<Campus[]> {
+async function fetchCampusesUncached(): Promise<Campus[]> {
   const universities = await fetchUniversities();
   if (universities.length === 0) return [];
 
@@ -73,7 +75,9 @@ export async function fetchCampuses(): Promise<Campus[]> {
     console.warn("[campus] events fetch failed; pages render without them", err);
   }
 
-  const settled = await Promise.allSettled(universities.map((u) => hydrate(u, allEvents)));
+  // Capped, not all-at-once. 34 simultaneous POSTs at the V1 Laravel box is
+  // what earned a 429 and killed a deploy.
+  const settled = await mapLimit(universities, 6, (u) => hydrate(u, allEvents));
 
   // A rejected school is unknown, not empty, so it drops out of THIS list and
   // says so. It keeps its page: [campus]/page.tsx sets dynamicParams=true, so a
@@ -92,6 +96,25 @@ export async function fetchCampuses(): Promise<Campus[]> {
     .filter(isPublishable)
     .sort((a, b) => itemCount(b) - itemCount(a));
 }
+
+/**
+ * Cached, and this is the important one.
+ *
+ * [campus]/page.tsx calls this a third time per page just to list sibling
+ * campuses, on top of generateStaticParams and the sitemap. Uncached, a build
+ * with 9 campus pages ran the 34-school fan-out ~11 times: ~620 requests at
+ * bizzy-deals.com in seconds, up to ~1,860 once fetchJSONRetry retried the
+ * 429s it caused. The API rate-limited us and the prerender died, taking the
+ * whole deploy with it.
+ *
+ * Cached, the fan-out runs once per revalidate window no matter how many pages
+ * ask.
+ */
+export const fetchCampuses = unstable_cache(
+  fetchCampusesUncached,
+  ["campuses"],
+  { revalidate: 1800 },
+);
 
 /**
  * One campus by slug, or null.
