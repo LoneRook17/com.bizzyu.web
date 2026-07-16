@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
 import SavingsCalculator from "@/components/events/SavingsCalculator";
 import StickyDemoCTA from "@/components/events/StickyDemoCTA";
-import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
+import VenueCarousel from "@/components/events/VenueCarousel";
+import LiveEvents from "@/components/events/LiveEvents";
+import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
 import BizzyMark from "@/components/ui/BizzyMark";
 import { EVENTS_FAQ, CALENDLY_DEMO_URL } from "@/lib/constants";
+import { fetchVenues, venuesWithPhotos } from "@/lib/venues";
 
 export const metadata: Metadata = {
   title: "Fill Your Bar. Keep Every Dollar. | Bizzy for College Venues",
@@ -279,7 +281,17 @@ function PromoterMockup() {
   );
 }
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  // Every venue Bizzy runs, with its next event, straight from the app's own
+  // public endpoint. A marketing page must never 500 because an API blipped,
+  // so failure degrades to no carousel and no events section.
+  let venues: Awaited<ReturnType<typeof fetchVenues>> = [];
+  try {
+    venues = await fetchVenues();
+  } catch (err) {
+    console.warn("[events] venue fetch failed", err);
+  }
+
   return (
     <>
       {/* ─── 1. Hero ─────────────────────────────────────────── */}
@@ -394,8 +406,14 @@ export default function EventsPage() {
         </SectionContainer>
       </section>
 
-      {/* ─── 2.5 Live venue logo marquee ─────────────────────── */}
-      <BizzyVenuesMarquee label="Already on Bizzy" theme="light" />
+      {/* ─── 2.5 The venues themselves ───────────────────────
+          Was a generic strip of every approved business logo, which on a
+          nightlife page included every café and burrito shop. This is the
+          actual bars, with photos of the actual rooms. */}
+      <VenueCarousel venues={venuesWithPhotos(venues)} />
+
+      {/* ─── 2.6 Real events, running right now ────────────── */}
+      <LiveEvents venues={venues} />
 
       {/* ─── 3. FILL THE BAR (Promoter + SMS + Push) ────────── */}
       <section id="fill-the-bar" className="relative overflow-hidden bg-ink text-white">
@@ -555,23 +573,18 @@ export default function EventsPage() {
               <DemoButton>Bring a name to your bar</DemoButton>
             </AnimatedSection>
 
-            {/* 100+ stat treatment */}
+            {/* Was a "100+ major influencer events" numeral. A packed room is
+                the better argument, and it is one we can actually show. */}
             <AnimatedSection delay={0.15} variant="fade-left">
               <div className="relative flex items-center justify-center min-h-[380px]">
                 <div className="absolute -inset-12 bg-gradient-to-br from-primary/10 via-emerald-500/5 to-transparent rounded-full blur-3xl" />
-                <div className="relative text-center">
-                  <p className="text-primary text-[11px] font-bold uppercase tracking-[0.25em] mb-3">
-                    Events delivered
-                  </p>
-                  <p className="text-[112px] sm:text-[160px] md:text-[220px] lg:text-[280px] font-black leading-none bg-gradient-to-br from-primary via-emerald-500 to-emerald-600 bg-clip-text text-transparent select-none">
-                    100+
-                  </p>
-                  <p className="text-ink text-lg md:text-xl font-bold mt-3">
-                    Major influencer events
-                  </p>
-                  <p className="text-muted text-sm md:text-base mt-1">
-                    At top college bars, nationwide
-                  </p>
+                <div className="relative">
+                  <AutoLoopVideo
+                    src="/videos/bizzy-event-night.mp4"
+                    poster="/images/bizzy-event-poster.jpg"
+                    label="A packed themed night at a Bizzy venue: neon lights, a full crowd, phones out."
+                    className="w-[260px] sm:w-[300px] lg:w-[340px] max-h-[min(66vh,620px)] object-cover rounded-[2.5rem] ring-1 ring-black/10 shadow-2xl shadow-black/25"
+                  />
                 </div>
               </div>
             </AnimatedSection>
