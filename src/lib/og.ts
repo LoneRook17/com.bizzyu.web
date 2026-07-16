@@ -13,9 +13,28 @@ import type { Metadata } from "next";
  * using it. The three phones carry the logo, so the card brands itself without
  * an overlay.
  */
-const DEFAULT_IMAGE = "/images/og-students.jpg";
-const DEFAULT_ALT =
-  "Four students at a bar near campus holding up phones showing a claimed Bizzy deal.";
+export const OG_IMAGES = {
+  /** Four students at a bar, phones showing a claimed deal. The default. */
+  students: {
+    url: "/images/og-students.jpg",
+    alt: "Four students at a bar near campus holding up phones showing a claimed Bizzy deal.",
+  },
+  /** A customer holding the product AND the live deal on her phone, in the
+      shop. The best asset on the site for the restaurant pitch: it shows an
+      owner exactly what a Bizzy customer looks like at their own counter. */
+  restaurants: {
+    url: "/images/og-restaurants.jpg",
+    alt: "A student at Playa Bowls holding an acai bowl and a phone showing the $3 off deal she just claimed.",
+  },
+  /** Two students mid-purchase at a local gelato counter. */
+  local: {
+    url: "/images/og-local.jpg",
+    alt: "Two students at the counter of a local gelato shop near campus, holding drinks.",
+  },
+} as const;
+
+const DEFAULT_IMAGE = OG_IMAGES.students.url;
+const DEFAULT_ALT = OG_IMAGES.students.alt;
 
 interface OgInput {
   /** Card headline. Exactly as written; no suffix is added. */

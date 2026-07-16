@@ -12,10 +12,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://bizzyu.com/about",
   },
+  // The about page's own thesis, which is a better hook than a feature list.
   ...og({
-    title: "About Bizzy: The Campus App for Events, Tickets, Deals & Local Spots",
+    title: "Why we built Bizzy",
     description:
-      "Bizzy is the campus app that connects students with events, tickets, deals, and local spots around their school. Learn our story and mission.",
+      "The internet connects you to the whole world. It should connect you to what is right outside your door. How Bizzy started, and who is building it.",
   }),
 };
 

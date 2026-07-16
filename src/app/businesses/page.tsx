@@ -7,7 +7,7 @@ import FAQ from "@/components/ui/FAQ";
 import Button from "@/components/ui/Button";
 import BizzyVenuesMarquee from "@/components/ui/BizzyVenuesMarquee";
 import { BUSINESS_FAQ, CALENDLY_DEMO_URL, CONTACT_EMAIL } from "@/lib/constants";
-import { og } from "@/lib/og";
+import { og, OG_IMAGES } from "@/lib/og";
 
 export const metadata: Metadata = {
   title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
@@ -16,16 +16,15 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://bizzyu.com/businesses",
   },
-  // Copy unchanged from what this page already shipped; og() is only here to
-  // restore the image, siteName and type that a bare openGraph block drops.
-  // NOTE: the "25K+ Students" here is the same unverified claim that was cut
-  // from the homepage, and it still rides on every share of this link. Left as
-  // it is on purpose: on the business page that number is the pitch, so it is a
-  // call to make rather than a cleanup to slip in.
+  // Card copy written fresh, so it states only what we can stand behind: 0% is a
+  // fact about our own pricing. The page's own <title> and body still carry the
+  // unverified "25K+ students" claim, which is a separate call to make.
   ...og({
-    title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
+    title: "Two ways onto students' phones. Both free.",
     description:
-      "Bars & venues book a 15-min call. Restaurants & retail sign up free in 5 minutes. Both pay 0% to Bizzy.",
+      "Bars and venues run tickets, line skips and cover at 0%. Restaurants and retail list a student deal in about five minutes. Bizzy takes nothing either way.",
+    image: OG_IMAGES.local.url,
+    imageAlt: OG_IMAGES.local.alt,
   }),
 };
 
