@@ -453,7 +453,7 @@ export default async function EventsPage() {
         <div className="border-y border-white/10 bg-white/[0.03] py-6 md:py-8 overflow-hidden">
           <div
             className="flex animate-marquee gap-10 md:gap-14 whitespace-nowrap"
-            style={{ animationDuration: "18s" }}
+            style={{ animationDuration: "12s" }}
           >
             {[...Array(4)].flatMap((_, repeat) =>
               TALENT_MARQUEE.flatMap((label, i) => [

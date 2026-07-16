@@ -304,15 +304,16 @@ export default async function Home() {
                 Events and nightlife
               </p>
               <h2 className="text-3xl md:text-5xl font-bold text-white leading-[1.05] tracking-tight mb-5">
-                From finding the event to getting{" "}
+                Find the biggest events and buy tickets{" "}
                 <span className="marker-sticker">
-                  <span>through the door</span>
+                  <span>near you</span>
                 </span>
                 .
               </h2>
               <p className="text-lg text-white/60 leading-relaxed mb-9 max-w-lg">
-                Discover campus events, buy tickets, and skip the line. Everything stays in Bizzy, so
-                there is nothing to print and nothing to lose at the door.
+                Every DJ night, bar crawl, and game day around campus, with tickets and line skips
+                you grab in seconds. It all lives in the app, so there is nothing to print and
+                nothing to lose at the door.
               </p>
 
               <div className="flex flex-wrap gap-3">
@@ -341,7 +342,7 @@ export default async function Home() {
         <div className="relative">
           <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-          <div className="flex animate-marquee" style={{ animationDuration: "16s" }}>
+          <div className="flex animate-marquee" style={{ animationDuration: "11s" }}>
             {[...LOGOS, ...LOGOS, ...LOGOS, ...LOGOS].map((logo, i) => (
               <div
                 key={`${logo.alt}-${i}`}

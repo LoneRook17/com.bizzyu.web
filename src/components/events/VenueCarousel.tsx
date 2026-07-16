@@ -10,8 +10,8 @@ const CARD_SM = 210 + 16; // w-[210px] + gap-4
 const CARD_MD = 260 + 20; // md:w-[260px] + md:gap-5
 
 /** How fast the strip actually travels. Tune speed here, never duration. */
-const SPEED_SM = 210; // px/sec
-const SPEED_MD = 230;
+const SPEED_SM = 300; // px/sec
+const SPEED_MD = 330;
 
 /**
  * Every venue Bizzy runs, scrolling past.

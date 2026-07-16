@@ -21,7 +21,7 @@ interface BizzyVenuesMarqueeProps {
  */
 export default async function BizzyVenuesMarquee({
   label = "On Bizzy",
-  durationSec = 20,
+  durationSec = 14,
   theme = "light",
   limit = 30,
 }: BizzyVenuesMarqueeProps) {
