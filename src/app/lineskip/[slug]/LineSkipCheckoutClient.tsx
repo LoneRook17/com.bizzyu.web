@@ -1616,6 +1616,7 @@ export default function LineSkipCheckoutClient({
                 <LineSkipPaymentPanel
                   publishableKey={piPublishableKey}
                   clientSecret={MOCK_ENABLED ? null : piClientSecret}
+                  mock={MOCK_ENABLED}
                   breakdown={piBreakdown}
                   quantity={quantity}
                   returnUrl={`${WEB_BASE_URL}/lineskip/${venueId}?pi_return=1`}

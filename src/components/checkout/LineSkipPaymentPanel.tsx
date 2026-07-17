@@ -20,6 +20,7 @@ import {
 } from "@stripe/react-stripe-js"
 
 import type { LineSkipPiBreakdown } from "@/lib/lineskip-pi/types"
+import { resolveElementsMode, elementsKey } from "@/lib/lineskip-pi/element-binding"
 
 const GOLD = "#D4AF37"
 const GOLD_LIGHT = "#F0CD6E"
@@ -74,8 +75,15 @@ const fonts: CssFontSource[] = [
 
 export interface LineSkipPaymentPanelProps {
   publishableKey: string
-  /** Live only. Null in mock mode, where Elements mount in deferred mode. */
+  /** The PI's clientSecret. Null until it arrives (live) or always (mock). */
   clientSecret: string | null
+  /**
+   * Dev mock flow only. When true (and no clientSecret) the Element mounts in
+   * deferred mode, since there is no real PI. In LIVE mode a null clientSecret
+   * renders a loading skeleton — never deferred mode, which would leak the
+   * account's dashboard-default methods (e.g. ACH) onto a card-only PI.
+   */
+  mock?: boolean
   breakdown: LineSkipPiBreakdown
   quantity: number
   /** Where Stripe returns the buyer after an off-site redirect (3DS/bank app). */
@@ -223,19 +231,44 @@ function PaymentForm({
   )
 }
 
+/** Shown in live mode while the PI's clientSecret is still in flight. Keeps the
+ *  buyer on the order summary rather than mounting a deferred Element that would
+ *  render dashboard-default methods the card-only PI forbids. */
+function PaymentLoading({ breakdown, quantity }: { breakdown: LineSkipPiBreakdown; quantity: number }) {
+  return (
+    <div>
+      <OrderSummary breakdown={breakdown} quantity={quantity} />
+      <div className="space-y-3">
+        <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+        <div className="h-11 animate-pulse rounded-xl bg-white/5" />
+      </div>
+      <div className="mt-4 flex items-center justify-center gap-2 text-xs text-white/40">
+        <span
+          className="h-4 w-4 animate-spin rounded-full border-2 border-white/20"
+          style={{ borderTopColor: GOLD }}
+        />
+        Loading secure payment…
+      </div>
+    </div>
+  )
+}
+
 export default function LineSkipPaymentPanel({
   publishableKey,
   clientSecret,
+  mock = false,
   breakdown,
   quantity,
   returnUrl,
   onPaid,
 }: LineSkipPaymentPanelProps) {
+  const mode = resolveElementsMode({ clientSecret, mock })
+
   const options = useMemo<StripeElementsOptions>(() => {
-    // Live: bind Elements to the server's PaymentIntent.
-    if (clientSecret) return { clientSecret, appearance, fonts }
-    // Mock: there is no real PI to bind to, so mount in deferred mode. The
-    // Elements are real — only the intent behind them is absent.
+    // Bound: render exactly the PaymentIntent's methods (card only).
+    if (mode.kind === "bound") return { clientSecret: mode.clientSecret, appearance, fonts }
+    // Deferred (mock only): no real PI to bind to. Never reached in live mode —
+    // resolveElementsMode returns `skeleton` there, guarded below.
     return {
       mode: "payment",
       amount: Math.max(50, breakdown.total_cents),
@@ -243,10 +276,19 @@ export default function LineSkipPaymentPanel({
       appearance,
       fonts,
     }
-  }, [clientSecret, breakdown.total_cents])
+  }, [mode, breakdown.total_cents])
+
+  // Live, secret not here yet: a loader — NOT a deferred Element showing
+  // dashboard defaults (the ACH/"Direct debit" leak this fix closes).
+  if (mode.kind === "skeleton") {
+    return <PaymentLoading breakdown={breakdown} quantity={quantity} />
+  }
 
   return (
-    <Elements stripe={getStripe(publishableKey)} options={options}>
+    // Key on the secret: Stripe treats options.clientSecret as immutable, so a
+    // secret that arrives/changes after mount is ignored unless the provider is
+    // re-created. This forces a clean remount bound to the current PI.
+    <Elements key={elementsKey(clientSecret)} stripe={getStripe(publishableKey)} options={options}>
       <PaymentForm
         breakdown={breakdown}
         quantity={quantity}
