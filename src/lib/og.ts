@@ -1,20 +1,21 @@
 import type { Metadata } from "next";
 
 /**
- * The share card: the Bizzy logo lockup on brand green.
+ * The share card: the Bizzy logo on brand green.
  *
- * Rebuilt rather than restored. The original og-default.png was 1920x1080 with
- * black letterbox bars baked into the file, while the metadata declared
- * 1200x630 — so platforms were told one aspect ratio and handed another, and
- * the bars shipped as part of the picture. This is the same artwork at the
- * real 1.91:1 spec: bars cropped off, the card scaled to full height, and the
- * 71px remainder filled with the green sampled from the art itself, so it runs
- * edge to edge. 292KB against the original 1MB.
+ * Source is Cooper's own logo export, cropped 16:9 -> 1.91:1 (36px off the top
+ * and bottom; the logo is centred, so nothing is touched). Full bleed already,
+ * so no padding is invented.
  *
- * PNG, not JPEG: flat colour behind hard-edged type is exactly where JPEG rings.
+ * It replaces og-default.png, which was broken in a way that only showed up
+ * when measured: 1920x1080 with black letterbox bars baked into the image while
+ * the metadata declared 1200x630, so platforms were told one aspect ratio and
+ * handed another, and the bars shipped as part of the picture. That file also
+ * carried a "Live College For Less!" tagline, a fourth line competing with the
+ * hero. This is the plain mark. 52KB against 1MB.
  */
 const LOGO_CARD = {
-  url: "/images/og-logo.png",
+  url: "/images/og-logo.jpg",
   alt: "Bizzy",
 } as const;
 
