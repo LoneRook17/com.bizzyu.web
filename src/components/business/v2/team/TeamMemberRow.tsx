@@ -31,13 +31,54 @@ function initials(s: string) {
   return s.trim().charAt(0).toUpperCase() || "?"
 }
 
+type BadgeVariant = "warning" | "danger"
+
+/**
+ * What the row says about an invite that has not been accepted yet — never a
+ * silent-success row, and never a guess.
+ *
+ * Terminal states outrank delivery: a revoked or expired invite is not "sent",
+ * whatever happened to the email a fortnight ago.
+ *
+ * The `default` arm is the grandfather guarantee: a legacy row carries no
+ * `invite_delivery`, so it falls through to the exact "Pending invite" badge it
+ * rendered before this change. Nothing new is inferred about rows the new flow
+ * did not create.
+ */
+function inviteBadge(member: TeamMember, isExpired: boolean): { label: string; variant: BadgeVariant } {
+  if (member.invite_revoked_at) return { label: "Invite revoked", variant: "danger" }
+  if (isExpired) return { label: "Invite expired", variant: "danger" }
+
+  switch (member.invite_delivery) {
+    case "email_sent":
+      return { label: "Invite sent", variant: "warning" }
+    case "email_failed":
+      // The invite is live and the link works — only the email failed. Says so,
+      // rather than reporting a send that did not happen.
+      return { label: "Email failed — send the link", variant: "danger" }
+    case "link_only":
+      // Bizzy sends no invite SMS: until the owner texts the link, nothing has
+      // reached this person at all.
+      return { label: "Not sent yet — send the link", variant: "warning" }
+    default:
+      return { label: "Pending invite", variant: "warning" }
+  }
+}
+
 export default function TeamMemberRow({
   member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange, onResend,
 }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
+  // UNCHANGED by the #5 work, deliberately. It mirrors the server's own access
+  // rule (resolveActiveBusinessId.ts:34 — is_active=1 AND (invite_accepted_at
+  // IS NOT NULL OR role='owner')), so the badge agrees with who can actually
+  // get in, and the owner exemption is what keeps the 181 grandfathered owner
+  // rows (of 196) badge-free. Widening this to "no invite_delivery = broken"
+  // would light up every legacy row.
   const isPending = !member.invite_accepted_at && !isOwnerMember
   const isExpired = isPending && !!member.invite_expires_at && new Date(member.invite_expires_at) < new Date()
+  const badge = isPending ? inviteBadge(member, isExpired) : null
 
   const joinedSource = member.invite_accepted_at ?? member.created_at
   const joinedDate = joinedSource
@@ -56,8 +97,7 @@ export default function TeamMemberRow({
             <Badge size="sm" className={cn(ROLE_BADGE[member.role]?.className ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400")}>
               {ROLE_LABELS[member.role] ?? member.role}
             </Badge>
-            {isPending && !isExpired && <Badge size="sm" variant="warning">Pending invite</Badge>}
-            {isExpired && <Badge size="sm" variant="danger">Invite expired</Badge>}
+            {badge && <Badge size="sm" variant={badge.variant}>{badge.label}</Badge>}
             <span className="text-xs text-neutral-400 dark:text-neutral-500">{joinedDate}</span>
           </div>
         </div>
@@ -92,9 +132,14 @@ export default function TeamMemberRow({
             ))}
           </Select>
 
-          {isExpired && onResend && (
+          {/* Was expired-only. Now on every unaccepted row, because under the
+              #5 contract the link is the deliverable and this is the only way
+              to get one — including for the legacy rows that never went
+              through an accept flow and are stuck without it. Mints a fresh
+              invite; it never alters the membership. */}
+          {isPending && onResend && (
             <Button variant="ghost" size="sm" onClick={() => onResend(member)} className="text-primary dark:text-primary hover:bg-primary/10">
-              Resend
+              Send link
             </Button>
           )}
           <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
