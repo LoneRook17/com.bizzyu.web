@@ -5,7 +5,12 @@
 // Checkout-Session redirect and never loads this.
 
 import { useCallback, useMemo, useState } from "react"
-import { loadStripe, type Appearance, type StripeElementsOptions } from "@stripe/stripe-js"
+import {
+  loadStripe,
+  type Appearance,
+  type CssFontSource,
+  type StripeElementsOptions,
+} from "@stripe/stripe-js"
 import {
   Elements,
   ExpressCheckoutElement,
@@ -35,17 +40,37 @@ function getStripe(publishableKey: string) {
   return p
 }
 
+// Elements appearance, matched to the event checkout's configured theme
+// (com.bizzyu.core resources/views/public/checkout.blade.php — the F9.3 Stripe.js
+// island: theme "night", #0a0a0f background, #f3f4f6 text, 12px radius, Fira Sans).
+// The one brand-adapted variable is colorPrimary: line skips deliberately use gold
+// where events use Bizzy green, to differentiate the VIP product across the whole
+// flow (see LineSkipCheckoutClient) — so the accent stays gold while everything
+// else (dark night theme, sans-serif labels, radius, danger) matches the event look.
+//
+// fontFamily must be a real font name, NOT a `var(--font-*)`: Elements renders in a
+// cross-origin iframe where the page's next/font CSS variable is undefined, which
+// invalidated the whole declaration and dropped labels to the browser serif default.
 const appearance: Appearance = {
   theme: "night",
   variables: {
     colorPrimary: GOLD,
     colorBackground: "#0a0a0f",
-    colorText: "#ffffff",
+    colorText: "#f3f4f6",
     colorDanger: "#f87171",
     borderRadius: "12px",
-    fontFamily: "var(--font-fira), system-ui, sans-serif",
+    fontFamily: "Fira Sans, system-ui, sans-serif",
   },
 }
+
+// The event checkout's document loads Fira Sans from Bunny Fonts but its iframe
+// Elements fall back to system-ui (the blade never passes `fonts`). We go one step
+// further and hand Elements the same stylesheet so the labels render in real Fira
+// Sans — matching both the named fontFamily above and the surrounding page, which
+// is Fira throughout. Same source the core blade preconnects to.
+const fonts: CssFontSource[] = [
+  { cssSrc: "https://fonts.bunny.net/css?family=fira-sans:400,500,600,700,800&display=swap" },
+]
 
 export interface LineSkipPaymentPanelProps {
   publishableKey: string
@@ -208,7 +233,7 @@ export default function LineSkipPaymentPanel({
 }: LineSkipPaymentPanelProps) {
   const options = useMemo<StripeElementsOptions>(() => {
     // Live: bind Elements to the server's PaymentIntent.
-    if (clientSecret) return { clientSecret, appearance }
+    if (clientSecret) return { clientSecret, appearance, fonts }
     // Mock: there is no real PI to bind to, so mount in deferred mode. The
     // Elements are real — only the intent behind them is absent.
     return {
@@ -216,6 +241,7 @@ export default function LineSkipPaymentPanel({
       amount: Math.max(50, breakdown.total_cents),
       currency: "usd",
       appearance,
+      fonts,
     }
   }, [clientSecret, breakdown.total_cents])
 
