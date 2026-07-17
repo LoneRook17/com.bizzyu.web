@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pin the line-skip PI mock switch to a literal at build time. Next only
+  // inlines a NEXT_PUBLIC_ var it can see a value for — left unset it stays a
+  // runtime lookup, `MOCK_ENABLED` never folds to false, and the dev mock and
+  // its scenario picker get bundled into the production build (verified: they
+  // did). Defaulting it here means the compare always folds and the mock is
+  // dropped unless someone opts in explicitly.
+  env: {
+    NEXT_PUBLIC_LINESKIP_PI_MOCK: process.env.NEXT_PUBLIC_LINESKIP_PI_MOCK || "0",
+  },
   // The support bot's knowledge pack is read from disk at runtime — make sure
   // the markdown files ship inside the serverless bundle on Vercel.
   outputFileTracingIncludes: {
