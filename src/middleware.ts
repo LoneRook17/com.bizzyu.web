@@ -28,17 +28,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url) // clone keeps the query string (invite/reset tokens)
   }
 
-  // The invite email path moved to the unclaimed root-level /accept-invite so the
-  // iOS app (which universal-links /business/*) can't hijack invite links into an
-  // app that has no invite handler. Invites already sitting in inboxes still point
-  // at /business/accept-invite - redirect them, keeping ?token=. The AASA excludes
-  // /business/accept-invite* so this old link reaches the browser to be redirected.
+  // The team-invite accept page now lives on the unclaimed root-level
+  // /team-invite so the iOS app (which universal-links /business/*) can't hijack
+  // invite links into an app that has no invite handler, dead-ending the
+  // invitee. Invites already sitting in inboxes point at the old
+  // /business/accept-invite - redirect them to /team-invite, keeping ?token=.
+  // The AASA excludes /business/accept-invite* so this old link reaches the
+  // browser to be redirected. (The interim /accept-invite alias is redirected to
+  // /team-invite at the root by its own page + next.config, since middleware
+  // only matches /business/*.)
   if (
     pathname === "/business/accept-invite" ||
     pathname.startsWith("/business/accept-invite/")
   ) {
     const url = request.nextUrl.clone()
-    url.pathname = "/accept-invite"
+    url.pathname = "/team-invite"
     return NextResponse.redirect(url) // clone keeps the query string (invite token)
   }
 

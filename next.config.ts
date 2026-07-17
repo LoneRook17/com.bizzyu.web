@@ -82,6 +82,25 @@ const nextConfig: NextConfig = {
         destination: "/events",
         permanent: true,
       },
+      // Team-invite accept page moved to the unclaimed /team-invite. Forward the
+      // two older entry points to it, preserving ?token= (Next passes through
+      // any query the destination doesn't itself specify). Temporary (307): an
+      // invite link is transient, so we never want a browser caching this detour
+      // the way it would a 308. These mirror src/middleware.ts (which handles
+      // /business/accept-invite) and src/app/accept-invite/page.tsx — config +
+      // page + middleware are intentional twins so the token survives no matter
+      // which layer catches the request first. The vercel.json redirects block
+      // carries a platform-level third copy.
+      {
+        source: "/accept-invite",
+        destination: "/team-invite",
+        permanent: false,
+      },
+      {
+        source: "/business/accept-invite",
+        destination: "/team-invite",
+        permanent: false,
+      },
       {
         source: "/event/:id(\\d+)",
         destination: `${checkoutBase}/checkout/:id`,
