@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pin the team-invite mock switch to a literal at build time. Next only
+  // inlines a NEXT_PUBLIC_ var it can see a value for — left unset it stays a
+  // runtime lookup, the compare never folds to false, and the dev mock and its
+  // scenario pickers get bundled into the production build. Defaulting it here
+  // means the compare always folds and the mock is dropped unless someone opts
+  // in explicitly. (Same trap K2 hit and fixed for the line-skip PI mock.)
+  env: {
+    NEXT_PUBLIC_TEAM_INVITE_MOCK: process.env.NEXT_PUBLIC_TEAM_INVITE_MOCK || "0",
+  },
   // The support bot's knowledge pack is read from disk at runtime — make sure
   // the markdown files ship inside the serverless bundle on Vercel.
   outputFileTracingIncludes: {
