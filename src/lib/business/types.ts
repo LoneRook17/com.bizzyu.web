@@ -1,3 +1,5 @@
+import type { InviteDelivery } from '@/lib/team-invite/types'
+
 export interface BusinessUser {
   id: number
   email: string
@@ -282,6 +284,15 @@ export interface TeamMember {
   created_at: string
   venue_id: number | null
   venue_name: string | null
+  // ── #5 invite fields. OPTIONAL, and that is the grandfather guarantee in the
+  // type system: every one of the 196 legacy rows arrives without them and
+  // renders exactly as it did before this change. A row is never badged
+  // "broken" for lacking a field the new flow writes.
+  /** How the invite actually went out. Absent on legacy rows. */
+  invite_delivery?: InviteDelivery | null
+  /** Explicit — NOT inferred from is_active, which legacy rows use for
+   *  deactivated-but-real memberships (the ghost-invite lesson). */
+  invite_revoked_at?: string | null
 }
 
 // Analytics types

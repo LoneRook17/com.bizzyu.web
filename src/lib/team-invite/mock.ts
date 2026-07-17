@@ -1,0 +1,214 @@
+// Dev-only mock of the #5 team-invite contract, so the invite dialog and the
+// accept page are fully exercisable before the services half (N1) exists.
+//
+// This module is only ever reached from an inline
+// `process.env.NEXT_PUBLIC_TEAM_INVITE_MOCK === '1'` branch, which folds to
+// false in a prod build and takes the dynamic import — and this chunk — with
+// it. Nothing here ships to production; the build log records the grep.
+
+import {
+  EmailFailedError,
+  MultipleMatchesError,
+  type AcceptArgs,
+  type AcceptResult,
+  type InviteArgs,
+  type InviteCreated,
+  type InviteValidation,
+} from './types'
+
+// ── Invite-side scenarios (dashboard dialog) ───────────────────────────────
+
+export type InviteScenario =
+  | 'phone_link_only'
+  | 'email_sent'
+  | 'multiple_matches'
+  | 'email_failed'
+  | 'already_member'
+
+// ── Accept-side scenarios (public page) ────────────────────────────────────
+
+export type AcceptScenario =
+  | 'valid_otp_password'
+  | 'valid_otp_set_password'
+  | 'valid_new_user'
+  | 'valid_email_no_otp'
+  | 'session_match'
+  | 'wrong_account'
+  | 'expired'
+  | 'revoked'
+  | 'accepted'
+
+const INVITE_SCENARIOS: InviteScenario[] = [
+  'phone_link_only',
+  'email_sent',
+  'multiple_matches',
+  'email_failed',
+  'already_member',
+]
+
+const ACCEPT_SCENARIOS: AcceptScenario[] = [
+  'valid_otp_password',
+  'valid_otp_set_password',
+  'valid_new_user',
+  'valid_email_no_otp',
+  'session_match',
+  'wrong_account',
+  'expired',
+  'revoked',
+  'accepted',
+]
+
+let inviteScenario: InviteScenario | null = null
+let acceptScenario: AcceptScenario | null = null
+
+/**
+ * Seedable from `?mock_scenario=` so arms that decide BEFORE anything renders —
+ * every accept-page state is chosen at load — are reachable without a picker to
+ * click. The in-page picker overrides from there.
+ */
+function seeded<T extends string>(allowed: T[], fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+  const q = new URLSearchParams(window.location.search).get('mock_scenario')
+  return q && (allowed as string[]).includes(q) ? (q as T) : fallback
+}
+
+export function setInviteScenario(s: InviteScenario) {
+  inviteScenario = s
+}
+
+export function getInviteScenario(): InviteScenario {
+  if (inviteScenario === null) inviteScenario = seeded(INVITE_SCENARIOS, 'phone_link_only')
+  return inviteScenario
+}
+
+export function setAcceptScenario(s: AcceptScenario) {
+  acceptScenario = s
+}
+
+export function getAcceptScenario(): AcceptScenario {
+  if (acceptScenario === null) acceptScenario = seeded(ACCEPT_SCENARIOS, 'valid_otp_password')
+  return acceptScenario
+}
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+const MOCK_BUSINESS = 'Backroads Bar & Grill'
+const MOCK_LINK = 'https://bizzyu.com/team-invite?token=mock_3f9a2c7e1b8d4a60'
+
+// The `&` in the business name is deliberate: it is the character that
+// truncates an unescaped sms: body, so the happy path exercises the escaping.
+
+export async function mockCreateInvite(args: InviteArgs): Promise<InviteCreated> {
+  await delay(450)
+  const scenario = getInviteScenario()
+
+  // A chosen_user_id means the owner already picked a sibling — the server
+  // would not re-raise the ambiguity, so neither does the mock.
+  if (scenario === 'multiple_matches' && !args.chosen_user_id) {
+    throw new MultipleMatchesError([
+      { id: 5561, masked_name: 'L••• C•••••', masked_contact: '(•••) •••-1720' },
+      { id: 8705, masked_name: 'J••• D••', masked_contact: '(•••) •••-1720' },
+      { id: 7961, masked_name: 'M••• R•••••', masked_contact: '(•••) •••-1720' },
+    ])
+  }
+  if (scenario === 'already_member') {
+    const err = new Error('That person is already on your team.')
+    err.name = 'AlreadyMemberError'
+    throw err
+  }
+  if (scenario === 'email_failed') {
+    throw new EmailFailedError(MOCK_LINK)
+  }
+
+  return {
+    invite_link: MOCK_LINK,
+    // A phone invite requests no email, so link_only is the honest delivery
+    // state — NOT "sent". Nothing here ever reports a send that did not happen.
+    delivery: args.contact.type === 'email' && scenario === 'email_sent' ? 'email_sent' : 'link_only',
+    invited_user_id: args.chosen_user_id ?? null,
+  }
+}
+
+export async function mockValidateInvite(token: string): Promise<InviteValidation> {
+  await delay(400)
+  const scenario = getAcceptScenario()
+
+  const base = {
+    business_name: MOCK_BUSINESS,
+    role: 'manager',
+    invited_as: '(•••) •••-1720',
+    contact_type: 'phone' as const,
+    requires_otp: true,
+    credential_step: 'none' as const,
+    needs_email: false,
+    session: null,
+  }
+
+  switch (scenario) {
+    case 'expired':
+      return { ...base, state: 'expired' }
+    case 'revoked':
+      return { ...base, state: 'revoked' }
+    case 'accepted':
+      return { ...base, state: 'accepted' }
+    case 'wrong_account':
+      return {
+        ...base,
+        state: 'valid',
+        session: { matches: false, email: 'someone.else@bizzytest.com' },
+      }
+    case 'session_match':
+      // Already signed in AS the invited user: session is the proof, so no OTP
+      // and — password already set — no credential step. Just Accept.
+      return {
+        ...base,
+        state: 'valid',
+        requires_otp: false,
+        session: { matches: true, email: 'luke-dev@bizzytest.com' },
+      }
+    case 'valid_email_no_otp':
+      return {
+        ...base,
+        state: 'valid',
+        invited_as: 'l•••@bizzytest.com',
+        contact_type: 'email',
+        requires_otp: false,
+      }
+    case 'valid_otp_set_password':
+      // Existing OTP-only app account: null password → set one (additively).
+      // needs_email exercises the "+ email if missing" arm.
+      return {
+        ...base,
+        state: 'valid',
+        credential_step: 'set_password',
+        needs_email: true,
+      }
+    case 'valid_new_user':
+      return {
+        ...base,
+        state: 'valid',
+        invited_as: '(•••) •••-4501',
+        credential_step: 'create_account',
+      }
+    case 'valid_otp_password':
+    default:
+      return { ...base, state: token ? 'valid' : 'invalid' }
+  }
+}
+
+export async function mockSendInviteCode(): Promise<void> {
+  await delay(350)
+}
+
+export async function mockAcceptInvite(args: AcceptArgs): Promise<AcceptResult> {
+  await delay(600)
+
+  // 123456 is what services seeds when Twilio is unconfigured
+  // (lineSkipCheckout.ts:678), so the wrong-code arm is reachable in dev by
+  // typing anything else.
+  if (args.code && args.code !== '123456') {
+    throw new Error('That code is not right. Check the text and try again.')
+  }
+
+  return { ok: true, business_name: MOCK_BUSINESS, role: 'manager' }
+}

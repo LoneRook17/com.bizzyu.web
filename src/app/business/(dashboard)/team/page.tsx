@@ -23,11 +23,12 @@ interface VenueGroup {
 }
 
 export default function V2TeamPage() {
-  const { user } = useAuth()
+  const { user, business } = useAuth()
   const { venues, selectedVenueId } = useVenue()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [resendTarget, setResendTarget] = useState<TeamMember | null>(null)
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null)
   const [removeLoading, setRemoveLoading] = useState(false)
   const [removeError, setRemoveError] = useState<string | null>(null)
@@ -73,13 +74,13 @@ export default function V2TeamPage() {
     }
   }
 
-  const handleResend = async (member: TeamMember) => {
-    try {
-      await apiClient.post("/business/team/invite", { email: member.email, role: member.role, venue_id: member.venue_id })
-      await fetchMembers()
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to resend invite")
-    }
+  // Resend prefills the invite dialog rather than firing a request behind the
+  // owner's back: a resend mints a fresh link, and under the #5 contract the
+  // link is the deliverable (Bizzy sends no invite SMS), so it has to land
+  // somewhere the owner can copy or text it.
+  const handleResend = (member: TeamMember) => {
+    setResendTarget(member)
+    setInviteOpen(true)
   }
 
   const handleRemove = async () => {
@@ -215,11 +216,27 @@ export default function V2TeamPage() {
         </div>
       )}
 
+      {/* Keyed so a resend remounts the dialog with its prefill — the form
+          state is seeded at mount. */}
       <InviteDialog
+        key={resendTarget ? `resend-${resendTarget.id}` : "new"}
         open={inviteOpen}
-        onOpenChange={setInviteOpen}
-        onInvited={() => { setInviteOpen(false); fetchMembers() }}
+        onOpenChange={(open) => { setInviteOpen(open); if (!open) setResendTarget(null) }}
+        onInvited={() => { setInviteOpen(false); setResendTarget(null); fetchMembers() }}
         venues={venues}
+        businessName={business?.name ?? "Your team"}
+        initial={
+          resendTarget
+            ? {
+                // Legacy rows are email-keyed end to end (the table has no phone
+                // column today), so a resend of one is an email invite.
+                contactType: "email",
+                value: resendTarget.email,
+                role: resendTarget.role === "manager" ? "manager" : "staff",
+                venueId: resendTarget.venue_id,
+              }
+            : null
+        }
       />
 
       <ConfirmDialog

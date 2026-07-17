@@ -24,6 +24,16 @@
       "source": "/terms-of-service",
       "destination": "/terms",
       "permanent": true
+    },
+    {
+      "source": "/accept-invite",
+      "destination": "/team-invite",
+      "permanent": false
+    },
+    {
+      "source": "/business/accept-invite",
+      "destination": "/team-invite",
+      "permanent": false
     }
   ],
   "headers": [
