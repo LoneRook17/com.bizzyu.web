@@ -41,8 +41,23 @@ export const revalidate = 1800;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  const campuses = await fetchCampuses();
-  return campuses.map((c) => ({ campus: c.slug }));
+  // Deliberately prebuild NOTHING at build time — campus pages render on demand
+  // instead (dynamicParams=true above + the revalidate=1800 ISR window), so the
+  // first request in each 30-min window does a cached SSR and the rest serve
+  // from cache.
+  //
+  // Why not prebuild the publishable list here: prerendering N campus pages ran
+  // fetchCampus() once PER page, and Vercel's prerender workers don't share the
+  // unstable_cache across processes, so each worker re-fanned-out ~34 POSTs to
+  // the prod home_deals API and tripped its rate limit. A single 429 (or an
+  // empty university list) makes fetchCampus throw mid-prerender and takes the
+  // whole export — and the deploy — down with it (observed 3/3, incl. after a
+  // rate-limit cooldown, 2026-07-17). Rendering on demand removes the build-time
+  // API dependency entirely: a transient outage now costs a single live request
+  // (self-healing on the next one), never a cached 404 and never a failed build.
+  // The content gate is unchanged — fetchCampus still returns null → notFound()
+  // for unqualified, nonexistent, and test slugs.
+  return [];
 }
 
 export async function generateMetadata({
