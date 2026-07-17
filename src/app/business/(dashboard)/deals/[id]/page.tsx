@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { Progress } from "@/components/business/v2/ui/progress"
+import { DealFunnel } from "@/components/business/dashboard/DealFunnel"
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription, DialogClose,
 } from "@/components/business/v2/ui/dialog"
@@ -205,6 +206,9 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
         </div>
       </div>
+
+      {/* engagement funnel — impressions → views → claims (DI-B3w) */}
+      <DealFunnel dealId={deal.id} />
 
       {/* deactivate confirm */}
       <Dialog open={confirmAction === "deactivate"} onOpenChange={(o) => !o && setConfirmAction(null)}>
