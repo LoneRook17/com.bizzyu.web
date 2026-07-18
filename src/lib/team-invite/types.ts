@@ -45,15 +45,21 @@ export interface InviteCreated {
   invite_link: string
   /** How the invite actually went out. Drives the honest delivery-state row. */
   delivery: InviteDelivery
+  /**
+   * Why a phone invite was NOT texted. Absent on legacy (pre-TI-1) services —
+   * see delivery.ts, where that absence is a first-class state.
+   */
+  delivery_reason?: InviteDeliveryReason | null
   /** Present when the contact resolved to exactly one existing user. */
   invited_user_id?: number | null
 }
 
-/**
- * What the server actually managed to do — never inferred from a 2xx.
- * `email_failed` arrives as an error body (EMAIL_FAILED), not a 201.
- */
-export type InviteDelivery = 'email_sent' | 'link_only' | 'email_failed'
+// The delivery vocabulary lives in ./delivery — the single module that owns the
+// TI-1 wire contract and the outcome copy. Re-exported here so the existing
+// `@/lib/team-invite/types` imports keep working and there is still one
+// definition.
+export type { InviteDelivery, InviteDeliveryReason } from './delivery'
+import type { InviteDelivery, InviteDeliveryReason } from './delivery'
 
 /** Error `code` values the UI branches on. Anything else = generic message. */
 export type InviteErrorCode =

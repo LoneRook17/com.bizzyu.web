@@ -20,6 +20,10 @@ import {
 
 export type InviteScenario =
   | 'phone_link_only'
+  | 'phone_sms_sent'
+  | 'phone_duplicate_invite'
+  | 'phone_send_failed'
+  | 'phone_guard_skipped'
   | 'email_sent'
   | 'multiple_matches'
   | 'email_failed'
@@ -40,6 +44,10 @@ export type AcceptScenario =
 
 const INVITE_SCENARIOS: InviteScenario[] = [
   'phone_link_only',
+  'phone_sms_sent',
+  'phone_duplicate_invite',
+  'phone_send_failed',
+  'phone_guard_skipped',
   'email_sent',
   'multiple_matches',
   'email_failed',
@@ -120,12 +128,25 @@ export async function mockCreateInvite(args: InviteArgs): Promise<InviteCreated>
     throw new EmailFailedError(MOCK_LINK)
   }
 
+  // TI-1 phone arms. `phone_link_only` deliberately returns NO delivery_reason:
+  // it is the deployed-today legacy shape, and it is the scenario the live
+  // regression check is run against.
+  const phoneArms: Partial<Record<InviteScenario, Pick<InviteCreated, 'delivery' | 'delivery_reason'>>> = {
+    phone_sms_sent: { delivery: 'sms_sent', delivery_reason: null },
+    phone_duplicate_invite: { delivery: 'link_only', delivery_reason: 'duplicate_invite' },
+    phone_send_failed: { delivery: 'link_only', delivery_reason: 'send_failed' },
+    phone_guard_skipped: { delivery: 'link_only', delivery_reason: 'guard_skipped' },
+  }
+  const phoneArm = args.contact.type === 'phone' ? phoneArms[scenario] : undefined
+
   return {
     invite_link: MOCK_LINK,
-    // A phone invite requests no email, so link_only is the honest delivery
-    // state — NOT "sent". Nothing here ever reports a send that did not happen.
+    // Without a TI-1 arm, a phone invite requests no email, so link_only is the
+    // honest delivery state — NOT "sent". Nothing here ever reports a send that
+    // did not happen.
     delivery: args.contact.type === 'email' && scenario === 'email_sent' ? 'email_sent' : 'link_only',
     invited_user_id: args.chosen_user_id ?? null,
+    ...phoneArm,
   }
 }
 

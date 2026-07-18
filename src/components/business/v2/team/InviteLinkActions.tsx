@@ -11,14 +11,26 @@ interface InviteLinkActionsProps {
   businessName: string
   /** E.164 when the invite was by phone; the composer opens empty without it. */
   phone?: string | null
+  /**
+   * Whether to offer "Text it yourself". Defaults to true — the pre-auto-send
+   * behavior — so every existing caller and every legacy response keeps the
+   * button without opting in. Only TI-1's `sms_sent` and `duplicate_invite`
+   * turn it off, and only because Bizzy has already done the texting.
+   */
+  showManualText?: boolean
 }
 
 /**
- * Copy-link + "Text it yourself". Shown on EVERY invite outcome, not just
- * EMAIL_FAILED: Bizzy sends no invite SMS in v1, so for a phone invite this is
- * the only way the link reaches anyone.
+ * Copy-link, plus "Text it yourself" when the send is still the owner's job.
+ *
+ * Copy-link is unconditional: it is the fallback that works when nothing else
+ * did, and it is never wrong to offer. The manual composer is gated, because
+ * offering it after Bizzy already texted the invite invites a duplicate text to
+ * the same person from a second number.
  */
-export default function InviteLinkActions({ link, businessName, phone }: InviteLinkActionsProps) {
+export default function InviteLinkActions({
+  link, businessName, phone, showManualText = true,
+}: InviteLinkActionsProps) {
   const [copied, setCopied] = useState(false)
 
   const copy = async () => {
@@ -52,12 +64,14 @@ export default function InviteLinkActions({ link, businessName, phone }: InviteL
             web open-in-app buttons follow: sms: on a desktop browser with no
             handler does nothing, and a timer-driven version would strand the
             owner on a blank page. */}
-        <Button asChild type="button" variant="secondary" size="sm">
-          <a href={buildSmsHref(phone ?? "", businessName, link)}>
-            <MessageSquare />
-            Text it yourself
-          </a>
-        </Button>
+        {showManualText && (
+          <Button asChild type="button" variant="secondary" size="sm">
+            <a href={buildSmsHref(phone ?? "", businessName, link)}>
+              <MessageSquare />
+              Text it yourself
+            </a>
+          </Button>
+        )}
       </div>
     </div>
   )

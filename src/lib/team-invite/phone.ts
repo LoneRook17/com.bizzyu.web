@@ -20,6 +20,22 @@ export function formatUsPhone(input: string): string {
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
 }
 
+/**
+ * E.164 → (555) 123-4567, for showing the owner which number Bizzy texted.
+ *
+ * NOT formatUsPhone: that one is a progressive INPUT formatter and truncates to
+ * the first 10 digits, so it renders +15551234567 as "(155) 512-3456" — a
+ * plausible-looking wrong number on a receipt whose whole job is to be
+ * checkable. Anything it cannot parse is returned unchanged rather than
+ * half-formatted.
+ */
+export function formatE164(e164: string): string {
+  const digits = e164.replace(/\D/g, '')
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits
+  if (ten.length !== 10) return e164
+  return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`
+}
+
 export function isValidEmail(input: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.trim())
 }

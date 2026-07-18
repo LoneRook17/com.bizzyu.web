@@ -5,13 +5,15 @@ import dynamic from "next/dynamic"
 import { AlertTriangle, CheckCircle2, Info, UserPlus } from "lucide-react"
 
 import { createInvite } from "@/lib/team-invite/client"
-import { formatUsPhone, isValidEmail, toE164 } from "@/lib/team-invite/phone"
+import { formatE164, formatUsPhone, isValidEmail, toE164 } from "@/lib/team-invite/phone"
+import { resolveInviteOutcome, type InviteOutcome } from "@/lib/team-invite/delivery"
 import {
   EmailFailedError,
   MultipleMatchesError,
   type ContactType,
   type InviteCandidate,
   type InviteDelivery,
+  type InviteDeliveryReason,
   type InviteRole,
 } from "@/lib/team-invite/types"
 import type { Venue } from "@/lib/business/types"
@@ -54,6 +56,8 @@ const INVITABLE_ROLES: { value: InviteRole; label: string }[] = [
 
 interface Result {
   delivery: InviteDelivery
+  /** null = legacy services that predate auto-send. See lib/team-invite/delivery.ts. */
+  reason: InviteDeliveryReason | null
   link: string
   /** E.164 when invited by phone — prefills the composer. */
   phone: string | null
@@ -100,6 +104,15 @@ export default function InviteDialog({
     onOpenChange(next)
   }
 
+  // Resolved once, here, so the header line and the panel can never disagree
+  // about what happened to this invite.
+  const outcome = result
+    ? resolveInviteOutcome(
+        { delivery: result.delivery, reason: result.reason },
+        result.phone ? formatE164(result.phone) : null
+      )
+    : null
+
   const contactValue = contactType === "phone" ? toE164(phone) : email.trim()
   const contactValid =
     contactType === "phone" ? contactValue !== null : isValidEmail(email)
@@ -119,6 +132,7 @@ export default function InviteDialog({
       setCandidates(null)
       setResult({
         delivery: created.delivery,
+        reason: created.delivery_reason ?? null,
         link: created.invite_link,
         phone: contactType === "phone" ? contactValue : null,
       })
@@ -129,7 +143,7 @@ export default function InviteDialog({
         // The invite EXISTS — only the email failed. Land on the result panel
         // with the link rather than an error that implies nothing happened.
         setCandidates(null)
-        setResult({ delivery: "email_failed", link: err.invite_link, phone: null })
+        setResult({ delivery: "email_failed", reason: null, link: err.invite_link, phone: null })
       } else {
         setError(err instanceof Error ? err.message : "Could not send the invite")
       }
@@ -146,8 +160,8 @@ export default function InviteDialog({
             {result ? "Invite created" : candidates ? "Which one?" : "Invite team member"}
           </DialogTitle>
           <DialogDescription>
-            {result
-              ? "Send them the link — Bizzy doesn't text invites."
+            {outcome
+              ? outcome.description
               : candidates
                 ? "More than one account uses that contact."
                 : "They'll get a link to join your team. You send it."}
@@ -156,9 +170,10 @@ export default function InviteDialog({
 
         {MockScenarioPicker && <MockScenarioPicker />}
 
-        {result ? (
+        {result && outcome ? (
           <ResultPanel
             result={result}
+            outcome={outcome}
             businessName={businessName}
             onDone={() => handleOpenChange(false)}
           />
@@ -284,51 +299,56 @@ export default function InviteDialog({
   )
 }
 
+/** Tone → chrome. Copy and affordances come from resolveInviteOutcome. */
+const TONE_CHROME = {
+  success: {
+    icon: <CheckCircle2 className="size-5 shrink-0 text-green-600 dark:text-green-500" />,
+    className: "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40",
+  },
+  info: {
+    icon: <Info className="size-5 shrink-0 text-blue-600 dark:text-blue-500" />,
+    className: "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40",
+  },
+  warning: {
+    icon: <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-500" />,
+    className: "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40",
+  },
+} as const
+
 /**
- * The honest outcome panel. Every arm states what actually happened — an
- * emailed invite says so, a phone invite says the link is yours to send, and a
- * failed email says it failed. There is no arm that reports a send Bizzy did
- * not make.
+ * The honest outcome panel. Every arm states what actually happened — a texted
+ * invite says so and names the number, an emailed one says so, a duplicate says
+ * the earlier text still stands, and a failed send says it failed. There is no
+ * arm that reports a send Bizzy did not make, and none that hides one it did.
+ *
+ * All of that lives in lib/team-invite/delivery.ts; this renders the verdict.
  */
 function ResultPanel({
-  result, businessName, onDone,
+  result, outcome, businessName, onDone,
 }: {
   result: Result
+  outcome: InviteOutcome
   businessName: string
   onDone: () => void
 }) {
-  const tone = {
-    email_sent: {
-      icon: <CheckCircle2 className="size-5 shrink-0 text-green-600 dark:text-green-500" />,
-      className: "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40",
-      title: "Invite emailed.",
-      body: "They can also use the link below if the email goes missing.",
-    },
-    link_only: {
-      icon: <Info className="size-5 shrink-0 text-blue-600 dark:text-blue-500" />,
-      className: "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40",
-      title: "Invite ready to send.",
-      body: "Bizzy doesn't text invites — send them this link and they're in.",
-    },
-    email_failed: {
-      icon: <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-500" />,
-      className: "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40",
-      title: "The invite email didn't send.",
-      body: "The invite itself is fine — send them the link instead.",
-    },
-  }[result.delivery]
+  const chrome = TONE_CHROME[outcome.tone]
 
   return (
     <div className="flex flex-col gap-4">
-      <div className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${tone.className}`}>
-        {tone.icon}
+      <div className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-3 ${chrome.className}`}>
+        {chrome.icon}
         <div>
-          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{tone.title}</p>
-          <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">{tone.body}</p>
+          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{outcome.title}</p>
+          <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">{outcome.body}</p>
         </div>
       </div>
 
-      <InviteLinkActions link={result.link} businessName={businessName} phone={result.phone} />
+      <InviteLinkActions
+        link={result.link}
+        businessName={businessName}
+        phone={result.phone}
+        showManualText={outcome.showManualText}
+      />
 
       <DialogFooter>
         <Button type="button" onClick={onDone}>Done</Button>

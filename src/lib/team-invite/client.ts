@@ -14,6 +14,8 @@
 
 import { getApiBaseUrl } from '@/lib/api-url'
 
+import { parseDelivery } from './delivery'
+
 import {
   EmailFailedError,
   MultipleMatchesError,
@@ -59,7 +61,10 @@ export async function createInvite(args: InviteArgs): Promise<InviteCreated> {
   if (!res.ok) {
     throw new Error(data?.message || data?.error || 'Could not send the invite')
   }
-  return data as InviteCreated
+  // Normalize the delivery fields here so no caller ever branches on a raw
+  // wire value. parseDelivery is total and never throws, so an unexpected
+  // `delivery` degrades to link_only rather than dropping the created invite.
+  return { ...(data as InviteCreated), ...parseDelivery(data) }
 }
 
 /**
