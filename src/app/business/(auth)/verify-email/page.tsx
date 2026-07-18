@@ -13,6 +13,11 @@ import {
   AuthSubmit,
 } from "@/components/business/v2/auth/auth-shell"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import {
+  parseVerifyEmailKind,
+  verifyEmailSuccessCopy,
+  type VerifyEmailKind,
+} from "@/lib/business/verify-email-copy"
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
@@ -23,6 +28,10 @@ function VerifyEmailContent() {
     token ? "verifying" : "pending"
   )
   const [message, setMessage] = useState("")
+  // HF-1 made this one endpoint serve both the signup-verification and the
+  // email-change token flows, discriminated by `kind`. Legacy/absent values
+  // resolve to "verification", i.e. today's copy unchanged.
+  const [kind, setKind] = useState<VerifyEmailKind>("verification")
   const [resendEmail, setResendEmail] = useState(emailParam || "")
   const [resendLoading, setResendLoading] = useState(false)
   const [resendSent, setResendSent] = useState(false)
@@ -30,7 +39,8 @@ function VerifyEmailContent() {
   const verifyToken = useCallback(async () => {
     if (!token) return
     try {
-      await apiClient.authPost("/business/auth/verify-email", { token })
+      const res = await apiClient.authPost<unknown>("/business/auth/verify-email", { token })
+      setKind(parseVerifyEmailKind(res))
       setStatus("success")
       setMessage("Your email has been verified! Your business is now pending admin approval.")
     } catch (err) {
@@ -70,17 +80,15 @@ function VerifyEmailContent() {
   }
 
   if (status === "success") {
+    const copy = verifyEmailSuccessCopy(kind)
     return (
-      <AuthCard title="Email verified!" subtitle="Your email address has been confirmed.">
-        <AuthAlert tone="warning" className="mb-4">
-          <p className="mb-1 font-semibold">Your account is pending approval</p>
-          <p>
-            You can explore your dashboard and build your first deal right away. It will go live
-            once the Bizzy team approves your account. You&apos;ll get an email when that happens.
-          </p>
+      <AuthCard title={copy.title} subtitle={copy.subtitle}>
+        <AuthAlert tone={copy.alertTone} className="mb-4">
+          {copy.alertHeading && <p className="mb-1 font-semibold">{copy.alertHeading}</p>}
+          <p>{copy.alertBody}</p>
         </AuthAlert>
         <Button asChild size="lg" className="w-full">
-          <Link href="/business/login">Go to Login</Link>
+          <Link href="/business/login">{copy.ctaLabel}</Link>
         </Button>
       </AuthCard>
     )

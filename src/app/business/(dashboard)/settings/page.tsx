@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
+  AtSign,
   Building2,
   CheckCircle2,
   CreditCard,
@@ -26,6 +27,8 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
 import LogoUpload from "@/components/business/v2/settings/LogoUpload"
 import ProfileForm from "@/components/business/v2/settings/ProfileForm"
+import EmailChangeForm from "@/components/business/v2/settings/EmailChangeForm"
+import { canChangeBusinessEmail } from "@/lib/business/email-change"
 import StripeConnectCard, { StripeReturnBanner } from "@/components/business/v2/settings/StripeConnectCard"
 import VenuePayoutAccountsSection from "@/components/business/v2/settings/VenuePayoutAccountsSection"
 import VenueManagementSection from "@/components/business/v2/settings/VenueManagementSection"
@@ -104,6 +107,9 @@ function SettingsContent() {
   const [resetLoading, setResetLoading] = useState(false)
 
   const canEdit = role === "owner" || role === "manager"
+  // Deliberately narrower than canEdit: businesses.email is the login
+  // credential (recon B1), so managers must not move it. HF-1's 403 backs this.
+  const canChangeEmail = canChangeBusinessEmail(role)
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -274,6 +280,16 @@ function SettingsContent() {
         {/* --- Security --- */}
         <TabsContent value="security">
           <div className="flex flex-col gap-5">
+            {canChangeEmail && (
+              <SettingsCard
+                icon={AtSign}
+                title="Login email"
+                description="The address you sign in with. We'll email the new address to confirm — nothing changes until you open that link."
+              >
+                <EmailChangeForm currentEmail={profile.email} businessId={profile.business_id} />
+              </SettingsCard>
+            )}
+
             <SettingsCard
               icon={KeyRound}
               title="Password"
