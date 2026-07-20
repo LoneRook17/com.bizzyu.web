@@ -22,6 +22,8 @@ import {
   type LineSkipCompleteResponse,
   type LineSkipPiBreakdown,
 } from "@/lib/lineskip-pi/types"
+import { nightAvailability, remainingCapacity } from "@/lib/lineskip/availability"
+import { CHECKOUT_PANEL_CLASS } from "@/lib/lineskip/checkout-modal"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
@@ -333,9 +335,8 @@ export default function LineSkipCheckoutClient({
 
   // Quantity helpers
   const adjustQty = (val: number) => {
-    const remaining = selectedInstance?.capacity !== null && selectedInstance
-      ? selectedInstance.capacity! - selectedInstance.tickets_sold
-      : 10
+    // Internal clamp only — remaining is never shown to the buyer (LS-UI-2).
+    const remaining = selectedInstance ? remainingCapacity(selectedInstance) ?? 10 : 10
     setQuantity(Math.max(1, Math.min(10, Math.min(remaining, val))))
   }
 
@@ -1117,9 +1118,11 @@ export default function LineSkipCheckoutClient({
                 const isSelected = selectedInstanceId === inst.id
                 const promo = getPromoForInstance(inst.id)
                 const discountedPrice = getDiscountedPrice(inst.price_cents, promo)
-                const remaining = inst.capacity !== null ? inst.capacity - inst.tickets_sold : null
-                const isSoldOut = inst.capacity !== null && inst.tickets_sold >= inst.capacity
-                const pctSold = inst.capacity ? Math.min(100, Math.round((inst.tickets_sold / inst.capacity) * 100)) : 0
+                // Customer-facing rule (LS-UI-2): a limited-but-open night reads
+                // exactly like an unlimited one — no count, no bar. `remaining` is
+                // kept ONLY to clamp the quantity stepper, never rendered.
+                const isSoldOut = nightAvailability(inst) === "sold_out"
+                const remaining = remainingCapacity(inst)
                 const dateOnly = typeof inst.date === "string" ? inst.date.substring(0, 10) : inst.date
 
                 return (
@@ -1152,11 +1155,9 @@ export default function LineSkipCheckoutClient({
                               <span className="mt-1.5 inline-block rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-bold text-gray-400">
                                 Sold out
                               </span>
-                            ) : remaining !== null ? (
-                              <span className="mt-1.5 inline-block text-xs font-semibold text-white/40">
-                                {remaining} left{pctSold >= 75 ? ", going fast" : ""}
-                              </span>
                             ) : (
+                              // Never disclose remaining counts: limited and unlimited
+                              // nights both read "Available" (LS-UI-2).
                               <span className="mt-1.5 inline-block text-xs font-semibold text-white/40">Available</span>
                             )}
                           </div>
@@ -1190,15 +1191,8 @@ export default function LineSkipCheckoutClient({
                         </div>
                       </div>
 
-                      {/* Capacity bar */}
-                      {inst.capacity !== null && !isSoldOut && (
-                        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${pctSold}%`, background: `linear-gradient(90deg, ${GOLD_LIGHT}, ${GOLD})` }}
-                          />
-                        </div>
-                      )}
+                      {/* Capacity bar removed (LS-UI-2): a progress bar discloses how
+                          full a night is, which is a remaining-count signal. */}
 
                       {/* Quantity selector (shown when selected) */}
                       {isSelected && !isSoldOut && (
@@ -1411,7 +1405,7 @@ export default function LineSkipCheckoutClient({
             className="ls-kb-shift w-full max-w-md sm:m-4"
             style={{ transform: `translateY(-${kbOffset}px)` }}
           >
-            <div className="ls-rise w-full rounded-t-3xl border border-[#1e1e2e] bg-[#141420] p-6 sm:rounded-3xl">
+            <div className={CHECKOUT_PANEL_CLASS}>
             {/* Modal header */}
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-extrabold text-white">
