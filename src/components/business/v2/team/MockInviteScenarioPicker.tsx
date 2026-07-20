@@ -14,7 +14,11 @@ import {
 } from "@/lib/team-invite/mock"
 
 const SCENARIOS: { id: InviteScenario; label: string }[] = [
-  { id: "phone_link_only", label: "Phone → link only" },
+  { id: "phone_link_only", label: "Phone → link only (legacy)" },
+  { id: "phone_sms_sent", label: "Phone → SMS sent" },
+  { id: "phone_duplicate_invite", label: "Phone → already invited" },
+  { id: "phone_send_failed", label: "Phone → send failed" },
+  { id: "phone_guard_skipped", label: "Phone → guard skipped" },
   { id: "email_sent", label: "Email → sent" },
   { id: "multiple_matches", label: "409 multiple matches" },
   { id: "email_failed", label: "EMAIL_FAILED → link" },
