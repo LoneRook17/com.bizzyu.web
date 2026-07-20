@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { TeamMember } from "@/lib/business/types"
+import { memberDisplay } from "@/lib/team-invite/display"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -103,7 +104,9 @@ export default function V2TeamPage() {
     const sorted = [...members].sort((a, b) => {
       if (a.role === "owner") return -1
       if (b.role === "owner") return 1
-      return a.email.localeCompare(b.email)
+      // Sort by what the row actually shows, so provisional/phone-only rows
+      // (no email) order sensibly instead of clustering under a blank key.
+      return memberDisplay(a).name.localeCompare(memberDisplay(b).name)
     })
 
     const filtered =
@@ -245,7 +248,7 @@ export default function V2TeamPage() {
         onConfirm={handleRemove}
         title="Remove team member"
         description={
-          <>Remove <span className="font-medium text-neutral-700 dark:text-neutral-300">{removeTarget?.email}</span>? They&apos;ll lose access to the dashboard immediately.</>
+          <>Remove <span className="font-medium text-neutral-700 dark:text-neutral-300">{removeTarget ? memberDisplay(removeTarget).name : ""}</span>? They&apos;ll lose access to the dashboard immediately.</>
         }
         confirmLabel="Remove"
         variant="danger"

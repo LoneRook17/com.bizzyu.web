@@ -24,8 +24,24 @@ export interface InviteArgs {
   role: InviteRole
   contact: InviteContact
   name?: string
+  /**
+   * TI-3: the provisional name for a NEW-to-Bizzy invitee (the lookup `none`
+   * path). Additive alongside `name` so legacy services still get the `name`
+   * they always did; TI-3 services persist this as the row's `display_name`,
+   * which is what keeps the pending row from rendering blank. The invitee
+   * confirms or corrects it at accept.
+   */
+  display_name?: string
   /** Set on the re-submit after a MULTIPLE_MATCHES pick. */
   chosen_user_id?: number
+  /**
+   * TI-3 / TI-F2: set true on the re-submit after a PREVIOUSLY_REMOVED confirm.
+   * Re-inviting a previously-removed member no longer silently reactivates — the
+   * owner must explicitly confirm. Absent from every other path, and legacy
+   * services (which reactivate silently) ignore it, so this field never changes
+   * their behaviour.
+   */
+  reactivate?: boolean
   // ── ADDITIVE, not in the pinned contract ─────────────────────────────────
   // Team members are venue-scoped today (business_team_members.venue_id; the
   // dialog and row have shipped a venue picker since May). The pinned invite
@@ -67,6 +83,31 @@ export type InviteErrorCode =
   | 'EMAIL_FAILED'
   | 'ALREADY_MEMBER'
   | 'INVALID_CODE'
+  | 'PREVIOUSLY_REMOVED'
+
+/**
+ * The masked member context TI-3s attaches to a PREVIOUSLY_REMOVED gate. Masked
+ * only — never a real name or the full number — so the confirm cannot become a
+ * phone→identity oracle. `member_id` is the row the reactivate re-submit reuses.
+ */
+export interface PreviouslyRemovedMember {
+  member_id: number
+  masked_name: string
+  masked_contact: string
+  role: string
+  removed_at: string
+}
+
+/**
+ * 409 PREVIOUSLY_REMOVED body (TI-3 / TI-F2). The contact resolves to a member
+ * the business previously removed; the server refuses to silently reactivate and
+ * asks the owner to confirm (re-submit with `reactivate: true`). A confirmation
+ * gate, not an error.
+ */
+export interface PreviouslyRemovedBody {
+  code: 'PREVIOUSLY_REMOVED'
+  member: PreviouslyRemovedMember
+}
 
 /** 409 MULTIPLE_MATCHES body. */
 export interface MultipleMatchesBody {
@@ -179,5 +220,31 @@ export class EmailFailedError extends Error {
     super('The invite email could not be sent')
     this.name = 'EmailFailedError'
     this.invite_link = invite_link
+  }
+}
+
+/**
+ * Thrown for 409 PREVIOUSLY_REMOVED (TI-3 / TI-F2) so the dialog can render the
+ * explicit re-invite confirm instead of silently reactivating a member the owner
+ * had removed. Re-submitting with `reactivate: true` completes the invite.
+ *
+ * Carries the masked member context TI-3s returns; `masked_name` is what the
+ * confirm panel shows, and every field is optional so a malformed/partial body
+ * still yields a usable (generic-copy) confirm rather than a thrown-through error.
+ */
+export class ReactivationRequiredError extends Error {
+  masked_name?: string
+  masked_contact?: string
+  role?: string
+  removed_at?: string
+  member_id?: number
+  constructor(member?: Partial<PreviouslyRemovedMember>) {
+    super('This person was removed from the team')
+    this.name = 'ReactivationRequiredError'
+    this.masked_name = typeof member?.masked_name === 'string' ? member.masked_name : undefined
+    this.masked_contact = typeof member?.masked_contact === 'string' ? member.masked_contact : undefined
+    this.role = typeof member?.role === 'string' ? member.role : undefined
+    this.removed_at = typeof member?.removed_at === 'string' ? member.removed_at : undefined
+    this.member_id = typeof member?.member_id === 'number' ? member.member_id : undefined
   }
 }

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/v2/utils"
 import { ROLE_LABELS } from "@/lib/business/constants"
+import { memberDisplay, memberInitial } from "@/lib/team-invite/display"
 import type { TeamMember, Venue } from "@/lib/business/types"
 import { Avatar, AvatarFallback } from "@/components/business/v2/ui/avatar"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -26,10 +27,6 @@ const ROLE_BADGE: Record<string, { className: string }> = {
 }
 
 const ASSIGNABLE_ROLES = ["manager", "staff"]
-
-function initials(s: string) {
-  return s.trim().charAt(0).toUpperCase() || "?"
-}
 
 type BadgeVariant = "warning" | "danger"
 
@@ -85,14 +82,24 @@ export default function TeamMemberRow({
     ? new Date(joinedSource).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : "—"
 
+  // Never-blank (TI-3w / fixes TI-F1): a provisional or phone-only row used to
+  // render with no name and a "?" avatar because the row keyed off `email`. The
+  // display helper always returns something — provisional name, then masked
+  // phone, then a floor — so a row is never blank. Legacy email-keyed rows
+  // resolve to their email exactly as before.
+  const display = memberDisplay(member)
+
   return (
     <div className="flex flex-col gap-3 border-b border-neutral-100 dark:border-neutral-800 py-3.5 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar className="size-9">
-          <AvatarFallback className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">{initials(member.email)}</AvatarFallback>
+          <AvatarFallback className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">{memberInitial(member)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{member.email}</p>
+          <p className={cn(
+            "truncate text-sm font-medium",
+            display.isProvisional ? "text-neutral-500 dark:text-neutral-400" : "text-neutral-900 dark:text-neutral-100"
+          )}>{display.name}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-2">
             <Badge size="sm" className={cn(ROLE_BADGE[member.role]?.className ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400")}>
               {ROLE_LABELS[member.role] ?? member.role}
