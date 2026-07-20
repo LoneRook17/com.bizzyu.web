@@ -6,9 +6,11 @@
 // false in a prod build and takes the dynamic import — and this chunk — with
 // it. Nothing here ships to production; the build log records the grep.
 
+import type { InviteLookup } from './lookup'
 import {
   EmailFailedError,
   MultipleMatchesError,
+  ReactivationRequiredError,
   type AcceptArgs,
   type AcceptResult,
   type InviteArgs,
@@ -28,6 +30,13 @@ export type InviteScenario =
   | 'multiple_matches'
   | 'email_failed'
   | 'already_member'
+  // ── TI-3 lookup arms. Each drives BOTH the live-typing lookup AND the
+  // eventual create, so the tester picks one selection and gets the whole flow.
+  | 'lookup_one'
+  | 'lookup_multiple'
+  | 'lookup_none'
+  | 'lookup_legacy'
+  | 'reactivation_required'
 
 // ── Accept-side scenarios (public page) ────────────────────────────────────
 
@@ -52,6 +61,11 @@ const INVITE_SCENARIOS: InviteScenario[] = [
   'multiple_matches',
   'email_failed',
   'already_member',
+  'lookup_one',
+  'lookup_multiple',
+  'lookup_none',
+  'lookup_legacy',
+  'reactivation_required',
 ]
 
 const ACCEPT_SCENARIOS: AcceptScenario[] = [
@@ -106,6 +120,36 @@ const MOCK_LINK = 'https://bizzyu.com/team-invite?token=mock_3f9a2c7e1b8d4a60'
 // The `&` in the business name is deliberate: it is the character that
 // truncates an unescaped sms: body, so the happy path exercises the escaping.
 
+// The masked candidates for both the 409 picker and the TI-3 pre-invoked
+// lookup picker — one definition so both surfaces mask identically.
+const MOCK_CANDIDATES = [
+  { id: 5561, masked_name: 'L••• C•••••', masked_contact: '(•••) •••-1720' },
+  { id: 8705, masked_name: 'J••• D••', masked_contact: '(•••) •••-1720' },
+  { id: 7961, masked_name: 'M••• R•••••', masked_contact: '(•••) •••-1720' },
+]
+
+/**
+ * TI-3 directory lookup mock. Only the lookup arms return a non-legacy verdict;
+ * every pre-TI-3 scenario returns `legacy`, so those flows stay byte-identical
+ * (no lookup UI appears). `reactivation_required` looks up as a real member
+ * ('one') — the removed-member story only surfaces on create.
+ */
+export async function mockLookupInviteContact(): Promise<InviteLookup> {
+  await delay(300)
+  switch (getInviteScenario()) {
+    case 'lookup_one':
+    case 'reactivation_required':
+      return { match: 'one', masked_name: 'J••• D••' }
+    case 'lookup_multiple':
+      return { match: 'multiple', candidates: MOCK_CANDIDATES }
+    case 'lookup_none':
+      return { match: 'none' }
+    default:
+      // lookup_legacy and every pre-TI-3 arm: endpoint absent → unchanged form.
+      return { match: 'legacy' }
+  }
+}
+
 export async function mockCreateInvite(args: InviteArgs): Promise<InviteCreated> {
   await delay(450)
   const scenario = getInviteScenario()
@@ -113,11 +157,26 @@ export async function mockCreateInvite(args: InviteArgs): Promise<InviteCreated>
   // A chosen_user_id means the owner already picked a sibling — the server
   // would not re-raise the ambiguity, so neither does the mock.
   if (scenario === 'multiple_matches' && !args.chosen_user_id) {
-    throw new MultipleMatchesError([
-      { id: 5561, masked_name: 'L••• C•••••', masked_contact: '(•••) •••-1720' },
-      { id: 8705, masked_name: 'J••• D••', masked_contact: '(•••) •••-1720' },
-      { id: 7961, masked_name: 'M••• R•••••', masked_contact: '(•••) •••-1720' },
-    ])
+    throw new MultipleMatchesError(MOCK_CANDIDATES)
+  }
+
+  // TI-F2: re-inviting a removed member needs an explicit confirm. The mock
+  // raises it once; the reactivate:true re-submit sails through as sms_sent.
+  if (scenario === 'reactivation_required' && !args.reactivate) {
+    throw new ReactivationRequiredError('J••• D••')
+  }
+
+  // TI-3 lookup arms resolve to honest deliveries on submit.
+  if (scenario === 'lookup_one' || scenario === 'reactivation_required') {
+    return { invite_link: MOCK_LINK, delivery: 'sms_sent', delivery_reason: null, invited_user_id: 8705 }
+  }
+  if (scenario === 'lookup_multiple') {
+    // Owner picked a sibling in the pre-invoked picker → chosen_user_id is set.
+    return { invite_link: MOCK_LINK, delivery: 'sms_sent', delivery_reason: null, invited_user_id: args.chosen_user_id ?? null }
+  }
+  if (scenario === 'lookup_none' || scenario === 'lookup_legacy') {
+    // New to Bizzy (or legacy server): no send, honest link_only.
+    return { invite_link: MOCK_LINK, delivery: 'link_only', delivery_reason: null, invited_user_id: null }
   }
   if (scenario === 'already_member') {
     const err = new Error('That person is already on your team.')

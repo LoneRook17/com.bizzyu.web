@@ -15,13 +15,16 @@
 import { getApiBaseUrl } from '@/lib/api-url'
 
 import { parseDelivery } from './delivery'
+import { parseLookup, type InviteLookup } from './lookup'
 
 import {
   EmailFailedError,
   MultipleMatchesError,
+  ReactivationRequiredError,
   type AcceptArgs,
   type AcceptResult,
   type InviteArgs,
+  type InviteContact,
   type InviteCreated,
   type InviteValidation,
 } from './types'
@@ -51,6 +54,15 @@ export async function createInvite(args: InviteArgs): Promise<InviteCreated> {
 
   if (res.status === 409 && data?.code === 'MULTIPLE_MATCHES') {
     throw new MultipleMatchesError(data.candidates ?? [])
+  }
+  // TI-3 / TI-F2: the contact resolves to a member the owner previously
+  // removed. The server refuses to silently reactivate — the dialog renders an
+  // explicit confirm and re-submits with reactivate:true. Legacy services never
+  // send this code, so this branch is inert until TI-3s ships.
+  if (res.status === 409 && data?.code === 'REACTIVATION_REQUIRED') {
+    throw new ReactivationRequiredError(
+      typeof data.masked_name === 'string' ? data.masked_name : undefined
+    )
   }
   // EMAIL_FAILED is an error status by contract (201 means it really sent), but
   // it is a soft failure: the invite EXISTS and the link works. Status-agnostic
@@ -92,6 +104,45 @@ export async function validateInvite(token: string): Promise<InviteValidation> {
     throw new Error(data?.message || 'Could not check this invite')
   }
   return data as InviteValidation
+}
+
+/**
+ * Anti-enumeration directory lookup (TI-3). Probes a contact the owner already
+ * has and returns only a masked verdict — never a real name or number.
+ *
+ * Graceful legacy degrade is the whole contract: deployed services have no
+ * lookup endpoint, so a 404 — or any failed/errored probe — resolves to
+ * `{ match: 'legacy' }`, which the dialog treats as the pre-TI-3 form. A probe
+ * is a nicety, never a gate: it must never be able to block an invite. The only
+ * exception is an abort (the debounce cancelling a stale keystroke), which is
+ * re-thrown so the caller can drop the result silently rather than mistaking a
+ * cancellation for a legacy server.
+ */
+export async function lookupInviteContact(
+  contact: InviteContact,
+  signal?: AbortSignal
+): Promise<InviteLookup> {
+  if (process.env.NEXT_PUBLIC_TEAM_INVITE_MOCK === '1') {
+    const { mockLookupInviteContact } = await import('./mock')
+    return mockLookupInviteContact()
+  }
+  try {
+    const res = await fetch(
+      `${API_URL}/business/team/invite/lookup?type=${contact.type}&value=${encodeURIComponent(contact.value)}`,
+      { credentials: 'include', cache: 'no-store', signal }
+    )
+    // Endpoint absent (deployed-today) → legacy. Any non-OK is treated the
+    // same: a lookup is advisory, and degrading to the unchanged form is always
+    // safe. It never claims an account exists on a failure.
+    if (!res.ok) return { match: 'legacy' }
+    const data = await res.json().catch(() => null)
+    return parseLookup(data)
+  } catch (err) {
+    // A cancelled probe is not a legacy verdict — let the caller ignore it.
+    if (err instanceof DOMException && err.name === 'AbortError') throw err
+    // Network error / offline → degrade to the unchanged form, never block.
+    return { match: 'legacy' }
+  }
 }
 
 /** Send the OTP to the invited phone. Reuses the existing 877 login-code infra. */

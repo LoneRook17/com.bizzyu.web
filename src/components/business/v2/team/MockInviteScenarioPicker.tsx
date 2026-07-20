@@ -23,6 +23,11 @@ const SCENARIOS: { id: InviteScenario; label: string }[] = [
   { id: "multiple_matches", label: "409 multiple matches" },
   { id: "email_failed", label: "EMAIL_FAILED → link" },
   { id: "already_member", label: "Already a member" },
+  { id: "lookup_one", label: "Lookup → on Bizzy (one)" },
+  { id: "lookup_multiple", label: "Lookup → multiple" },
+  { id: "lookup_none", label: "Lookup → new to Bizzy" },
+  { id: "lookup_legacy", label: "Lookup → legacy (no endpoint)" },
+  { id: "reactivation_required", label: "Lookup → removed member" },
 ]
 
 export default function MockInviteScenarioPicker() {

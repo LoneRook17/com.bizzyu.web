@@ -1,15 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
-import { AlertTriangle, CheckCircle2, Info, UserPlus } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Info, Loader2, UserPlus } from "lucide-react"
 
-import { createInvite } from "@/lib/team-invite/client"
+import { createInvite, lookupInviteContact } from "@/lib/team-invite/client"
 import { formatE164, formatUsPhone, isValidEmail, toE164 } from "@/lib/team-invite/phone"
 import { resolveInviteOutcome, type InviteOutcome } from "@/lib/team-invite/delivery"
+import { resolveLookupView, type InviteLookup, type LookupView } from "@/lib/team-invite/lookup"
 import {
   EmailFailedError,
   MultipleMatchesError,
+  ReactivationRequiredError,
   type ContactType,
   type InviteCandidate,
   type InviteDelivery,
@@ -81,6 +83,14 @@ export default function InviteDialog({
   const [error, setError] = useState("")
   const [candidates, setCandidates] = useState<InviteCandidate[] | null>(null)
   const [result, setResult] = useState<Result | null>(null)
+  // TI-3 directory lookup. `null` = not yet resolved (idle or in flight); the
+  // form defaults to the legacy view until then so nothing jumps under the
+  // owner's cursor. `checking` tracks the in-flight probe for the status line.
+  const [lookup, setLookup] = useState<InviteLookup | null>(null)
+  const [checking, setChecking] = useState(false)
+  // TI-F2: the removed-member confirm. Set when create returns
+  // REACTIVATION_REQUIRED; cleared on confirm or cancel.
+  const [reactivation, setReactivation] = useState<{ maskedName?: string; chosenUserId?: number } | null>(null)
 
   const reset = () => {
     setContactType(initial?.contactType ?? "phone")
@@ -92,6 +102,9 @@ export default function InviteDialog({
     setError("")
     setCandidates(null)
     setResult(null)
+    setLookup(null)
+    setChecking(false)
+    setReactivation(null)
   }
 
   const handleOpenChange = (next: boolean) => {
@@ -117,19 +130,70 @@ export default function InviteDialog({
   const contactValid =
     contactType === "phone" ? contactValue !== null : isValidEmail(email)
 
-  const submit = async (chosenUserId?: number) => {
+  // Debounced directory lookup. Fires only on a COMPLETE contact, cancels the
+  // prior probe on every keystroke, and never blocks the form: an aborted or
+  // failed probe simply leaves the legacy view in place. Skipped entirely while
+  // a picker / result / reactivation panel is up — the contact is settled then.
+  useEffect(() => {
+    if (!contactValid || !contactValue || candidates || result || reactivation) {
+      setChecking(false)
+      return
+    }
+    const controller = new AbortController()
+    const type = contactType
+    const value = contactValue
+    setChecking(true)
+    const t = setTimeout(async () => {
+      try {
+        const res = await lookupInviteContact({ type, value }, controller.signal)
+        if (!controller.signal.aborted) {
+          setLookup(res)
+          setChecking(false)
+        }
+      } catch {
+        // AbortError (superseded keystroke) or any failure: keep the legacy
+        // view. A lookup is advisory and must never strand the owner.
+        if (!controller.signal.aborted) setChecking(false)
+      }
+    }, 400)
+    return () => {
+      controller.abort()
+      clearTimeout(t)
+    }
+    // Re-probe whenever the resolved contact changes; the panel flags gate it.
+  }, [contactType, contactValue, contactValid, candidates, result, reactivation])
+
+  // The lookup view drives the name field and the submit label. Until a probe
+  // resolves, fall back to the legacy view so the form is fully usable and
+  // never jumps — exactly the pre-TI-3 behaviour.
+  const view: LookupView = resolveLookupView(lookup ?? { match: "legacy" })
+  const nameSatisfied = !view.nameRequired || name.trim().length > 0
+
+  const submit = async (opts?: { chosenUserId?: number; reactivate?: boolean }) => {
     if (!contactValid || !contactValue) return
+    // On `multiple` the owner disambiguates in the pre-invoked picker before any
+    // request goes out — no 409 round-trip. A chosen id means they already did.
+    if (view.kind === "multiple" && view.candidates && !opts?.chosenUserId) {
+      setCandidates(view.candidates)
+      return
+    }
+    // Only carry the owner-entered name when the field is actually shown (new /
+    // legacy). A resolved existing user already has an identity server-side.
+    const displayName = view.showNameField ? name.trim() || undefined : undefined
     setLoading(true)
     setError("")
     try {
       const created = await createInvite({
         role,
         contact: { type: contactType, value: contactValue },
-        name: name.trim() || undefined,
-        chosen_user_id: chosenUserId,
+        name: displayName,
+        display_name: displayName,
+        chosen_user_id: opts?.chosenUserId,
+        reactivate: opts?.reactivate,
         venue_id: venueId ? Number(venueId) : null,
       })
       setCandidates(null)
+      setReactivation(null)
       setResult({
         delivery: created.delivery,
         reason: created.delivery_reason ?? null,
@@ -139,6 +203,10 @@ export default function InviteDialog({
     } catch (err) {
       if (err instanceof MultipleMatchesError) {
         setCandidates(err.candidates)
+      } else if (err instanceof ReactivationRequiredError) {
+        // TI-F2: the contact is a removed member. Ask before reactivating —
+        // preserve any sibling pick so the confirm re-submits the same person.
+        setReactivation({ maskedName: err.masked_name, chosenUserId: opts?.chosenUserId })
       } else if (err instanceof EmailFailedError) {
         // The invite EXISTS — only the email failed. Land on the result panel
         // with the link rather than an error that implies nothing happened.
@@ -157,14 +225,16 @@ export default function InviteDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {result ? "Invite created" : candidates ? "Which one?" : "Invite team member"}
+            {result ? "Invite created" : reactivation ? "Re-invite this person?" : candidates ? "Which one?" : "Invite team member"}
           </DialogTitle>
           <DialogDescription>
             {outcome
               ? outcome.description
-              : candidates
-                ? "More than one account uses that contact."
-                : "They'll get a link to join your team. You send it."}
+              : reactivation
+                ? "They were removed from your team before."
+                : candidates
+                  ? "More than one account uses that contact."
+                  : "They'll get a link to join your team. You send it."}
           </DialogDescription>
         </DialogHeader>
 
@@ -177,13 +247,20 @@ export default function InviteDialog({
             businessName={businessName}
             onDone={() => handleOpenChange(false)}
           />
+        ) : reactivation ? (
+          <ReactivationPanel
+            maskedName={reactivation.maskedName}
+            loading={loading}
+            onBack={() => setReactivation(null)}
+            onConfirm={() => submit({ chosenUserId: reactivation.chosenUserId, reactivate: true })}
+          />
         ) : candidates ? (
           <CandidatePicker
             candidates={candidates}
             contactValue={contactType === "phone" ? formatUsPhone(phone) : email.trim()}
             loading={loading}
             onBack={() => setCandidates(null)}
-            onChoose={(id) => submit(id)}
+            onChoose={(id) => submit({ chosenUserId: id })}
           />
         ) : (
           <form
@@ -244,16 +321,40 @@ export default function InviteDialog({
               </div>
             )}
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="invite-name">Their name <span className="font-normal text-neutral-400">(optional)</span></Label>
-              <Input
-                id="invite-name"
-                autoComplete="off"
-                placeholder="So you can tell invites apart"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
+            {/* Directory-lookup status. `checking` shows while a probe is in
+                flight; a resolved non-legacy view shows the masked verdict. The
+                legacy view has no banner, so this whole block vanishes and the
+                form is byte-identical to pre-TI-3. */}
+            {contactValid && checking ? (
+              <div className="flex items-center gap-2 text-[13px] text-neutral-500 dark:text-neutral-400">
+                <Loader2 className="size-3.5 shrink-0 animate-spin" />
+                <span>Checking if they’re already on Bizzy…</span>
+              </div>
+            ) : contactValid && view.banner ? (
+              <LookupBanner tone={view.banner.tone} text={view.banner.text} />
+            ) : null}
+
+            {view.showNameField && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="invite-name">
+                  Their name{" "}
+                  <span className="font-normal text-neutral-400">
+                    {view.nameRequired ? "" : "(optional)"}
+                  </span>
+                </Label>
+                <Input
+                  id="invite-name"
+                  autoComplete="off"
+                  placeholder={
+                    view.nameRequired
+                      ? "So their row isn’t blank until they join"
+                      : "So you can tell invites apart"
+                  }
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-role">Role</Label>
@@ -288,14 +389,82 @@ export default function InviteDialog({
               <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading || !contactValid}>
-                <UserPlus /> {loading ? "Creating…" : "Create invite"}
+              <Button type="submit" disabled={loading || !contactValid || !nameSatisfied}>
+                <UserPlus /> {loading ? "Creating…" : view.submitLabel}
               </Button>
             </DialogFooter>
           </form>
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * The inline directory-lookup status line under the contact field. Compact by
+ * design — it is a live hint while the owner types, not a result panel. Copy and
+ * tone are decided in lib/team-invite/lookup.ts; this only paints them.
+ */
+function LookupBanner({ tone, text }: { tone: "success" | "info" | "warning"; text: string }) {
+  const chrome = {
+    success: {
+      icon: <CheckCircle2 className="size-4 shrink-0 text-green-600 dark:text-green-500" />,
+      className: "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40 text-green-800 dark:text-green-300",
+    },
+    info: {
+      icon: <Info className="size-4 shrink-0 text-blue-600 dark:text-blue-500" />,
+      className: "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300",
+    },
+    warning: {
+      icon: <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-500" />,
+      className: "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300",
+    },
+  }[tone]
+
+  return (
+    <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[13px] ${chrome.className}`}>
+      {chrome.icon}
+      <span>{text}</span>
+    </div>
+  )
+}
+
+/**
+ * TI-F2 confirm: the contact resolves to a member the business previously
+ * removed. Bizzy will NOT silently reactivate them — the owner says so
+ * explicitly. Masked name if the server sent one, generic sentence otherwise.
+ */
+function ReactivationPanel({
+  maskedName, loading, onBack, onConfirm,
+}: {
+  maskedName?: string
+  loading: boolean
+  onBack: () => void
+  onConfirm: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 dark:border-amber-900 dark:bg-amber-950/40">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-500" />
+        <div>
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-300">
+            {maskedName ? `${maskedName} was removed from your team.` : "This person was removed from your team."}
+          </p>
+          <p className="mt-0.5 text-[13px] text-amber-800 dark:text-amber-400/90">
+            Re-inviting them restores their access once they accept. Only they can accept.
+          </p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={onBack} disabled={loading}>
+          Back
+        </Button>
+        <Button type="button" onClick={onConfirm} disabled={loading}>
+          {loading ? "Re-inviting…" : "Re-invite them"}
+        </Button>
+      </DialogFooter>
+    </div>
   )
 }
 

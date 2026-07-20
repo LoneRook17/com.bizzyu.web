@@ -293,6 +293,19 @@ export interface TeamMember {
   /** Explicit — NOT inferred from is_active, which legacy rows use for
    *  deactivated-but-real memberships (the ghost-invite lesson). */
   invite_revoked_at?: string | null
+  // ── TI-3 never-blank fields. OPTIONAL — grandfather guarantee holds: a
+  // legacy row lacks both and falls back to its `email` exactly as before.
+  /**
+   * The provisional name the owner entered for a new-to-Bizzy invitee, or the
+   * invitee's real name once they accept. The primary text a row shows when
+   * present. See lib/team-invite/display.ts.
+   */
+  display_name?: string | null
+  /**
+   * Masked contact for a phone-only provisional row with no name yet — so the
+   * row is recognisable without leaking the number back to the dashboard.
+   */
+  invited_contact_masked?: string | null
 }
 
 // Analytics types
