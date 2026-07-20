@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { apiClient } from "./api-client"
 import { useAuth } from "./auth-context"
+import { resolveInitialVenueSelection } from "./venue-selection"
 import type { Venue } from "./types"
 
 const VENUE_STORAGE_KEY = "bizzy_selected_venue_id"
@@ -56,37 +57,20 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
 
       setVenues(active)
 
-      // If venue-restricted, always lock to that venue
-      if (userVenueId !== null) {
-        setSelectedVenueId(userVenueId)
-        localStorage.setItem(VENUE_STORAGE_KEY, String(userVenueId))
-      } else {
-        // Restore persisted selection: URL param > localStorage > first venue
-        const urlParams = new URLSearchParams(window.location.search)
-        const urlVenueId = urlParams.get("venue_id")
-
-        if (urlVenueId === "all") {
-          setSelectedVenueId("all")
-          localStorage.setItem(VENUE_STORAGE_KEY, "all")
-        } else if (urlVenueId && active.some((v) => v.id === Number(urlVenueId))) {
-          const id = Number(urlVenueId)
-          setSelectedVenueId(id)
-          localStorage.setItem(VENUE_STORAGE_KEY, String(id))
-        } else {
-          const stored = localStorage.getItem(VENUE_STORAGE_KEY)
-          if (stored === "all") {
-            setSelectedVenueId("all")
-          } else if (stored) {
-            const id = parseInt(stored, 10)
-            if (active.some((v) => v.id === id)) {
-              setSelectedVenueId(id)
-            } else {
-              setSelectedVenueId(active[0]?.id ?? null)
-            }
-          } else {
-            setSelectedVenueId(active[0]?.id ?? null)
-          }
-        }
+      // Resolve the initial selection:
+      //  - Venue-restricted members are hard-locked to their assigned venue.
+      //  - Global (unrestricted) members default to "All venues" — never a silent
+      //    single-venue filter — but an explicit URL/localStorage choice wins.
+      const urlParams = new URLSearchParams(window.location.search)
+      const selection = resolveInitialVenueSelection({
+        userVenueId,
+        activeVenueIds: active.map((v) => v.id),
+        urlVenueId: urlParams.get("venue_id"),
+        storedVenueId: localStorage.getItem(VENUE_STORAGE_KEY),
+      })
+      setSelectedVenueId(selection)
+      if (selection !== null) {
+        localStorage.setItem(VENUE_STORAGE_KEY, String(selection))
       }
 
       // Check if first-time wizard should show:
