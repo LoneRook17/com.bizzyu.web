@@ -49,12 +49,12 @@ test("email-keyed pending row: email shown, provisional until accept", () => {
 })
 
 test("phone-only provisional row (no name, no email): masked contact + provisional — the TI-F1 blank-row fix", () => {
-  const d = memberDisplay(member({ email: "", invited_contact_masked: "(•••) •••-1720" }))
+  const d = memberDisplay(member({ email: "", masked_phone: "(•••) •••-1720" }))
   assert.deepEqual(d, { name: "(•••) •••-1720", isProvisional: true })
 })
 
 test("nothing to show: floors to a non-empty label — a row is NEVER blank", () => {
-  const d = memberDisplay(member({ email: "", display_name: null, invited_contact_masked: null }))
+  const d = memberDisplay(member({ email: "", display_name: null, masked_phone: null }))
   assert.ok(d.name.trim().length > 0)
   assert.equal(d.isProvisional, true)
 })
@@ -65,7 +65,7 @@ test("owner with no accepted_at is never provisional (owner rows are grandfather
 })
 
 test("whitespace-only fields fall through instead of showing blanks", () => {
-  const d = memberDisplay(member({ display_name: "   ", email: "  ", invited_contact_masked: "(•••) •••-9999" }))
+  const d = memberDisplay(member({ display_name: "   ", email: "  ", masked_phone: "(•••) •••-9999" }))
   assert.equal(d.name, "(•••) •••-9999")
 })
 
@@ -73,8 +73,8 @@ test("memberInitial: always a single upper letter or '?', never empty — across
   const cases: Partial<TeamMember>[] = [
     { display_name: "jane" },
     { email: "staff@x.com" },
-    { email: "", invited_contact_masked: "(•••) •••-1720" }, // digit initial
-    { email: "", display_name: null, invited_contact_masked: null }, // floor
+    { email: "", masked_phone: "(•••) •••-1720" }, // digit initial
+    { email: "", display_name: null, masked_phone: null }, // floor
   ]
   for (const c of cases) {
     const i = memberInitial(member(c))

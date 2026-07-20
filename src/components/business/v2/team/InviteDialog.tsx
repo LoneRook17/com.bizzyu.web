@@ -89,7 +89,7 @@ export default function InviteDialog({
   const [lookup, setLookup] = useState<InviteLookup | null>(null)
   const [checking, setChecking] = useState(false)
   // TI-F2: the removed-member confirm. Set when create returns
-  // REACTIVATION_REQUIRED; cleared on confirm or cancel.
+  // 409 PREVIOUSLY_REMOVED; cleared on confirm or cancel.
   const [reactivation, setReactivation] = useState<{ maskedName?: string; chosenUserId?: number } | null>(null)
 
   const reset = () => {

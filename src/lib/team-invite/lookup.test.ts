@@ -11,16 +11,25 @@ import { parseLookup, resolveLookupView, type InviteLookup } from "./lookup.ts"
 
 // ── parseLookup: tolerant read of an arbitrary 200 body ────────────────────
 
-test("parseLookup: `one` keeps the server's masked name", () => {
-  const r = parseLookup({ match: "one", masked_name: "J••• D••" })
+test("parseLookup: `one` keeps the server's masked name (nested under `candidate`, TI-3s shape)", () => {
+  const r = parseLookup({ match: "one", candidate: { masked_name: "J••• D••" } })
   assert.deepEqual(r, { match: "one", masked_name: "J••• D••" })
 })
 
 test("parseLookup: `one` with no usable masked name degrades to a generic label — never blank, never a real name", () => {
-  for (const body of [{ match: "one" }, { match: "one", masked_name: "" }, { match: "one", masked_name: "   " }]) {
+  // covers: no candidate, empty candidate, blank name, and the OLD top-level
+  // shape (which no longer carries a name — must not leak, must not blank).
+  for (const body of [
+    { match: "one" },
+    { match: "one", candidate: {} },
+    { match: "one", candidate: { masked_name: "" } },
+    { match: "one", candidate: { masked_name: "   " } },
+    { match: "one", masked_name: "should-be-ignored-top-level" },
+  ]) {
     const r = parseLookup(body)
     assert.equal(r.match, "one")
     assert.ok(r.match === "one" && r.masked_name.trim().length > 0)
+    assert.ok(r.match === "one" && !r.masked_name.includes("top-level"))
   }
 })
 
@@ -53,7 +62,7 @@ test("parseLookup: unknown/garbage/empty bodies default to `none` — the safe a
 })
 
 test("parseLookup never synthesises `legacy` — that is the transport's call on a 404", () => {
-  for (const body of [{ match: "none" }, { match: "one", masked_name: "x" }, {}, null]) {
+  for (const body of [{ match: "none" }, { match: "one", candidate: { masked_name: "x" } }, {}, null]) {
     assert.notEqual(parseLookup(body).match, "legacy")
   }
 })

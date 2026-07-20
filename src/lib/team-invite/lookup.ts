@@ -1,12 +1,16 @@
 // The invite-time DIRECTORY LOOKUP contract — TI-3 (services `TI-3s`, parallel).
 //
-// THE CONTRACT FILE for TI-3w. TI-3s is not merged yet, so this is the
-// written-down version of what the dialog codes against, built to the pinned
-// draft (V426_FASTFOLLOW.md §TI-3, prompt "TI-3w"):
+// THE CONTRACT FILE for TI-3w. Reconciled against TI-3s as-built (services
+// `feat/invite-directory-lookup`, live on dev as `bizzy-dev-apiv2:180`,
+// V426_BUILD_LOG.md §TI-3s / §TW-SERVICES). The `POST /business/team/lookup`
+// contract the dialog codes against:
 //
 //   lookup(contact) → { match: 'none' }
-//                   | { match: 'one', masked_name }
-//                   | { match: 'multiple', candidates: [masked …] }
+//                   | { match: 'one', candidate: { masked_name } }
+//                   | { match: 'multiple', candidates: [{ id, masked_name, masked_contact } …] }
+//
+// NOTE the `one` shape: the masked name is nested under `candidate` (parity with
+// the `multiple` rows), NOT top-level — TI-3s reconcile, corrected here.
 //
 // The whole point is anti-enumeration: the owner types a number they already
 // have, and Bizzy answers only "is there an account, and what does its masked
@@ -68,14 +72,19 @@ export function parseLookup(body: unknown): InviteLookup {
   const raw = (body ?? {}) as Record<string, unknown>
 
   switch (raw.match) {
-    case 'one':
+    case 'one': {
+      // TI-3s nests the single match under `candidate` (mirrors `multiple`'s
+      // rows), carrying only `masked_name` — no id/contact, since the caller
+      // already typed the contact and there is nothing to disambiguate.
+      const candidate = (raw.candidate ?? {}) as Record<string, unknown>
       return {
         match: 'one',
         masked_name:
-          typeof raw.masked_name === 'string' && raw.masked_name.trim()
-            ? raw.masked_name
+          typeof candidate.masked_name === 'string' && candidate.masked_name.trim()
+            ? candidate.masked_name
             : GENERIC_MASKED_NAME,
       }
+    }
     case 'multiple': {
       const candidates = Array.isArray(raw.candidates)
         ? raw.candidates.filter(isCandidate)

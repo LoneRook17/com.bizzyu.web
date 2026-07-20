@@ -51,7 +51,7 @@ export function memberDisplay(member: TeamMember): MemberDisplay {
   const email = clean(member.email)
   if (email) return { name: email, isProvisional: !accepted }
 
-  const masked = clean(member.invited_contact_masked)
+  const masked = clean(member.masked_phone)
   if (masked) return { name: masked, isProvisional: true }
 
   return { name: FLOOR, isProvisional: true }

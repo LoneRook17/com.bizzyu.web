@@ -163,7 +163,13 @@ export async function mockCreateInvite(args: InviteArgs): Promise<InviteCreated>
   // TI-F2: re-inviting a removed member needs an explicit confirm. The mock
   // raises it once; the reactivate:true re-submit sails through as sms_sent.
   if (scenario === 'reactivation_required' && !args.reactivate) {
-    throw new ReactivationRequiredError('J••• D••')
+    throw new ReactivationRequiredError({
+      member_id: 8705,
+      masked_name: 'J••• D••',
+      masked_contact: '(•••) •••-1720',
+      role: 'staff',
+      removed_at: '2026-07-19 12:05:00',
+    })
   }
 
   // TI-3 lookup arms resolve to honest deliveries on submit.

@@ -57,12 +57,12 @@ export async function createInvite(args: InviteArgs): Promise<InviteCreated> {
   }
   // TI-3 / TI-F2: the contact resolves to a member the owner previously
   // removed. The server refuses to silently reactivate — the dialog renders an
-  // explicit confirm and re-submits with reactivate:true. Legacy services never
-  // send this code, so this branch is inert until TI-3s ships.
-  if (res.status === 409 && data?.code === 'REACTIVATION_REQUIRED') {
-    throw new ReactivationRequiredError(
-      typeof data.masked_name === 'string' ? data.masked_name : undefined
-    )
+  // explicit confirm and re-submits with reactivate:true. TI-3s ships this as
+  // `409 { code:'PREVIOUSLY_REMOVED', member:{ member_id, masked_name,
+  // masked_contact, role, removed_at } }` (masked context only). Legacy services
+  // never send this code, so this branch is inert against them.
+  if (res.status === 409 && data?.code === 'PREVIOUSLY_REMOVED') {
+    throw new ReactivationRequiredError(data?.member ?? undefined)
   }
   // EMAIL_FAILED is an error status by contract (201 means it really sent), but
   // it is a soft failure: the invite EXISTS and the link works. Status-agnostic
@@ -110,13 +110,17 @@ export async function validateInvite(token: string): Promise<InviteValidation> {
  * Anti-enumeration directory lookup (TI-3). Probes a contact the owner already
  * has and returns only a masked verdict — never a real name or number.
  *
- * Graceful legacy degrade is the whole contract: deployed services have no
- * lookup endpoint, so a 404 — or any failed/errored probe — resolves to
- * `{ match: 'legacy' }`, which the dialog treats as the pre-TI-3 form. A probe
- * is a nicety, never a gate: it must never be able to block an invite. The only
- * exception is an abort (the debounce cancelling a stale keystroke), which is
- * re-thrown so the caller can drop the result silently rather than mistaking a
- * cancellation for a legacy server.
+ * Graceful legacy degrade is the whole contract: a services build without the
+ * lookup endpoint answers 404 — and that, or any failed/errored probe (401 no
+ * session, 429 rate-limited, network), resolves to `{ match: 'legacy' }`, which
+ * the dialog treats as the pre-TI-3 form. A probe is a nicety, never a gate: it
+ * must never be able to block an invite. The only exception is an abort (the
+ * debounce cancelling a stale keystroke), which is re-thrown so the caller can
+ * drop the result silently rather than mistaking a cancellation for legacy.
+ *
+ * TI-3s: `POST /business/team/lookup`, body `{ contact:{ type, value } }`. POST
+ * (not GET) is load-bearing — the phone/email must never land in an access log
+ * or referer. The route sets `Cache-Control: no-store`; we mirror it here.
  */
 export async function lookupInviteContact(
   contact: InviteContact,
@@ -127,11 +131,15 @@ export async function lookupInviteContact(
     return mockLookupInviteContact()
   }
   try {
-    const res = await fetch(
-      `${API_URL}/business/team/invite/lookup?type=${contact.type}&value=${encodeURIComponent(contact.value)}`,
-      { credentials: 'include', cache: 'no-store', signal }
-    )
-    // Endpoint absent (deployed-today) → legacy. Any non-OK is treated the
+    const res = await fetch(`${API_URL}/business/team/lookup`, {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact }),
+      signal,
+    })
+    // Endpoint absent (legacy services) → legacy. Any non-OK is treated the
     // same: a lookup is advisory, and degrading to the unchanged form is always
     // safe. It never claims an account exists on a failure.
     if (!res.ok) return { match: 'legacy' }
