@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/support/auth.test.ts src/lib/lineskip-pi/element-binding.test.ts src/lib/business/deal-stats.test.ts src/lib/business/payouts.test.ts src/lib/business/payouts-reconcile.test.ts src/lib/business/venue-selection.test.ts src/lib/team-invite/delivery.test.ts src/lib/team-invite/lookup.test.ts src/lib/team-invite/display.test.ts src/lib/lineskip/availability.test.ts src/lib/lineskip/checkout-modal.test.ts src/lib/business/venue-campus.test.ts"
+    "test": "node --test src/lib/support/auth.test.ts src/lib/lineskip-pi/element-binding.test.ts src/lib/business/deal-stats.test.ts src/lib/business/payouts.test.ts src/lib/business/payouts-reconcile.test.ts src/lib/business/venue-selection.test.ts src/lib/team-invite/delivery.test.ts src/lib/team-invite/lookup.test.ts src/lib/team-invite/display.test.ts src/lib/lineskip/availability.test.ts src/lib/lineskip/checkout-modal.test.ts src/lib/business/venue-campus.test.ts src/lib/business/team-venues.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

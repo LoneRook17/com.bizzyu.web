@@ -5,6 +5,7 @@ import { apiClient } from "./api-client"
 import { useAuth } from "./auth-context"
 import { resolveInitialVenueSelection } from "./venue-selection"
 import type { Venue } from "./types"
+import { userVenueIds, resolveSwitcherScope, initialSetSelection } from "./team-venues"
 
 const VENUE_STORAGE_KEY = "bizzy_selected_venue_id"
 const WIZARD_DISMISSED_KEY = "bizzy_venue_wizard_dismissed"
@@ -49,28 +50,43 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
       const data = await apiClient.get<{ venues: Venue[] }>("/business/venues")
       let active = data.venues.filter((v) => v.is_active)
 
-      // If user is assigned to a specific venue (not Global), restrict to only that venue
-      const userVenueId = user?.venue_id ?? null
-      if (userVenueId !== null) {
-        active = active.filter((v) => v.id === userVenueId)
-      }
+      // TM-B2 (#15): a member may be scoped to a SET of venues. Reconcile the
+      // caller's effective set (venue_ids ?? scalar venue_id) against the active
+      // list. mode "global" ⇒ unchanged; "single" ⇒ today's hard lock byte-for-
+      // byte; "set" (>1) ⇒ restrict to the set with an "all-of-mine" default.
+      const myVenueIds = userVenueIds(user)
+      const scope = resolveSwitcherScope(myVenueIds, active)
+      active = scope.venues
 
       setVenues(active)
 
-      // Resolve the initial selection:
-      //  - Venue-restricted members are hard-locked to their assigned venue.
-      //  - Global (unrestricted) members default to "All venues" — never a silent
-      //    single-venue filter — but an explicit URL/localStorage choice wins.
+      // Resolve the initial selection per scope mode:
+      //  - "set" (>1 venues): the TM-B2 addition — switchable across the set with
+      //    an all-of-mine default (initialSetSelection).
+      //  - "single" / "global": defer to dev's scalar resolver, which is unchanged
+      //    here. lockedVenueId is the one id in "single" (hard lock) and null in
+      //    "global" (where the resolver defaults to "all" — so venue-scoped fetches
+      //    like Payouts are never silently single-venue filtered).
       const urlParams = new URLSearchParams(window.location.search)
-      const selection = resolveInitialVenueSelection({
-        userVenueId,
-        activeVenueIds: active.map((v) => v.id),
-        urlVenueId: urlParams.get("venue_id"),
-        storedVenueId: localStorage.getItem(VENUE_STORAGE_KEY),
-      })
-      setSelectedVenueId(selection)
-      if (selection !== null) {
-        localStorage.setItem(VENUE_STORAGE_KEY, String(selection))
+      if (scope.mode === "set") {
+        const initial = initialSetSelection(
+          myVenueIds,
+          urlParams.get("venue_id"),
+          localStorage.getItem(VENUE_STORAGE_KEY),
+        )
+        setSelectedVenueId(initial)
+        localStorage.setItem(VENUE_STORAGE_KEY, String(initial))
+      } else {
+        const selection = resolveInitialVenueSelection({
+          userVenueId: scope.lockedVenueId,
+          activeVenueIds: active.map((v) => v.id),
+          urlVenueId: urlParams.get("venue_id"),
+          storedVenueId: localStorage.getItem(VENUE_STORAGE_KEY),
+        })
+        setSelectedVenueId(selection)
+        if (selection !== null) {
+          localStorage.setItem(VENUE_STORAGE_KEY, String(selection))
+        }
       }
 
       // Check if first-time wizard should show:
