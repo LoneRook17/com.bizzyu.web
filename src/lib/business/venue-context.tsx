@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { apiClient } from "./api-client"
 import { useAuth } from "./auth-context"
 import type { Venue } from "./types"
+import { userVenueIds, resolveSwitcherScope, initialSetSelection } from "./team-venues"
 
 const VENUE_STORAGE_KEY = "bizzy_selected_venue_id"
 const WIZARD_DISMISSED_KEY = "bizzy_venue_wizard_dismissed"
@@ -48,20 +49,30 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
       const data = await apiClient.get<{ venues: Venue[] }>("/business/venues")
       let active = data.venues.filter((v) => v.is_active)
 
-      // If user is assigned to a specific venue (not Global), restrict to only that venue
-      const userVenueId = user?.venue_id ?? null
-      if (userVenueId !== null) {
-        active = active.filter((v) => v.id === userVenueId)
-      }
+      // TM-B2 (#15): a member may be scoped to a SET of venues. Reconcile the
+      // caller's effective set (venue_ids ?? scalar venue_id) against the active
+      // list. mode "global" ⇒ unchanged; "single" ⇒ today's hard lock byte-for-
+      // byte; "set" (>1) ⇒ restrict to the set with an "all-of-mine" default.
+      const myVenueIds = userVenueIds(user)
+      const scope = resolveSwitcherScope(myVenueIds, active)
+      active = scope.venues
 
       setVenues(active)
 
-      // If venue-restricted, always lock to that venue
-      if (userVenueId !== null) {
-        setSelectedVenueId(userVenueId)
-        localStorage.setItem(VENUE_STORAGE_KEY, String(userVenueId))
+      if (scope.mode === "single") {
+        // Venue-restricted to exactly one: always lock to that venue.
+        setSelectedVenueId(scope.lockedVenueId!)
+        localStorage.setItem(VENUE_STORAGE_KEY, String(scope.lockedVenueId))
+      } else if (scope.mode === "set") {
+        // Scoped to a subset (>1): switchable across the set, default all-of-mine.
+        const urlParams = new URLSearchParams(window.location.search)
+        const urlVenueId = urlParams.get("venue_id")
+        const stored = localStorage.getItem(VENUE_STORAGE_KEY)
+        const initial = initialSetSelection(myVenueIds, urlVenueId, stored)
+        setSelectedVenueId(initial)
+        localStorage.setItem(VENUE_STORAGE_KEY, String(initial))
       } else {
-        // Restore persisted selection: URL param > localStorage > first venue
+        // Global — restore persisted selection: URL param > localStorage > first venue
         const urlParams = new URLSearchParams(window.location.search)
         const urlVenueId = urlParams.get("venue_id")
 

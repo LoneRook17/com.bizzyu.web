@@ -4,6 +4,10 @@ export interface BusinessUser {
   full_name: string
   business_role: 'owner' | 'manager' | 'staff' | 'promoter'
   venue_id: number | null
+  // TM-B2 (#15) venue-SET: the caller's own venue set when they're scoped to
+  // more than one. Optional/additive — absent on legacy /me deploys, where the
+  // scalar venue_id above still governs the switcher lock byte-identically.
+  venue_ids?: number[] | null
 }
 
 export type DashboardMode = 'deals' | 'events' | 'hybrid'
@@ -282,6 +286,10 @@ export interface TeamMember {
   created_at: string
   venue_id: number | null
   venue_name: string | null
+  // TM-B2 (#15) venue-SET: assigned venues as a pivot set. EMPTY or ABSENT ⇒
+  // legacy — fall back to the scalar venue_id/venue_name above (venue_id null =
+  // global). See lib/business/team-venues.ts for the reconciliation.
+  venues?: { venue_id: number; name: string }[] | null
 }
 
 // Analytics types

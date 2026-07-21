@@ -1,12 +1,15 @@
 "use client"
 
+import { Globe, MapPin } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ROLE_LABELS } from "@/lib/business/constants"
 import type { TeamMember, Venue } from "@/lib/business/types"
+import { memberVenueIds, venueScopeLabel } from "@/lib/business/team-venues"
 import { Avatar, AvatarFallback } from "@/components/business/v2/ui/avatar"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Select } from "@/components/business/v2/ui/input"
+import VenueMultiSelect from "./VenueMultiSelect"
 
 interface TeamMemberRowProps {
   member: TeamMember
@@ -14,7 +17,8 @@ interface TeamMemberRowProps {
   venues: Venue[]
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
-  onVenueChange: (memberId: number, venueId: number | null) => void
+  /** TM-B2 (#15): set-aware venue assignment. `[]` = clear to global. */
+  onVenuesChange: (memberId: number, venueIds: number[]) => void
   onResend?: (member: TeamMember) => void
 }
 
@@ -32,10 +36,11 @@ function initials(s: string) {
 }
 
 export default function TeamMemberRow({
-  member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange, onResend,
+  member, currentUserRole, venues, onRemove, onRoleChange, onVenuesChange, onResend,
 }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
+  const scopeIds = memberVenueIds(member)
   const isPending = !member.invite_accepted_at && !isOwnerMember
   const isExpired = isPending && !!member.invite_expires_at && new Date(member.invite_expires_at) < new Date()
 
@@ -60,26 +65,27 @@ export default function TeamMemberRow({
             {isExpired && <Badge size="sm" variant="danger">Invite expired</Badge>}
             <span className="text-xs text-neutral-400 dark:text-neutral-500">{joinedDate}</span>
           </div>
+          {/* TM-B2 (#15): set-aware venue scope — "Global" / "1 venue: X" / "N venues: X, Y" */}
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+            {scopeIds.length === 0 ? (
+              <Globe className="size-3 text-neutral-400 dark:text-neutral-500" />
+            ) : (
+              <MapPin className="size-3 text-neutral-400 dark:text-neutral-500" />
+            )}
+            <span className="truncate">{venueScopeLabel(member, venues)}</span>
+          </p>
         </div>
       </div>
 
       {/* Actions - owner only, non-owner members */}
       {isOwnerViewing && !isOwnerMember && (
         <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:pl-0">
-          <Select
-            value={member.venue_id ?? ""}
-            onChange={(e) => {
-              const val = e.target.value
-              onVenueChange(member.id, val === "" ? null : Number(val))
-            }}
-            title="Venue assignment"
-            className="h-8 min-w-0 flex-1 px-2 text-xs sm:w-[140px] sm:flex-none"
-          >
-            <option value="">Global</option>
-            {venues.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </Select>
+          <VenueMultiSelect
+            member={member}
+            venues={venues}
+            value={scopeIds}
+            onCommit={(venueIds) => onVenuesChange(member.id, venueIds)}
+          />
 
           <Select
             value={member.role}

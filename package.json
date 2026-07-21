@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/support/auth.test.ts src/lib/business/email-change.test.ts src/lib/business/verify-email-copy.test.ts src/lib/business/venue-campus.test.ts"
+    "test": "node --test src/lib/support/auth.test.ts src/lib/business/email-change.test.ts src/lib/business/verify-email-copy.test.ts src/lib/business/venue-campus.test.ts src/lib/business/team-venues.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
