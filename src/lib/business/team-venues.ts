@@ -157,3 +157,141 @@ export function initialSetSelection(
   if (fromStored != null) return fromStored
   return "all"
 }
+
+// ── TM-B3 (#15b) — editor-scoped venue assignment (managers + invite) ────────
+//
+// The team-edit UI and the invite dialog both restrict WHICH venues a given
+// EDITOR may assign, and MUST preserve venues the editor can't see:
+//
+//   • owner / GLOBAL manager (own set empty) → unrestricted: every venue is
+//     selectable and "All venues (global)" is offered.
+//   • SCOPED manager (own set non-empty)     → may only toggle their OWN venues;
+//     "All venues (global)" is hidden; a member's venues OUTSIDE the manager's
+//     set are LOCKED — shown, always preserved on save, never removable.
+//   • staff / promoter                       → cannot edit venue scope.
+//
+// The server is the authority (a disallowed assignment returns 403
+// VENUE_SCOPE_FORBIDDEN, see {@link isVenueScopeForbidden}); this only shapes
+// the options so the UI never OFFERS an edit that would silently strip access
+// the editor can't see, and so the locked ids ride along in every PUT.
+
+/** The editing user, reduced to what venue-scope decisions need. */
+export interface EditorScope {
+  /** The editing user's business role. */
+  role: string
+  /** The editing user's own effective venue ids ({@link userVenueIds}). [] = global. */
+  venueIds: number[]
+}
+
+/** What an editor may do to one member's venue scope. */
+export interface VenueEditorModel {
+  /** Venues the editor may toggle on/off. */
+  selectableVenues: NamedVenue[]
+  /** Whether "All venues (global)" is offered (empty set = global). */
+  allowGlobal: boolean
+  /** The member's currently-assigned ids OUTSIDE the editor's scope — rendered as
+   *  locked chips, ALWAYS preserved in the committed set, never removable. */
+  lockedVenueIds: number[]
+  /** Whether this editor may edit venue scope at all. */
+  canEdit: boolean
+}
+
+/** True when the editor is a manager confined to a venue subset (not owner, not global). */
+export function isScopedEditor(scope: EditorScope): boolean {
+  return scope.role === "manager" && scope.venueIds.length > 0
+}
+
+/**
+ * What `scope` may do to a member currently assigned `currentMemberIds`, over the
+ * business `allVenues`. See the doctrine comment above.
+ */
+export function venueEditorModel(
+  scope: EditorScope,
+  currentMemberIds: number[],
+  allVenues: NamedVenue[],
+): VenueEditorModel {
+  const canEdit = scope.role === "owner" || scope.role === "manager"
+  // Owner or GLOBAL manager: unrestricted — full list, global offered, nothing locked.
+  if (scope.role === "owner" || scope.venueIds.length === 0) {
+    return { selectableVenues: allVenues, allowGlobal: true, lockedVenueIds: [], canEdit }
+  }
+  // SCOPED manager: own venues only, global hidden, out-of-scope venues preserved.
+  const own = new Set(scope.venueIds)
+  return {
+    selectableVenues: allVenues.filter((v) => own.has(v.id)),
+    allowGlobal: false,
+    lockedVenueIds: currentMemberIds.filter((id) => !own.has(id)),
+    canEdit,
+  }
+}
+
+/**
+ * The full venue_ids to PUT for an edit: the editor's selectable choices unioned
+ * with the preserved (locked) out-of-scope ids, deduped + sorted. For an
+ * unrestricted editor `lockedVenueIds` is empty, so this is just the selection —
+ * which MAY be empty ⇒ clear-to-global. A scoped editor's result is empty only
+ * when the member had no venues to begin with (guarded by minimum-one at the UI).
+ */
+export function editorCommitVenueIds(model: VenueEditorModel, selectedIds: number[]): number[] {
+  return memberVenuesPayload([...model.lockedVenueIds, ...selectedIds]).venue_ids
+}
+
+/**
+ * The invite dialog's initial venue selection for a given editor:
+ *   • owner / global manager → [] (defaults to "All venues (global)").
+ *   • scoped manager         → all of their own venues (satisfies minimum-one;
+ *     they can pare it down but never to empty/global).
+ */
+export function inviteDefaultVenueIds(scope: EditorScope): number[] {
+  if (scope.role === "owner" || scope.venueIds.length === 0) return []
+  return [...scope.venueIds].sort((a, b) => a - b)
+}
+
+/**
+ * The venue portion of an invite body. Emits the new `venue_ids` array AND a
+ * back-compat scalar `venue_id` mirror (single → that id, else null) so an older
+ * services deploy that reads only `venue_id` still scopes single/global invites
+ * exactly as before ("omitted ⇒ today's behavior"). A multi-venue set degrades
+ * to global on such a deploy — sets simply aren't expressible there.
+ */
+export function inviteVenuePayload(venueIds: number[]): { venue_ids: number[]; venue_id: number | null } {
+  const ids = memberVenuesPayload(venueIds).venue_ids
+  return { venue_ids: ids, venue_id: ids.length === 1 ? ids[0] : null }
+}
+
+/** Trigger/summary label for a raw id list (the invite dialog has no member row). */
+export function venueIdsLabel(ids: number[], allVenues: NamedVenue[] = []): string {
+  if (ids.length === 0) return "All venues (global)"
+  const names = ids.map((id) => allVenues.find((v) => v.id === id)?.name ?? `Venue #${id}`)
+  if (ids.length === 1) return names[0]
+  return `${ids.length} venues: ${names.join(", ")}`
+}
+
+/** Resolve locked (out-of-scope) ids to `{id,name}` chips, preferring the member's own set for names. */
+export function lockedVenueChips(
+  lockedIds: number[],
+  member: MemberVenueScope,
+  allVenues: NamedVenue[] = [],
+): { id: number; name: string }[] {
+  return lockedIds.map((id) => ({ id, name: venueName(id, member, allVenues) }))
+}
+
+/**
+ * Detect the services 403 VENUE_SCOPE_FORBIDDEN so the team UI can surface a
+ * clean inline error with no state corruption. Tolerant of where the code lands
+ * (a `code`/`error` field or embedded in the message) since the exact Boom shape
+ * is pinned with the services half — reconcile the precise field with TM-B3s.
+ */
+export function isVenueScopeForbidden(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false
+  const e = err as { status?: number; body?: { code?: unknown; error?: unknown }; message?: unknown }
+  const code = typeof e.body?.code === "string" ? e.body.code : ""
+  const bodyErr = typeof e.body?.error === "string" ? e.body.error : ""
+  const msg = typeof e.message === "string" ? e.message : ""
+  return (
+    e.status === 403 &&
+    (code === "VENUE_SCOPE_FORBIDDEN" ||
+      bodyErr === "VENUE_SCOPE_FORBIDDEN" ||
+      /VENUE_SCOPE_FORBIDDEN/.test(msg))
+  )
+}

@@ -1,9 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CheckCircle2, UserPlus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { Venue } from "@/lib/business/types"
+import {
+  inviteDefaultVenueIds, inviteVenuePayload, venueEditorModel, venueIdsLabel,
+  type EditorScope,
+} from "@/lib/business/team-venues"
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from "@/components/business/v2/ui/dialog"
@@ -11,11 +15,15 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Label } from "@/components/business/v2/ui/label"
 import { Select } from "@/components/business/v2/ui/input"
 import UserSearchInput from "./UserSearchInput"
+import VenueMultiSelect from "./VenueMultiSelect"
 
 interface InviteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onInvited: () => void
+  /** TM-B3 (#15b): the inviter's own scope — a scoped manager may only invite
+   *  into their own venues (global option hidden, minimum one enforced). */
+  editorScope: EditorScope
   venues: Venue[]
 }
 
@@ -25,19 +33,31 @@ const INVITABLE_ROLES = [
 ] as const
 
 export default function InviteDialog({
-  open, onOpenChange, onInvited, venues,
+  open, onOpenChange, onInvited, editorScope, venues,
 }: InviteDialogProps) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("staff")
-  const [venueId, setVenueId] = useState<string>("") // "" = global (null)
+  // TM-B3 (#15b): venue-SET selection. Default depends on the inviter's scope.
+  const [venueIds, setVenueIds] = useState<number[]>(() => inviteDefaultVenueIds(editorScope))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
 
+  // The invite has no existing member, so nothing is ever "locked" here — the
+  // editor model only shapes which venues are selectable + whether global shows.
+  const editor = venueEditorModel(editorScope, [], venues)
+
+  // Re-seed the default whenever the dialog opens or the inviter's scope resolves
+  // (auth can load after mount) so a scoped manager never starts at empty/global.
+  useEffect(() => {
+    if (open) setVenueIds(inviteDefaultVenueIds(editorScope))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editorScope.role, editorScope.venueIds.join(",")])
+
   const reset = () => {
     setEmail("")
     setRole("staff")
-    setVenueId("")
+    setVenueIds(inviteDefaultVenueIds(editorScope))
     setError("")
     setSuccess(false)
   }
@@ -47,9 +67,12 @@ export default function InviteDialog({
     onOpenChange(next)
   }
 
+  // Scoped managers must pick at least one venue (no global fallback).
+  const missingVenue = !editor.allowGlobal && venueIds.length === 0
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
+    if (!email || missingVenue) return
 
     setLoading(true)
     setError("")
@@ -57,7 +80,7 @@ export default function InviteDialog({
       await apiClient.post("/business/team/invite", {
         email,
         role,
-        venue_id: venueId ? Number(venueId) : null,
+        ...inviteVenuePayload(venueIds),
       })
       setSuccess(true)
       setTimeout(() => {
@@ -108,14 +131,20 @@ export default function InviteDialog({
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-venue">Venue assignment</Label>
-              <Select id="invite-venue" value={venueId} onChange={(e) => setVenueId(e.target.value)}>
-                <option value="">All venues (global)</option>
-                {venues.map((v) => (
-                  <option key={v.id} value={String(v.id)}>{v.name}</option>
-                ))}
-              </Select>
+              {/* TM-B3 (#15b): same multi-select as the team row (controlled mode). */}
+              <VenueMultiSelect
+                editor={editor}
+                value={venueIds}
+                triggerLabel={venueIdsLabel(venueIds, venues)}
+                mode="controlled"
+                onChange={setVenueIds}
+                align="start"
+                className="w-full sm:w-full"
+              />
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Global members can access all venues. Venue-specific members only see their assigned venue.
+                {editor.allowGlobal
+                  ? "Global members can access all venues. Pick specific venues to scope them."
+                  : "Assign at least one of your venues. This member will only see the venues you choose."}
               </p>
             </div>
 
@@ -127,7 +156,7 @@ export default function InviteDialog({
               <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading || !email}>
+              <Button type="submit" disabled={loading || !email || missingVenue}>
                 <UserPlus /> {loading ? "Sending…" : "Send invite"}
               </Button>
             </DialogFooter>
