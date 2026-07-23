@@ -7,7 +7,11 @@ import { useVenue } from "@/lib/business/venue-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { TeamMember } from "@/lib/business/types"
 import { memberDisplay } from "@/lib/team-invite/display"
-import { memberVenueIds, memberVenuesPath, memberVenuesPayload } from "@/lib/business/team-venues"
+import {
+  memberVenueIds, memberVenuesPath, memberVenuesPayload,
+  userVenueIds, isVenueScopeForbidden,
+  type EditorScope,
+} from "@/lib/business/team-venues"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -35,9 +39,14 @@ export default function V2TeamPage() {
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null)
   const [removeLoading, setRemoveLoading] = useState(false)
   const [removeError, setRemoveError] = useState<string | null>(null)
+  // TM-B3 (#15b): per-row venue-assignment errors (e.g. 403 VENUE_SCOPE_FORBIDDEN).
+  const [venueErrors, setVenueErrors] = useState<Record<number, string>>({})
 
   const canInvite = user?.business_role === "owner" || user?.business_role === "manager"
   const isOwner = user?.business_role === "owner"
+
+  // TM-B3 (#15b): the viewer's own scope — drives what venues they may assign.
+  const editorScope: EditorScope = { role: user?.business_role ?? "", venueIds: userVenueIds(user) }
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -66,8 +75,17 @@ export default function V2TeamPage() {
   }
 
   const handleVenuesChange = async (memberId: number, venueIds: number[]) => {
+    // Clear any prior inline error for this row before retrying.
+    setVenueErrors((prev) => {
+      if (!(memberId in prev)) return prev
+      const next = { ...prev }
+      delete next[memberId]
+      return next
+    })
     try {
       // PUT …/members/:id/venues; [] = clear to global. Contract owned by team-venues.ts.
+      // NOTE: venueIds already carries any preserved (locked) out-of-scope ids —
+      // editorCommitVenueIds() unions them in the row editor before this fires.
       await apiClient.put(memberVenuesPath(memberId), memberVenuesPayload(venueIds))
       const nextVenues = venueIds.map((id) => ({ venue_id: id, name: venues.find((v) => v.id === id)?.name ?? `Venue #${id}` }))
       // Keep the scalar mirror coherent: single → that venue; global/set → null,
@@ -78,14 +96,21 @@ export default function V2TeamPage() {
         prev.map((m) => (m.id === memberId ? { ...m, venues: nextVenues, venue_id: scalarId, venue_name: scalarName } : m))
       )
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to update venue assignment")
+      // Inline error, not alert(). The optimistic update above never ran (the PUT
+      // threw first), so no state was corrupted — the row keeps its committed scope.
+      const message = isVenueScopeForbidden(err)
+        ? "You can only assign venues within your own scope."
+        : err instanceof ApiError ? err.message : "Failed to update venue assignment"
+      setVenueErrors((prev) => ({ ...prev, [memberId]: message }))
     }
   }
 
   // Resend prefills the invite dialog rather than firing a request behind the
   // owner's back: a resend mints a fresh link, and under the #5 contract the
   // link is the deliverable (Bizzy sends no invite SMS), so it has to land
-  // somewhere the owner can copy or text it.
+  // somewhere the owner can copy or text it. The dialog seeds the venue
+  // multi-select from the member's full effective set (memberVenueIds via
+  // `initial.venueIds`), so a resend preserves their venue scope.
   const handleResend = (member: TeamMember) => {
     setResendTarget(member)
     setInviteOpen(true)
@@ -235,11 +260,13 @@ export default function V2TeamPage() {
                     key={member.id}
                     member={member}
                     currentUserRole={user?.business_role || ""}
+                    editorScope={editorScope}
                     venues={venues}
                     onRemove={setRemoveTarget}
                     onRoleChange={handleRoleChange}
                     onVenuesChange={handleVenuesChange}
                     onResend={isOwner ? handleResend : undefined}
+                    venueError={venueErrors[member.id]}
                   />
                 ))}
               </div>
@@ -255,6 +282,7 @@ export default function V2TeamPage() {
         open={inviteOpen}
         onOpenChange={(open) => { setInviteOpen(open); if (!open) setResendTarget(null) }}
         onInvited={() => { setInviteOpen(false); setResendTarget(null); fetchMembers() }}
+        editorScope={editorScope}
         venues={venues}
         businessName={business?.name ?? "Your team"}
         initial={
@@ -265,7 +293,7 @@ export default function V2TeamPage() {
                 contactType: "email",
                 value: resendTarget.email,
                 role: resendTarget.role === "manager" ? "manager" : "staff",
-                venueId: resendTarget.venue_id,
+                venueIds: memberVenueIds(resendTarget),
               }
             : null
         }

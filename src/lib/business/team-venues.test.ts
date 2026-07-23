@@ -14,6 +14,14 @@ import {
   memberVenuesPath,
   resolveSwitcherScope,
   initialSetSelection,
+  isScopedEditor,
+  venueEditorModel,
+  editorCommitVenueIds,
+  inviteDefaultVenueIds,
+  inviteVenuePayload,
+  venueIdsLabel,
+  lockedVenueChips,
+  isVenueScopeForbidden,
 } from "./team-venues.ts"
 
 const VENUES = [
@@ -146,4 +154,137 @@ test("initialSetSelection: stored preference honored only when inside the set", 
   assert.equal(initialSetSelection([1, 3], null, "1"), 1)
   assert.equal(initialSetSelection([1, 3], null, "all"), "all")
   assert.equal(initialSetSelection([1, 3], null, "2"), "all")
+})
+
+// ── TM-B3 (#15b): editor-scoped assignment (managers + invite) ─────────────
+
+const OWNER = { role: "owner", venueIds: [] }
+const GLOBAL_MGR = { role: "manager", venueIds: [] }
+const SCOPED_MGR = { role: "manager", venueIds: [1, 2] } // owns Backroads + The Cellar
+const STAFF = { role: "staff", venueIds: [1] }
+
+// --- isScopedEditor ---------------------------------------------------------
+
+test("isScopedEditor: only a manager with a non-empty own set is scoped", () => {
+  assert.equal(isScopedEditor(OWNER), false)        // owners are never scoped
+  assert.equal(isScopedEditor(GLOBAL_MGR), false)   // empty own set = global
+  assert.equal(isScopedEditor(SCOPED_MGR), true)
+  assert.equal(isScopedEditor({ role: "owner", venueIds: [1] }), false) // owner ignores set
+})
+
+// --- venueEditorModel: the render matrix -----------------------------------
+
+test("venueEditorModel: OWNER is unrestricted — all selectable, global allowed, nothing locked", () => {
+  const m = venueEditorModel(OWNER, [2], VENUES)
+  assert.deepEqual(m.selectableVenues, VENUES)
+  assert.equal(m.allowGlobal, true)
+  assert.deepEqual(m.lockedVenueIds, [])
+  assert.equal(m.canEdit, true)
+})
+
+test("venueEditorModel: GLOBAL manager is unrestricted too", () => {
+  const m = venueEditorModel(GLOBAL_MGR, [], VENUES)
+  assert.deepEqual(m.selectableVenues, VENUES)
+  assert.equal(m.allowGlobal, true)
+  assert.deepEqual(m.lockedVenueIds, [])
+  assert.equal(m.canEdit, true)
+})
+
+test("venueEditorModel: SCOPED manager — only own venues selectable, global hidden", () => {
+  const m = venueEditorModel(SCOPED_MGR, [1], VENUES)
+  assert.deepEqual(m.selectableVenues, [{ id: 1, name: "Backroads" }, { id: 2, name: "The Cellar" }])
+  assert.equal(m.allowGlobal, false)
+  assert.deepEqual(m.lockedVenueIds, []) // member's venue (1) is inside the manager's scope
+  assert.equal(m.canEdit, true)
+})
+
+test("venueEditorModel: SCOPED manager — member's OUT-OF-SCOPE venues lock (preserved)", () => {
+  // Member is assigned venues 1 (in scope) + 3 (Rooftop, OUT of the manager's 1,2 scope).
+  const m = venueEditorModel(SCOPED_MGR, [1, 3], VENUES)
+  assert.deepEqual(m.selectableVenues.map((v) => v.id), [1, 2])
+  assert.equal(m.allowGlobal, false)
+  assert.deepEqual(m.lockedVenueIds, [3]) // Rooftop is locked — the manager can't touch it
+})
+
+test("venueEditorModel: STAFF cannot edit venue scope", () => {
+  const m = venueEditorModel(STAFF, [1], VENUES)
+  assert.equal(m.canEdit, false)
+})
+
+// --- editorCommitVenueIds: payload = selection ∪ preserved (locked) --------
+
+test("editorCommitVenueIds: unrestricted editor commits exactly the selection", () => {
+  const m = venueEditorModel(OWNER, [], VENUES)
+  assert.deepEqual(editorCommitVenueIds(m, [3, 1]), [1, 3])   // dedup + sort
+  assert.deepEqual(editorCommitVenueIds(m, []), [])            // empty = clear-to-global
+})
+
+test("editorCommitVenueIds: scoped editor ALWAYS re-includes locked ids", () => {
+  const m = venueEditorModel(SCOPED_MGR, [1, 3], VENUES) // locked = [3]
+  // Manager selects only venue 2 of their own; locked 3 must survive the PUT.
+  assert.deepEqual(editorCommitVenueIds(m, [2]), [2, 3])
+  // Manager clears all of their own; locked 3 still preserved (never global).
+  assert.deepEqual(editorCommitVenueIds(m, []), [3])
+})
+
+// --- inviteDefaultVenueIds --------------------------------------------------
+
+test("inviteDefaultVenueIds: owner/global default to global (empty)", () => {
+  assert.deepEqual(inviteDefaultVenueIds(OWNER), [])
+  assert.deepEqual(inviteDefaultVenueIds(GLOBAL_MGR), [])
+})
+
+test("inviteDefaultVenueIds: scoped manager defaults to all their own venues (minimum-one satisfied)", () => {
+  assert.deepEqual(inviteDefaultVenueIds(SCOPED_MGR), [1, 2])
+  assert.deepEqual(inviteDefaultVenueIds({ role: "manager", venueIds: [3, 1] }), [1, 3]) // sorted
+})
+
+// --- inviteVenuePayload: venue_ids + back-compat scalar mirror --------------
+
+test("inviteVenuePayload: single venue → array + scalar mirror", () => {
+  assert.deepEqual(inviteVenuePayload([2]), { venue_ids: [2], venue_id: 2 })
+})
+
+test("inviteVenuePayload: multi-venue set → array, scalar null (set inexpressible for old services)", () => {
+  assert.deepEqual(inviteVenuePayload([3, 1]), { venue_ids: [1, 3], venue_id: null })
+})
+
+test("inviteVenuePayload: global (empty) → empty array, scalar null", () => {
+  assert.deepEqual(inviteVenuePayload([]), { venue_ids: [], venue_id: null })
+})
+
+// --- venueIdsLabel: trigger/summary label for a raw id list ----------------
+
+test("venueIdsLabel: global / single / multi", () => {
+  assert.equal(venueIdsLabel([], VENUES), "All venues (global)")
+  assert.equal(venueIdsLabel([2], VENUES), "The Cellar")
+  assert.equal(venueIdsLabel([1, 3], VENUES), "2 venues: Backroads, Rooftop")
+  assert.equal(venueIdsLabel([99], VENUES), "Venue #99") // unknown → placeholder
+})
+
+// --- lockedVenueChips: resolve names (prefer the member's own set) ---------
+
+test("lockedVenueChips: names resolved from the member's set, then the venue list", () => {
+  const member = { venue_id: null, venues: [{ venue_id: 3, name: "Rooftop" }] }
+  assert.deepEqual(lockedVenueChips([3], member, VENUES), [{ id: 3, name: "Rooftop" }])
+  // Not in the member set → fall back to the venue list.
+  assert.deepEqual(lockedVenueChips([1], { venue_id: null }, VENUES), [{ id: 1, name: "Backroads" }])
+  // Unknown everywhere → placeholder.
+  assert.deepEqual(lockedVenueChips([99], { venue_id: null }, VENUES), [{ id: 99, name: "Venue #99" }])
+})
+
+// --- isVenueScopeForbidden: robust 403 detection ---------------------------
+
+test("isVenueScopeForbidden: matches on body.code, body.error, or message", () => {
+  assert.equal(isVenueScopeForbidden({ status: 403, body: { code: "VENUE_SCOPE_FORBIDDEN" } }), true)
+  assert.equal(isVenueScopeForbidden({ status: 403, body: { error: "VENUE_SCOPE_FORBIDDEN" } }), true)
+  assert.equal(isVenueScopeForbidden({ status: 403, message: "denied: VENUE_SCOPE_FORBIDDEN" }), true)
+})
+
+test("isVenueScopeForbidden: false for non-403, wrong code, or non-objects", () => {
+  assert.equal(isVenueScopeForbidden({ status: 400, body: { code: "VENUE_SCOPE_FORBIDDEN" } }), false)
+  assert.equal(isVenueScopeForbidden({ status: 403, body: { code: "SOMETHING_ELSE" } }), false)
+  assert.equal(isVenueScopeForbidden({ status: 403 }), false)
+  assert.equal(isVenueScopeForbidden(null), false)
+  assert.equal(isVenueScopeForbidden("nope"), false)
 })

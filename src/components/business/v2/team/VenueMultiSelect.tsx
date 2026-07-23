@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Check, ChevronDown, Globe } from "lucide-react"
+import { Check, ChevronDown, Globe, Lock } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
-import type { Venue } from "@/lib/business/types"
-import { venueScopeLabel, type MemberVenueScope } from "@/lib/business/team-venues"
+import { editorCommitVenueIds, type VenueEditorModel } from "@/lib/business/team-venues"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -15,15 +14,28 @@ import {
 } from "@/components/business/v2/ui/dropdown-menu"
 
 interface VenueMultiSelectProps {
-  /** Current member scope, so the trigger label reflects committed state. */
-  member: MemberVenueScope
-  /** The business's venues, already in hand from the venue context. */
-  venues: Venue[]
-  /** Current selected ids (effective set). */
+  /** What this editor may do: selectable venues, global allowed, locked ids.
+   *  (Venue names come from here + `lockedChips`, not a separate venue list.) */
+  editor: VenueEditorModel
+  /** Current committed effective ids (full set incl. any locked ids). */
   value: number[]
-  /** Fires once on close when the draft differs — an empty array = clear to global. */
-  onCommit: (venueIds: number[]) => void
+  /** Parent-computed trigger label (member scope, or the live selection). */
+  triggerLabel: string
+  /** Resolved names for the locked (out-of-scope, preserved) venues. */
+  lockedChips?: { id: number; name: string }[]
+  /**
+   * "commit" (default, team row): buffer a draft, fire `onCommit` ONCE on close
+   * when it changed — one PUT. "controlled" (invite): fire `onChange` live per
+   * toggle; the parent owns `value`.
+   */
+  mode?: "commit" | "controlled"
+  /** commit mode: the single write when the dropdown closes with a changed set. */
+  onCommit?: (venueIds: number[]) => void
+  /** controlled mode: the live selection on every toggle. */
+  onChange?: (venueIds: number[]) => void
   disabled?: boolean
+  align?: "start" | "end"
+  className?: string
 }
 
 function sameSet(a: number[], b: number[]): boolean {
@@ -33,56 +45,96 @@ function sameSet(a: number[], b: number[]): boolean {
 }
 
 /**
- * TM-B2 venue-SET editor: a checkbox dropdown over the business's venues.
- * "All venues (global)" clears the set (empty = global). Selecting/deselecting
- * individual venues builds a set. Commits once on close so a single PUT lands.
+ * TM-B3 (#15b) editor-scoped venue-SET editor. A checkbox dropdown over the
+ * venues an editor MAY assign:
+ *   • unrestricted (owner / global manager): every venue + "All venues (global)".
+ *   • scoped manager: own venues only, global hidden, minimum one enforced; the
+ *     member's out-of-scope venues render as LOCKED chips (preserved, disabled).
+ * Reused by both the team row (commit-on-close) and the invite dialog (controlled).
  */
-export default function VenueMultiSelect({ member, venues, value, onCommit, disabled }: VenueMultiSelectProps) {
-  const [draft, setDraft] = useState<number[]>(value)
+export default function VenueMultiSelect({
+  editor, value, triggerLabel, lockedChips = [],
+  mode = "commit", onCommit, onChange, disabled, align = "end", className,
+}: VenueMultiSelectProps) {
+  const selectableIds = editor.selectableVenues.map((v) => v.id)
+  const selectableSet = new Set(selectableIds)
+
+  // The editor only ever toggles SELECTABLE ids; locked ids are added at commit.
+  const selectedFromValue = value.filter((id) => selectableSet.has(id))
+
+  // commit mode buffers a draft; controlled mode reads straight from `value`.
+  const [draft, setDraft] = useState<number[]>(selectedFromValue)
+  const selected = mode === "controlled" ? selectedFromValue : draft
+
+  const isDisabled = disabled || !editor.canEdit
 
   const handleOpenChange = (open: boolean) => {
+    if (mode !== "commit") return
     if (open) {
-      // Re-seed from the committed value each time it opens.
-      setDraft(value)
+      setDraft(selectedFromValue) // re-seed from the committed value each open
       return
     }
-    if (!sameSet(draft, value)) onCommit([...draft].sort((a, b) => a - b))
+    const final = editorCommitVenueIds(editor, draft)
+    // Scoped editors can't clear to global; a would-be-empty commit is dropped.
+    if (!editor.allowGlobal && final.length === 0) return
+    if (!sameSet(final, value)) onCommit?.(final)
+  }
+
+  const emit = (nextSelected: number[]) => {
+    if (mode === "controlled") {
+      const final = editorCommitVenueIds(editor, nextSelected)
+      if (!editor.allowGlobal && final.length === 0) return // minimum one
+      onChange?.(final)
+    } else {
+      setDraft(nextSelected)
+    }
   }
 
   const toggle = (venueId: number) => {
-    setDraft((prev) => (prev.includes(venueId) ? prev.filter((v) => v !== venueId) : [...prev, venueId]))
+    const next = selected.includes(venueId)
+      ? selected.filter((v) => v !== venueId)
+      : [...selected, venueId]
+    // Minimum one for scoped editors with nothing locked to fall back on.
+    if (!editor.allowGlobal && editor.lockedVenueIds.length === 0 && next.length === 0) return
+    emit(next)
   }
 
-  const clearToGlobal = () => setDraft([])
+  const clearToGlobal = () => {
+    if (!editor.allowGlobal) return
+    emit([])
+  }
 
-  const isGlobal = draft.length === 0
+  const isGlobal = editor.allowGlobal && selected.length === 0 && editor.lockedVenueIds.length === 0
 
   return (
     <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
-        disabled={disabled}
+        disabled={isDisabled}
         title="Venue assignment"
         className={cn(
           "flex h-8 min-w-0 flex-1 items-center justify-between gap-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 text-xs text-neutral-700 dark:text-neutral-300 outline-none transition-colors hover:border-neutral-400 dark:hover:border-neutral-600 focus-visible:ring-2 focus-visible:ring-[#05EB54]/40 disabled:opacity-50 sm:w-[160px] sm:flex-none",
+          className,
         )}
       >
-        <span className="truncate">{venueScopeLabel(member, venues)}</span>
+        <span className="truncate">{triggerLabel}</span>
         <ChevronDown className="size-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="min-w-[13rem]">
+      <DropdownMenuContent align={align} className="min-w-[13rem]">
         <DropdownMenuLabel>Venue access</DropdownMenuLabel>
 
-        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); clearToGlobal() }}>
-          <Globe />
-          <span className="flex-1">All venues (global)</span>
-          {isGlobal && <Check className="text-[#05EB54]" />}
-        </DropdownMenuItem>
+        {editor.allowGlobal && (
+          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); clearToGlobal() }}>
+            <Globe />
+            <span className="flex-1">All venues (global)</span>
+            {isGlobal && <Check className="text-[#05EB54]" />}
+          </DropdownMenuItem>
+        )}
 
-        {venues.length > 0 && <DropdownMenuSeparator />}
+        {editor.selectableVenues.length > 0 && <DropdownMenuSeparator />}
 
-        {venues.map((v) => {
-          const active = draft.includes(v.id)
+        {editor.selectableVenues.map((v) => {
+          const active = selected.includes(v.id)
           return (
             <DropdownMenuItem key={v.id} onSelect={(e) => { e.preventDefault(); toggle(v.id) }}>
               <span className={cn("flex-1 truncate", active && "font-medium text-neutral-900 dark:text-neutral-100")}>{v.name}</span>
@@ -90,6 +142,22 @@ export default function VenueMultiSelect({ member, venues, value, onCommit, disa
             </DropdownMenuItem>
           )
         })}
+
+        {/* Locked: the member's venues outside this manager's scope. Preserved on
+            save, shown for transparency, never removable. */}
+        {editor.lockedVenueIds.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="normal-case tracking-normal text-[11px]">Managed by another manager</DropdownMenuLabel>
+            {lockedChips.map((chip) => (
+              <DropdownMenuItem key={chip.id} disabled onSelect={(e) => e.preventDefault()}>
+                <Lock />
+                <span className="flex-1 truncate">{chip.name}</span>
+                <Check className="text-neutral-400 dark:text-neutral-500" />
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
