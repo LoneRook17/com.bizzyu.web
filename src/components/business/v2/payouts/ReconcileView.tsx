@@ -30,8 +30,8 @@ import {
   tiesCheck,
   netLineParts,
   visibleOrderRows,
+  showCommissionColumn,
   shortPayoutId,
-  channelLabel,
   buildDepositCsv,
   depositExportFilename,
   downloadCsv,
@@ -267,34 +267,57 @@ function NetLine({ recon }: { recon: Reconciliation }) {
   )
 }
 
-// ── 6. Ticket-level details table (operational; NO PII in default view) ───────
+// ── 6. Ticket-level details table (operational tracing fields; NO buyer PII) ──
+
+const TD_MONO = "py-2 px-2 whitespace-nowrap font-mono text-xs text-neutral-500 dark:text-neutral-400"
 
 function DetailsTable({ rows }: { rows: ReconOrderRow[] }) {
   if (rows.length === 0) {
     return <p className="py-3 text-center text-sm text-neutral-400 dark:text-neutral-500">No order-level rows for this deposit.</p>
   }
+  // Promoter-commission column shows only when the deposit has commission-bearing
+  // rows (event with the promoter program on); hidden entirely otherwise.
+  const withCommission = showCommissionColumn(rows)
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-sm">
+      <table className="w-full min-w-[900px] text-sm">
         <thead>
           <tr className="border-b border-neutral-200 text-xs text-neutral-500 dark:border-neutral-700 dark:text-neutral-400">
-            <th className={TH}>Channel</th>
-            <th className={TH}>Buyer</th>
             <th className={TH_R}>Order</th>
-            <th className={TH_R}>Platform fee</th>
-            <th className={TH_R}>Commission</th>
-            <th className={TH_R}>Host net</th>
+            <th className={TH}>Sale date</th>
+            <th className={TH}>Event</th>
+            <th className={TH}>Tier</th>
+            <th className={TH_R}>Qty</th>
+            <th className={TH_R}>Amount</th>
+            <th className={TH}>Door</th>
+            <th className={TH}>Payout</th>
+            <th className={TH}>Payout date</th>
+            <th className={TH}>Payout id</th>
+            <th className={TH}>Payment intent</th>
+            {withCommission && <th className={TH_R}>Commission</th>}
           </tr>
         </thead>
         <tbody>
           {rows.map((o, i) => (
             <tr key={`${o.order_id ?? "row"}-${i}`} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800">
-              <td className={TD}>{channelLabel(o.channel)}</td>
-              <td className={TD}>{o.buyer_email ?? <span className="text-neutral-400 dark:text-neutral-500">—</span>}</td>
               <td className={TD_R}>{o.order_id ?? "—"}</td>
-              <td className={TD_R}>{money(o.platform_fee_cents)}</td>
-              <td className={TD_R}>{money(o.commission_cents)}</td>
-              <td className={cn(TD_R, "font-semibold")}>{money(o.host_net_cents)}</td>
+              <td className={TD}>{o.sale_date ?? "—"}</td>
+              <td className={TD}>{o.event ?? "—"}</td>
+              <td className={TD}>{o.ticket_tier ?? "—"}</td>
+              <td className={TD_R}>{o.quantity}</td>
+              <td className={cn(TD_R, "font-semibold")}>{money(o.amount_cents)}</td>
+              <td className={TD}>
+                {o.is_door_sale ? (
+                  <Badge variant="neutral" size="sm">Door</Badge>
+                ) : (
+                  <span className="text-neutral-400 dark:text-neutral-500">—</span>
+                )}
+              </td>
+              <td className={TD}><StatusChip status={o.payout_status} /></td>
+              <td className={TD}>{o.payout_date ? fmtDate(o.payout_date) : "—"}</td>
+              <td className={TD_MONO}>{o.stripe_payout_id ?? "—"}</td>
+              <td className={TD_MONO}>{o.stripe_payment_intent_id ?? "—"}</td>
+              {withCommission && <td className={TD_R}>{money(o.promoter_commission_cents)}</td>}
             </tr>
           ))}
         </tbody>

@@ -19,8 +19,12 @@
 //          door_covers_cents, refunds_cents,
 //          net:{ ticket_sales_cents, door_covers_cents, refunds_cents, deposited_cents } }
 //   GET .../reconciliation?details=1
-//     -> same + orders:[{ channel, buyer_email, order_id, platform_fee_cents,
-//                         commission_cents, host_net_cents }]
+//     -> same + orders:[{ order_id, sale_date, event, ticket_tier, quantity,
+//                         amount_cents, is_door_sale, payout_status, payout_date,
+//                         stripe_payout_id, stripe_payment_intent_id,
+//                         promoter_commission_cents? }]
+//     (promoter_commission_cents present ONLY for events with promoter commission
+//      enabled — the column is hidden entirely when no row carries it.)
 //
 // Degrade rule (DI-B3w standard, shared with payouts.ts): the endpoints 404 until
 // P2-B1s deploys. A 404 is NOT an error — it means "the reconciliation contract
@@ -28,10 +32,10 @@
 // global manager falls back to today's scoped Payouts view; no error wall). Any
 // OTHER failure propagates so the UI can render its error state.
 //
-// PII gating: buyer email lives ONLY on the `orders` array, which is fetched ONLY
-// when `details=1` is explicitly requested. The default reconciliation shape
-// (event → tier grain) carries no buyer PII by construction — so the "details
-// off" view can never leak PII, because that data never reaches the client.
+// NO buyer PII anywhere on this screen — not even behind the details toggle
+// (P2-B1w addendum). The details=1 `orders` array is operational only (ticket +
+// payout tracing fields); it is fetched lazily (toggle on) purely to keep the
+// default payload small and the default view clean, never because it holds PII.
 //
 // The fetchers import apiClient lazily (not top-level) so everything else here is
 // pure and unit-testable under the Node built-in test runner (`npm test`) without
@@ -97,15 +101,24 @@ export interface ReconNet {
   deposited_cents: number
 }
 
-/** Per-order operational row — ONLY present when details=1. Carries buyer PII,
- *  so it is never fetched for the default view. */
+/** Per-order operational row — present ONLY when details=1. Ticket + payout
+ *  tracing fields; NO buyer PII (P2-B1w addendum). These are the EXACT fields the
+ *  details view / CSV / PDF render, and nothing more. */
 export interface ReconOrderRow {
-  channel: string
-  buyer_email: string | null
   order_id: number | string | null
-  platform_fee_cents: number
-  commission_cents: number
-  host_net_cents: number
+  sale_date: string | null
+  event: string | null
+  ticket_tier: string | null
+  quantity: number
+  amount_cents: number
+  is_door_sale: boolean
+  payout_status: PayoutStatus
+  payout_date: string | null
+  stripe_payout_id: string | null
+  stripe_payment_intent_id: string | null
+  /** Present ONLY for events with promoter commission enabled; null → the
+   *  promoter-commission column is hidden entirely. */
+  promoter_commission_cents: number | null
 }
 
 export interface Reconciliation {
@@ -191,12 +204,19 @@ function normalizeEvent(raw: Partial<ReconEvent>): ReconEvent {
 
 function normalizeOrderRow(raw: Partial<ReconOrderRow>): ReconOrderRow {
   return {
-    channel: str(raw.channel) ?? "unknown",
-    buyer_email: str(raw.buyer_email),
     order_id: raw.order_id == null ? null : (typeof raw.order_id === "number" ? raw.order_id : str(raw.order_id)),
-    platform_fee_cents: num(raw.platform_fee_cents),
-    commission_cents: num(raw.commission_cents),
-    host_net_cents: num(raw.host_net_cents),
+    sale_date: str(raw.sale_date),
+    event: str(raw.event),
+    ticket_tier: str(raw.ticket_tier),
+    quantity: num(raw.quantity),
+    amount_cents: num(raw.amount_cents),
+    is_door_sale: raw.is_door_sale === true,
+    payout_status: normStatus(raw.payout_status),
+    payout_date: str(raw.payout_date),
+    stripe_payout_id: str(raw.stripe_payout_id),
+    stripe_payment_intent_id: str(raw.stripe_payment_intent_id),
+    // Keep null unless the server actually sent a commission → drives column visibility.
+    promoter_commission_cents: raw.promoter_commission_cents == null ? null : num(raw.promoter_commission_cents),
   }
 }
 
@@ -269,30 +289,25 @@ export function totalTicketQty(recon: Pick<Reconciliation, "events">): number {
   return recon.events.reduce((n, e) => n + e.tiers.reduce((m, t) => m + t.qty, 0), 0)
 }
 
-/** PII GATE — the ONLY source of per-order rows for the view. Returns rows only
- *  when details are toggled on AND the server supplied them; otherwise []. Making
- *  this the single accessor keeps buyer PII structurally out of the default view. */
+/** The ONLY source of per-order rows for the view. Returns rows only when details
+ *  are toggled on AND the server supplied them; otherwise []. Single accessor so
+ *  the operational rows are opt-in (there is no buyer PII in them either way). */
 export function visibleOrderRows(recon: Pick<Reconciliation, "orders">, showDetails: boolean): ReconOrderRow[] {
   if (!showDetails) return []
   return recon.orders ?? []
+}
+
+/** Show the promoter-commission column iff at least one order row carries a
+ *  commission (i.e. its event has the promoter program enabled); hidden entirely
+ *  otherwise, per the addendum. */
+export function showCommissionColumn(rows: ReconOrderRow[]): boolean {
+  return rows.some((r) => r.promoter_commission_cents != null)
 }
 
 /** Middle-truncated Stripe payout id for the copyable chip (full value is what
  *  gets copied; this is only the label). Short ids pass through untouched. */
 export function shortPayoutId(id: string): string {
   return id.length > 16 ? `${id.slice(0, 10)}…${id.slice(-4)}` : id
-}
-
-/** Human channel label for the details table (mirrors payouts.ts channelLabel). */
-export function channelLabel(channel: string): string {
-  const map: Record<string, string> = {
-    web: "Web",
-    apple_pay: "Apple Pay",
-    door: "Door",
-    tap_to_pay: "Tap to Pay",
-    line_skip: "Line skip",
-  }
-  return map[channel] ?? channel
 }
 
 // ── Per-deposit CSV (mirrors the reconciliation rows) ────────────────────────
@@ -305,7 +320,40 @@ function csvCell(v: unknown): string {
 }
 
 const RECON_CSV_HEADERS = ["section", "event", "event_date", "tier", "qty", "amount"] as const
-const RECON_DETAIL_HEADERS = ["channel", "buyer_email", "order_id", "platform_fee", "commission", "host_net"] as const
+
+/** Fixed operational detail columns (addendum). promoter_commission is appended
+ *  only when the deposit has any commission-bearing row. NO buyer PII. */
+const RECON_DETAIL_HEADERS = [
+  "order_id",
+  "sale_date",
+  "event",
+  "ticket_tier",
+  "quantity",
+  "amount",
+  "is_door_sale",
+  "payout_status",
+  "payout_date",
+  "stripe_payout_id",
+  "stripe_payment_intent_id",
+] as const
+
+function detailRowCells(o: ReconOrderRow, withCommission: boolean): string[] {
+  const cells = [
+    o.order_id == null ? "" : String(o.order_id),
+    o.sale_date ?? "",
+    o.event ?? "",
+    o.ticket_tier ?? "",
+    String(o.quantity),
+    centsToUsdStr(o.amount_cents),
+    o.is_door_sale ? "yes" : "no",
+    o.payout_status,
+    o.payout_date ?? "",
+    o.stripe_payout_id ?? "",
+    o.stripe_payment_intent_id ?? "",
+  ]
+  if (withCommission) cells.push(centsToUsdStr(o.promoter_commission_cents))
+  return cells
+}
 
 /** Build the per-deposit CSV client-side from a reconciliation. Mirrors the panel:
  *  one row per event→tier, a per-event subtotal, the door-cover and refund lines,
@@ -338,18 +386,12 @@ export function buildDepositCsv(recon: Reconciliation): string {
   rows.push(["net_deposited", "", "", "", "", centsToUsdStr(n.depositedCents)])
 
   if (recon.orders && recon.orders.length > 0) {
+    const withCommission = showCommissionColumn(recon.orders)
     rows.push([])
     rows.push(["DETAILS (ticket-level)"])
-    rows.push([...RECON_DETAIL_HEADERS])
+    rows.push([...RECON_DETAIL_HEADERS, ...(withCommission ? ["promoter_commission"] : [])])
     for (const o of recon.orders) {
-      rows.push([
-        channelLabel(o.channel),
-        o.buyer_email ?? "",
-        o.order_id == null ? "" : String(o.order_id),
-        centsToUsdStr(o.platform_fee_cents),
-        centsToUsdStr(o.commission_cents),
-        centsToUsdStr(o.host_net_cents),
-      ])
+      rows.push(detailRowCells(o, withCommission))
     }
   }
 
@@ -403,22 +445,29 @@ export function buildDepositPdfHtml(recon: Reconciliation): string {
     })
     .join("")
 
+  const withCommission = recon.orders ? showCommissionColumn(recon.orders) : false
   const detailRows =
     recon.orders && recon.orders.length > 0
-      ? `<h2>Ticket-level details</h2><table class="det"><thead><tr><th>Channel</th><th>Buyer</th><th>Order</th><th class="r">Platform fee</th><th class="r">Commission</th><th class="r">Host net</th></tr></thead><tbody>${recon.orders
+      ? `<h2>Ticket-level details</h2><table class="det"><thead><tr><th>Order</th><th>Sale date</th><th>Event</th><th>Tier</th><th class="r">Qty</th><th class="r">Amount</th><th>Door</th><th>Payout</th><th>Payout date</th><th>Payout id</th><th>Payment intent</th>${
+          withCommission ? '<th class="r">Commission</th>' : ""
+        }</tr></thead><tbody>${recon.orders
           .map(
             (o) =>
-              `<tr><td>${esc(channelLabel(o.channel))}</td><td>${esc(o.buyer_email ?? "—")}</td><td>${esc(
-                o.order_id == null ? "—" : o.order_id,
-              )}</td><td class="r">${usd(o.platform_fee_cents)}</td><td class="r">${usd(o.commission_cents)}</td><td class="r">${usd(
-                o.host_net_cents,
-              )}</td></tr>`,
+              `<tr><td>${esc(o.order_id == null ? "—" : o.order_id)}</td><td>${esc(o.sale_date ?? "—")}</td><td>${esc(
+                o.event ?? "—",
+              )}</td><td>${esc(o.ticket_tier ?? "—")}</td><td class="r">${o.quantity}</td><td class="r">${usd(
+                o.amount_cents,
+              )}</td><td>${o.is_door_sale ? "Yes" : "—"}</td><td>${esc(o.payout_status)}</td><td>${esc(
+                o.payout_date ?? "—",
+              )}</td><td class="mono">${esc(o.stripe_payout_id ?? "—")}</td><td class="mono">${esc(
+                o.stripe_payment_intent_id ?? "—",
+              )}</td>${withCommission ? `<td class="r">${o.promoter_commission_cents == null ? "—" : usd(o.promoter_commission_cents)}</td>` : ""}</tr>`,
           )
           .join("")}</tbody></table>`
       : ""
 
   return `<!doctype html><html><head><meta charset="utf-8"><title>Payout ${esc(recon.payout_id)}</title><style>
-    *{box-sizing:border-box}body{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#111;margin:32px;max-width:720px}
+    *{box-sizing:border-box}body{font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#111;margin:32px;max-width:1040px}
     h1{font-size:18px;margin:0 0 2px}h2{font-size:14px;margin:22px 0 6px}
     .sub{color:#666;margin:0 0 14px}
     .ties{display:inline-block;padding:4px 10px;border-radius:999px;font-weight:600;font-size:12px}
@@ -430,7 +479,10 @@ export function buildDepositPdfHtml(recon: Reconciliation): string {
     tr.ev td{font-weight:600;border-top:1px solid #ddd}
     td.ind{padding-left:22px;color:#444}
     .net{margin-top:16px;padding:12px 14px;background:#f9fafb;border:1px solid #eee;border-radius:8px;font-weight:600}
-    .det th{background:#f9fafb;font-size:12px}
+    .det{font-size:11px}
+    .det th{background:#f9fafb;font-size:11px}
+    .det th,.det td{padding:5px 7px}
+    .det td.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:#555}
     .foot{color:#888;font-size:11px;margin-top:24px}
   </style></head><body>
     <h1>Payout reconciliation</h1>

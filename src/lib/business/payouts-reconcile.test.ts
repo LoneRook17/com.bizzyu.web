@@ -21,13 +21,14 @@ import {
   netLineParts,
   totalTicketQty,
   visibleOrderRows,
+  showCommissionColumn,
   shortPayoutId,
-  channelLabel,
   buildDepositCsv,
   buildDepositPdfHtml,
   depositExportFilename,
   reconcileQuery,
   type Reconciliation,
+  type ReconOrderRow,
 } from "./payouts-reconcile.ts"
 
 // ── Fixtures: a deposit that TIES (two events, a door cover, a refund) and one
@@ -157,26 +158,70 @@ test("netLineParts flags a net block that does not add up", () => {
   assert.equal(n.foots, false)
 })
 
-// ── (5) PII gating: order rows appear ONLY with details toggled on ───────────
+// ── (5) Details gating: operational rows appear ONLY with the toggle on ───────
 
-test("PII gate: default reconciliation carries no order rows (orders === null)", () => {
+const DETAIL_ROW: ReconOrderRow = {
+  order_id: 9001,
+  sale_date: "2026-07-20",
+  event: "Foam Party",
+  ticket_tier: "GA",
+  quantity: 2,
+  amount_cents: 1600,
+  is_door_sale: false,
+  payout_status: "paid",
+  payout_date: "2026-07-22",
+  stripe_payout_id: "po_1TtHLl2eZvKYlo2CabcDEFGh",
+  stripe_payment_intent_id: "pi_3TtGf12eZvKYlo2C0abc1234",
+  promoter_commission_cents: null,
+}
+
+test("details gate: default reconciliation carries no order rows (orders === null)", () => {
   const r = tyingRecon()
   assert.equal(r.orders, null)
   assert.deepEqual(visibleOrderRows(r, false), [])
   assert.deepEqual(visibleOrderRows(r, true), []) // still none — server sent none
 })
 
-test("PII gate: even when details ARE loaded, showDetails=false hides every row", () => {
-  const r = normalizeReconciliation({
-    payout_id: "po_d",
-    orders: [
-      { channel: "web", buyer_email: "buyer@example.com", order_id: 9001, platform_fee_cents: 100, commission_cents: 0, host_net_cents: 700 },
-    ],
-  })
+test("details gate: even when details ARE loaded, toggle off hides every row", () => {
+  const r = normalizeReconciliation({ payout_id: "po_d", orders: [DETAIL_ROW] })
   assert.equal(r.orders?.length, 1)
-  assert.deepEqual(visibleOrderRows(r, false), []) // toggle off → no PII rendered
+  assert.deepEqual(visibleOrderRows(r, false), []) // toggle off → nothing rendered
   assert.equal(visibleOrderRows(r, true).length, 1) // toggle on → row visible
-  assert.equal(visibleOrderRows(r, true)[0].buyer_email, "buyer@example.com")
+})
+
+test("order rows carry the exact operational fields and NO buyer PII", () => {
+  const r = normalizeReconciliation({ payout_id: "po_d", orders: [DETAIL_ROW] })
+  const o = r.orders![0]
+  // present, addendum-exact
+  assert.equal(o.order_id, 9001)
+  assert.equal(o.sale_date, "2026-07-20")
+  assert.equal(o.event, "Foam Party")
+  assert.equal(o.ticket_tier, "GA")
+  assert.equal(o.quantity, 2)
+  assert.equal(o.amount_cents, 1600)
+  assert.equal(o.is_door_sale, false)
+  assert.equal(o.payout_status, "paid")
+  assert.equal(o.payout_date, "2026-07-22")
+  assert.equal(o.stripe_payout_id, "po_1TtHLl2eZvKYlo2CabcDEFGh")
+  assert.equal(o.stripe_payment_intent_id, "pi_3TtGf12eZvKYlo2C0abc1234")
+  // no buyer PII fields exist on the row at all
+  assert.ok(!("buyer_email" in o))
+  assert.ok(!("buyer" in o))
+  assert.ok(!("channel" in o))
+})
+
+test("showCommissionColumn: hidden unless a row carries a commission", () => {
+  const noComm = normalizeReconciliation({ payout_id: "po_a", orders: [DETAIL_ROW] })
+  assert.equal(showCommissionColumn(noComm.orders!), false) // absent → null → hidden
+
+  const withComm = normalizeReconciliation({
+    payout_id: "po_b",
+    orders: [DETAIL_ROW, { ...DETAIL_ROW, order_id: 9002, promoter_commission_cents: 250 }],
+  })
+  assert.equal(showCommissionColumn(withComm.orders!), true) // one commission-bearing row → shown
+  // and the non-commission row keeps a null (renders "—"), not a fabricated 0
+  assert.equal(withComm.orders![0].promoter_commission_cents, null)
+  assert.equal(withComm.orders![1].promoter_commission_cents, 250)
 })
 
 // ── (6) Copyable short id ─────────────────────────────────────────────────────
@@ -184,12 +229,6 @@ test("PII gate: even when details ARE loaded, showDetails=false hides every row"
 test("shortPayoutId middle-truncates long ids and passes short ones through", () => {
   assert.equal(shortPayoutId("po_1TtHLl2eZvKYlo2CabcDEFGh"), "po_1TtHLl2…EFGh")
   assert.equal(shortPayoutId("po_short"), "po_short")
-})
-
-test("channelLabel maps known channels and passes unknowns through", () => {
-  assert.equal(channelLabel("web"), "Web")
-  assert.equal(channelLabel("apple_pay"), "Apple Pay")
-  assert.equal(channelLabel("mystery"), "mystery")
 })
 
 // ── (7) Per-deposit CSV mirrors the panel and foots ──────────────────────────
@@ -210,7 +249,7 @@ test("buildDepositCsv contains grouped tiers, door cover, refund, and the net li
   assert.ok(lines.some((l) => l === "net_deposited,,,,,185.00"))
 })
 
-test("buildDepositCsv appends a DETAILS section only when order rows are present", () => {
+test("buildDepositCsv appends the DETAILS section (addendum columns) only when orders present", () => {
   const noDetails = buildDepositCsv(tyingRecon())
   assert.ok(!noDetails.includes("DETAILS (ticket-level)"))
 
@@ -221,14 +260,35 @@ test("buildDepositCsv appends a DETAILS section only when order rows are present
       computed_total_cents: 700,
       ties: true,
       net: { ticket_sales_cents: 800, door_covers_cents: 0, refunds_cents: 100, deposited_cents: 700 },
-      orders: [
-        { channel: "web", buyer_email: "b@x.com", order_id: 9001, platform_fee_cents: 100, commission_cents: 0, host_net_cents: 700 },
-      ],
+      orders: [DETAIL_ROW],
     }),
   )
   assert.ok(withDetails.includes("DETAILS (ticket-level)"))
-  assert.ok(withDetails.includes("channel,buyer_email,order_id,platform_fee,commission,host_net"))
-  assert.ok(withDetails.split("\r\n").some((l) => l.startsWith("Web,b@x.com,9001,")))
+  // exact header set — NO buyer/email/channel/platform_fee/host_net; no commission col (no commission row)
+  assert.ok(
+    withDetails.includes(
+      "order_id,sale_date,event,ticket_tier,quantity,amount,is_door_sale,payout_status,payout_date,stripe_payout_id,stripe_payment_intent_id",
+    ),
+  )
+  assert.ok(!withDetails.includes("buyer"))
+  assert.ok(!withDetails.includes("host_net"))
+  assert.ok(!withDetails.includes("promoter_commission"))
+  assert.ok(
+    withDetails.split("\r\n").some((l) => l.startsWith("9001,2026-07-20,Foam Party,GA,2,16.00,no,paid,2026-07-22,po_1TtHLl2")),
+  )
+})
+
+test("buildDepositCsv adds the promoter_commission column only when a row carries commission", () => {
+  const csv = buildDepositCsv(
+    normalizeReconciliation({
+      payout_id: "po_c",
+      ties: true,
+      net: { ticket_sales_cents: 1600, door_covers_cents: 0, refunds_cents: 0, deposited_cents: 1600 },
+      orders: [{ ...DETAIL_ROW, promoter_commission_cents: 250 }],
+    }),
+  )
+  assert.ok(csv.includes(",stripe_payment_intent_id,promoter_commission"))
+  assert.ok(csv.split("\r\n").some((l) => l.endsWith(",2.50")))
 })
 
 test("buildDepositCsv escapes commas/quotes per RFC-4180", () => {
@@ -257,6 +317,23 @@ test("buildDepositPdfHtml shows the off-by warning when it doesn't tie", () => {
   )
   assert.ok(html.includes("does not tie"))
   assert.ok(html.includes("−$0.20")) // 120 − 100 = 20¢ off
+})
+
+test("buildDepositPdfHtml details table uses the addendum columns and no buyer PII", () => {
+  const html = buildDepositPdfHtml(
+    normalizeReconciliation({
+      payout_id: "po_pdf",
+      ties: true,
+      net: { ticket_sales_cents: 1600, door_covers_cents: 0, refunds_cents: 0, deposited_cents: 1600 },
+      orders: [DETAIL_ROW],
+    }),
+  )
+  assert.ok(html.includes("Ticket-level details"))
+  assert.ok(html.includes("<th>Payout id</th>"))
+  assert.ok(html.includes("<th>Payment intent</th>"))
+  assert.ok(html.includes("po_1TtHLl2eZvKYlo2CabcDEFGh"))
+  assert.ok(!html.includes("Buyer")) // never any buyer column
+  assert.ok(!html.includes(">Commission<")) // no commission row → column hidden
 })
 
 test("depositExportFilename and reconcileQuery build the expected strings", () => {
