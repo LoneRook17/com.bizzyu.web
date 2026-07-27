@@ -297,17 +297,17 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="venue-desc">Description</Label>
+            <Label htmlFor="venue-desc">Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
             <Textarea id="venue-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Brief description of this venue…" />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="venue-website">Website</Label>
+              <Label htmlFor="venue-website">Website <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
               <Input id="venue-website" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="www.example.com" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="venue-instagram">Instagram</Label>
+              <Label htmlFor="venue-instagram">Instagram <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
               <Input id="venue-instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@yourvenue" />
             </div>
           </div>
