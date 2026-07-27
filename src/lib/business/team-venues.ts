@@ -189,8 +189,10 @@ export interface VenueEditorModel {
   selectableVenues: NamedVenue[]
   /** Whether "All venues (global)" is offered (empty set = global). */
   allowGlobal: boolean
-  /** The member's currently-assigned ids OUTSIDE the editor's scope — rendered as
-   *  locked chips, ALWAYS preserved in the committed set, never removable. */
+  /** Out-of-scope ids the editor must NOT touch. Empty since the 2026-07-27
+   *  ruling — a scoped manager never sees out-of-scope venues, and the server
+   *  (not the client) preserves them. Retained for the commit normalizer and the
+   *  unrestricted (owner/global) path, which is empty anyway. */
   lockedVenueIds: number[]
   /** Whether this editor may edit venue scope at all. */
   canEdit: boolean
@@ -215,22 +217,28 @@ export function venueEditorModel(
   if (scope.role === "owner" || scope.venueIds.length === 0) {
     return { selectableVenues: allVenues, allowGlobal: true, lockedVenueIds: [], canEdit }
   }
-  // SCOPED manager: own venues only, global hidden, out-of-scope venues preserved.
+  // SCOPED manager: own venues only, global hidden. Per Luke's 2026-07-27 ruling
+  // a scoped manager never SEES the member's out-of-scope venues at all — not as
+  // options, not as locked chips. `lockedVenueIds` is therefore empty: the client
+  // sends only the in-scope selection and the SERVER preserves the target's
+  // out-of-scope assignments (merge semantics unchanged). `currentMemberIds` is
+  // no longer read here — kept in the signature for the unrestricted call sites
+  // and back-compat.
   const own = new Set(scope.venueIds)
   return {
     selectableVenues: allVenues.filter((v) => own.has(v.id)),
     allowGlobal: false,
-    lockedVenueIds: currentMemberIds.filter((id) => !own.has(id)),
+    lockedVenueIds: [],
     canEdit,
   }
 }
 
 /**
- * The full venue_ids to PUT for an edit: the editor's selectable choices unioned
- * with the preserved (locked) out-of-scope ids, deduped + sorted. For an
- * unrestricted editor `lockedVenueIds` is empty, so this is just the selection —
- * which MAY be empty ⇒ clear-to-global. A scoped editor's result is empty only
- * when the member had no venues to begin with (guarded by minimum-one at the UI).
+ * The venue_ids to PUT for an edit: the editor's selection, deduped + sorted.
+ * `lockedVenueIds` is empty for every editor since the 2026-07-27 ruling (the
+ * server preserves a target's out-of-scope venues, not the client), so this is
+ * exactly the selection — which MAY be empty ⇒ clear-to-global for an
+ * unrestricted editor (a scoped editor is guarded by minimum-one at the UI).
  */
 export function editorCommitVenueIds(model: VenueEditorModel, selectedIds: number[]): number[] {
   return memberVenuesPayload([...model.lockedVenueIds, ...selectedIds]).venue_ids
@@ -265,15 +273,6 @@ export function venueIdsLabel(ids: number[], allVenues: NamedVenue[] = []): stri
   const names = ids.map((id) => allVenues.find((v) => v.id === id)?.name ?? `Venue #${id}`)
   if (ids.length === 1) return names[0]
   return `${ids.length} venues: ${names.join(", ")}`
-}
-
-/** Resolve locked (out-of-scope) ids to `{id,name}` chips, preferring the member's own set for names. */
-export function lockedVenueChips(
-  lockedIds: number[],
-  member: MemberVenueScope,
-  allVenues: NamedVenue[] = [],
-): { id: number; name: string }[] {
-  return lockedIds.map((id) => ({ id, name: venueName(id, member, allVenues) }))
 }
 
 /**

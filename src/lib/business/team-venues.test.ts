@@ -20,7 +20,6 @@ import {
   inviteDefaultVenueIds,
   inviteVenuePayload,
   venueIdsLabel,
-  lockedVenueChips,
   isVenueScopeForbidden,
 } from "./team-venues.ts"
 
@@ -198,12 +197,15 @@ test("venueEditorModel: SCOPED manager — only own venues selectable, global hi
   assert.equal(m.canEdit, true)
 })
 
-test("venueEditorModel: SCOPED manager — member's OUT-OF-SCOPE venues lock (preserved)", () => {
+test("venueEditorModel: SCOPED manager — member's OUT-OF-SCOPE venues NEVER surface (2026-07-27 ruling)", () => {
   // Member is assigned venues 1 (in scope) + 3 (Rooftop, OUT of the manager's 1,2 scope).
   const m = venueEditorModel(SCOPED_MGR, [1, 3], VENUES)
+  // Options are the caller's own scope only — venue 3 is not a selectable option…
   assert.deepEqual(m.selectableVenues.map((v) => v.id), [1, 2])
   assert.equal(m.allowGlobal, false)
-  assert.deepEqual(m.lockedVenueIds, [3]) // Rooftop is locked — the manager can't touch it
+  // …and it is NOT a locked chip either. It never surfaces to the scoped manager;
+  // the SERVER preserves it. lockedVenueIds is empty regardless of the member's set.
+  assert.deepEqual(m.lockedVenueIds, [])
 })
 
 test("venueEditorModel: STAFF cannot edit venue scope", () => {
@@ -211,7 +213,7 @@ test("venueEditorModel: STAFF cannot edit venue scope", () => {
   assert.equal(m.canEdit, false)
 })
 
-// --- editorCommitVenueIds: payload = selection ∪ preserved (locked) --------
+// --- editorCommitVenueIds: payload = the selection (server preserves the rest) --
 
 test("editorCommitVenueIds: unrestricted editor commits exactly the selection", () => {
   const m = venueEditorModel(OWNER, [], VENUES)
@@ -219,12 +221,13 @@ test("editorCommitVenueIds: unrestricted editor commits exactly the selection", 
   assert.deepEqual(editorCommitVenueIds(m, []), [])            // empty = clear-to-global
 })
 
-test("editorCommitVenueIds: scoped editor ALWAYS re-includes locked ids", () => {
-  const m = venueEditorModel(SCOPED_MGR, [1, 3], VENUES) // locked = [3]
-  // Manager selects only venue 2 of their own; locked 3 must survive the PUT.
-  assert.deepEqual(editorCommitVenueIds(m, [2]), [2, 3])
-  // Manager clears all of their own; locked 3 still preserved (never global).
-  assert.deepEqual(editorCommitVenueIds(m, []), [3])
+test("editorCommitVenueIds: scoped editor commits ONLY its selection — server preserves out-of-scope", () => {
+  // Member holds 1 (in scope) + 3 (out of scope). Since the 2026-07-27 ruling the
+  // client no longer re-includes out-of-scope ids; the PUT carries only the
+  // in-scope selection and the server merges/preserves venue 3 on the target.
+  const m = venueEditorModel(SCOPED_MGR, [1, 3], VENUES) // lockedVenueIds = []
+  assert.deepEqual(editorCommitVenueIds(m, [2]), [2])         // NOT [2, 3]
+  assert.deepEqual(editorCommitVenueIds(m, [1, 2]), [1, 2])   // dedup + sort, no 3
 })
 
 // --- inviteDefaultVenueIds --------------------------------------------------
@@ -262,16 +265,6 @@ test("venueIdsLabel: global / single / multi", () => {
   assert.equal(venueIdsLabel([99], VENUES), "Venue #99") // unknown → placeholder
 })
 
-// --- lockedVenueChips: resolve names (prefer the member's own set) ---------
-
-test("lockedVenueChips: names resolved from the member's set, then the venue list", () => {
-  const member = { venue_id: null, venues: [{ venue_id: 3, name: "Rooftop" }] }
-  assert.deepEqual(lockedVenueChips([3], member, VENUES), [{ id: 3, name: "Rooftop" }])
-  // Not in the member set → fall back to the venue list.
-  assert.deepEqual(lockedVenueChips([1], { venue_id: null }, VENUES), [{ id: 1, name: "Backroads" }])
-  // Unknown everywhere → placeholder.
-  assert.deepEqual(lockedVenueChips([99], { venue_id: null }, VENUES), [{ id: 99, name: "Venue #99" }])
-})
 
 // --- isVenueScopeForbidden: robust 403 detection ---------------------------
 

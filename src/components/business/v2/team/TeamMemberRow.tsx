@@ -6,7 +6,7 @@ import { ROLE_LABELS } from "@/lib/business/constants"
 import { memberDisplay, memberInitial } from "@/lib/team-invite/display"
 import type { TeamMember, Venue } from "@/lib/business/types"
 import {
-  memberVenueIds, venueScopeLabel, venueEditorModel, lockedVenueChips,
+  memberVenueIds, venueScopeLabel, venueEditorModel,
   type EditorScope,
 } from "@/lib/business/team-venues"
 import { Avatar, AvatarFallback } from "@/components/business/v2/ui/avatar"
@@ -91,10 +91,10 @@ export default function TeamMemberRow({
   const badge = isPending ? inviteBadge(member, isExpired) : null
 
   // TM-B3 (#15b): what the viewer may assign to THIS member. Owners/global
-  // managers are unrestricted; a scoped manager toggles only their own venues
-  // and the member's out-of-scope venues lock (preserved, not removable).
+  // managers are unrestricted; a scoped manager toggles only their own venues.
+  // Per the 2026-07-27 ruling the member's out-of-scope venues never surface to
+  // a scoped manager (no options, no locked chips); the server preserves them.
   const editor = venueEditorModel(editorScope, scopeIds, venues)
-  const lockedChips = lockedVenueChips(editor.lockedVenueIds, member, venues)
   // Role/remove stay owner-only; managers get the venue editor only.
   const showActions = !isOwnerMember && (isOwnerViewing || editor.canEdit)
 
@@ -155,7 +155,6 @@ export default function TeamMemberRow({
               editor={editor}
               value={scopeIds}
               triggerLabel={venueScopeLabel(member, venues)}
-              lockedChips={lockedChips}
               onCommit={(venueIds) => onVenuesChange(member.id, venueIds)}
             />
           )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, ChevronDown, Globe, Lock } from "lucide-react"
+import { Check, ChevronDown, Globe } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { editorCommitVenueIds, type VenueEditorModel } from "@/lib/business/team-venues"
 import {
@@ -14,15 +14,12 @@ import {
 } from "@/components/business/v2/ui/dropdown-menu"
 
 interface VenueMultiSelectProps {
-  /** What this editor may do: selectable venues, global allowed, locked ids.
-   *  (Venue names come from here + `lockedChips`, not a separate venue list.) */
+  /** What this editor may do: selectable venues, global allowed. */
   editor: VenueEditorModel
-  /** Current committed effective ids (full set incl. any locked ids). */
+  /** Current committed effective ids. */
   value: number[]
   /** Parent-computed trigger label (member scope, or the live selection). */
   triggerLabel: string
-  /** Resolved names for the locked (out-of-scope, preserved) venues. */
-  lockedChips?: { id: number; name: string }[]
   /**
    * "commit" (default, team row): buffer a draft, fire `onCommit` ONCE on close
    * when it changed — one PUT. "controlled" (invite): fire `onChange` live per
@@ -48,12 +45,13 @@ function sameSet(a: number[], b: number[]): boolean {
  * TM-B3 (#15b) editor-scoped venue-SET editor. A checkbox dropdown over the
  * venues an editor MAY assign:
  *   • unrestricted (owner / global manager): every venue + "All venues (global)".
- *   • scoped manager: own venues only, global hidden, minimum one enforced; the
- *     member's out-of-scope venues render as LOCKED chips (preserved, disabled).
+ *   • scoped manager: own venues only, global hidden, minimum one enforced. Per
+ *     the 2026-07-27 ruling a scoped manager never sees the member's out-of-scope
+ *     venues (no options, no locked chips); the server preserves them.
  * Reused by both the team row (commit-on-close) and the invite dialog (controlled).
  */
 export default function VenueMultiSelect({
-  editor, value, triggerLabel, lockedChips = [],
+  editor, value, triggerLabel,
   mode = "commit", onCommit, onChange, disabled, align = "end", className,
 }: VenueMultiSelectProps) {
   const selectableIds = editor.selectableVenues.map((v) => v.id)
@@ -142,22 +140,6 @@ export default function VenueMultiSelect({
             </DropdownMenuItem>
           )
         })}
-
-        {/* Locked: the member's venues outside this manager's scope. Preserved on
-            save, shown for transparency, never removable. */}
-        {editor.lockedVenueIds.length > 0 && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="normal-case tracking-normal text-[11px]">Managed by another manager</DropdownMenuLabel>
-            {lockedChips.map((chip) => (
-              <DropdownMenuItem key={chip.id} disabled onSelect={(e) => e.preventDefault()}>
-                <Lock />
-                <span className="flex-1 truncate">{chip.name}</span>
-                <Check className="text-neutral-400 dark:text-neutral-500" />
-              </DropdownMenuItem>
-            ))}
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
