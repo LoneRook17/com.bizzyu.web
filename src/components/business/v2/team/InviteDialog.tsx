@@ -20,6 +20,10 @@ import {
 } from "@/lib/team-invite/types"
 import type { Venue } from "@/lib/business/types"
 import {
+  inviteDefaultVenueIds, inviteVenuePayload, venueEditorModel, venueIdsLabel,
+  type EditorScope,
+} from "@/lib/business/team-venues"
+import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from "@/components/business/v2/ui/dialog"
 import { Button } from "@/components/business/v2/ui/button"
@@ -27,6 +31,7 @@ import { Label } from "@/components/business/v2/ui/label"
 import { Input, Select } from "@/components/business/v2/ui/input"
 import CandidatePicker from "./CandidatePicker"
 import InviteLinkActions from "./InviteLinkActions"
+import VenueMultiSelect from "./VenueMultiSelect"
 
 // Dev-only scenario switch for the invite mock. The inline literal compare is
 // what folds at build time and drops the import — see lib/team-invite/client.ts.
@@ -39,6 +44,9 @@ interface InviteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onInvited: () => void
+  /** TM-B3 (#15b): the inviter's own scope — a scoped manager may only invite
+   *  into their own venues (global option hidden, minimum one enforced). */
+  editorScope: EditorScope
   venues: Venue[]
   /** Real business name — it goes in the SMS the owner sends. */
   businessName: string
@@ -48,7 +56,7 @@ interface InviteDialogProps {
    * whole deliverable, so it lands on the result panel like any other invite
    * rather than firing off invisibly behind a menu item.
    */
-  initial?: { contactType: ContactType; value: string; role: InviteRole; venueId: number | null } | null
+  initial?: { contactType: ContactType; value: string; role: InviteRole; venueIds: number[] } | null
 }
 
 const INVITABLE_ROLES: { value: InviteRole; label: string }[] = [
@@ -66,7 +74,7 @@ interface Result {
 }
 
 export default function InviteDialog({
-  open, onOpenChange, onInvited, venues, businessName, initial = null,
+  open, onOpenChange, onInvited, editorScope, venues, businessName, initial = null,
 }: InviteDialogProps) {
   // Phone-first: the contract's default, and the number is what a bar owner
   // actually has for their staff.
@@ -75,9 +83,11 @@ export default function InviteDialog({
   const [email, setEmail] = useState(initial?.contactType === "email" ? initial.value : "")
   const [name, setName] = useState("")
   const [role, setRole] = useState<InviteRole>(initial?.role ?? "staff")
-  const [venueId, setVenueId] = useState<string>(
-    initial?.venueId != null ? String(initial.venueId) : ""
-  ) // "" = global (null)
+  // TM-B3 (#15b): venue-SET selection. A resend prefills the member's full set;
+  // a fresh invite defaults to the inviter's scope (global → [], scoped → own).
+  const [venueIds, setVenueIds] = useState<number[]>(
+    () => initial?.venueIds ?? inviteDefaultVenueIds(editorScope)
+  )
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -92,13 +102,25 @@ export default function InviteDialog({
   // 409 PREVIOUSLY_REMOVED; cleared on confirm or cancel.
   const [reactivation, setReactivation] = useState<{ maskedName?: string; chosenUserId?: number } | null>(null)
 
+  // The invite has no existing member, so nothing is ever "locked" here — the
+  // editor model only shapes which venues are selectable + whether global shows.
+  const editor = venueEditorModel(editorScope, [], venues)
+
+  // Re-seed whenever the dialog opens or the inviter's scope resolves (auth can
+  // load after mount) so a scoped manager never starts at empty/global. A resend
+  // prefill (initial.venueIds) wins over the scope default.
+  useEffect(() => {
+    if (open) setVenueIds(initial?.venueIds ?? inviteDefaultVenueIds(editorScope))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editorScope.role, editorScope.venueIds.join(",")])
+
   const reset = () => {
     setContactType(initial?.contactType ?? "phone")
     setPhone(initial?.contactType === "phone" ? initial.value : "")
     setEmail(initial?.contactType === "email" ? initial.value : "")
     setName("")
     setRole(initial?.role ?? "staff")
-    setVenueId(initial?.venueId != null ? String(initial.venueId) : "")
+    setVenueIds(initial?.venueIds ?? inviteDefaultVenueIds(editorScope))
     setError("")
     setCandidates(null)
     setResult(null)
@@ -169,8 +191,11 @@ export default function InviteDialog({
   const view: LookupView = resolveLookupView(lookup ?? { match: "legacy" })
   const nameSatisfied = !view.nameRequired || name.trim().length > 0
 
+  // TM-B3 (#15b): scoped managers must pick at least one venue (no global fallback).
+  const missingVenue = !editor.allowGlobal && venueIds.length === 0
+
   const submit = async (opts?: { chosenUserId?: number; reactivate?: boolean }) => {
-    if (!contactValid || !contactValue) return
+    if (!contactValid || !contactValue || missingVenue) return
     // On `multiple` the owner disambiguates in the pre-invoked picker before any
     // request goes out — no 409 round-trip. A chosen id means they already did.
     if (view.kind === "multiple" && view.candidates && !opts?.chosenUserId) {
@@ -190,7 +215,8 @@ export default function InviteDialog({
         display_name: displayName,
         chosen_user_id: opts?.chosenUserId,
         reactivate: opts?.reactivate,
-        venue_id: venueId ? Number(venueId) : null,
+        // venue-SET: the full set plus a scalar mirror for pre-set services.
+        ...inviteVenuePayload(venueIds),
       })
       setCandidates(null)
       setReactivation(null)
@@ -367,14 +393,20 @@ export default function InviteDialog({
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="invite-venue">Venue assignment</Label>
-              <Select id="invite-venue" value={venueId} onChange={(e) => setVenueId(e.target.value)}>
-                <option value="">All venues (global)</option>
-                {venues.map((v) => (
-                  <option key={v.id} value={String(v.id)}>{v.name}</option>
-                ))}
-              </Select>
+              {/* TM-B3 (#15b): same multi-select as the team row (controlled mode). */}
+              <VenueMultiSelect
+                editor={editor}
+                value={venueIds}
+                triggerLabel={venueIdsLabel(venueIds, venues)}
+                mode="controlled"
+                onChange={setVenueIds}
+                align="start"
+                className="w-full sm:w-full"
+              />
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Global members can access all venues. Venue-specific members only see their assigned venue.
+                {editor.allowGlobal
+                  ? "Global members can access all venues. Pick specific venues to scope them."
+                  : "Assign at least one of your venues. This member will only see the venues you choose."}
               </p>
             </div>
 
@@ -389,7 +421,7 @@ export default function InviteDialog({
               <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading || !contactValid || !nameSatisfied}>
+              <Button type="submit" disabled={loading || !contactValid || !nameSatisfied || missingVenue}>
                 <UserPlus /> {loading ? "Creating…" : view.submitLabel}
               </Button>
             </DialogFooter>

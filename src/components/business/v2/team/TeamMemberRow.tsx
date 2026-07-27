@@ -1,22 +1,34 @@
 "use client"
 
+import { AlertCircle, Globe, MapPin } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ROLE_LABELS } from "@/lib/business/constants"
 import { memberDisplay, memberInitial } from "@/lib/team-invite/display"
 import type { TeamMember, Venue } from "@/lib/business/types"
+import {
+  memberVenueIds, venueScopeLabel, venueEditorModel,
+  type EditorScope,
+} from "@/lib/business/team-venues"
 import { Avatar, AvatarFallback } from "@/components/business/v2/ui/avatar"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Select } from "@/components/business/v2/ui/input"
+import VenueMultiSelect from "./VenueMultiSelect"
 
 interface TeamMemberRowProps {
   member: TeamMember
   currentUserRole: string
+  /** TM-B3 (#15b): the viewing user's own scope, so a scoped manager only
+   *  edits their own venues (out-of-scope venues lock, global hides). */
+  editorScope: EditorScope
   venues: Venue[]
   onRemove: (member: TeamMember) => void
   onRoleChange: (memberId: number, newRole: string) => void
-  onVenueChange: (memberId: number, venueId: number | null) => void
+  /** TM-B2 (#15): set-aware venue assignment. `[]` = clear to global. */
+  onVenuesChange: (memberId: number, venueIds: number[]) => void
   onResend?: (member: TeamMember) => void
+  /** TM-B3 (#15b): inline error for this row (e.g. 403 VENUE_SCOPE_FORBIDDEN). */
+  venueError?: string
 }
 
 const ROLE_BADGE: Record<string, { className: string }> = {
@@ -63,10 +75,11 @@ function inviteBadge(member: TeamMember, isExpired: boolean): { label: string; v
 }
 
 export default function TeamMemberRow({
-  member, currentUserRole, venues, onRemove, onRoleChange, onVenueChange, onResend,
+  member, currentUserRole, editorScope, venues, onRemove, onRoleChange, onVenuesChange, onResend, venueError,
 }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
+  const scopeIds = memberVenueIds(member)
   // UNCHANGED by the #5 work, deliberately. It mirrors the server's own access
   // rule (resolveActiveBusinessId.ts:34 — is_active=1 AND (invite_accepted_at
   // IS NOT NULL OR role='owner')), so the badge agrees with who can actually
@@ -76,6 +89,14 @@ export default function TeamMemberRow({
   const isPending = !member.invite_accepted_at && !isOwnerMember
   const isExpired = isPending && !!member.invite_expires_at && new Date(member.invite_expires_at) < new Date()
   const badge = isPending ? inviteBadge(member, isExpired) : null
+
+  // TM-B3 (#15b): what the viewer may assign to THIS member. Owners/global
+  // managers are unrestricted; a scoped manager toggles only their own venues.
+  // Per the 2026-07-27 ruling the member's out-of-scope venues never surface to
+  // a scoped manager (no options, no locked chips); the server preserves them.
+  const editor = venueEditorModel(editorScope, scopeIds, venues)
+  // Role/remove stay owner-only; managers get the venue editor only.
+  const showActions = !isOwnerMember && (isOwnerViewing || editor.canEdit)
 
   const joinedSource = member.invite_accepted_at ?? member.created_at
   const joinedDate = joinedSource
@@ -107,37 +128,49 @@ export default function TeamMemberRow({
             {badge && <Badge size="sm" variant={badge.variant}>{badge.label}</Badge>}
             <span className="text-xs text-neutral-400 dark:text-neutral-500">{joinedDate}</span>
           </div>
+          {/* TM-B2 (#15): set-aware venue scope — "Global" / "1 venue: X" / "N venues: X, Y" */}
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
+            {scopeIds.length === 0 ? (
+              <Globe className="size-3 text-neutral-400 dark:text-neutral-500" />
+            ) : (
+              <MapPin className="size-3 text-neutral-400 dark:text-neutral-500" />
+            )}
+            <span className="truncate">{venueScopeLabel(member, venues)}</span>
+          </p>
+          {/* TM-B3 (#15b): inline scope error (no alert, no state corruption). */}
+          {venueError && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+              <AlertCircle className="size-3 shrink-0" />
+              <span>{venueError}</span>
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Actions - owner only, non-owner members */}
-      {isOwnerViewing && !isOwnerMember && (
+      {/* Actions — owner (role + venue + remove) or manager (venue only), non-owner members */}
+      {showActions && (
         <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:pl-0">
-          <Select
-            value={member.venue_id ?? ""}
-            onChange={(e) => {
-              const val = e.target.value
-              onVenueChange(member.id, val === "" ? null : Number(val))
-            }}
-            title="Venue assignment"
-            className="h-8 min-w-0 flex-1 px-2 text-xs sm:w-[140px] sm:flex-none"
-          >
-            <option value="">Global</option>
-            {venues.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </Select>
+          {editor.canEdit && (
+            <VenueMultiSelect
+              editor={editor}
+              value={scopeIds}
+              triggerLabel={venueScopeLabel(member, venues)}
+              onCommit={(venueIds) => onVenuesChange(member.id, venueIds)}
+            />
+          )}
 
-          <Select
-            value={member.role}
-            onChange={(e) => onRoleChange(member.id, e.target.value)}
-            title="Role"
-            className="h-8 min-w-0 flex-1 px-2 text-xs sm:w-[120px] sm:flex-none"
-          >
-            {ASSIGNABLE_ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-            ))}
-          </Select>
+          {isOwnerViewing && (
+            <Select
+              value={member.role}
+              onChange={(e) => onRoleChange(member.id, e.target.value)}
+              title="Role"
+              className="h-8 min-w-0 flex-1 px-2 text-xs sm:w-[120px] sm:flex-none"
+            >
+              {ASSIGNABLE_ROLES.map((r) => (
+                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              ))}
+            </Select>
+          )}
 
           {/* Was expired-only. Now on every unaccepted row, because under the
               #5 contract the link is the deliverable and this is the only way
@@ -149,9 +182,11 @@ export default function TeamMemberRow({
               Send link
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
-            Remove
-          </Button>
+          {isOwnerViewing && (
+            <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
+              Remove
+            </Button>
+          )}
         </div>
       )}
     </div>

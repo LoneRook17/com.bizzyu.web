@@ -49,6 +49,11 @@ export interface InviteArgs {
   // invite to global access — a permission WIDENING, so it is sent additively
   // rather than dropped. N1 must accept it.
   venue_id?: number | null
+  // TM-B3 (#15b): venue-SET invite. The full effective venue set; `venue_id`
+  // above stays as the scalar mirror (single → that id, set/global → null) for
+  // services deploys that predate the set contract. Both come from
+  // inviteVenuePayload() in team-venues.ts, so they never disagree.
+  venue_ids?: number[] | null
 }
 
 /**
