@@ -3,9 +3,10 @@
 // Per-deal impressions → views → claims funnel + daily chart + range picker.
 // Split into a presentational view (DealFunnelView, pure props) and a fetch
 // container (DealFunnel) that reads the DI-B3s aggregates through the typed
-// client (@/lib/business/deal-stats). Degrades to the locked zero-state copy
-// when the endpoint isn't deployed (404) or no tracking data exists yet —
-// never an error wall for that case.
+// client (@/lib/business/deal-stats). All-zeros is a normal live surface: it
+// renders the real funnel/chart reading 0, never a special "coming soon" box.
+// The unavailable case (endpoint not deployed, 404) zero-fills to the same
+// funnel with a subtle "No data yet" caption — never an error wall.
 
 import { useCallback, useEffect, useState } from "react"
 import { cn } from "@/lib/v2/utils"
@@ -22,7 +23,8 @@ import {
   rangeForDays,
   RANGE_PRESETS,
   DEFAULT_RANGE_DAYS,
-  TRACKING_ZERO_STATE_COPY,
+  funnelRenderMode,
+  funnelEmptyCaption,
   type Funnel,
   type DealDailyStat,
 } from "@/lib/business/deal-stats"
@@ -150,16 +152,6 @@ function DailyChart({ days }: { days: DealDailyStat[] }) {
   )
 }
 
-function ZeroState() {
-  return (
-    <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50/60 px-5 py-8 text-center dark:border-neutral-800 dark:bg-neutral-900/40">
-      <p className="mx-auto max-w-md text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-        {TRACKING_ZERO_STATE_COPY}
-      </p>
-    </div>
-  )
-}
-
 // ── Presentational view (pure props — no data fetching) ─────────────────────
 export function DealFunnelView({
   funnel,
@@ -180,7 +172,8 @@ export function DealFunnelView({
   unavailable?: boolean
   onRetry?: () => void
 }) {
-  const showZeroState = unavailable || (funnel !== null && !funnel.hasTrackingData)
+  const mode = funnelRenderMode({ loading, error, funnel })
+  const emptyCaption = funnelEmptyCaption({ unavailable, loading, error })
 
   return (
     <Card>
@@ -193,14 +186,14 @@ export function DealFunnelView({
           <RangePicker value={rangeDays} onChange={onRangeChange} disabled={loading} />
         </div>
 
-        {loading ? (
+        {mode === "loading" ? (
           <div className="space-y-4">
             <Skeleton className="h-2.5 rounded-full" />
             <Skeleton className="h-2.5 w-2/3 rounded-full" />
             <Skeleton className="h-2.5 w-1/3 rounded-full" />
             <Skeleton className="mt-4 h-28 rounded-lg" />
           </div>
-        ) : error ? (
+        ) : mode === "error" ? (
           <div className="py-6 text-center">
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
               Couldn&apos;t load engagement stats.{" "}
@@ -211,10 +204,11 @@ export function DealFunnelView({
               )}
             </p>
           </div>
-        ) : showZeroState ? (
-          <ZeroState />
         ) : funnel ? (
           <>
+            {emptyCaption && (
+              <p className="mb-3 text-xs text-neutral-400 dark:text-neutral-500">{emptyCaption}</p>
+            )}
             <div className="space-y-4">
               <FunnelStage
                 label="Impressions"
@@ -274,10 +268,11 @@ export function DealFunnel({ dealId }: { dealId: number }) {
         fetchDealStats(from, to),
         fetchDealDailyStats(dealId, from, to),
       ])
-      // Either endpoint 404 (not deployed) → degrade to zero-state, not an error.
+      // Either endpoint 404 (not deployed) → render the same funnel zero-filled
+      // (with a "No data yet" caption), not an error and not a "coming soon" box.
       if (stats === null || daily === null) {
         setUnavailable(true)
-        setFunnel(null)
+        setFunnel(computeFunnel(emptyStatRow(dealId)))
         setDays([])
         return
       }

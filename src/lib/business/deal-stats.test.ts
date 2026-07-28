@@ -14,6 +14,8 @@ import {
   indexStatsByDeal,
   emptyStatRow,
   computeFunnel,
+  funnelRenderMode,
+  funnelEmptyCaption,
   stepRate,
   formatRate,
   rangeForDays,
@@ -113,6 +115,50 @@ test("emptyStatRow: all-zero baseline for a deal with no rows", () => {
   const f = computeFunnel(emptyStatRow(555))
   assert.equal(f.impressions, 0)
   assert.equal(f.hasTrackingData, false)
+})
+
+// ── Render-mode decision (TF-E-W1: no more zero-state "coming soon" box) ─────
+test("funnelRenderMode: all-zero funnel still renders the REAL funnel", () => {
+  // Revert-check: pre-fix this rendered the 4.2.6 ZeroState box. A zeroed funnel
+  // (no tracking data) must now resolve to 'funnel', NOT a special zero-state.
+  const zeroed = computeFunnel(emptyStatRow(555))
+  assert.equal(zeroed.hasTrackingData, false)
+  assert.equal(funnelRenderMode({ loading: false, error: false, funnel: zeroed }), "funnel")
+})
+
+test("funnelRenderMode: claims-without-tracking funnel renders the funnel", () => {
+  const f = computeFunnel(FIXTURE.deals[2]) // claims=12, impressions/views=0
+  assert.equal(f.hasTrackingData, false)
+  assert.equal(funnelRenderMode({ loading: false, error: false, funnel: f }), "funnel")
+})
+
+test("funnelRenderMode: populated funnel renders the funnel", () => {
+  const f = computeFunnel(FIXTURE.deals[0])
+  assert.equal(funnelRenderMode({ loading: false, error: false, funnel: f }), "funnel")
+})
+
+test("funnelRenderMode: loading and error win over any funnel", () => {
+  const f = computeFunnel(FIXTURE.deals[0])
+  assert.equal(funnelRenderMode({ loading: true, error: false, funnel: f }), "loading")
+  assert.equal(funnelRenderMode({ loading: false, error: true, funnel: f }), "error")
+  // loading takes precedence over a set error flag.
+  assert.equal(funnelRenderMode({ loading: true, error: true, funnel: null }), "loading")
+})
+
+test("funnelRenderMode: no funnel (pre-fetch) → 'empty' (renders nothing)", () => {
+  assert.equal(funnelRenderMode({ loading: false, error: false, funnel: null }), "empty")
+})
+
+test("funnelEmptyCaption: unavailable → subtle 'No data yet', not the 4.2.6 copy", () => {
+  const cap = funnelEmptyCaption({ unavailable: true, loading: false, error: false })
+  assert.equal(cap, "No data yet")
+  assert.ok(!/4\.2\.6|app update/i.test(cap ?? "")) // never the retired coming-soon copy
+})
+
+test("funnelEmptyCaption: available / loading / error → no caption", () => {
+  assert.equal(funnelEmptyCaption({ unavailable: false, loading: false, error: false }), null)
+  assert.equal(funnelEmptyCaption({ unavailable: true, loading: true, error: false }), null)
+  assert.equal(funnelEmptyCaption({ unavailable: true, loading: false, error: true }), null)
 })
 
 test("formatRate: one-decimal percent", () => {

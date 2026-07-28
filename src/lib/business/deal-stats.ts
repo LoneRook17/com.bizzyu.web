@@ -14,8 +14,9 @@
 //
 // Degrade rule: the ingest endpoints 404 until deploy wave 3. A 404 is NOT an
 // error here — it means "tracking isn't live yet", so the fetchers return null
-// and the UI shows the zero-state copy instead of an error wall. Any other
-// failure propagates so the UI can render its error state.
+// and the UI renders the same funnel zero-filled (with a "No data yet" caption)
+// instead of an error wall. Any other failure propagates so the UI can render
+// its error state.
 //
 // apiClient is imported lazily inside the fetchers (not at the top level) on
 // purpose: everything else in this file is pure, and the Node built-in test
@@ -172,6 +173,34 @@ export function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`
 }
 
+// ── Funnel view render mode ─────────────────────────────────────────────────
+// Which surface the DealFunnelView shows for a given fetch state. A present
+// funnel ALWAYS renders as the real funnel/chart — including all-zeros: the
+// zeroed funnel is a normal live surface, not a special "coming soon" state.
+// The container zero-fills the unavailable (endpoint-not-deployed) case too, so
+// 'empty' is only the pre-fetch fallback (renders nothing).
+export type FunnelRenderMode = 'loading' | 'error' | 'funnel' | 'empty'
+
+export function funnelRenderMode(state: {
+  loading: boolean
+  error: boolean
+  funnel: Funnel | null
+}): FunnelRenderMode {
+  if (state.loading) return 'loading'
+  if (state.error) return 'error'
+  return state.funnel ? 'funnel' : 'empty'
+}
+
+/** Subtle caption for the unavailable (endpoint-not-deployed) zeroed funnel —
+ *  the only extra affordance over a real all-zeros surface. null = no caption. */
+export function funnelEmptyCaption(state: {
+  unavailable: boolean
+  loading: boolean
+  error: boolean
+}): string | null {
+  return state.unavailable && !state.loading && !state.error ? 'No data yet' : null
+}
+
 // ── Date range presets (default 30d) ────────────────────────────────────────
 export const RANGE_PRESETS = [
   { value: 7, label: '7 days' },
@@ -237,7 +266,3 @@ export async function fetchDealDailyStats(
     throw err
   }
 }
-
-/** Locked customer-facing zero-state copy (pre-4.2.6, or endpoint not live). */
-export const TRACKING_ZERO_STATE_COPY =
-  'Tracking starts with the next app update — impressions and views appear once version 4.2.6 is live.'
