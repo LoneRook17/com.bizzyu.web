@@ -4,11 +4,14 @@
 // shapes in the interfaces below, and every consumer imports the normalized
 // types + pure helpers from here (never a raw fetch).
 //
-// Contract (pinned 2026-07-17, DEAL_IMPRESSIONS_DESIGN.md):
-//   GET /business/deals/stats?from&to
+// Contract (pinned 2026-07-17, DEAL_IMPRESSIONS_DESIGN.md; paths renamed to
+// the /impressions spellings 2026-07-28 — ad-blocker lists match "stats" URL
+// fragments. Services dual-mounts the old spellings too, so they still work
+// server-side; the web client must only ever use the new ones):
+//   GET /business/deals/impressions?from&to
 //     -> { range:{from,to,timezone}, deals:[{ deal_id, impressions,
 //          unique_impressions, views, unique_views, claims }] }
-//   GET /business/deals/:dealId/stats/daily?from&to
+//   GET /business/deals/:dealId/impressions/daily?from&to
 //     -> { deal_id, days:[{ date, impressions, unique_impressions, views,
 //          unique_views, claims }] }
 //
@@ -241,7 +244,7 @@ function isNotDeployed(err: unknown): boolean {
 export async function fetchDealStats(from: string, to: string): Promise<DealStatsResponse | null> {
   const { apiClient } = await import('./api-client')
   try {
-    const raw = await apiClient.get<DealStatsResponse>(`/business/deals/stats?from=${from}&to=${to}`)
+    const raw = await apiClient.get<DealStatsResponse>(`/business/deals/impressions?from=${from}&to=${to}`)
     return normalizeStatsResponse(raw)
   } catch (err) {
     if (isNotDeployed(err)) return null
@@ -258,7 +261,7 @@ export async function fetchDealDailyStats(
   const { apiClient } = await import('./api-client')
   try {
     const raw = await apiClient.get<DealDailyStatsResponse>(
-      `/business/deals/${dealId}/stats/daily?from=${from}&to=${to}`,
+      `/business/deals/${dealId}/impressions/daily?from=${from}&to=${to}`,
     )
     return normalizeDailyResponse(raw)
   } catch (err) {

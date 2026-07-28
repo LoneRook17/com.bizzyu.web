@@ -8,7 +8,6 @@ import { apiClient } from "@/lib/business/api-client"
 import type {
   DealsOverview as DealsOverviewType,
   EventsOverview as EventsOverviewType,
-  PromoterLink,
   LineSkipAnalyticsOverview,
 } from "@/lib/business/types"
 import {
@@ -23,7 +22,6 @@ import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import DealsOverviewView from "@/components/business/v2/analytics/DealsOverview"
 import EventsOverviewView from "@/components/business/v2/analytics/EventsOverview"
 import LineSkipsOverviewView from "@/components/business/v2/analytics/LineSkipsOverview"
-import PromoterStatsView from "@/components/business/v2/analytics/PromoterStats"
 import { AnalyticsSkeleton } from "@/components/business/v2/analytics/shared"
 
 function ErrorState() {
@@ -52,31 +50,10 @@ export default function AnalyticsPage() {
   const { user } = useAuth()
   const role = user?.business_role
 
-  if (role === "promoter") return <PromoterView />
+  // No promoter branch: services rejects promoter dashboard logins outright
+  // (TF-CLEANUP-S, 403 at login), so a promoter session can't reach this page.
   if (role === "staff") return <StaffView />
   return <OwnerManagerView />
-}
-
-function PromoterView() {
-  const venueParam = useVenueParam()
-  const [links, setLinks] = useState<PromoterLink[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-    apiClient
-      .get<PromoterLink[]>(`/business/analytics/promoter-stats?_=1${venueParam}`)
-      .then(setLinks)
-      .catch(() => setLinks([]))
-      .finally(() => setLoading(false))
-  }, [venueParam])
-
-  return (
-    <>
-      <PageHeader title="Your stats" description="Track how your links are performing." />
-      {loading ? <AnalyticsSkeleton /> : <PromoterStatsView links={links} />}
-    </>
-  )
 }
 
 function StaffView() {
@@ -90,7 +67,7 @@ function StaffView() {
     setLoading(true)
     setErrored(false)
     apiClient
-      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
+      .get<DealsOverviewType>(`/business/insights/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch((err) => {
         setDeals(null)
@@ -140,7 +117,7 @@ function OwnerManagerView() {
     setLineSkipsErr(false)
 
     apiClient
-      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
+      .get<DealsOverviewType>(`/business/insights/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch((err) => {
         setDeals(null)
@@ -153,7 +130,7 @@ function OwnerManagerView() {
     if (showEvents) {
       setEventsLoading(true)
       apiClient
-        .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
+        .get<EventsOverviewType>(`/business/insights/events/overview?_=1${venueParam}`)
         .then(setEvents)
         .catch((err) => {
           setEvents(null)

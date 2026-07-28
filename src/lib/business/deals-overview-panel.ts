@@ -4,7 +4,7 @@
 //
 // TF-ANALYTICS-W-F1: the engagement funnel (DealFunnel) now renders inside every
 // expanded panel, wired with the deal's own id. It is INDEPENDENT of the
-// claims-detail fetch (/business/analytics/deals/:id): the funnel self-fetches
+// claims-detail fetch (/business/insights/deals/:id): the funnel self-fetches
 // its own DI-B3s stats and self-degrades to a zero-filled funnel, so it must NOT
 // be gated behind the claims-detail load/error branch. This model captures that
 // contract — funnelDealId is always present; `claims` only drives the separate
