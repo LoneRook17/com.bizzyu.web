@@ -11,6 +11,7 @@ import { cn } from "@/lib/v2/utils"
 import {
   fetchPayouts,
   rangeForDays,
+  isoDate,
   DEFAULT_PAYOUT_RANGE_DAYS,
   buildPayoutsCsv,
   csvFilename,
@@ -19,6 +20,8 @@ import {
 import {
   fetchPayoutsSummary,
   fetchDeposits,
+  untilIsPast,
+  type PayoutsWindow,
   type PayoutsSummary,
   type DepositListItem,
 } from "@/lib/business/payouts-reconcile"
@@ -74,12 +77,18 @@ export default function PayoutsPage() {
 // the machinery it was before P2-B1w. Fetches on click (the new view doesn't hold
 // the full row-grain response), builds the same CSV, and downloads it.
 
-function GlobalCsvExportButton({ rangeDays, venueParam }: { rangeDays: number; venueParam: string }) {
+function GlobalCsvExportButton({ timeWindow, venueParam }: { timeWindow: PayoutsWindow; venueParam: string }) {
   const [busy, setBusy] = useState(false)
   const onExport = useCallback(async () => {
     setBusy(true)
     try {
-      const range = rangeForDays(rangeDays, new Date())
+      // Custom window → the exact since/until the summary shows; presets keep
+      // the derived N-day range. Either way the /list fetch (and therefore the
+      // downloaded file) covers the same window as the page.
+      const range =
+        timeWindow.kind === "custom"
+          ? { since: timeWindow.since, until: timeWindow.until }
+          : rangeForDays(timeWindow.days, new Date())
       const resp = await fetchPayouts({ range, status: "all", venueParam })
       if (resp) downloadCsv(csvFilename(range), buildPayoutsCsv(resp))
     } catch {
@@ -87,7 +96,7 @@ function GlobalCsvExportButton({ rangeDays, venueParam }: { rangeDays: number; v
     } finally {
       setBusy(false)
     }
-  }, [rangeDays, venueParam])
+  }, [timeWindow, venueParam])
 
   return (
     <button
@@ -135,7 +144,9 @@ function ReconcileContainer() {
   // Scope pill label: concrete venue name, else "All venues" (also the transient
   // pre-resolution default, matching the switcher's own fallback).
   const scopeLabel = !isAllVenues && selectedVenue?.name ? selectedVenue.name : "All venues"
-  const [rangeDays, setRangeDays] = useState(DEFAULT_PAYOUT_RANGE_DAYS)
+  // Preset days=N by default; the picker's Custom mode swaps in a since/until
+  // window that summary, deposits, and the CSV export all share.
+  const [timeWindow, setTimeWindow] = useState<PayoutsWindow>({ kind: "days", days: DEFAULT_PAYOUT_RANGE_DAYS })
   const [summary, setSummary] = useState<PayoutsSummary | null>(null)
   const [deposits, setDeposits] = useState<DepositListItem[] | null>(null)
   const [mode, setMode] = useState<ReconMode>("loading")
@@ -146,10 +157,10 @@ function ReconcileContainer() {
   const fetchAll = useCallback(
     () =>
       Promise.all([
-        fetchPayoutsSummary({ days: rangeDays, venueParam }),
-        fetchDeposits({ days: rangeDays, venueParam }),
+        fetchPayoutsSummary({ window: timeWindow, venueParam }),
+        fetchDeposits({ window: timeWindow, venueParam }),
       ]),
-    [rangeDays, venueParam],
+    [timeWindow, venueParam],
   )
 
   const apply = useCallback((s: PayoutsSummary | null, d: DepositListItem[] | null) => {
@@ -194,8 +205,8 @@ function ReconcileContainer() {
         description="Reconcile every deposit to the tickets and refunds inside it."
         actions={
           <>
-            <RangePicker value={rangeDays} onChange={setRangeDays} disabled={mode === "loading"} />
-            <GlobalCsvExportButton rangeDays={rangeDays} venueParam={venueParam} />
+            <RangePicker value={timeWindow} onChange={setTimeWindow} disabled={mode === "loading"} />
+            <GlobalCsvExportButton timeWindow={timeWindow} venueParam={venueParam} />
           </>
         }
       />
@@ -225,7 +236,13 @@ function ReconcileContainer() {
             }
           />
         ) : summary && deposits ? (
-          <ReconcileView summary={summary} deposits={deposits} venueParam={venueParam} venueName={venueName} />
+          <ReconcileView
+            summary={summary}
+            deposits={deposits}
+            venueParam={venueParam}
+            venueName={venueName}
+            untilInPast={untilIsPast(timeWindow, isoDate(new Date()))}
+          />
         ) : null}
       </div>
     </>

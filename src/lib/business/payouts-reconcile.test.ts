@@ -27,6 +27,17 @@ import {
   buildDepositPdfHtml,
   depositExportFilename,
   reconcileQuery,
+  summaryRenderState,
+  sharedAccountCaveat,
+  dedicatedReassurance,
+  customWindow,
+  isIsoDate,
+  untilIsPast,
+  VENUE_TILE_LABELS,
+  COMBINED_ACCOUNT_LABEL,
+  DEDICATED_BADGE_LABEL,
+  IN_TRANSIT_PAST_UNTIL_NOTE,
+  type PayoutsSummary,
   type Reconciliation,
   type ReconOrderRow,
 } from "./payouts-reconcile.ts"
@@ -77,7 +88,17 @@ test("normalizeSummary coerces string cents and tolerates null", () => {
   assert.equal(s.in_transit_cents, 600)
   assert.equal(s.refunded_cents, 0) // missing → 0
   const empty = normalizeSummary(null)
-  assert.deepEqual(empty, { deposited_cents: 0, in_transit_cents: 0, refunded_cents: 0 })
+  assert.deepEqual(empty, {
+    deposited_cents: 0,
+    in_transit_cents: 0,
+    refunded_cents: 0,
+    venue_scoped: false,
+    venue_deposited_cents: null,
+    venue_in_transit_cents: null,
+    venue_refunded_cents: null,
+    account_dedicated: null,
+    shared_with_venues: [],
+  })
 })
 
 test("normalizeDeposit coerces numerics and defaults an unknown status to paid", () => {
@@ -403,4 +424,140 @@ test("buildDepositPdfHtml renders the venue-share line ONLY when scoped", () => 
   assert.ok(scoped.includes("This venue's share of the deposit: <strong>$42.00</strong>"))
   // The whole-deposit net sentence is still present and unchanged.
   assert.ok(scoped.includes("= Deposited $185.00"))
+})
+
+// ── TF-PAYOUTS-SUMMARY-F1: the three summary render states + custom window ────
+// The strip's state machine and its exact copy live in the typed client so these
+// tests pin the REAL render logic (the component consumes these same helpers).
+
+/** A venue-scoped summary as :195 sends it for a SHARED venue on biz 267. */
+function sharedSummary(): PayoutsSummary {
+  return normalizeSummary({
+    deposited_cents: 50000,
+    in_transit_cents: 7000,
+    refunded_cents: 1500,
+    venue_scoped: true,
+    venue_deposited_cents: 12000,
+    venue_in_transit_cents: 2000,
+    venue_refunded_cents: 500,
+    account_dedicated: false,
+    shared_with_venues: [
+      { venue_id: 261, name: "Little Saint James" },
+      { venue_id: 262, name: "Mar a Lago" },
+      { venue_id: 990155, name: "Lukes Castle" },
+    ],
+  } as never)
+}
+
+test("normalizeSummary: venue-scoped payload carries the venue share + account-sharing fields", () => {
+  const s = sharedSummary()
+  assert.equal(s.venue_scoped, true)
+  assert.equal(s.venue_deposited_cents, 12000)
+  assert.equal(s.venue_in_transit_cents, 2000)
+  assert.equal(s.venue_refunded_cents, 500)
+  assert.equal(s.account_dedicated, false)
+  // Names survive normalization EXACTLY as returned, in order.
+  assert.deepEqual(
+    s.shared_with_venues.map((v) => v.name),
+    ["Little Saint James", "Mar a Lago", "Lukes Castle"],
+  )
+  // The account-level trio keeps its meaning (the superset), untouched.
+  assert.equal(s.deposited_cents, 50000)
+})
+
+test("normalizeSummary: stray venue fields WITHOUT venue_scoped:true are dropped (all-venues stays clean)", () => {
+  const s = normalizeSummary({
+    deposited_cents: 50000,
+    in_transit_cents: 7000,
+    refunded_cents: 1500,
+    // No venue_scoped — an all-venues response must never grow venue-scope UI,
+    // even if stray fields leak in.
+    venue_deposited_cents: 12000,
+    account_dedicated: true,
+    shared_with_venues: [{ venue_id: 1, name: "Ghost" }],
+  } as never)
+  assert.equal(s.venue_scoped, false)
+  assert.equal(s.venue_deposited_cents, null)
+  assert.equal(s.account_dedicated, null)
+  assert.deepEqual(s.shared_with_venues, [])
+})
+
+test("render state: all-venues (venue_scoped absent) → unchanged account-level strip", () => {
+  const s = normalizeSummary({ deposited_cents: 50000, in_transit_cents: 7000, refunded_cents: 1500 })
+  assert.equal(summaryRenderState(s), "all_venues")
+})
+
+test("render state: shared venue → lead-with-share + combined-account caveat naming every commingled venue", () => {
+  const s = sharedSummary()
+  assert.equal(summaryRenderState(s), "shared_venue")
+  // The lead tiles are the venue's OWN figures, labeled as such…
+  assert.equal(VENUE_TILE_LABELS.deposited, "This venue's deposits")
+  assert.equal(VENUE_TILE_LABELS.in_transit, "This venue's in transit")
+  assert.equal(VENUE_TILE_LABELS.refunded, "This venue's refunded")
+  // …and the account total is secondary, labeled and caveated by NAME so the
+  // superset can never read as this venue's money.
+  assert.equal(COMBINED_ACCOUNT_LABEL, "Combined Stripe account")
+  assert.equal(
+    sharedAccountCaveat(s.shared_with_venues),
+    "Also includes deposits for: Little Saint James, Mar a Lago, Lukes Castle",
+  )
+})
+
+test("render state: dedicated venue → ✓ badge + reassurance naming the selected venue", () => {
+  const s = normalizeSummary({
+    deposited_cents: 30000,
+    in_transit_cents: 4000,
+    refunded_cents: 0,
+    venue_scoped: true,
+    venue_deposited_cents: 30000,
+    venue_in_transit_cents: 4000,
+    venue_refunded_cents: 0,
+    account_dedicated: true,
+    shared_with_venues: [],
+  } as never)
+  assert.equal(summaryRenderState(s), "dedicated_venue")
+  assert.equal(DEDICATED_BADGE_LABEL, "✓ Dedicated Stripe account")
+  assert.equal(
+    dedicatedReassurance("Lukes Castle"),
+    "These deposits are for Lukes Castle only — not shared with any other venue.",
+  )
+  // Name still missing (venue list not resolved yet) → generic, never blank.
+  assert.equal(
+    dedicatedReassurance(undefined),
+    "These deposits are for this venue only — not shared with any other venue.",
+  )
+})
+
+test("reconcileQuery: custom since/until window composes with venue_id; days preset unchanged", () => {
+  assert.equal(
+    reconcileQuery({ kind: "custom", since: "2026-07-01", until: "2026-07-14" }, "&venue_id=260"),
+    "?since=2026-07-01&until=2026-07-14&venue_id=260",
+  )
+  assert.equal(reconcileQuery({ kind: "days", days: 90 }), "?days=90")
+  // The original numeric signature still works (nothing else re-plumbed).
+  assert.equal(reconcileQuery(30, "&venue_id=5"), "?days=30&venue_id=5")
+})
+
+test("customWindow validates YYYY-MM-DD and rejects inverted ranges", () => {
+  assert.deepEqual(customWindow("2026-07-01", "2026-07-14"), {
+    kind: "custom",
+    since: "2026-07-01",
+    until: "2026-07-14",
+  })
+  assert.equal(customWindow("2026-07-14", "2026-07-01"), null) // inverted
+  assert.equal(customWindow("2026-7-1", "2026-07-14"), null) // not YYYY-MM-DD
+  assert.equal(customWindow("2026-02-30", "2026-07-14"), null) // not a real date
+  assert.equal(customWindow("", "2026-07-14"), null)
+  assert.equal(isIsoDate("2026-07-28"), true)
+  assert.equal(isIsoDate("2026-13-01"), false)
+})
+
+test("untilIsPast: a past custom end date triggers the in-transit note; presets and today do not", () => {
+  const today = "2026-07-28"
+  assert.equal(untilIsPast({ kind: "custom", since: "2026-07-01", until: "2026-07-14" }, today), true)
+  assert.equal(untilIsPast({ kind: "custom", since: "2026-07-01", until: "2026-07-28" }, today), false)
+  assert.equal(untilIsPast({ kind: "days", days: 90 }, today), false)
+  // The note is subtext-only clarity for inherited semantics (funds swept into
+  // later payouts read as not-yet-deposited as of the end date) — never a "fix".
+  assert.equal(IN_TRANSIT_PAST_UNTIL_NOTE, "In transit reflects funds not yet deposited as of your end date.")
 })
