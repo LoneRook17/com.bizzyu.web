@@ -11,6 +11,11 @@ import type {
   PromoterLink,
   LineSkipAnalyticsOverview,
 } from "@/lib/business/types"
+import {
+  canViewEventAnalytics,
+  eventAnalyticsOutcomeFromError,
+  EVENT_ANALYTICS_ACCESS_COPY,
+} from "@/lib/business/analytics-access"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
@@ -26,6 +31,18 @@ function ErrorState() {
       icon={BarChart3}
       title="Couldn't load analytics"
       description="Something went wrong fetching this data. Please try again in a moment."
+    />
+  )
+}
+
+// A legit 403 (event analytics is owner/manager-only server-side — it exposes
+// revenue) is not a failure: render a calm access state, not the error wall.
+function ForbiddenState() {
+  return (
+    <EmptyState
+      icon={BarChart3}
+      title={EVENT_ANALYTICS_ACCESS_COPY.title}
+      description={EVENT_ANALYTICS_ACCESS_COPY.description}
     />
   )
 }
@@ -90,8 +107,14 @@ function StaffView() {
 }
 
 function OwnerManagerView() {
+  const { user } = useAuth()
   const { isAllVenues } = useVenue()
   const venueParam = useVenueParam()
+
+  // Events analytics exposes revenue → owner/manager only. Hide the tab (and skip
+  // its fetch) for any other role that lands here (blank/unknown session), so no
+  // one is shown a tab that 403s.
+  const showEvents = canViewEventAnalytics(user?.business_role)
 
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [events, setEvents] = useState<EventsOverviewType | null>(null)
@@ -101,14 +124,15 @@ function OwnerManagerView() {
   const [lineSkipsLoading, setLineSkipsLoading] = useState(true)
   const [dealsErr, setDealsErr] = useState(false)
   const [eventsErr, setEventsErr] = useState(false)
+  const [eventsForbidden, setEventsForbidden] = useState(false)
   const [lineSkipsErr, setLineSkipsErr] = useState(false)
 
   useEffect(() => {
     setDealsLoading(true)
-    setEventsLoading(true)
     setLineSkipsLoading(true)
     setDealsErr(false)
     setEventsErr(false)
+    setEventsForbidden(false)
     setLineSkipsErr(false)
 
     apiClient
@@ -120,14 +144,23 @@ function OwnerManagerView() {
       })
       .finally(() => setDealsLoading(false))
 
-    apiClient
-      .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
-      .then(setEvents)
-      .catch(() => {
-        setEvents(null)
-        setEventsErr(true)
-      })
-      .finally(() => setEventsLoading(false))
+    if (showEvents) {
+      setEventsLoading(true)
+      apiClient
+        .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
+        .then(setEvents)
+        .catch((err) => {
+          setEvents(null)
+          // A legit 403 (stale/scoped owner-manager session, or the parallel
+          // services gate) degrades to the access state; 5xx/network → error wall.
+          if (eventAnalyticsOutcomeFromError(err) === "forbidden") setEventsForbidden(true)
+          else setEventsErr(true)
+        })
+        .finally(() => setEventsLoading(false))
+    } else {
+      setEvents(null)
+      setEventsLoading(false)
+    }
 
     apiClient
       .get<LineSkipAnalyticsOverview>(`/business/line-skips/analytics/overview?_=1${venueParam}`)
@@ -137,7 +170,7 @@ function OwnerManagerView() {
         setLineSkipsErr(true)
       })
       .finally(() => setLineSkipsLoading(false))
-  }, [venueParam])
+  }, [venueParam, showEvents])
 
   return (
     <>
@@ -146,16 +179,18 @@ function OwnerManagerView() {
       <Tabs defaultValue="deals">
         <TabsList>
           <TabsTrigger value="deals">Deals</TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
+          {showEvents && <TabsTrigger value="events">Events</TabsTrigger>}
           <TabsTrigger value="line-skips">Line skips</TabsTrigger>
         </TabsList>
 
         <TabsContent value="deals">
           {dealsLoading ? <AnalyticsSkeleton /> : deals ? <DealsOverviewView data={deals} isAllVenues={isAllVenues} /> : dealsErr ? <ErrorState /> : null}
         </TabsContent>
-        <TabsContent value="events">
-          {eventsLoading ? <AnalyticsSkeleton /> : events ? <EventsOverviewView data={events} isAllVenues={isAllVenues} /> : eventsErr ? <ErrorState /> : null}
-        </TabsContent>
+        {showEvents && (
+          <TabsContent value="events">
+            {eventsLoading ? <AnalyticsSkeleton /> : events ? <EventsOverviewView data={events} isAllVenues={isAllVenues} /> : eventsForbidden ? <ForbiddenState /> : eventsErr ? <ErrorState /> : null}
+          </TabsContent>
+        )}
         <TabsContent value="line-skips">
           {lineSkipsLoading ? <AnalyticsSkeleton /> : lineSkips ? <LineSkipsOverviewView data={lineSkips} isAllVenues={isAllVenues} /> : lineSkipsErr ? <ErrorState /> : null}
         </TabsContent>

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { DEAL_TABS } from "@/lib/business/constants"
+import { canCreateDeal } from "@/lib/business/analytics-access"
 import { cn } from "@/lib/v2/utils"
 import type { DealListItem } from "@/lib/business/types"
 import {
@@ -196,8 +197,10 @@ function DealsContent() {
   // Stale notices don't follow you across tabs
   useEffect(() => setReactivateNotice(""), [tab])
 
-  const canCreate =
-    user?.business_role === "owner" || user?.business_role === "manager" || user?.business_role === "staff"
+  // Owner/manager only — mirrors the event-create gate (events/page.tsx) and
+  // backstops the services authz fix (TF-DEAL-AUTHZ-F1): don't show a "Create
+  // deal" button that staff would only get a 403 from. The server is the real block.
+  const canCreate = canCreateDeal(user?.business_role)
   const canManage = user?.business_role === "owner" || user?.business_role === "manager"
 
   const handleCreate = () => {
