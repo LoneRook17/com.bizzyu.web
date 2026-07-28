@@ -20,13 +20,13 @@ export default function V2EventAnalyticsPage({ params }: { params: Promise<{ id:
 
   useEffect(() => {
     apiClient
-      .get<EventAnalytics>(`/business/analytics/events/${id}`)
+      .get<EventAnalytics>(`/business/insights/events/${id}`)
       .then(setData)
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load analytics"))
       .finally(() => setLoading(false))
 
     apiClient
-      .get<PerScannerResponse>(`/business/analytics/events/${id}/per-scanner`)
+      .get<PerScannerResponse>(`/business/insights/events/${id}/per-scanner`)
       .then((res) => {
         setPerScanner(res.rows ?? [])
         setPerScannerError(null)

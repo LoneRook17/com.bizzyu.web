@@ -42,7 +42,7 @@ function DealCard({
     if (!isExpanded && !detail) {
       setDetailLoading(true)
       apiClient
-        .get<DealAnalytics>(`/business/analytics/deals/${deal.deal_id}`)
+        .get<DealAnalytics>(`/business/insights/deals/${deal.deal_id}`)
         .then(setDetail)
         .catch(() => setDetail(null))
         .finally(() => setDetailLoading(false))

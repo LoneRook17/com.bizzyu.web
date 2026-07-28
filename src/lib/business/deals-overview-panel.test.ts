@@ -5,7 +5,7 @@
 //      so each expanded row funnels the right deal.
 //  (2) The funnel is present regardless of the claims-detail fetch state
 //      (loading / loaded / error) - it self-fetches and must never be gated
-//      behind the "/business/analytics/deals/:id" detail load.
+//      behind the "/business/insights/deals/:id" detail load.
 //  (3) The claims sub-section state still tracks the lazy detail fetch.
 //
 // Runnable with the Node built-in test runner (no extra deps): `npm test`.

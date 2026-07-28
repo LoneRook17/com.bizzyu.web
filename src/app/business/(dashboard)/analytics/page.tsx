@@ -65,7 +65,7 @@ function PromoterView() {
   useEffect(() => {
     setLoading(true)
     apiClient
-      .get<PromoterLink[]>(`/business/analytics/promoter-stats?_=1${venueParam}`)
+      .get<PromoterLink[]>(`/business/insights/promoter-stats?_=1${venueParam}`)
       .then(setLinks)
       .catch(() => setLinks([]))
       .finally(() => setLoading(false))
@@ -90,7 +90,7 @@ function StaffView() {
     setLoading(true)
     setErrored(false)
     apiClient
-      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
+      .get<DealsOverviewType>(`/business/insights/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch((err) => {
         setDeals(null)
@@ -140,7 +140,7 @@ function OwnerManagerView() {
     setLineSkipsErr(false)
 
     apiClient
-      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
+      .get<DealsOverviewType>(`/business/insights/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch((err) => {
         setDeals(null)
@@ -153,7 +153,7 @@ function OwnerManagerView() {
     if (showEvents) {
       setEventsLoading(true)
       apiClient
-        .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
+        .get<EventsOverviewType>(`/business/insights/events/overview?_=1${venueParam}`)
         .then(setEvents)
         .catch((err) => {
           setEvents(null)
