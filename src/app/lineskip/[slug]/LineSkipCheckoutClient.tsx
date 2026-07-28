@@ -24,6 +24,8 @@ import {
 } from "@/lib/lineskip-pi/types"
 import { nightAvailability, remainingCapacity } from "@/lib/lineskip/availability"
 import { CHECKOUT_PANEL_CLASS } from "@/lib/lineskip/checkout-modal"
+import { isLineSkipSuccessArrival } from "@/lib/lineskip/success-params"
+import { fireConfetti } from "./success/confetti"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
@@ -782,7 +784,7 @@ export default function LineSkipCheckoutClient({
     // `purchase_success` is the PI flow's arrival; `free_success` is the
     // pre-existing free-checkout arrival. Same screen, same params — the only
     // difference is which flow paid for it, which this screen never mentions.
-    if (params.get("free_success") === "1" || params.get("purchase_success") === "1") {
+    if (isLineSkipSuccessArrival(window.location.search)) {
       setFreeSuccess(true)
       const ticketParam = params.get("tickets") || ""
       setFreeSuccessData({
@@ -799,6 +801,23 @@ export default function LineSkipCheckoutClient({
       setShowFreeWalletButton(isAppleWalletCapable())
     }
   }, [])
+
+  // Celebrate a confirmed line-skip purchase with one confetti burst — the same
+  // module and guarantees the /success route uses (TF-HI-W1), now on the venue
+  // page where the LIVE PI/free flow actually lands (TF-DRIVE-W1). The ref makes
+  // it fire exactly once per arrival — no replay on re-render or React
+  // StrictMode's double-effect — and it is gated on `freeSuccess`, which is only
+  // ever set from a success param, so it never fires on the plain venue page.
+  // fireConfetti() itself no-ops under prefers-reduced-motion. A manual refresh
+  // of a success URL remounts the component (fresh ref) and fires again, which
+  // is acceptable for a success page.
+  const confettiFired = useRef(false)
+  useEffect(() => {
+    if (freeSuccess && !confettiFired.current) {
+      confettiFired.current = true
+      fireConfetti()
+    }
+  }, [freeSuccess])
 
   // ─── Render: Loading / Error ─────────────────────────────────────────────
 

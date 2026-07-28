@@ -21,6 +21,7 @@ import {
   inviteVenuePayload,
   venueIdsLabel,
   isVenueScopeForbidden,
+  groupMembersByScope,
 } from "./team-venues.ts"
 
 const VENUES = [
@@ -280,4 +281,62 @@ test("isVenueScopeForbidden: false for non-403, wrong code, or non-objects", () 
   assert.equal(isVenueScopeForbidden({ status: 403 }), false)
   assert.equal(isVenueScopeForbidden(null), false)
   assert.equal(isVenueScopeForbidden("nope"), false)
+})
+
+
+// --- groupMembersByScope: roster is DECOUPLED from the page venue switcher --
+//
+// TF-DRIVE-W1 revert-checks. The pre-fix roster filtered members by the page's
+// selectedVenueId, which HID any member scoped to a different venue and could
+// blank the whole list. These assert TOTAL visibility, independent of any venue
+// context — the grouping fn takes NO switcher argument. Reintroducing a
+// venue-context filter (the reverted behavior) drops members and fails these.
+
+const nameOf = (m: { id: number; venue_name?: string | null }) => m.venue_name ?? String(m.id)
+
+test("groupMembersByScope: EVERY member renders regardless of scope (no filter)", () => {
+  const members = [
+    { id: 1, role: "owner", venue_id: null, venues: [] },                    // global
+    { id: 2, role: "staff", venue_id: 1, venues: [{ venue_id: 1, name: "Backroads" }] },
+    { id: 3, role: "staff", venue_id: 2, venues: [{ venue_id: 2, name: "The Cellar" }] },
+    { id: 4, role: "manager", venue_id: null, venues: [{ venue_id: 1, name: "Backroads" }, { venue_id: 3, name: "Rooftop" }] }, // multi
+  ]
+  const groups = groupMembersByScope(members, VENUES, nameOf)
+  const shown = groups.flatMap((g) => g.members.map((m) => m.id))
+  // All four members present, none dropped by any venue filter (revert-check:
+  // pre-fix, viewing venue 1 would hide members 3 (venue 2) and drop 4 unless
+  // it included venue 1 — visibility here is total).
+  assert.deepEqual(shown.sort((a, b) => a - b), [1, 2, 3, 4])
+  assert.equal(shown.length, members.length)
+})
+
+test("groupMembersByScope: member with venue_ids:[] (global) always renders", () => {
+  // Deselect-all → empty set → global. The member must appear in the roster,
+  // in the "Global team" group — never filtered away (the disappearance bug).
+  const members = [{ id: 7, role: "staff", venue_id: null, venues: [] }]
+  const groups = groupMembersByScope(members, VENUES, nameOf)
+  const global = groups.find((g) => g.kind === "global")
+  assert.ok(global, "expected a global group")
+  assert.deepEqual(global.members.map((m) => m.id), [7])
+})
+
+test("groupMembersByScope: buckets global / single-venue / multi-venue distinctly", () => {
+  const members = [
+    { id: 1, role: "staff", venue_id: 2, venues: [{ venue_id: 2, name: "The Cellar" }] },
+    { id: 2, role: "staff", venue_id: null, venues: [] },
+    { id: 3, role: "staff", venue_id: null, venues: [{ venue_id: 1, name: "Backroads" }, { venue_id: 2, name: "The Cellar" }] },
+  ]
+  const groups = groupMembersByScope(members, VENUES, nameOf)
+  assert.equal(groups.find((g) => g.kind === "global")?.members.length, 1)
+  assert.equal(groups.find((g) => g.kind === "multi")?.members.length, 1)
+  assert.equal(groups.find((g) => g.kind === "venue")?.venueName, "The Cellar")
+})
+
+test("groupMembersByScope: owner sorts first", () => {
+  const members = [
+    { id: 2, role: "staff", venue_id: null, venues: [] },
+    { id: 1, role: "owner", venue_id: null, venues: [] },
+  ]
+  const groups = groupMembersByScope(members, VENUES, nameOf)
+  assert.equal(groups[0].members[0].role, "owner")
 })

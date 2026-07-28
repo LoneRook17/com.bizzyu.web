@@ -75,7 +75,18 @@ export default function VenueMultiSelect({
     const final = editorCommitVenueIds(editor, draft)
     // Scoped editors can't clear to global; a would-be-empty commit is dropped.
     if (!editor.allowGlobal && final.length === 0) return
-    if (!sameSet(final, value)) onCommit?.(final)
+    if (sameSet(final, value)) return
+    // TF-DRIVE-W1: deselecting the last venue is a real state change — it grants
+    // the member ALL venues (empty set = global on the server), not "no access".
+    // Never save that silently; make the owner confirm the intent explicitly.
+    if (editor.allowGlobal && final.length === 0) {
+      const ok = typeof window === "undefined" || window.confirm("Give this member access to all venues?")
+      if (!ok) {
+        setDraft(selectedFromValue) // abandon the empty draft; keep committed scope
+        return
+      }
+    }
+    onCommit?.(final)
   }
 
   const emit = (nextSelected: number[]) => {
