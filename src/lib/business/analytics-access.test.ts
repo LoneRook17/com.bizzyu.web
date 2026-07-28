@@ -16,9 +16,11 @@ import {
   canCreateDeal,
   canViewEventAnalytics,
   eventAnalyticsOutcomeFromError,
+  scopedAnalyticsFetchOutcome,
   EVENT_ANALYTICS_ACCESS_COPY,
   type BusinessRole,
 } from "./analytics-access.ts"
+import { isVenueScopeNotFound } from "./venue-selection.ts"
 
 // ── (1) Deal-create button: owner/manager only ───────────────────────────────
 
@@ -73,6 +75,33 @@ test("a network failure (no status) is a genuine error → error + retry", () =>
   assert.equal(eventAnalyticsOutcomeFromError(new Error("network down")), "error")
   assert.equal(eventAnalyticsOutcomeFromError(null), "error")
   assert.equal(eventAnalyticsOutcomeFromError(undefined), "error")
+})
+
+// ── (2c) Scoped fetch outcome: 404-reset layered over 403-forbidden (F1) ──────
+//
+// The composite classifier a venue-scoped analytics fetch uses, wired with the
+// real isVenueScopeNotFound predicate so the whole 404/403/5xx matrix is proven.
+
+test("F1: a 404 'Venue not found' → reset-venue (self-heal to All), NOT the error wall", () => {
+  const err = { status: 404, message: "Venue not found", body: { message: "Venue not found" } }
+  assert.equal(scopedAnalyticsFetchOutcome(err, isVenueScopeNotFound), "reset-venue")
+})
+
+test("F1: a 403 still → forbidden (ForbiddenState from the role hardening)", () => {
+  assert.equal(scopedAnalyticsFetchOutcome({ status: 403 }, isVenueScopeNotFound), "forbidden")
+})
+
+test("F1: a genuine 500 → error (error wall + retry)", () => {
+  assert.equal(scopedAnalyticsFetchOutcome({ status: 500 }, isVenueScopeNotFound), "error")
+})
+
+test("F1: a network failure (no status) → error, not a spurious venue reset", () => {
+  assert.equal(scopedAnalyticsFetchOutcome(new Error("network down"), isVenueScopeNotFound), "error")
+  assert.equal(scopedAnalyticsFetchOutcome(null, isVenueScopeNotFound), "error")
+})
+
+test("F1: a bare 404 with no venue marker → error (only the scope-404 self-heals)", () => {
+  assert.equal(scopedAnalyticsFetchOutcome({ status: 404, message: "Not Found" }, isVenueScopeNotFound), "error")
 })
 
 // ── Access-state copy is polite, no error language ───────────────────────────

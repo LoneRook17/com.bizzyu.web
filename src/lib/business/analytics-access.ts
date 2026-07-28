@@ -41,6 +41,24 @@ export function eventAnalyticsOutcomeFromError(err: unknown): EventAnalyticsErro
   return (err as { status?: number } | null)?.status === 403 ? "forbidden" : "error"
 }
 
+// What a venue-SCOPED analytics/dashboard fetch does when it rejects, layering the
+// scope-404 self-heal (TF-ANALYTICS-EVENTS-F1) over the 403 access wall:
+//   - "reset-venue": a 404 "Venue not found" — a stale/out-of-scope venue selection
+//     hit the services scope guard. Reset the switcher to All venues + refetch;
+//     never the error wall (the user still owns their whole-scope data).
+//   - "forbidden": a 403 — the revenue-gated role wall (Events tab). ForbiddenState.
+//   - "error": anything else (5xx / network / a bare non-scope 404) → error + retry.
+// Composed from the two pure predicates so each stays independently testable.
+export type ScopedFetchOutcome = "reset-venue" | "forbidden" | "error"
+
+export function scopedAnalyticsFetchOutcome(
+  err: unknown,
+  isVenueScopeNotFound: (e: unknown) => boolean,
+): ScopedFetchOutcome {
+  if (isVenueScopeNotFound(err)) return "reset-venue"
+  return eventAnalyticsOutcomeFromError(err) === "forbidden" ? "forbidden" : "error"
+}
+
 /** Copy for the Events-tab access state — polite, no error language. Mirrors the
  *  funnel zero-state tone (TF-E-W1) and the payouts access copy. */
 export const EVENT_ANALYTICS_ACCESS_COPY = {

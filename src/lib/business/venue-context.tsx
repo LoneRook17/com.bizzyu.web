@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { apiClient } from "./api-client"
 import { useAuth } from "./auth-context"
-import { resolveInitialVenueSelection } from "./venue-selection"
+import { resolveInitialVenueSelection, persistedVenueValue } from "./venue-selection"
 import type { Venue } from "./types"
 import { userVenueIds, resolveSwitcherScope, initialSetSelection } from "./team-venues"
 
@@ -18,6 +18,7 @@ interface VenueContextValue {
   isLoading: boolean
   showWizard: boolean
   setSelectedVenue: (id: number | "all") => void
+  resetToAllVenues: () => void
   refreshVenues: () => Promise<void>
   dismissWizard: () => void
 }
@@ -68,6 +69,14 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
       //    "global" (where the resolver defaults to "all" — so venue-scoped fetches
       //    like Payouts are never silently single-venue filtered).
       const urlParams = new URLSearchParams(window.location.search)
+      // Persist the RESOLVED (clamped) selection, never the raw stored/URL value:
+      // a concrete id is kept; "all" (incl. the resolver's out-of-scope fallback)
+      // CLEARS the key so a stale venue can't survive a scope narrowing (F1 clamp).
+      const persistSelection = (sel: number | "all" | null) => {
+        const v = persistedVenueValue(sel)
+        if (v === null) localStorage.removeItem(VENUE_STORAGE_KEY)
+        else localStorage.setItem(VENUE_STORAGE_KEY, v)
+      }
       if (scope.mode === "set") {
         const initial = initialSetSelection(
           myVenueIds,
@@ -75,7 +84,7 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
           localStorage.getItem(VENUE_STORAGE_KEY),
         )
         setSelectedVenueId(initial)
-        localStorage.setItem(VENUE_STORAGE_KEY, String(initial))
+        persistSelection(initial)
       } else {
         const selection = resolveInitialVenueSelection({
           userVenueId: scope.lockedVenueId,
@@ -84,9 +93,7 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
           storedVenueId: localStorage.getItem(VENUE_STORAGE_KEY),
         })
         setSelectedVenueId(selection)
-        if (selection !== null) {
-          localStorage.setItem(VENUE_STORAGE_KEY, String(selection))
-        }
+        persistSelection(selection)
       }
 
       // Check if first-time wizard should show:
@@ -133,6 +140,23 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // TF-ANALYTICS-EVENTS-F1 — scope-404 self-heal. A dashboard fetch that 404s with
+  // "Venue not found" means the selected venue is outside the caller's server
+  // effective scope (a stale persisted selection that survived a scope narrowing).
+  // Reset the switcher to All venues, CLEAR the stale persisted id, and drop
+  // ?venue_id from the URL. Callers refetch automatically: `useVenueParam()` flips
+  // to "" and the fetch effect (keyed on it) re-fires — a global fetch the server
+  // re-scopes to the caller's own window, so it cannot 404 again (no loop).
+  const resetToAllVenues = useCallback(() => {
+    setSelectedVenueId("all")
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(VENUE_STORAGE_KEY)
+      const url = new URL(window.location.href)
+      url.searchParams.delete("venue_id")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [])
+
   const dismissWizard = useCallback(() => {
     setShowWizard(false)
     localStorage.setItem(WIZARD_DISMISSED_KEY, "1")
@@ -155,6 +179,7 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         showWizard,
         setSelectedVenue,
+        resetToAllVenues,
         refreshVenues: fetchVenues,
         dismissWizard,
       }}
