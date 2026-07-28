@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
+import { isVenueScopeNotFound } from "@/lib/business/venue-selection"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { apiClient } from "@/lib/business/api-client"
 import type {
@@ -55,7 +56,7 @@ function MetricTile({ label, value, sub }: { label: string; value: string | numb
 
 export default function V2HomePage() {
   const { user, isPending } = useAuth()
-  const { selectedVenue, isAllVenues, venues, isLoading: venuesLoading } = useVenue()
+  const { selectedVenue, isAllVenues, venues, isLoading: venuesLoading, resetToAllVenues } = useVenue()
   const venueParam = useVenueParam()
   const { config } = useDashboardMode()
 
@@ -83,6 +84,14 @@ export default function V2HomePage() {
         apiClient.get<{ deals: DealListItem[] }>(`/business/deals?tab=live&limit=4${venueParam}`),
       ])
       if (cancelled) return
+      // If any scoped fetch 404'd on a stale/out-of-scope venue selection, self-heal
+      // to All venues instead of showing a half-empty (silently-dropped) dashboard.
+      // resetToAllVenues flips venueParam → this effect re-fires with a global fetch
+      // the server re-scopes to the caller's own window (can't 404 again → no loop).
+      if (res.some((r) => r.status === "rejected" && isVenueScopeNotFound(r.reason))) {
+        resetToAllVenues()
+        return
+      }
       if (res[0].status === "fulfilled") setSummary(res[0].value)
       if (res[1].status === "fulfilled") setStats(res[1].value)
       if (res[2].status === "fulfilled") setActivity(res[2].value)
@@ -91,7 +100,7 @@ export default function V2HomePage() {
       setLoading(false)
     })()
     return () => { cancelled = true }
-  }, [venueParam, needsSetup, venuesLoading])
+  }, [venueParam, needsSetup, venuesLoading, resetToAllVenues])
 
   if (needsSetup) return <TrialHome />
 

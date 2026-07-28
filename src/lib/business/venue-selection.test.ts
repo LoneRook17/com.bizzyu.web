@@ -12,7 +12,11 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { resolveInitialVenueSelection } from "./venue-selection.ts"
+import {
+  resolveInitialVenueSelection,
+  isVenueScopeNotFound,
+  persistedVenueValue,
+} from "./venue-selection.ts"
 
 const ACTIVE = [10, 20, 30] // a Global member who can see three venues
 
@@ -130,4 +134,93 @@ test("restricted member cannot be pushed to 'all' via URL", () => {
     }),
     20,
   )
+})
+
+// ── TF-ANALYTICS-EVENTS-F1: clamp-on-load drops an out-of-scope persisted id ──
+//
+// A selection persisted while the caller had BROADER scope must not survive a
+// scope narrowing: the current active set no longer contains it, so it degrades
+// to "all" (self-heal) — the same guarantee the scope-404 degrade backstops at
+// fetch time.
+
+test("F1: a persisted id no longer in the caller's set drops to 'all' on load", () => {
+  assert.equal(
+    resolveInitialVenueSelection({
+      userVenueId: null,
+      activeVenueIds: [20, 30], // scope narrowed; 10 is gone
+      urlVenueId: null,
+      storedVenueId: "10",
+    }),
+    "all",
+  )
+})
+
+test("F1: a persisted id still in the caller's set is preserved on load", () => {
+  assert.equal(
+    resolveInitialVenueSelection({
+      userVenueId: null,
+      activeVenueIds: [20, 30],
+      urlVenueId: null,
+      storedVenueId: "30",
+    }),
+    30,
+  )
+})
+
+// ── TF-ANALYTICS-EVENTS-F1: persistedVenueValue — never re-persist a stale id ──
+
+test("persistedVenueValue keeps a concrete venue id (an explicit pick survives reload)", () => {
+  assert.equal(persistedVenueValue(30), "30")
+})
+
+test("persistedVenueValue clears the key for 'all' (stale id can't linger → removeItem)", () => {
+  assert.equal(persistedVenueValue("all"), null)
+})
+
+test("persistedVenueValue clears the key for null (no selection)", () => {
+  assert.equal(persistedVenueValue(null), null)
+})
+
+// ── TF-ANALYTICS-EVENTS-F1: isVenueScopeNotFound — the scope-404 degrade signal ──
+//
+// Matches the services intersectRequestedVenue rejection
+//   Boom.notFound('Venue not found') → { statusCode:404, message:'Venue not found' }
+// as surfaced by the api-client (ApiError.status/message/body), echo-tolerantly.
+
+test("scope-404: the ApiError shape (status 404 + 'Venue not found' message) matches", () => {
+  assert.equal(
+    isVenueScopeNotFound({
+      status: 404,
+      message: "Venue not found",
+      body: { statusCode: 404, error: "Not Found", message: "Venue not found" },
+    }),
+    true,
+  )
+})
+
+test("scope-404: tolerant of the marker landing only in body.message", () => {
+  assert.equal(
+    isVenueScopeNotFound({ status: 404, message: "Request failed", body: { message: "Venue not found" } }),
+    true,
+  )
+})
+
+test("scope-404: tolerant of the plain { error: 'Venue not found' } variant", () => {
+  assert.equal(isVenueScopeNotFound({ status: 404, body: { error: "Venue not found" } }), true)
+})
+
+test("scope-404: matching is case-insensitive", () => {
+  assert.equal(isVenueScopeNotFound({ status: 404, message: "VENUE NOT FOUND" }), true)
+})
+
+test("scope-404: a bare 404 with no venue marker is NOT a scope reset (genuine error)", () => {
+  assert.equal(isVenueScopeNotFound({ status: 404, message: "Not Found" }), false)
+})
+
+test("scope-404: a 403 / 500 / network / null is never a scope reset", () => {
+  assert.equal(isVenueScopeNotFound({ status: 403, message: "Venue not found" }), false)
+  assert.equal(isVenueScopeNotFound({ status: 500, message: "Venue not found" }), false)
+  assert.equal(isVenueScopeNotFound(new Error("Venue not found")), false) // no status
+  assert.equal(isVenueScopeNotFound(null), false)
+  assert.equal(isVenueScopeNotFound(undefined), false)
 })

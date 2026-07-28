@@ -13,9 +13,10 @@ import type {
 } from "@/lib/business/types"
 import {
   canViewEventAnalytics,
-  eventAnalyticsOutcomeFromError,
+  scopedAnalyticsFetchOutcome,
   EVENT_ANALYTICS_ACCESS_COPY,
 } from "@/lib/business/analytics-access"
+import { isVenueScopeNotFound } from "@/lib/business/venue-selection"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
@@ -79,7 +80,7 @@ function PromoterView() {
 }
 
 function StaffView() {
-  const { isAllVenues } = useVenue()
+  const { isAllVenues, resetToAllVenues } = useVenue()
   const venueParam = useVenueParam()
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,12 +92,15 @@ function StaffView() {
     apiClient
       .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
-      .catch(() => {
+      .catch((err) => {
         setDeals(null)
-        setErrored(true)
+        // A stale/out-of-scope venue selection → reset to All venues + refetch,
+        // never the error wall. Any other failure stays a genuine error.
+        if (isVenueScopeNotFound(err)) resetToAllVenues()
+        else setErrored(true)
       })
       .finally(() => setLoading(false))
-  }, [venueParam])
+  }, [venueParam, resetToAllVenues])
 
   return (
     <>
@@ -108,7 +112,7 @@ function StaffView() {
 
 function OwnerManagerView() {
   const { user } = useAuth()
-  const { isAllVenues } = useVenue()
+  const { isAllVenues, resetToAllVenues } = useVenue()
   const venueParam = useVenueParam()
 
   // Events analytics exposes revenue → owner/manager only. Hide the tab (and skip
@@ -138,9 +142,11 @@ function OwnerManagerView() {
     apiClient
       .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
       .then(setDeals)
-      .catch(() => {
+      .catch((err) => {
         setDeals(null)
-        setDealsErr(true)
+        // Stale/out-of-scope venue → reset to All + refetch; else a genuine error.
+        if (isVenueScopeNotFound(err)) resetToAllVenues()
+        else setDealsErr(true)
       })
       .finally(() => setDealsLoading(false))
 
@@ -151,9 +157,12 @@ function OwnerManagerView() {
         .then(setEvents)
         .catch((err) => {
           setEvents(null)
-          // A legit 403 (stale/scoped owner-manager session, or the parallel
-          // services gate) degrades to the access state; 5xx/network → error wall.
-          if (eventAnalyticsOutcomeFromError(err) === "forbidden") setEventsForbidden(true)
+          // Three outcomes: a scope-404 (stale venue) self-heals to All venues; a
+          // 403 (revenue-gated / scoped role) → calm access state; 5xx/network →
+          // error wall + retry.
+          const outcome = scopedAnalyticsFetchOutcome(err, isVenueScopeNotFound)
+          if (outcome === "reset-venue") resetToAllVenues()
+          else if (outcome === "forbidden") setEventsForbidden(true)
           else setEventsErr(true)
         })
         .finally(() => setEventsLoading(false))
@@ -165,12 +174,14 @@ function OwnerManagerView() {
     apiClient
       .get<LineSkipAnalyticsOverview>(`/business/line-skips/analytics/overview?_=1${venueParam}`)
       .then(setLineSkips)
-      .catch(() => {
+      .catch((err) => {
         setLineSkips(null)
-        setLineSkipsErr(true)
+        // Line-skip analytics is venue-scoped too — same self-heal on a scope-404.
+        if (isVenueScopeNotFound(err)) resetToAllVenues()
+        else setLineSkipsErr(true)
       })
       .finally(() => setLineSkipsLoading(false))
-  }, [venueParam, showEvents])
+  }, [venueParam, showEvents, resetToAllVenues])
 
   return (
     <>
