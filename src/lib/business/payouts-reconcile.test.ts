@@ -342,3 +342,65 @@ test("depositExportFilename and reconcileQuery build the expected strings", () =
   assert.equal(reconcileQuery(90), "?days=90")
   assert.equal(reconcileQuery(30, "&venue_id=5"), "?days=30&venue_id=5")
 })
+
+// ── TF-PAYOUTS-VENUE-F1: venue attribution (venue_scoped + venue_subtotal_cents) ──
+
+test("normalizeReconciliation picks up venue_scoped + venue_subtotal_cents when scoped", () => {
+  const r = normalizeReconciliation({ payout_id: "po_v", venue_scoped: true, venue_subtotal_cents: "2000" } as never)
+  assert.equal(r.venue_scoped, true)
+  assert.equal(r.venue_subtotal_cents, 2000) // string coerced
+})
+
+test("normalizeReconciliation defaults to UNSCOPED when the server omits the fields", () => {
+  const r = normalizeReconciliation({ payout_id: "po_u" })
+  assert.equal(r.venue_scoped, false)
+  assert.equal(r.venue_subtotal_cents, null)
+})
+
+test("normalizeReconciliation ignores a subtotal that arrives without venue_scoped:true", () => {
+  // Guard: a stray subtotal with no scope flag must not flip the view into scoped mode.
+  const r = normalizeReconciliation({ payout_id: "po_x", venue_subtotal_cents: 999 })
+  assert.equal(r.venue_scoped, false)
+  assert.equal(r.venue_subtotal_cents, null)
+})
+
+test("buildDepositCsv appends a venue_share row ONLY when the deposit is venue-scoped", () => {
+  // Unscoped (today's behavior) — no venue_share row, net_deposited still the last money row.
+  const unscoped = buildDepositCsv(tyingRecon())
+  assert.ok(!unscoped.split("\r\n").some((l) => l.startsWith("venue_share")))
+
+  // Scoped — venue_share carries the venue's slice; the net_deposited (whole deposit) is unchanged.
+  const scoped = buildDepositCsv(
+    normalizeReconciliation({
+      payout_id: "po_vs",
+      amount_cents: 18500,
+      computed_total_cents: 18500,
+      ties: true,
+      net: { ticket_sales_cents: 17000, door_covers_cents: 2000, refunds_cents: 500, deposited_cents: 18500 },
+      venue_scoped: true,
+      venue_subtotal_cents: 4200,
+    }),
+  )
+  assert.ok(scoped.split("\r\n").some((l) => l === "venue_share,,,,,42.00"))
+  assert.ok(scoped.split("\r\n").some((l) => l === "net_deposited,,,,,185.00")) // whole deposit unchanged
+})
+
+test("buildDepositPdfHtml renders the venue-share line ONLY when scoped", () => {
+  const unscoped = buildDepositPdfHtml(tyingRecon())
+  assert.ok(!unscoped.includes("share of the deposit"))
+
+  const scoped = buildDepositPdfHtml(
+    normalizeReconciliation({
+      payout_id: "po_vp",
+      amount_cents: 18500,
+      computed_total_cents: 18500,
+      ties: true,
+      net: { ticket_sales_cents: 17000, door_covers_cents: 2000, refunds_cents: 500, deposited_cents: 18500 },
+      venue_scoped: true,
+      venue_subtotal_cents: 4200,
+    }),
+  )
+  assert.ok(scoped.includes("This venue's share of the deposit: <strong>$42.00</strong>"))
+  // The whole-deposit net sentence is still present and unchanged.
+  assert.ok(scoped.includes("= Deposited $185.00"))
+})

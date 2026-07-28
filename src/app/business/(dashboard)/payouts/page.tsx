@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Lock, Banknote, Download, Loader2, Info } from "lucide-react"
+import { Lock, Banknote, Download, Loader2, Info, MapPin } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
-import { useVenueParam } from "@/lib/business/venue-context"
+import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
@@ -112,8 +112,29 @@ function GlobalCsvExportButton({ rangeDays, venueParam }: { rangeDays: number; v
 
 type ReconMode = "loading" | ReconcileOutcome
 
+// ── Which-venue scope label ───────────────────────────────────────────────────
+// The payouts view respects the global venue switcher. This pill makes the current
+// scope explicit — "Showing: All venues" (whole business) or "Showing: <venue>"
+// (that venue's contribution). Rendered in every owner outcome (loading, coming-
+// soon, error, ready) so the scope is always visible.
+
+function ScopePill({ label }: { label: string }) {
+  return (
+    <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300">
+      <MapPin className="size-3.5 text-neutral-400 dark:text-neutral-500" />
+      Showing: <span className="text-neutral-900 dark:text-neutral-100">{label}</span>
+    </div>
+  )
+}
+
 function ReconcileContainer() {
   const venueParam = useVenueParam()
+  const { selectedVenue, isAllVenues } = useVenue()
+  // Bare venue name for the per-deposit share callout (undefined ⇒ "This venue").
+  const venueName = isAllVenues ? undefined : selectedVenue?.name
+  // Scope pill label: concrete venue name, else "All venues" (also the transient
+  // pre-resolution default, matching the switcher's own fallback).
+  const scopeLabel = !isAllVenues && selectedVenue?.name ? selectedVenue.name : "All venues"
   const [rangeDays, setRangeDays] = useState(DEFAULT_PAYOUT_RANGE_DAYS)
   const [summary, setSummary] = useState<PayoutsSummary | null>(null)
   const [deposits, setDeposits] = useState<DepositListItem[] | null>(null)
@@ -178,6 +199,7 @@ function ReconcileContainer() {
           </>
         }
       />
+      <ScopePill label={scopeLabel} />
       <div className="mt-6">
         {mode === "loading" ? (
           <PayoutsSkeleton />
@@ -203,7 +225,7 @@ function ReconcileContainer() {
             }
           />
         ) : summary && deposits ? (
-          <ReconcileView summary={summary} deposits={deposits} venueParam={venueParam} />
+          <ReconcileView summary={summary} deposits={deposits} venueParam={venueParam} venueName={venueName} />
         ) : null}
       </div>
     </>

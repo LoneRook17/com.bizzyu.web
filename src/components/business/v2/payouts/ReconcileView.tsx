@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useState } from "react"
 import {
   ChevronDown, Copy, Check, Download, FileText, ArrowDownToLine,
-  Truck, RotateCcw, Banknote, AlertTriangle, Loader2,
+  Truck, RotateCcw, Banknote, AlertTriangle, Loader2, MapPin,
 } from "lucide-react"
 import { money, cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
@@ -290,6 +290,27 @@ function ReconEventGroup({ event }: { event: Reconciliation["events"][number] })
   )
 }
 
+/** TF-PAYOUTS-VENUE-F1 — shown only when the deposit was reconciled for a specific
+ *  venue. The deposit total CANNOT shrink (Stripe pays the connected account, not
+ *  the venue), so the line items below are filtered to the venue while the totals
+ *  stay whole-deposit. This callout names the venue's own slice so the three
+ *  figures on screen (whole deposit · full net line · venue-filtered line items)
+ *  don't read as a mismatch. Hidden entirely when unscoped ⇒ view unchanged. */
+function VenueShareCallout({ cents, venueName }: { cents: number; venueName?: string }) {
+  const who = venueName ? `${venueName}'s` : "This venue's"
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-sm dark:border-green-900 dark:bg-green-950/40">
+      <MapPin className="mt-0.5 size-4 shrink-0 text-green-600 dark:text-green-400" />
+      <p className="text-green-800 dark:text-green-300">
+        <span className="font-semibold">{who} share of this deposit: {money(cents)}.</span>{" "}
+        <span className="text-green-700/90 dark:text-green-400/90">
+          The full deposit below covers your whole business; line items are filtered to this venue.
+        </span>
+      </p>
+    </div>
+  )
+}
+
 function NetLine({ recon }: { recon: Reconciliation }) {
   const n = netLineParts(recon.net)
   return (
@@ -402,12 +423,16 @@ export function ReconciliationPanelView({
   recon,
   loadDetails,
   initialShowDetails = false,
+  venueName,
 }: {
   recon: Reconciliation
   /** Fetches the details=1 variant (buyer PII). Omitted → toggle just reveals
    *  whatever `recon.orders` already holds (used by the static harness). */
   loadDetails?: () => Promise<Reconciliation | null>
   initialShowDetails?: boolean
+  /** The selected venue's display name (for the share callout copy). Optional —
+   *  falls back to "This venue" when absent. */
+  venueName?: string
 }) {
   const [current, setCurrent] = useState<Reconciliation>(recon)
   const [showDetails, setShowDetails] = useState(initialShowDetails)
@@ -441,6 +466,9 @@ export function ReconciliationPanelView({
   return (
     <div className="space-y-3">
       <TiesBanner recon={current} />
+      {current.venue_scoped && current.venue_subtotal_cents != null && (
+        <VenueShareCallout cents={current.venue_subtotal_cents} venueName={venueName} />
+      )}
       <LineItems recon={current} />
       <NetLine recon={current} />
 
@@ -467,7 +495,15 @@ export function ReconciliationPanelView({
 
 /** Data-fetching wrapper: lazy-loads a deposit's reconciliation on mount (i.e.
  *  when the row is expanded), then hands it to the presentational view. */
-function ReconciliationPanel({ payoutId, venueParam }: { payoutId: string; venueParam?: string }) {
+function ReconciliationPanel({
+  payoutId,
+  venueParam,
+  venueName,
+}: {
+  payoutId: string
+  venueParam?: string
+  venueName?: string
+}) {
   const [recon, setRecon] = useState<Reconciliation | null>(null)
   const [loading, setLoading] = useState(true)
   const [errored, setErrored] = useState(false)
@@ -512,14 +548,26 @@ function ReconciliationPanel({ payoutId, venueParam }: { payoutId: string; venue
     <ReconciliationPanelView
       recon={recon}
       loadDetails={() => fetchReconciliation({ payoutId, details: true, venueParam })}
+      venueName={venueName}
     />
   )
 }
 
 // ── 4. Deposit row (the backbone) ────────────────────────────────────────────
 
-function DepositRow({ deposit, venueParam }: { deposit: DepositListItem; venueParam?: string }) {
+function DepositRow({
+  deposit,
+  venueParam,
+  venueName,
+}: {
+  deposit: DepositListItem
+  venueParam?: string
+  venueName?: string
+}) {
   const [open, setOpen] = useState(false)
+  // A venue is selected up top ⇒ the amount is the WHOLE deposit (Stripe pays the
+  // account, not the venue); label it so the unchanged total reads as intentional.
+  const scoped = !!venueParam
   return (
     <Card className="overflow-hidden">
       <button
@@ -539,13 +587,13 @@ function DepositRow({ deposit, venueParam }: { deposit: DepositListItem; venuePa
         </div>
         <div className="shrink-0 text-right">
           <p className="text-base font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{money(deposit.amount_cents)}</p>
-          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">deposited</p>
+          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{scoped ? "whole deposit" : "deposited"}</p>
         </div>
         <ChevronDown className={cn("size-4 shrink-0 text-neutral-400 transition-transform dark:text-neutral-500", open && "rotate-180")} />
       </button>
       {open && (
         <div className="border-t border-neutral-100 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
-          <ReconciliationPanel payoutId={deposit.payout_id} venueParam={venueParam} />
+          <ReconciliationPanel payoutId={deposit.payout_id} venueParam={venueParam} venueName={venueName} />
         </div>
       )}
     </Card>
@@ -568,10 +616,12 @@ export default function ReconcileView({
   summary,
   deposits,
   venueParam,
+  venueName,
 }: {
   summary: PayoutsSummary
   deposits: DepositListItem[]
   venueParam?: string
+  venueName?: string
 }) {
   const hasAny = deposits.length > 0 || summary.deposited_cents > 0 || summary.in_transit_cents > 0
 
@@ -582,7 +632,7 @@ export default function ReconcileView({
       {deposits.length > 0 ? (
         <div className="space-y-3">
           {deposits.map((d) => (
-            <DepositRow key={d.payout_id || `${d.arrival_date}-${d.amount_cents}`} deposit={d} venueParam={venueParam} />
+            <DepositRow key={d.payout_id || `${d.arrival_date}-${d.amount_cents}`} deposit={d} venueParam={venueParam} venueName={venueName} />
           ))}
         </div>
       ) : hasAny ? (
