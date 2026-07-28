@@ -9,7 +9,7 @@ import type { TeamMember } from "@/lib/business/types"
 import { memberDisplay } from "@/lib/team-invite/display"
 import {
   memberVenueIds, memberVenuesPath, memberVenuesPayload,
-  userVenueIds, isVenueScopeForbidden,
+  userVenueIds, isVenueScopeForbidden, groupMembersByScope,
   type EditorScope,
 } from "@/lib/business/team-venues"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -22,16 +22,13 @@ import InviteDialog from "@/components/business/v2/team/InviteDialog"
 import RolePermissionsDialog from "@/components/business/v2/team/RolePermissionsDialog"
 import ConfirmDialog from "@/components/business/v2/ConfirmDialog"
 
-interface VenueGroup {
-  key: string
-  kind: "global" | "venue" | "multi"
-  venueName: string
-  members: TeamMember[]
-}
-
 export default function V2TeamPage() {
   const { user, business } = useAuth()
-  const { venues, selectedVenueId } = useVenue()
+  // TF-DRIVE-W1: the roster is DECOUPLED from the page venue switcher — every
+  // member is always shown, grouped by their own scope. `selectedVenueId` is
+  // deliberately NOT read here so a venue-set save (or switching venues) can
+  // never hide a member.
+  const { venues } = useVenue()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -131,65 +128,15 @@ export default function V2TeamPage() {
     }
   }
 
-  // Group members by their EFFECTIVE venue scope (set-aware), filtered by the
-  // venue switcher selection. Legacy single/global members read the scalar
-  // fallback via memberVenueIds() and land in exactly the same groups as before;
-  // members scoped to >1 venue get a dedicated "Multiple venues" group so nobody
-  // is duplicated across venue cards.
-  const venueGroups = useMemo((): VenueGroup[] => {
-    const sorted = [...members].sort((a, b) => {
-      if (a.role === "owner") return -1
-      if (b.role === "owner") return 1
-      // Sort by what the row actually shows, so provisional/phone-only rows
-      // (no email) order sensibly instead of clustering under a blank key.
-      return memberDisplay(a).name.localeCompare(memberDisplay(b).name)
-    })
-
-    const scoped = sorted.map((m) => ({ m, ids: memberVenueIds(m) }))
-
-    const filtered =
-      selectedVenueId !== "all" && selectedVenueId !== null
-        ? scoped.filter(({ ids }) => ids.length === 0 || ids.includes(selectedVenueId))
-        : scoped
-
-    const globalMembers: TeamMember[] = []
-    const multiMembers: TeamMember[] = []
-    const byVenue = new Map<number, TeamMember[]>()
-
-    for (const { m, ids } of filtered) {
-      if (ids.length === 0) {
-        globalMembers.push(m)
-      } else if (ids.length > 1) {
-        multiMembers.push(m)
-      } else {
-        const list = byVenue.get(ids[0]) || []
-        list.push(m)
-        byVenue.set(ids[0], list)
-      }
-    }
-
-    const groups: VenueGroup[] = []
-    if (globalMembers.length > 0) {
-      groups.push({ key: "global", kind: "global", venueName: "Global team", members: globalMembers })
-    }
-
-    const venueEntries = Array.from(byVenue.entries())
-      .map(([id, list]): VenueGroup => ({
-        key: `venue-${id}`,
-        kind: "venue",
-        venueName: list[0]?.venue_name || venues.find((v) => v.id === id)?.name || `Venue #${id}`,
-        members: list,
-      }))
-      .sort((a, b) => a.venueName.localeCompare(b.venueName))
-
-    groups.push(...venueEntries)
-
-    if (multiMembers.length > 0) {
-      groups.push({ key: "multi", kind: "multi", venueName: "Multiple venues", members: multiMembers })
-    }
-
-    return groups
-  }, [members, selectedVenueId, venues])
+  // Group members by their EFFECTIVE venue scope (set-aware). Legacy single/
+  // global members read the scalar fallback via memberVenueIds() and land in the
+  // same groups; members scoped to >1 venue get a dedicated "Multiple venues"
+  // group so nobody is duplicated across venue cards. Visibility is TOTAL and
+  // switcher-independent (TF-DRIVE-W1) — no member is ever filtered out.
+  const venueGroups = useMemo(
+    () => groupMembersByScope(members, venues, (m) => memberDisplay(m).name),
+    [members, venues],
+  )
 
   const visibleCount = venueGroups.reduce((sum, g) => sum + g.members.length, 0)
 

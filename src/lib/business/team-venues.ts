@@ -267,6 +267,91 @@ export function inviteVenuePayload(venueIds: number[]): { venue_ids: number[]; v
   return { venue_ids: ids, venue_id: ids.length === 1 ? ids[0] : null }
 }
 
+// ── Roster grouping (TF-DRIVE-W1) ────────────────────────────────────────────
+//
+// The team roster groups members by their OWN effective venue scope. It is
+// deliberately DECOUPLED from the page-level venue switcher: every member is
+// always visible — global (empty set), single-venue, or multi-venue — no matter
+// what the switcher is pointed at. The pre-fix page filtered the roster by the
+// selected venue, which HID any member scoped to a different venue (and showed
+// an empty "No team members" state when the switcher landed on an empty venue).
+// A venue-set save must never make a member vanish from the list, so visibility
+// here takes NO venue-context argument at all.
+
+/** A member the roster can group: effective scope fields + identity for display. */
+export type RosterMember = MemberVenueScope & {
+  id: number
+  role: string
+  venue_name?: string | null
+}
+
+/** One rendered roster section. `kind` drives the icon/subhead; visibility is total. */
+export interface RosterGroup<T> {
+  key: string
+  kind: "global" | "venue" | "multi"
+  venueName: string
+  members: T[]
+}
+
+/**
+ * Group EVERY member by their own effective scope — global / single venue /
+ * multiple venues — with owners first and the rest ordered by `nameOf`. Nothing
+ * is filtered by the page venue switcher: a member scoped to venue X still
+ * renders when the switcher is on venue Y, and a global member (empty set)
+ * always renders. `nameOf` is injected so this stays import-pure (no display or
+ * React dependency) and unit-testable.
+ */
+export function groupMembersByScope<T extends RosterMember>(
+  members: T[],
+  allVenues: NamedVenue[],
+  nameOf: (m: T) => string,
+): RosterGroup<T>[] {
+  const sorted = [...members].sort((a, b) => {
+    if (a.role === "owner") return -1
+    if (b.role === "owner") return 1
+    return nameOf(a).localeCompare(nameOf(b))
+  })
+
+  const globalMembers: T[] = []
+  const multiMembers: T[] = []
+  const byVenue = new Map<number, T[]>()
+
+  for (const m of sorted) {
+    const ids = memberVenueIds(m)
+    if (ids.length === 0) {
+      globalMembers.push(m)
+    } else if (ids.length > 1) {
+      multiMembers.push(m)
+    } else {
+      const list = byVenue.get(ids[0]) || []
+      list.push(m)
+      byVenue.set(ids[0], list)
+    }
+  }
+
+  const groups: RosterGroup<T>[] = []
+  if (globalMembers.length > 0) {
+    groups.push({ key: "global", kind: "global", venueName: "Global team", members: globalMembers })
+  }
+
+  const venueEntries = Array.from(byVenue.entries())
+    .map(([id, list]): RosterGroup<T> => ({
+      key: `venue-${id}`,
+      kind: "venue",
+      venueName: list[0]?.venue_name || allVenues.find((v) => v.id === id)?.name || `Venue #${id}`,
+      members: list,
+    }))
+    .sort((a, b) => a.venueName.localeCompare(b.venueName))
+
+  groups.push(...venueEntries)
+
+  if (multiMembers.length > 0) {
+    groups.push({ key: "multi", kind: "multi", venueName: "Multiple venues", members: multiMembers })
+  }
+
+  return groups
+}
+
 /** Trigger/summary label for a raw id list (the invite dialog has no member row). */
 export function venueIdsLabel(ids: number[], allVenues: NamedVenue[] = []): string {
   if (ids.length === 0) return "All venues (global)"
