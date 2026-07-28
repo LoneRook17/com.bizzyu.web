@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Lock, Banknote, Download, Loader2 } from "lucide-react"
+import { Lock, Banknote, Download, Loader2, Info } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenueParam } from "@/lib/business/venue-context"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -15,7 +15,6 @@ import {
   buildPayoutsCsv,
   csvFilename,
   downloadCsv,
-  type PayoutsResponse,
 } from "@/lib/business/payouts"
 import {
   fetchPayoutsSummary,
@@ -23,12 +22,14 @@ import {
   type PayoutsSummary,
   type DepositListItem,
 } from "@/lib/business/payouts-reconcile"
-import PayoutsView, {
-  RangePicker,
-  ExportButton,
-  PayoutsDegraded,
-} from "@/components/business/v2/payouts/PayoutsView"
-import ReconcileView from "@/components/business/v2/payouts/ReconcileView"
+import {
+  canAccessPayouts,
+  reconcileOutcomeFromData,
+  reconcileOutcomeFromError,
+  PAYOUTS_ACCESS_COPY,
+  type ReconcileOutcome,
+} from "@/lib/business/payouts-access"
+import ReconcileView, { RangePicker } from "@/components/business/v2/payouts/ReconcileView"
 
 function PayoutsSkeleton() {
   return (
@@ -45,34 +46,27 @@ function PayoutsSkeleton() {
   )
 }
 
+// ── Access state (never an error) ────────────────────────────────────────────
+// Payouts is owner-only (TF-B ruling). Non-owners never see a FAIL: the nav tab
+// is hidden, and a direct visit — or a 403 on the reconcile endpoints despite an
+// owner-looking session (a stale role) — lands on this clean, no-error state.
+
+function PayoutsAccessState() {
+  return (
+    <>
+      <PageHeader title="Payouts" description="Reconcile every deposit to the tickets and refunds inside it." />
+      <div className="mt-6">
+        <EmptyState icon={Lock} title={PAYOUTS_ACCESS_COPY.title} description={PAYOUTS_ACCESS_COPY.description} />
+      </div>
+    </>
+  )
+}
+
 export default function PayoutsPage() {
   const { user } = useAuth()
-  const role = user?.business_role
-  const venueId = user?.venue_id ?? null
-
-  // Finance-sensitive: owner + manager only. Nav is hidden from staff/promoter,
-  // but a direct visit lands here — and the services endpoints 403 them anyway.
-  if (role !== "owner" && role !== "manager") {
-    return (
-      <>
-        <PageHeader title="Payouts" description="Reconcile every deposit to the tickets and refunds inside it." />
-        <div className="mt-6">
-          <EmptyState
-            icon={Lock}
-            title="Not available for your role"
-            description="Payout reconciliation is limited to business owners and managers."
-          />
-        </div>
-      </>
-    )
-  }
-
-  // Reconciliation + ticket-level details are for owner / GLOBAL managers only.
-  // A venue-scoped manager (assigned to a single venue) degrades to today's
-  // scoped view — no error wall, just the pre-P2-B1w experience for their venue.
-  const isGlobalFinance = role === "owner" || (role === "manager" && venueId == null)
-  if (isGlobalFinance) return <ReconcileContainer />
-  return <LegacyPayoutsPanel />
+  // Gate is the ONE predicate the sidebar nav also uses — tab and screen agree.
+  if (!canAccessPayouts(user?.business_role)) return <PayoutsAccessState />
+  return <ReconcileContainer />
 }
 
 // ── Global period-level Export CSV (PRESERVED — the existing accountant file) ──
@@ -109,9 +103,14 @@ function GlobalCsvExportButton({ rangeDays, venueParam }: { rangeDays: number; v
   )
 }
 
-// ── New reconciliation container (owner / global manager) ─────────────────────
+// ── Owner reconciliation container ────────────────────────────────────────────
+// Owner-only by the time we get here. Outcomes (payouts-access.ts):
+//   ready       → the reconciliation view
+//   notdeployed → P2-B1s not live yet (404 → null): graceful "coming soon"
+//   forbidden   → 403 on an owner-looking session (stale role): access state
+//   error       → genuine 5xx / network failure: error + retry (owner keeps this)
 
-type ReconMode = "loading" | "new" | "legacy" | "error"
+type ReconMode = "loading" | ReconcileOutcome
 
 function ReconcileContainer() {
   const venueParam = useVenueParam()
@@ -121,9 +120,8 @@ function ReconcileContainer() {
   const [mode, setMode] = useState<ReconMode>("loading")
 
   // fetchAll does NO state work (just returns the two payloads) so the effect
-  // never contains a synchronous state update. Applying the result — including
-  // the P2-B1s-not-deployed fall-back to the scoped view — happens in the async
-  // .then, after the await.
+  // never contains a synchronous state update. Applying the result happens in the
+  // async .then, after the await.
   const fetchAll = useCallback(
     () =>
       Promise.all([
@@ -134,15 +132,12 @@ function ReconcileContainer() {
   )
 
   const apply = useCallback((s: PayoutsSummary | null, d: DepositListItem[] | null) => {
-    // A 404 on either endpoint means P2-B1s isn't deployed yet → fall back to
-    // today's scoped view (the old, live endpoint), never an error wall.
-    if (s === null || d === null) {
-      setMode("legacy")
-      return
+    const outcome = reconcileOutcomeFromData(s, d)
+    if (outcome === "ready") {
+      setSummary(s)
+      setDeposits(d)
     }
-    setSummary(s)
-    setDeposits(d)
-    setMode("new")
+    setMode(outcome)
   }, [])
 
   useEffect(() => {
@@ -153,8 +148,8 @@ function ReconcileContainer() {
       .then(([s, d]) => {
         if (active) apply(s, d)
       })
-      .catch(() => {
-        if (active) setMode("error")
+      .catch((err) => {
+        if (active) setMode(reconcileOutcomeFromError(err))
       })
     return () => {
       active = false
@@ -164,11 +159,12 @@ function ReconcileContainer() {
   const retry = () => {
     fetchAll()
       .then(([s, d]) => apply(s, d))
-      .catch(() => setMode("error"))
+      .catch((err) => setMode(reconcileOutcomeFromError(err)))
   }
 
-  // The P2-B1s contract isn't live here → show today's scoped view for everyone.
-  if (mode === "legacy") return <LegacyPayoutsPanel />
+  // A 403 on an owner-looking session (stale role) → the clean access state, not
+  // an error wall (Luke's ruling — never a FAIL on this surface for lack of access).
+  if (mode === "forbidden") return <PayoutsAccessState />
 
   return (
     <>
@@ -185,6 +181,12 @@ function ReconcileContainer() {
       <div className="mt-6">
         {mode === "loading" ? (
           <PayoutsSkeleton />
+        ) : mode === "notdeployed" ? (
+          <EmptyState
+            icon={Info}
+            title="Payout reconciliation is coming soon"
+            description="Detailed payout breakdowns aren't available yet. Your deposits still land in your bank on Stripe's normal schedule — this tab will show exactly what each one paid for once it's live."
+          />
         ) : mode === "error" ? (
           <EmptyState
             icon={Banknote}
@@ -202,83 +204,6 @@ function ReconcileContainer() {
           />
         ) : summary && deposits ? (
           <ReconcileView summary={summary} deposits={deposits} venueParam={venueParam} />
-        ) : null}
-      </div>
-    </>
-  )
-}
-
-// ── Legacy scoped view (PRESERVED — venue-scoped members + not-deployed fallback)
-// This is the pre-P2-B1w Payouts tab verbatim: old typed client, old view.
-
-function LegacyPayoutsPanel() {
-  const venueParam = useVenueParam()
-  const [rangeDays, setRangeDays] = useState(DEFAULT_PAYOUT_RANGE_DAYS)
-  const [data, setData] = useState<PayoutsResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [unavailable, setUnavailable] = useState(false)
-  const [errored, setErrored] = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setErrored(false)
-    const range = rangeForDays(rangeDays, new Date())
-    try {
-      const resp = await fetchPayouts({ range, status: "all", venueParam })
-      if (resp === null) {
-        setUnavailable(true)
-        setData(null)
-      } else {
-        setUnavailable(false)
-        setData(resp)
-      }
-    } catch {
-      setErrored(true)
-      setData(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [rangeDays, venueParam])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  return (
-    <>
-      <PageHeader
-        title="Payouts"
-        description="Reconcile every Stripe deposit against the tickets and refunds inside it."
-        actions={
-          <>
-            <RangePicker value={rangeDays} onChange={setRangeDays} disabled={loading} />
-            <ExportButton data={data} disabled={loading || unavailable} />
-          </>
-        }
-      />
-
-      <div className="mt-6">
-        {loading ? (
-          <PayoutsSkeleton />
-        ) : unavailable ? (
-          <PayoutsDegraded />
-        ) : errored ? (
-          <EmptyState
-            icon={Banknote}
-            title="Couldn't load payouts"
-            description="Something went wrong fetching your deposits. Please try again in a moment."
-            action={
-              <button
-                type="button"
-                onClick={load}
-                className="rounded-lg bg-[#05EB54] px-4 py-2 text-sm font-semibold text-neutral-900 transition-colors hover:brightness-95"
-              >
-                Retry
-              </button>
-            }
-          />
-        ) : data ? (
-          <PayoutsView data={data} />
         ) : null}
       </div>
     </>

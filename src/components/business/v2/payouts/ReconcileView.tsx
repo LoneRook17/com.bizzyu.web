@@ -3,8 +3,8 @@
 // P2-B1w — the accountant reconciliation view. Reconciliation-first layout:
 // summary strip → slim in-transit banner → the deposits list (backbone) → a
 // per-deposit reconciliation panel that ties each Stripe deposit to the tickets
-// and refunds inside it. Owner / global-manager surface only; venue-scoped
-// members get the existing scoped view (see payouts/page.tsx).
+// and refunds inside it. Owner-only surface (TF-B ruling — see payouts/page.tsx);
+// every other role is gated out before this view ever renders.
 //
 // Data comes from the P2-B1s contract via the typed client (payouts-reconcile.ts).
 // The panel lazy-loads each deposit's reconciliation on expand; ticket-level
@@ -26,6 +26,7 @@ import {
   type DepositListItem,
   type Reconciliation,
   type ReconOrderRow,
+  PAYOUT_RANGE_PRESETS,
   fetchReconciliation,
   tiesCheck,
   netLineParts,
@@ -37,6 +38,42 @@ import {
   downloadCsv,
   exportDepositPdf,
 } from "@/lib/business/payouts-reconcile"
+
+// ── Range picker (segmented, 90d default) — mirrors DealFunnel's RangePicker ──
+// Relocated here from the removed PayoutsView; the owner reconcile container is
+// its only consumer now.
+
+export function RangePicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number
+  onChange: (days: number) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5 dark:border-neutral-800 dark:bg-neutral-900">
+      {PAYOUT_RANGE_PRESETS.map((p) => (
+        <button
+          key={p.value}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(p.value)}
+          aria-pressed={value === p.value}
+          className={cn(
+            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
+            value === p.value
+              ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
+              : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200",
+          )}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 // ── Small shared pieces ──────────────────────────────────────────────────────
 

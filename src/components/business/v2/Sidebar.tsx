@@ -46,7 +46,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
   { label: "Grow", items: [
     { label: "Marketing", href: "/business/marketing", icon: Megaphone, lockWhenPending: true },
     { label: "Analytics", href: "/business/analytics", icon: BarChart3, lockWhenPending: true },
-    { label: "Payouts", href: "/business/payouts", icon: Banknote, lockWhenPending: true, roles: ["owner", "manager"] },
+    { label: "Payouts", href: "/business/payouts", icon: Banknote, lockWhenPending: true, roles: ["owner"] },
   ] },
   { label: "Workspace", items: [
     { label: "Team", href: "/business/team", icon: Users },
