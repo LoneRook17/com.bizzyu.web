@@ -8,9 +8,17 @@
 // treat every field as best-effort and normalize defensively until the services
 // half reports):
 //
-//   GET /business/payouts/summary?days=N
+//   GET /business/payouts/summary?days=N            (or ?since=YYYY-MM-DD&until=YYYY-MM-DD)
 //     -> { deposited_cents, in_transit_cents, refunded_cents }
-//   GET /business/payouts/deposits?days=N
+//     TF-PAYOUTS-SUMMARY-F1: venue-scoped (&venue_id=) responses ALSO carry
+//     -> { venue_scoped: true,
+//          venue_deposited_cents, venue_in_transit_cents, venue_refunded_cents,
+//          account_dedicated, shared_with_venues:[{venue_id,name}] }
+//     The account-level trio keeps its meaning (the Stripe CONNECTED ACCOUNT's
+//     totals — a SUPERSET that can include other venues' money); the venue_* trio
+//     is THIS venue's attributed share. All-venues responses omit the block
+//     entirely and are byte-identical to pre-fix.
+//   GET /business/payouts/deposits?days=N           (or ?since&until)
 //     -> reverse-chron [{ payout_id, arrival_date, amount_cents, sales_count, status }]
 //   GET /business/payouts/deposits/:payoutId/reconciliation
 //     -> { payout_id, arrival_date, amount_cents, computed_total_cents, ties,
@@ -60,11 +68,33 @@ export {
 
 // ── Wire shapes (P2-B1s contract) ────────────────────────────────────────────
 
-/** Period totals for the summary strip. */
+/** A sibling venue whose deposits commingle into the same Stripe connected
+ *  account as the selected venue (TF-PAYOUTS-SUMMARY-F1). */
+export interface SharedVenueRef {
+  venue_id: number
+  name: string
+}
+
+/** Period totals for the summary strip. The account-level trio is the Stripe
+ *  CONNECTED ACCOUNT's money — when venue-scoped it is a SUPERSET that may
+ *  include other venues' deposits, so it must never be presented as "this
+ *  venue's deposits". The venue_* trio is the honest per-venue figure. */
 export interface PayoutsSummary {
   deposited_cents: number
   in_transit_cents: number
   refunded_cents: number
+  /** true ONLY on a venue-scoped response; gates every field below. */
+  venue_scoped: boolean
+  /** THIS venue's attributed share (null when unscoped). */
+  venue_deposited_cents: number | null
+  venue_in_transit_cents: number | null
+  venue_refunded_cents: number | null
+  /** Scoped only: true when no sibling venue routes into this Stripe account.
+   *  null when unscoped (the question doesn't apply). */
+  account_dedicated: boolean | null
+  /** Scoped only: the OTHER venues whose deposits commingle into the account
+   *  total. Always [] when unscoped or dedicated. */
+  shared_with_venues: SharedVenueRef[]
 }
 
 /** One deposit in the reverse-chron list (the backbone rows). */
@@ -164,12 +194,29 @@ function normStatus(v: unknown): PayoutStatus {
   return STATUSES.includes(v as PayoutStatus) ? (v as PayoutStatus) : "paid"
 }
 
+function normalizeSharedVenue(raw: Partial<SharedVenueRef>): SharedVenueRef {
+  return { venue_id: num(raw.venue_id), name: str(raw.name) ?? "—" }
+}
+
 export function normalizeSummary(raw: Partial<PayoutsSummary> | null | undefined): PayoutsSummary {
   const r = raw ?? {}
+  // The venue block exists ONLY on a venue-scoped response (`venue_scoped: true`).
+  // Anything else — including stray venue_* fields on an unscoped payload — is
+  // dropped, so the all-venues render can never pick up venue-scope UI.
+  const scoped = r.venue_scoped === true
   return {
     deposited_cents: num(r.deposited_cents),
     in_transit_cents: num(r.in_transit_cents),
     refunded_cents: num(r.refunded_cents),
+    venue_scoped: scoped,
+    venue_deposited_cents: scoped && r.venue_deposited_cents != null ? num(r.venue_deposited_cents) : null,
+    venue_in_transit_cents: scoped && r.venue_in_transit_cents != null ? num(r.venue_in_transit_cents) : null,
+    venue_refunded_cents: scoped && r.venue_refunded_cents != null ? num(r.venue_refunded_cents) : null,
+    account_dedicated: scoped ? r.account_dedicated === true : null,
+    shared_with_venues:
+      scoped && Array.isArray(r.shared_with_venues)
+        ? r.shared_with_venues.map((v) => normalizeSharedVenue((v ?? {}) as Partial<SharedVenueRef>))
+        : [],
   }
 }
 
@@ -257,6 +304,84 @@ export function normalizeReconciliation(raw: Partial<Reconciliation>): Reconcili
       raw.venue_scoped === true && raw.venue_subtotal_cents != null ? num(raw.venue_subtotal_cents) : null,
   }
 }
+
+// ── Summary render state (TF-PAYOUTS-SUMMARY-F1) ─────────────────────────────
+//
+// The strip has exactly THREE states, chosen here (pure, test-pinned) so the
+// component can't drift from the ruling:
+//   all_venues       → unchanged pre-fix account-level strip (hard regression gate)
+//   shared_venue     → LEAD with the venue share; the account total is a SUPERSET
+//                      (it includes other venues' money) and must be de-emphasized
+//                      and caveated with the commingled venues' names
+//   dedicated_venue  → account == venue; show once, with explicit reassurance
+
+export type SummaryRenderState = "all_venues" | "shared_venue" | "dedicated_venue"
+
+export function summaryRenderState(s: Pick<PayoutsSummary, "venue_scoped" | "account_dedicated">): SummaryRenderState {
+  if (s.venue_scoped !== true) return "all_venues"
+  return s.account_dedicated === true ? "dedicated_venue" : "shared_venue"
+}
+
+/** Lead-tile labels for the shared-venue state — the venue_* trio is the honest
+ *  per-venue figure and gets the large treatment. */
+export const VENUE_TILE_LABELS = {
+  deposited: "This venue's deposits",
+  in_transit: "This venue's in transit",
+  refunded: "This venue's refunded",
+} as const
+
+/** Label over the de-emphasized account-level line in the shared state. */
+export const COMBINED_ACCOUNT_LABEL = "Combined Stripe account"
+
+/** Names the commingled venues EXACTLY as the API returned them (comma-joined,
+ *  no re-ordering) — the caveat that stops the account total from reading as
+ *  this venue's money. */
+export function sharedAccountCaveat(shared: SharedVenueRef[]): string {
+  return `Also includes deposits for: ${shared.map((v) => v.name).join(", ")}`
+}
+
+export const DEDICATED_BADGE_LABEL = "✓ Dedicated Stripe account"
+
+/** The dedicated-state reassurance sentence, naming the selected venue. */
+export function dedicatedReassurance(venueName?: string | null): string {
+  return `These deposits are for ${venueName || "this venue"} only — not shared with any other venue.`
+}
+
+// ── Date window (preset days=N vs custom since/until) ────────────────────────
+//
+// TF-PAYOUTS-SUMMARY-F1: /summary and /deposits accept since=YYYY-MM-DD &
+// until=YYYY-MM-DD (the /list convention) alongside the existing days=N (90
+// default). A window is EITHER a preset or a custom range — never both.
+
+export type PayoutsWindow =
+  | { kind: "days"; days: number }
+  | { kind: "custom"; since: string; until: string }
+
+/** Strict YYYY-MM-DD that is also a real calendar date. */
+export function isIsoDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const [y, m, d] = s.split("-").map(Number)
+  const dt = new Date(y, m - 1, d)
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d
+}
+
+/** Validate a custom range: both real dates, since ≤ until. null → not applyable. */
+export function customWindow(since: string, until: string): PayoutsWindow | null {
+  if (!isIsoDate(since) || !isIsoDate(until)) return null
+  if (since > until) return null
+  return { kind: "custom", since, until }
+}
+
+/** True when a custom `until` lands before `todayIso` (lexicographic compare is
+ *  date order for ISO dates). Drives the in-transit clarity note: with a past
+ *  end date, funds later swept into payouts still read as "not yet deposited"
+ *  as of that date — inherited engine semantics, deliberately NOT "fixed". */
+export function untilIsPast(w: PayoutsWindow, todayIso: string): boolean {
+  return w.kind === "custom" && w.until < todayIso
+}
+
+/** Small info note shown near the in-transit figure when `untilIsPast`. */
+export const IN_TRANSIT_PAST_UNTIL_NOTE = "In transit reflects funds not yet deposited as of your end date."
 
 // ── Pure math / display helpers ──────────────────────────────────────────────
 
@@ -551,19 +676,26 @@ export function exportDepositPdf(recon: Reconciliation): void {
 
 // ── Fetch (degrade to null on 404 — endpoint not deployed yet) ───────────────
 
-/** Days → the query the three endpoints share (`?days=N` + venue scope). */
-export function reconcileQuery(days: number, venueParam = ""): string {
-  return `?days=${encodeURIComponent(days)}${venueParam}`
+/** Window → the query the summary/deposits endpoints share (+ venue scope).
+ *  A bare number stays supported as `days=N` (the original signature); a custom
+ *  window becomes `since=…&until=…` per the /list convention. */
+export function reconcileQuery(window: number | PayoutsWindow, venueParam = ""): string {
+  const w: PayoutsWindow = typeof window === "number" ? { kind: "days", days: window } : window
+  const q =
+    w.kind === "custom"
+      ? `?since=${encodeURIComponent(w.since)}&until=${encodeURIComponent(w.until)}`
+      : `?days=${encodeURIComponent(w.days)}`
+  return `${q}${venueParam}`
 }
 
 export async function fetchPayoutsSummary(params: {
-  days: number
+  window: number | PayoutsWindow
   venueParam?: string
 }): Promise<PayoutsSummary | null> {
   const { apiClient } = await import("./api-client")
   try {
     const raw = await apiClient.get<Partial<PayoutsSummary>>(
-      `/business/payouts/summary${reconcileQuery(params.days, params.venueParam)}`,
+      `/business/payouts/summary${reconcileQuery(params.window, params.venueParam)}`,
     )
     return normalizeSummary(raw)
   } catch (err) {
@@ -573,13 +705,13 @@ export async function fetchPayoutsSummary(params: {
 }
 
 export async function fetchDeposits(params: {
-  days: number
+  window: number | PayoutsWindow
   venueParam?: string
 }): Promise<DepositListItem[] | null> {
   const { apiClient } = await import("./api-client")
   try {
     const raw = await apiClient.get<unknown>(
-      `/business/payouts/deposits${reconcileQuery(params.days, params.venueParam)}`,
+      `/business/payouts/deposits${reconcileQuery(params.window, params.venueParam)}`,
     )
     return normalizeDeposits(raw)
   } catch (err) {

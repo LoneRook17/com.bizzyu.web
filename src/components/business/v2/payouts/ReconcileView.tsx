@@ -26,6 +26,7 @@ import {
   type DepositListItem,
   type Reconciliation,
   type ReconOrderRow,
+  type PayoutsWindow,
   PAYOUT_RANGE_PRESETS,
   fetchReconciliation,
   tiesCheck,
@@ -37,40 +38,110 @@ import {
   depositExportFilename,
   downloadCsv,
   exportDepositPdf,
+  summaryRenderState,
+  sharedAccountCaveat,
+  dedicatedReassurance,
+  customWindow,
+  VENUE_TILE_LABELS,
+  COMBINED_ACCOUNT_LABEL,
+  DEDICATED_BADGE_LABEL,
+  IN_TRANSIT_PAST_UNTIL_NOTE,
 } from "@/lib/business/payouts-reconcile"
 
 // ── Range picker (segmented, 90d default) — mirrors DealFunnel's RangePicker ──
 // Relocated here from the removed PayoutsView; the owner reconcile container is
-// its only consumer now.
+// its only consumer now. TF-PAYOUTS-SUMMARY-F1 adds a "Custom" mode: selecting
+// it reveals start/end date inputs; Apply emits a since/until window (the /list
+// convention) that the summary, deposits, and CSV export all honor. Preset
+// behavior is unchanged when Custom isn't selected.
+
+const SEGMENT_BTN = "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50"
+const SEGMENT_ON = "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
+const SEGMENT_OFF = "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
+const DATE_INPUT =
+  "rounded-md border border-neutral-200 bg-white px-2 py-1 text-xs text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:[color-scheme:dark]"
 
 export function RangePicker({
   value,
   onChange,
   disabled,
 }: {
-  value: number
-  onChange: (days: number) => void
+  value: PayoutsWindow
+  onChange: (window: PayoutsWindow) => void
   disabled?: boolean
 }) {
+  const isCustom = value.kind === "custom"
+  // Custom mode can be OPEN (inputs showing) before a valid range is APPLIED —
+  // the active window stays the last preset until Apply, so nothing refetches
+  // on a half-typed range.
+  const [customOpen, setCustomOpen] = useState(isCustom)
+  const [since, setSince] = useState(isCustom ? value.since : "")
+  const [until, setUntil] = useState(isCustom ? value.until : "")
+  const draft = customWindow(since, until)
+  const applied = isCustom && value.since === since && value.until === until
+
   return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5 dark:border-neutral-800 dark:bg-neutral-900">
-      {PAYOUT_RANGE_PRESETS.map((p) => (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex items-center gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-0.5 dark:border-neutral-800 dark:bg-neutral-900">
+        {PAYOUT_RANGE_PRESETS.map((p) => (
+          <button
+            key={p.value}
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setCustomOpen(false)
+              onChange({ kind: "days", days: p.value })
+            }}
+            aria-pressed={!customOpen && value.kind === "days" && value.days === p.value}
+            className={cn(
+              SEGMENT_BTN,
+              !customOpen && value.kind === "days" && value.days === p.value ? SEGMENT_ON : SEGMENT_OFF,
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
         <button
-          key={p.value}
           type="button"
           disabled={disabled}
-          onClick={() => onChange(p.value)}
-          aria-pressed={value === p.value}
-          className={cn(
-            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
-            value === p.value
-              ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-neutral-100"
-              : "text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200",
-          )}
+          onClick={() => setCustomOpen(true)}
+          aria-pressed={customOpen || isCustom}
+          className={cn(SEGMENT_BTN, customOpen || isCustom ? SEGMENT_ON : SEGMENT_OFF)}
         >
-          {p.label}
+          Custom
         </button>
-      ))}
+      </div>
+      {customOpen && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <input
+            type="date"
+            aria-label="Start date"
+            value={since}
+            max={until || undefined}
+            disabled={disabled}
+            onChange={(e) => setSince(e.target.value)}
+            className={DATE_INPUT}
+          />
+          <span className="text-xs text-neutral-400 dark:text-neutral-500">to</span>
+          <input
+            type="date"
+            aria-label="End date"
+            value={until}
+            min={since || undefined}
+            disabled={disabled}
+            onChange={(e) => setUntil(e.target.value)}
+            className={DATE_INPUT}
+          />
+          <button
+            type="button"
+            disabled={disabled || !draft || applied}
+            onClick={() => draft && onChange(draft)}
+            className="rounded-md bg-[#05EB54] px-2.5 py-1 text-xs font-semibold text-neutral-900 transition-colors hover:brightness-95 disabled:opacity-50"
+          >
+            {applied ? "Applied" : "Apply"}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -132,11 +203,14 @@ function SummaryTile({
   label,
   cents,
   tone,
+  note,
 }: {
   icon: React.ElementType
   label: string
   cents: number
   tone: "green" | "blue" | "red"
+  /** Small clarity subtext under the figure (e.g. the past-until in-transit note). */
+  note?: string
 }) {
   const toneCls = {
     green: "text-green-600 dark:text-green-400",
@@ -152,16 +226,128 @@ function SummaryTile({
       <p className="mt-1.5 text-2xl font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">
         {money(cents)}
       </p>
+      {note && <p className="mt-1 text-[11px] leading-snug text-neutral-400 dark:text-neutral-500">{note}</p>}
     </Card>
   )
 }
 
-export function SummaryStrip({ summary }: { summary: PayoutsSummary }) {
+/** The de-emphasized account-level line for the SHARED state. The account trio is
+ *  a SUPERSET (the Stripe connected account commingles other venues' deposits),
+ *  so it renders small, secondary, and caveated with the commingled venues'
+ *  names — never as "this venue's deposits". */
+function CombinedAccountLine({ summary }: { summary: PayoutsSummary }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <SummaryTile icon={ArrowDownToLine} label="Deposited" cents={summary.deposited_cents} tone="green" />
-      <SummaryTile icon={Truck} label="In transit" cents={summary.in_transit_cents} tone="blue" />
-      <SummaryTile icon={RotateCcw} label="Refunded" cents={summary.refunded_cents} tone="red" />
+    <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
+      <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{COMBINED_ACCOUNT_LABEL}</p>
+      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+        Deposited <span className="font-semibold tabular-nums">{money(summary.deposited_cents)}</span>
+        {" · "}In transit <span className="font-semibold tabular-nums">{money(summary.in_transit_cents)}</span>
+        {" · "}Refunded <span className="font-semibold tabular-nums">{money(summary.refunded_cents)}</span>
+      </p>
+      {summary.shared_with_venues.length > 0 && (
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          {sharedAccountCaveat(summary.shared_with_venues)}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** DEDICATED state reassurance: this venue's Stripe account holds no other
+ *  venue's money, so the one set of figures above is both the account AND the
+ *  venue — say so explicitly. */
+function DedicatedAccountLine({ venueName }: { venueName?: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 dark:border-green-900 dark:bg-green-950/40">
+      <span className="inline-flex items-center rounded-full border border-green-300 bg-white px-2 py-0.5 text-xs font-semibold text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
+        {DEDICATED_BADGE_LABEL}
+      </span>
+      <p className="text-sm text-green-800 dark:text-green-300">{dedicatedReassurance(venueName)}</p>
+    </div>
+  )
+}
+
+export function SummaryStrip({
+  summary,
+  venueName,
+  untilInPast,
+}: {
+  summary: PayoutsSummary
+  venueName?: string
+  /** Custom window with `until` before today → in-transit clarity note. */
+  untilInPast?: boolean
+}) {
+  const state = summaryRenderState(summary)
+  const inTransitNote = untilInPast ? IN_TRANSIT_PAST_UNTIL_NOTE : undefined
+
+  // ALL-VENUES (hard regression gate): the pre-fix account-level strip, unchanged.
+  if (state === "all_venues") {
+    return (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <SummaryTile icon={ArrowDownToLine} label="Deposited" cents={summary.deposited_cents} tone="green" />
+        <SummaryTile icon={Truck} label="In transit" cents={summary.in_transit_cents} tone="blue" note={inTransitNote} />
+        <SummaryTile icon={RotateCcw} label="Refunded" cents={summary.refunded_cents} tone="red" />
+      </div>
+    )
+  }
+
+  // DEDICATED VENUE: venue figures == account figures — show once, with the badge
+  // and the explicit reassurance sentence.
+  if (state === "dedicated_venue") {
+    return (
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <SummaryTile
+            icon={ArrowDownToLine}
+            label="Deposited"
+            cents={summary.venue_deposited_cents ?? summary.deposited_cents}
+            tone="green"
+          />
+          <SummaryTile
+            icon={Truck}
+            label="In transit"
+            cents={summary.venue_in_transit_cents ?? summary.in_transit_cents}
+            tone="blue"
+            note={inTransitNote}
+          />
+          <SummaryTile
+            icon={RotateCcw}
+            label="Refunded"
+            cents={summary.venue_refunded_cents ?? summary.refunded_cents}
+            tone="red"
+          />
+        </div>
+        <DedicatedAccountLine venueName={venueName} />
+      </div>
+    )
+  }
+
+  // SHARED VENUE: LEAD with the venue's attributed share (the honest per-venue
+  // figure); the commingled account total follows, small and caveated.
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <SummaryTile
+          icon={ArrowDownToLine}
+          label={VENUE_TILE_LABELS.deposited}
+          cents={summary.venue_deposited_cents ?? 0}
+          tone="green"
+        />
+        <SummaryTile
+          icon={Truck}
+          label={VENUE_TILE_LABELS.in_transit}
+          cents={summary.venue_in_transit_cents ?? 0}
+          tone="blue"
+          note={inTransitNote}
+        />
+        <SummaryTile
+          icon={RotateCcw}
+          label={VENUE_TILE_LABELS.refunded}
+          cents={summary.venue_refunded_cents ?? 0}
+          tone="red"
+        />
+      </div>
+      <CombinedAccountLine summary={summary} />
     </div>
   )
 }
@@ -617,17 +803,20 @@ export default function ReconcileView({
   deposits,
   venueParam,
   venueName,
+  untilInPast,
 }: {
   summary: PayoutsSummary
   deposits: DepositListItem[]
   venueParam?: string
   venueName?: string
+  /** Custom window with a past `until` → in-transit clarity note in the strip. */
+  untilInPast?: boolean
 }) {
   const hasAny = deposits.length > 0 || summary.deposited_cents > 0 || summary.in_transit_cents > 0
 
   return (
     <div className="space-y-4">
-      <SummaryStrip summary={summary} />
+      <SummaryStrip summary={summary} venueName={venueName} untilInPast={untilInPast} />
       <InTransitBanner cents={summary.in_transit_cents} />
       {deposits.length > 0 ? (
         <div className="space-y-3">
