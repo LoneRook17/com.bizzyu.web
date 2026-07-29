@@ -43,10 +43,18 @@ import {
   sharedAccountCaveat,
   dedicatedReassurance,
   customWindow,
+  buildBreakdownTable,
+  showBreakdownTable,
+  signedMoneyStr,
+  type BreakdownTable,
   VENUE_TILE_LABELS,
   COMBINED_ACCOUNT_LABEL,
   DEDICATED_BADGE_LABEL,
   IN_TRANSIT_PAST_UNTIL_NOTE,
+  BREAKDOWN_METRIC_LABELS,
+  THIS_VENUE_BADGE_LABEL,
+  NEGATIVE_UNALLOCATED_NOTE,
+  BREAKDOWN_MISMATCH_WARNING,
 } from "@/lib/business/payouts-reconcile"
 
 // ── Range picker (segmented, 90d default) — mirrors DealFunnel's RangePicker ──
@@ -232,23 +240,97 @@ function SummaryTile({
   )
 }
 
-/** The de-emphasized account-level line for the SHARED state. The account trio is
- *  a SUPERSET (the Stripe connected account commingles other venues' deposits),
- *  so it renders small, secondary, and caveated with the commingled venues'
- *  names — never as "this venue's deposits". */
-function CombinedAccountLine({ summary }: { summary: PayoutsSummary }) {
+/** TF-PAYOUTS-RECONCILE — the itemized reconciliation that makes the combined
+ *  account VISIBLY FOOT: one row per venue slice (server order), the unallocated
+ *  remainder, then the combined total, across all three metrics. Negative
+ *  unallocated cells render as-is (clamping would break the footing) with a
+ *  note explaining them. */
+function BreakdownTableView({ table }: { table: BreakdownTable }) {
+  const CELL = "py-1.5 pl-3 text-right tabular-nums whitespace-nowrap"
+  return (
+    <div className="mt-2">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[380px] text-xs">
+          <thead>
+            <tr className="border-b border-neutral-200 text-[11px] text-neutral-400 dark:border-neutral-700 dark:text-neutral-500">
+              <th className="py-1.5 pr-2 text-left font-medium">Venue</th>
+              <th className={cn(CELL, "font-medium")}>{BREAKDOWN_METRIC_LABELS.deposited}</th>
+              <th className={cn(CELL, "font-medium")}>{BREAKDOWN_METRIC_LABELS.in_transit}</th>
+              <th className={cn(CELL, "font-medium")}>{BREAKDOWN_METRIC_LABELS.refunded}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((r, i) => (
+              <tr
+                key={r.venue_id ?? r.kind}
+                data-breakdown-row={r.kind}
+                data-venue-id={r.venue_id ?? undefined}
+                data-this-venue={r.isThisVenue || undefined}
+                className={cn(
+                  "text-neutral-600 dark:text-neutral-300",
+                  i > 0 && "border-t border-neutral-100 dark:border-neutral-800",
+                  r.kind === "total" &&
+                    "border-t border-neutral-300 font-semibold text-neutral-900 dark:border-neutral-600 dark:text-neutral-100",
+                  r.isThisVenue && "font-medium text-neutral-900 dark:text-neutral-100",
+                )}
+              >
+                <td className="py-1.5 pr-2 text-left">
+                  {r.label}
+                  {r.isThisVenue && (
+                    <span className="ml-1.5 inline-flex items-center rounded-full border border-green-300 bg-green-50 px-1.5 py-px text-[10px] font-semibold text-green-800 dark:border-green-800 dark:bg-green-950/60 dark:text-green-300">
+                      {THIS_VENUE_BADGE_LABEL}
+                    </span>
+                  )}
+                </td>
+                <td className={CELL}>{signedMoneyStr(r.deposited_cents)}</td>
+                <td className={CELL}>{signedMoneyStr(r.in_transit_cents)}</td>
+                <td className={CELL}>{signedMoneyStr(r.refunded_cents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {table.hasNegativeUnallocated && (
+        <p className="mt-1.5 text-[11px] leading-snug text-neutral-400 dark:text-neutral-500">
+          {NEGATIVE_UNALLOCATED_NOTE}
+        </p>
+      )}
+      {!table.foots && (
+        <p className="mt-1.5 flex items-start gap-1 text-[11px] leading-snug text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="mt-px size-3 shrink-0" />
+          {BREAKDOWN_MISMATCH_WARNING}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** The de-emphasized account-level block for the SHARED state. The account trio
+ *  is a SUPERSET (the Stripe connected account commingles other venues'
+ *  deposits) — never "this venue's deposits". With the :198 breakdown contract
+ *  it itemizes exactly where the account totals come from (each venue +
+ *  unallocated = total, per metric); against an older server it degrades to the
+ *  original trio line + "Also includes deposits for" caveat. */
+function CombinedAccountLine({ summary, venueId }: { summary: PayoutsSummary; venueId?: number }) {
+  const table = buildBreakdownTable(summary, venueId)
   return (
     <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
       <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{COMBINED_ACCOUNT_LABEL}</p>
-      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
-        Deposited <span className="font-semibold tabular-nums">{money(summary.deposited_cents)}</span>
-        {" · "}In transit <span className="font-semibold tabular-nums">{money(summary.in_transit_cents)}</span>
-        {" · "}Refunded <span className="font-semibold tabular-nums">{money(summary.refunded_cents)}</span>
-      </p>
-      {summary.shared_with_venues.length > 0 && (
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          {sharedAccountCaveat(summary.shared_with_venues)}
-        </p>
+      {table ? (
+        <BreakdownTableView table={table} />
+      ) : (
+        <>
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+            Deposited <span className="font-semibold tabular-nums">{money(summary.deposited_cents)}</span>
+            {" · "}In transit <span className="font-semibold tabular-nums">{money(summary.in_transit_cents)}</span>
+            {" · "}Refunded <span className="font-semibold tabular-nums">{money(summary.refunded_cents)}</span>
+          </p>
+          {summary.shared_with_venues.length > 0 && (
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+              {sharedAccountCaveat(summary.shared_with_venues)}
+            </p>
+          )}
+        </>
       )}
     </div>
   )
@@ -271,10 +353,13 @@ function DedicatedAccountLine({ venueName }: { venueName?: string }) {
 export function SummaryStrip({
   summary,
   venueName,
+  venueId,
   untilInPast,
 }: {
   summary: PayoutsSummary
   venueName?: string
+  /** The selected venue's id — marks its row in the breakdown table. */
+  venueId?: number
   /** Custom window with `until` before today → in-transit clarity note. */
   untilInPast?: boolean
 }) {
@@ -300,6 +385,9 @@ export function SummaryStrip({
   const tiles = summaryTilesFor(summary)
 
   if (state === "dedicated_venue") {
+    // The ✓ reassurance is the story here; the itemized table appears only when
+    // it adds information (a sibling slice or a nonzero unallocated remainder) —
+    // showBreakdownTable's call, so a trivial one-row table never renders.
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -308,12 +396,14 @@ export function SummaryStrip({
           <SummaryTile icon={RotateCcw} label="Refunded" cents={tiles.refunded_cents} tone="red" />
         </div>
         <DedicatedAccountLine venueName={venueName} />
+        {showBreakdownTable(summary) && <CombinedAccountLine summary={summary} venueId={venueId} />}
       </div>
     )
   }
 
   // SHARED VENUE: LEAD with the venue's attributed share (the honest per-venue
-  // figure); the commingled account total follows, small and caveated.
+  // figure); the commingled account total follows, small — itemized so it
+  // visibly foots (or caveated, pre-breakdown servers).
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -327,7 +417,7 @@ export function SummaryStrip({
         />
         <SummaryTile icon={RotateCcw} label={VENUE_TILE_LABELS.refunded} cents={tiles.refunded_cents} tone="red" />
       </div>
-      <CombinedAccountLine summary={summary} />
+      <CombinedAccountLine summary={summary} venueId={venueId} />
     </div>
   )
 }
@@ -783,12 +873,15 @@ export default function ReconcileView({
   deposits,
   venueParam,
   venueName,
+  venueId,
   untilInPast,
 }: {
   summary: PayoutsSummary
   deposits: DepositListItem[]
   venueParam?: string
   venueName?: string
+  /** The selected venue's id — marks its row in the summary breakdown table. */
+  venueId?: number
   /** Custom window with a past `until` → in-transit clarity note in the strip. */
   untilInPast?: boolean
 }) {
@@ -796,7 +889,7 @@ export default function ReconcileView({
 
   return (
     <div className="space-y-4">
-      <SummaryStrip summary={summary} venueName={venueName} untilInPast={untilInPast} />
+      <SummaryStrip summary={summary} venueName={venueName} venueId={venueId} untilInPast={untilInPast} />
       <InTransitBanner cents={summary.in_transit_cents} />
       {deposits.length > 0 ? (
         <div className="space-y-3">

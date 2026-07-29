@@ -34,6 +34,14 @@ import {
   customWindow,
   isIsoDate,
   untilIsPast,
+  hasBreakdown,
+  buildBreakdownTable,
+  showBreakdownTable,
+  signedMoneyStr,
+  UNALLOCATED_ROW_LABEL,
+  BREAKDOWN_TOTAL_ROW_LABEL,
+  THIS_VENUE_BADGE_LABEL,
+  NEGATIVE_UNALLOCATED_NOTE,
   VENUE_TILE_LABELS,
   COMBINED_ACCOUNT_LABEL,
   DEDICATED_BADGE_LABEL,
@@ -99,6 +107,10 @@ test("normalizeSummary coerces string cents and tolerates null", () => {
     venue_refunded_cents: null,
     account_dedicated: null,
     shared_with_venues: [],
+    breakdown: [],
+    unallocated_deposited_cents: null,
+    unallocated_in_transit_cents: null,
+    unallocated_refunded_cents: null,
   })
 })
 
@@ -593,4 +605,221 @@ test("untilIsPast: a past custom end date triggers the in-transit note; presets 
   // The note is subtext-only clarity for inherited semantics (funds swept into
   // later payouts read as not-yet-deposited as of the end date) — never a "fix".
   assert.equal(IN_TRANSIT_PAST_UNTIL_NOTE, "In transit reflects funds not yet deposited as of your end date.")
+})
+
+// ── TF-PAYOUTS-RECONCILE: the Combined-account breakdown table ────────────────
+// The table's rows, footing check, this-venue marking, and copy live in the
+// typed client (buildBreakdownTable / showBreakdownTable) and the component maps
+// them 1:1 — so these tests pin exactly what renders.
+
+/** A venue-scoped :198 response for a SHARED venue (260 on biz 267), with the
+ *  breakdown contract: slices for the whole account set (zero-slice venue
+ *  included) + a NEGATIVE unallocated in-transit (a −$0.47 fee-recovery
+ *  adjustment). String cents mixed in to exercise coercion. Numbers foot per
+ *  metric by construction: Σ(slices) + unallocated == account total. */
+function breakdownSummary(): PayoutsSummary {
+  return normalizeSummary({
+    // Per metric: Σ(slices) + unallocated == account total.
+    //   deposited:  198,054 + 70,581 = 268,635
+    //   in transit:   3,000 + (−47) =   2,953   (fee-recovery adjustment)
+    //   refunded:    63,900 +     0 =  63,900
+    deposited_cents: "268635",
+    in_transit_cents: 2953,
+    refunded_cents: 63900,
+    venue_scoped: true,
+    venue_deposited_cents: 45977,
+    venue_in_transit_cents: 3000,
+    venue_refunded_cents: 3650,
+    account_dedicated: false,
+    shared_with_venues: [
+      { venue_id: 261, name: "Little Saint James" },
+      { venue_id: 262, name: "Mar a Lago" },
+      { venue_id: 990155, name: "Lukes Castle" },
+    ],
+    breakdown: [
+      { venue_id: 260, name: "Palm Beach Pete Paradise", deposited_cents: 45977, in_transit_cents: 3000, refunded_cents: 3650 },
+      { venue_id: 261, name: "Little Saint James", deposited_cents: "102277", in_transit_cents: 0, refunded_cents: 60250 },
+      { venue_id: 262, name: "Mar a Lago", deposited_cents: 49800, in_transit_cents: 0, refunded_cents: 0 },
+      { venue_id: 990155, name: "Lukes Castle", deposited_cents: 0, in_transit_cents: 0, refunded_cents: 0 },
+    ],
+    unallocated_deposited_cents: 70581,
+    unallocated_in_transit_cents: -47,
+    unallocated_refunded_cents: 0,
+  } as never)
+}
+
+test("breakdown-renders-and-foots", () => {
+  const s = breakdownSummary()
+  assert.equal(hasBreakdown(s), true)
+  const t = buildBreakdownTable(s, 260)
+  assert.ok(t)
+
+  // Row order is exactly what renders: every venue slice (server order,
+  // zero-slice venue included), then Unallocated, then the Combined total.
+  assert.deepEqual(
+    t.rows.map((r) => r.kind),
+    ["venue", "venue", "venue", "venue", "unallocated", "total"],
+  )
+  assert.deepEqual(
+    t.rows.map((r) => r.label),
+    [
+      "Palm Beach Pete Paradise",
+      "Little Saint James",
+      "Mar a Lago",
+      "Lukes Castle",
+      UNALLOCATED_ROW_LABEL,
+      BREAKDOWN_TOTAL_ROW_LABEL,
+    ],
+  )
+
+  // The client-side re-check agrees with the server invariant, per metric —
+  // Σ(venue rows) + unallocated == total, to the penny.
+  assert.deepEqual(t.footing, { deposited: 0, in_transit: 0, refunded: 0 })
+  assert.equal(t.foots, true)
+
+  // And the rendered cells carry the real figures (string cents coerced).
+  const total = t.rows[t.rows.length - 1]
+  assert.equal(signedMoneyStr(total.deposited_cents), "$2,686.35")
+  assert.equal(signedMoneyStr(total.refunded_cents), "$639.00")
+  const lsj = t.rows[1]
+  assert.equal(signedMoneyStr(lsj.deposited_cents), "$1,022.77")
+})
+
+test("negative-unallocated-rendered", () => {
+  const t = buildBreakdownTable(breakdownSummary(), 260)
+  assert.ok(t)
+  const unalloc = t.rows.find((r) => r.kind === "unallocated")
+  assert.ok(unalloc)
+
+  // The −$0.47 fee-recovery adjustment renders AS-IS (typographic minus),
+  // never clamped to zero — clamping would break the footing.
+  assert.equal(unalloc.in_transit_cents, -47)
+  assert.equal(signedMoneyStr(unalloc.in_transit_cents), "−$0.47")
+  assert.equal(t.hasNegativeUnallocated, true)
+  // …and the note that explains it is pinned copy the component shows.
+  assert.equal(
+    NEGATIVE_UNALLOCATED_NOTE,
+    "A negative unallocated amount reflects a fee-recovery adjustment on the account — it's part of what makes the column add up to the total.",
+  )
+  // Footing still exact WITH the negative in the sum.
+  assert.equal(t.foots, true)
+
+  // Positive-only unallocated → no note.
+  const clean = normalizeSummary({
+    ...({} as Record<string, never>),
+    deposited_cents: 1000,
+    in_transit_cents: 0,
+    refunded_cents: 0,
+    venue_scoped: true,
+    account_dedicated: false,
+    breakdown: [{ venue_id: 1, name: "A", deposited_cents: 900, in_transit_cents: 0, refunded_cents: 0 }],
+    unallocated_deposited_cents: 100,
+    unallocated_in_transit_cents: 0,
+    unallocated_refunded_cents: 0,
+  } as never)
+  assert.equal(buildBreakdownTable(clean, 1)?.hasNegativeUnallocated, false)
+})
+
+test("this-venue-row-marked", () => {
+  const t = buildBreakdownTable(breakdownSummary(), 260)
+  assert.ok(t)
+  // Exactly ONE row is marked, it's the selected venue's, and the badge copy is
+  // pinned. Unallocated/total rows can never carry the mark.
+  const marked = t.rows.filter((r) => r.isThisVenue)
+  assert.equal(marked.length, 1)
+  assert.equal(marked[0].venue_id, 260)
+  assert.equal(marked[0].label, "Palm Beach Pete Paradise")
+  assert.equal(THIS_VENUE_BADGE_LABEL, "This venue")
+
+  // A different perspective marks a different row (same table otherwise).
+  const t990 = buildBreakdownTable(breakdownSummary(), 990155)
+  assert.ok(t990)
+  assert.deepEqual(
+    t990.rows.filter((r) => r.isThisVenue).map((r) => r.venue_id),
+    [990155],
+  )
+
+  // No venue id resolved yet → nothing marked (never a wrong guess).
+  const tNone = buildBreakdownTable(breakdownSummary(), undefined)
+  assert.ok(tNone)
+  assert.equal(tNone.rows.some((r) => r.isThisVenue), false)
+})
+
+test("dedicated-venue-clean", () => {
+  // A dedicated account whose breakdown is trivially "this venue + zero
+  // unallocated" → the ✓ reassurance stands alone; NO one-row table renders.
+  const trivial = normalizeSummary({
+    deposited_cents: 93183,
+    in_transit_cents: 0,
+    refunded_cents: 0,
+    venue_scoped: true,
+    account_dedicated: true,
+    shared_with_venues: [],
+    breakdown: [{ venue_id: 990155, name: "Lukes Castle", deposited_cents: 93183, in_transit_cents: 0, refunded_cents: 0 }],
+    unallocated_deposited_cents: 0,
+    unallocated_in_transit_cents: 0,
+    unallocated_refunded_cents: 0,
+  } as never)
+  assert.equal(summaryRenderState(trivial), "dedicated_venue")
+  assert.equal(hasBreakdown(trivial), true)
+  assert.equal(showBreakdownTable(trivial), false)
+
+  // But a nonzero unallocated remainder IS information the reassurance doesn't
+  // carry — the table appears and foots.
+  const remainder = normalizeSummary({
+    deposited_cents: 93183,
+    in_transit_cents: 0,
+    refunded_cents: 0,
+    venue_scoped: true,
+    account_dedicated: true,
+    shared_with_venues: [],
+    breakdown: [{ venue_id: 990155, name: "Lukes Castle", deposited_cents: 90000, in_transit_cents: 0, refunded_cents: 0 }],
+    unallocated_deposited_cents: 3183,
+    unallocated_in_transit_cents: 0,
+    unallocated_refunded_cents: 0,
+  } as never)
+  assert.equal(showBreakdownTable(remainder), true)
+  const t = buildBreakdownTable(remainder, 990155)
+  assert.ok(t)
+  assert.equal(t.foots, true)
+
+  // SHARED state always shows the table when the contract is live.
+  assert.equal(showBreakdownTable(breakdownSummary()), true)
+})
+
+test("all-venues-unchanged", () => {
+  // (a) An honest all-venues response: no breakdown, no table, all_venues state —
+  // the strip's regression-gated branch renders with nothing new to show.
+  const plain = normalizeSummary({ deposited_cents: 268635, in_transit_cents: 2953, refunded_cents: 63900 })
+  assert.equal(summaryRenderState(plain), "all_venues")
+  assert.equal(hasBreakdown(plain), false)
+  assert.equal(buildBreakdownTable(plain, 260), null)
+  assert.equal(showBreakdownTable(plain), false)
+
+  // (b) Even if breakdown fields LEAK into an unscoped payload, normalization
+  // drops them — the all-venues render can never grow a breakdown block.
+  const leaked = normalizeSummary({
+    deposited_cents: 268635,
+    in_transit_cents: 2953,
+    refunded_cents: 63900,
+    breakdown: [{ venue_id: 260, name: "Ghost", deposited_cents: 1, in_transit_cents: 1, refunded_cents: 1 }],
+    unallocated_deposited_cents: 1,
+    unallocated_in_transit_cents: 1,
+    unallocated_refunded_cents: 1,
+  } as never)
+  assert.deepEqual(leaked.breakdown, [])
+  assert.equal(leaked.unallocated_deposited_cents, null)
+  assert.equal(leaked.unallocated_in_transit_cents, null)
+  assert.equal(leaked.unallocated_refunded_cents, null)
+  assert.equal(buildBreakdownTable(leaked, 260), null)
+
+  // (c) A scoped response from a PRE-breakdown server (:195-era) keeps the
+  // caveat-line fallback: no table, old copy path intact.
+  const preBreakdown = sharedSummary()
+  assert.equal(hasBreakdown(preBreakdown), false)
+  assert.equal(buildBreakdownTable(preBreakdown, 260), null)
+  assert.equal(
+    sharedAccountCaveat(preBreakdown.shared_with_venues),
+    "Also includes deposits for: Little Saint James, Mar a Lago, Lukes Castle",
+  )
 })
