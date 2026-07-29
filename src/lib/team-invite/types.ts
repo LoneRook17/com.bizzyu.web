@@ -168,6 +168,21 @@ export interface InviteValidation {
   /** set_password invites where the account has no email on file. */
   needs_email: boolean
   /**
+   * TI-4s: the inviter-typed display name for a still-unresolved invite — the
+   * accept page seeds its name field with it (the invitee's edit stays
+   * authoritative). null once resolved (the account's real name wins), and
+   * ABSENT on pre-TI-4s services → treat as null.
+   */
+  provisional_name?: string | null
+  /**
+   * TI-4s: email invite whose landing account has no phone — the accept step
+   * captures one (send-code {token, phone} → accept {phone, code}) so the
+   * invitee can sign in to the app, which logs in by texted code. Mutually
+   * exclusive with requires_otp (phone invites already prove a number).
+   * ABSENT on pre-TI-4s services → treat as false: the old phone-less accept.
+   */
+  needs_phone?: boolean
+  /**
    * The signed-in dashboard user, if any, as the SERVER sees them — validate is
    * called with credentials:'include'. `matches:false` is the wrong-account
    * state. null = nobody signed in. Comparing client-side is not possible: the
@@ -199,6 +214,12 @@ export interface AcceptArgs {
   email?: string
   /** create_account | set_password. Never sent for credential_step 'none'. */
   password?: string
+  /**
+   * TI-4s, needs_phone only: the E.164 number the acceptor is attaching. Must
+   * be the SAME number send-code texted — the server verifies `code` against
+   * it atomically inside accept. Omitted → the old phone-less accept.
+   */
+  phone?: string
 }
 
 export interface AcceptResult {
@@ -237,6 +258,20 @@ export class EmailFailedError extends Error {
  * confirm panel shows, and every field is optional so a malformed/partial body
  * still yields a usable (generic-copy) confirm rather than a thrown-through error.
  */
+/**
+ * Thrown for 409 {code:'PHONE_IN_USE'} from send-code or accept (TI-4s): the
+ * number the acceptor tried to attach already belongs to a DIFFERENT account.
+ * The server refuses before any SMS leaves — identities are never silently
+ * merged — and the page must not dead-end: the fix is "log in with that
+ * account" (or use another number), so the UI surfaces both.
+ */
+export class PhoneInUseError extends Error {
+  constructor(message?: string) {
+    super(message || 'That phone number is already on another Bizzy account.')
+    this.name = 'PhoneInUseError'
+  }
+}
+
 export class ReactivationRequiredError extends Error {
   masked_name?: string
   masked_contact?: string
