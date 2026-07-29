@@ -6,8 +6,8 @@ import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 
 import { acceptInvite, sendInviteCode, validateInvite } from "@/lib/team-invite/client"
-import { isValidEmail } from "@/lib/team-invite/phone"
-import type { InviteValidation } from "@/lib/team-invite/types"
+import { formatUsPhone, isValidEmail, toE164 } from "@/lib/team-invite/phone"
+import { PhoneInUseError, type InviteValidation } from "@/lib/team-invite/types"
 import { clearBizSession } from "@/lib/business/cookies"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { ROLE_LABELS } from "@/lib/business/constants"
@@ -183,13 +183,27 @@ function AcceptFlow({
   children?: React.ReactNode
 }) {
   const { requires_otp, credential_step, needs_email } = validation
+  // TI-4s. Strict === true: absent on pre-TI-4s services, and absent must mean
+  // the old phone-less accept, not a phone step nobody can pass.
+  const needsPhone = validation.needs_phone === true
 
   const [codeSent, setCodeSent] = useState(false)
   const [sending, setSending] = useState(false)
   const [code, setCode] = useState("")
-  const [name, setName] = useState("")
+  // Seeded from the inviter's entry (TI-4s provisional_name) so the invitee
+  // confirms a name instead of retyping it. Their edit stays authoritative —
+  // this is only ever an initial value.
+  const [name, setName] = useState(validation.provisional_name ?? "")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [phone, setPhone] = useState("")
+  // Phase flag for the needs_phone capture: false = details + phone entry,
+  // true = the code screen. Distinct from codeSent (the phone-INVITE gate) —
+  // the two OTP flows prove opposite things and never coexist.
+  const [phoneCodeSent, setPhoneCodeSent] = useState(false)
+  // 409 PHONE_IN_USE gets its own surface (log-in-instead, never a dead end),
+  // so it cannot be flattened into serverError.
+  const [phoneInUse, setPhoneInUse] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -208,13 +222,9 @@ function AcceptFlow({
     }
   }, [token])
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  /** The credential checks shared by every accept path. */
+  const validateDetails = () => {
     const errs: Record<string, string> = {}
-
-    if (requires_otp && code.replace(/\D/g, "").length !== 6) {
-      errs.code = "Enter the 6-digit code"
-    }
     if (credential_step === "create_account") {
       if (!name.trim()) errs.name = "Your name is required"
       if (!isValidEmail(email)) errs.email = "Enter a valid email"
@@ -227,7 +237,104 @@ function AcceptFlow({
       else if (!/\d/.test(password)) errs.password = "Include at least 1 number"
       else if (!/[a-zA-Z]/.test(password)) errs.password = "Include at least 1 letter"
     }
+    return errs
+  }
 
+  /** The credential fields of the accept body, per the matrix. */
+  const detailArgs = () => ({
+    name: credential_step === "create_account" ? name.trim() : undefined,
+    email:
+      credential_step === "create_account" || (credential_step === "set_password" && needs_email)
+        ? email.trim()
+        : undefined,
+    // NEVER sent when the account already has a password.
+    password: credential_step === "none" ? undefined : password,
+  })
+
+  /**
+   * TI-4s capture send. Texts the OTP to the number being ATTACHED — the
+   * server refuses a number another account already holds before any SMS
+   * leaves, which is why PHONE_IN_USE lands here, on the screen with the
+   * phone field still on it.
+   */
+  const sendCaptureCode = useCallback(async () => {
+    const e164 = toE164(phone)
+    if (!e164) {
+      setErrors({ phone: "Enter a valid mobile number." })
+      return
+    }
+    setSending(true)
+    setServerError("")
+    setPhoneInUse(false)
+    try {
+      await sendInviteCode(token, e164)
+      setCode("")
+      setPhoneCodeSent(true)
+    } catch (err) {
+      if (err instanceof PhoneInUseError) {
+        setPhoneInUse(true)
+        setPhoneCodeSent(false)
+      } else {
+        setServerError(err instanceof Error ? err.message : "Could not send the code")
+      }
+    } finally {
+      setSending(false)
+    }
+  }, [token, phone])
+
+  /** Phase 1 of the needs_phone flow: validate everything, then text the code. */
+  const submitDetails = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const errs = validateDetails()
+    if (!toE164(phone)) errs.phone = "Enter a valid mobile number."
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      return
+    }
+    setErrors({})
+    await sendCaptureCode()
+  }
+
+  /** Phase 2 of the needs_phone flow: the code proves the number, accept joins. */
+  const submitVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const e164 = toE164(phone)
+    if (!e164) {
+      // Unreachable through the UI (phase 2 only exists after a valid send),
+      // but never POST a phone we could not have texted.
+      setPhoneCodeSent(false)
+      return
+    }
+    if (code.replace(/\D/g, "").length !== 6) {
+      setErrors({ code: "Enter the 6-digit code" })
+      return
+    }
+    setSubmitting(true)
+    setErrors({})
+    setServerError("")
+    setPhoneInUse(false)
+    try {
+      await acceptInvite({ token, code, phone: e164, ...detailArgs() })
+      setDone(true)
+      // Server set biz_token on accept — go straight in.
+      window.location.href = "/business"
+    } catch (err) {
+      if (err instanceof PhoneInUseError) {
+        setPhoneInUse(true)
+      } else {
+        setServerError(err instanceof Error ? err.message : "Could not accept the invite")
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const errs = validateDetails()
+    if (requires_otp && code.replace(/\D/g, "").length !== 6) {
+      errs.code = "Enter the 6-digit code"
+    }
     if (Object.keys(errs).length) {
       setErrors(errs)
       return
@@ -243,13 +350,7 @@ function AcceptFlow({
         // verify-code endpoint consumes the code and returns no proof, so
         // verifying separately would leave accept trusting the client.
         code: requires_otp ? code : undefined,
-        name: credential_step === "create_account" ? name.trim() : undefined,
-        email:
-          credential_step === "create_account" || (credential_step === "set_password" && needs_email)
-            ? email.trim()
-            : undefined,
-        // NEVER sent when the account already has a password.
-        password: credential_step === "none" ? undefined : password,
+        ...detailArgs(),
       })
       setDone(true)
       // Server set biz_token on accept — go straight in.
@@ -276,6 +377,66 @@ function AcceptFlow({
         ? `You've been invited as ${roleLabel}. Create a dashboard login to accept.`
         : `You've been invited as ${roleLabel}.`
 
+  // TI-4s phase 2: details are collected, the code is out — all that's left is
+  // proving the new number. Its own screen so the code field isn't buried under
+  // a form the person already filled in.
+  if (needsPhone && phoneCodeSent) {
+    return (
+      <AuthCard title={`Join ${validation.business_name}`} subtitle="Last step — confirm your number.">
+        {children}
+        <form onSubmit={submitVerify}>
+          <div className="mb-4">
+            <label htmlFor="invite-phone-code" className="mb-1.5 block text-sm font-medium text-gray-700">
+              Code sent to {formatUsPhone(phone)}
+            </label>
+            <input
+              id="invite-phone-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="000000"
+              value={code}
+              autoFocus
+              onChange={(e) => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setErrors({}) }}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-center font-mono text-2xl tracking-[0.5em] text-gray-900 outline-none placeholder:text-gray-300 focus:border-[#05EB54]"
+            />
+            {errors.code && <p className="mt-1.5 text-sm text-red-600">{errors.code}</p>}
+            <button
+              type="button"
+              onClick={sendCaptureCode}
+              disabled={sending}
+              className="mt-2 text-sm font-medium text-[#05EB54] hover:underline disabled:opacity-50"
+            >
+              {sending ? "Sending…" : "Send a new code"}
+            </button>
+          </div>
+
+          {phoneInUse && <PhoneInUseAlert />}
+          {serverError && <AuthAlert tone="error" className="mb-4">{serverError}</AuthAlert>}
+
+          <AuthSubmit loading={submitting}>Verify and join {validation.business_name}</AuthSubmit>
+        </form>
+        <AuthFooterLink>
+          Wrong number?{" "}
+          <button
+            type="button"
+            onClick={() => {
+              setPhoneCodeSent(false)
+              setCode("")
+              setErrors({})
+              setServerError("")
+              setPhoneInUse(false)
+            }}
+            className="font-medium text-[#05EB54] hover:underline"
+          >
+            Use a different number
+          </button>
+        </AuthFooterLink>
+      </AuthCard>
+    )
+  }
+
   // OTP gate first: nothing is collected until the person proves the number is
   // theirs. This is what stops a sibling on a shared number inheriting the job.
   if (requires_otp && !codeSent) {
@@ -301,7 +462,7 @@ function AcceptFlow({
   return (
     <AuthCard title={`Join ${validation.business_name}`} subtitle={subtitle}>
       {children}
-      <form onSubmit={submit}>
+      <form onSubmit={needsPhone ? submitDetails : submit}>
         {requires_otp && (
           <div className="mb-4">
             <label htmlFor="invite-code" className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -381,10 +542,39 @@ function AcceptFlow({
           </p>
         )}
 
+        {/* TI-4s: email invite landing on an account with no phone. The number
+            is captured HERE so the invitee can use the app, which signs in by
+            texted code — without it the job only exists on the dashboard. */}
+        {needsPhone && (
+          <>
+            <AuthField
+              label="Mobile number"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              value={formatUsPhone(phone)}
+              onChange={(e) => { setPhone(e.target.value); setErrors({}); setPhoneInUse(false) }}
+              placeholder="(555) 123-4567"
+              required
+              error={errors.phone}
+            />
+            <p className="-mt-2 mb-4 text-[13px] text-gray-500">
+              We&apos;ll text a code to confirm it. This number is how you&apos;ll sign in to the
+              Bizzy app.
+            </p>
+          </>
+        )}
+
+        {phoneInUse && <PhoneInUseAlert />}
         {serverError && <AuthAlert tone="error" className="mb-4">{serverError}</AuthAlert>}
 
-        <AuthSubmit loading={submitting}>
-          {credential_step === "none" ? `Accept and join ${validation.business_name}` : "Create login and join"}
+        <AuthSubmit loading={needsPhone ? sending : submitting}>
+          {needsPhone
+            ? "Text me a code"
+            : credential_step === "none"
+              ? `Accept and join ${validation.business_name}`
+              : "Create login and join"}
         </AuthSubmit>
       </form>
 
@@ -394,6 +584,24 @@ function AcceptFlow({
         </AuthFooterLink>
       )}
     </AuthCard>
+  )
+}
+
+/**
+ * 409 PHONE_IN_USE, on send-code or accept. The number belongs to a different
+ * account and the server will not merge identities — the way forward is that
+ * account's own login (or another number), so the alert carries the door
+ * instead of dead-ending.
+ */
+function PhoneInUseAlert() {
+  return (
+    <AuthAlert tone="error" className="mb-4">
+      That number is already on a Bizzy account.{" "}
+      <Link href="/business/login" className="font-semibold underline">
+        Log in with that account
+      </Link>{" "}
+      instead, or use a different number.
+    </AuthAlert>
   )
 }
 

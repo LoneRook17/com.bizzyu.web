@@ -10,6 +10,7 @@ import type { InviteLookup } from './lookup'
 import {
   EmailFailedError,
   MultipleMatchesError,
+  PhoneInUseError,
   ReactivationRequiredError,
   type AcceptArgs,
   type AcceptResult,
@@ -45,6 +46,10 @@ export type AcceptScenario =
   | 'valid_otp_set_password'
   | 'valid_new_user'
   | 'valid_email_no_otp'
+  // TI-4s: email invite, new user, landing account has no phone → the accept
+  // step captures one. Pre-fills the name from provisional_name. The
+  // MOCK_CANDIDATES' shared number (…1720) raises PHONE_IN_USE on send.
+  | 'valid_email_needs_phone'
   | 'session_match'
   | 'wrong_account'
   | 'expired'
@@ -73,6 +78,7 @@ const ACCEPT_SCENARIOS: AcceptScenario[] = [
   'valid_otp_set_password',
   'valid_new_user',
   'valid_email_no_otp',
+  'valid_email_needs_phone',
   'session_match',
   'wrong_account',
   'expired',
@@ -227,6 +233,8 @@ export async function mockValidateInvite(token: string): Promise<InviteValidatio
     requires_otp: true,
     credential_step: 'none' as const,
     needs_email: false,
+    provisional_name: null,
+    needs_phone: false,
     session: null,
   }
 
@@ -260,6 +268,19 @@ export async function mockValidateInvite(token: string): Promise<InviteValidatio
         contact_type: 'email',
         requires_otp: false,
       }
+    case 'valid_email_needs_phone':
+      // TI-4s: brand-new invitee by email — name pre-filled from the inviter's
+      // entry, and a phone step so the account is app-capable on day one.
+      return {
+        ...base,
+        state: 'valid',
+        invited_as: 'j•••@bizzytest.com',
+        contact_type: 'email',
+        requires_otp: false,
+        credential_step: 'create_account',
+        provisional_name: 'Jordan Reyes',
+        needs_phone: true,
+      }
     case 'valid_otp_set_password':
       // Existing OTP-only app account: null password → set one (additively).
       // needs_email exercises the "+ email if missing" arm.
@@ -282,8 +303,13 @@ export async function mockValidateInvite(token: string): Promise<InviteValidatio
   }
 }
 
-export async function mockSendInviteCode(): Promise<void> {
+export async function mockSendInviteCode(phone?: string): Promise<void> {
   await delay(350)
+  // TI-4s capture: the MOCK_CANDIDATES' shared number is "taken", so typing a
+  // number ending 1720 exercises the PHONE_IN_USE surface without services.
+  if (phone && phone.replace(/\D/g, '').endsWith('1720')) {
+    throw new PhoneInUseError()
+  }
 }
 
 export async function mockAcceptInvite(args: AcceptArgs): Promise<AcceptResult> {

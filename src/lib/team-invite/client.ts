@@ -20,6 +20,7 @@ import { parseLookup, type InviteLookup } from './lookup'
 import {
   EmailFailedError,
   MultipleMatchesError,
+  PhoneInUseError,
   ReactivationRequiredError,
   type AcceptArgs,
   type AcceptResult,
@@ -153,22 +154,34 @@ export async function lookupInviteContact(
   }
 }
 
-/** Send the OTP to the invited phone. Reuses the existing 877 login-code infra. */
-export async function sendInviteCode(token: string): Promise<void> {
+/**
+ * Send the OTP. Reuses the existing 877 login-code infra.
+ *
+ * PHONE invites call this token-only: the page never learns the invited number
+ * (it only ever sees it masked), so the server reads it off the invite row —
+ * a sibling on a shared number must not be able to redirect the code.
+ *
+ * EMAIL invites with needs_phone pass `phone` (TI-4s): there the token is
+ * already the invite proof, and the OTP proves the NEW number the acceptor is
+ * attaching — the opposite direction. The server refuses a number that belongs
+ * to a different account BEFORE any SMS leaves (409 PHONE_IN_USE →
+ * PhoneInUseError, so the page can offer log-in-instead rather than dead-end).
+ */
+export async function sendInviteCode(token: string, phone?: string): Promise<void> {
   if (process.env.NEXT_PUBLIC_TEAM_INVITE_MOCK === '1') {
     const { mockSendInviteCode } = await import('./mock')
-    return mockSendInviteCode()
+    return mockSendInviteCode(phone)
   }
-  // Token-addressed, NOT phone-addressed: the page never learns the invited
-  // number (it only ever sees it masked), so the server reads it off the invite
-  // row. Rate limiting stays the existing sender's problem.
   const res = await fetch(`${API_URL}/business/team/invite/send-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify(phone ? { token, phone } : { token }),
   })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
+    if (data?.code === 'PHONE_IN_USE') {
+      throw new PhoneInUseError(data?.message)
+    }
     throw new Error(data?.message || 'Could not send the code')
   }
 }
@@ -193,6 +206,12 @@ export async function acceptInvite(args: AcceptArgs): Promise<AcceptResult> {
   if (!res.ok) {
     if (data?.code === 'INVALID_CODE') {
       throw new Error('That code is not right. Check the text and try again.')
+    }
+    // TI-4s: the captured number was claimed by another account between
+    // send-code and accept. Rare (send-code already guards), but the same
+    // log-in-instead surface applies, so it must stay distinguishable.
+    if (data?.code === 'PHONE_IN_USE') {
+      throw new PhoneInUseError(data?.message)
     }
     throw new Error(data?.message || data?.error || 'Could not accept the invite')
   }

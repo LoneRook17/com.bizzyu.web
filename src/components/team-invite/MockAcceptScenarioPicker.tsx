@@ -15,6 +15,7 @@ const SCENARIOS: { id: AcceptScenario; label: string }[] = [
   { id: "valid_otp_set_password", label: "Valid · OTP · set password" },
   { id: "valid_new_user", label: "Valid · new user" },
   { id: "valid_email_no_otp", label: "Valid · email · no OTP" },
+  { id: "valid_email_needs_phone", label: "Valid · email · needs phone" },
   { id: "session_match", label: "Signed in · just accept" },
   { id: "wrong_account", label: "Wrong account" },
   { id: "expired", label: "Expired" },
