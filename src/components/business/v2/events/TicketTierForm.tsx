@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Info, Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { TICKET_TYPES } from "@/lib/business/constants"
 import type { TicketTier } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
+import { ScanWindowSection } from "@/components/business/v2/events/ScanWindowSection"
 import { cn } from "@/lib/v2/utils"
 
 interface TicketTierFormProps {
@@ -31,93 +31,6 @@ export const TICKET_DESCRIPTION_MAX = 64
 const TICKET_TYPE_LABELS: Record<string, string> = {
   paid: "Paid",
   free: "Free",
-}
-
-function ValidTimeInfo() {
-  const [open, setOpen] = useState(false)
-  return (
-    <span className="relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="What does the redeemable / scan window do?"
-        className="inline-flex size-4 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-      >
-        <Info className="size-2.5" />
-      </button>
-      {open && (
-        <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400 shadow-lg">
-          <strong className="mb-1 block text-neutral-800 dark:text-neutral-200">Redeemable / scan window (optional)</strong>
-          Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be{" "}
-          <strong>bought beforehand</strong>, sales just <strong>close when the window ends</strong>.
-        </span>
-      )}
-    </span>
-  )
-}
-
-// Scan-window inputs behind a reveal toggle, matching the mobile app: off for a
-// new ticket, on (values pre-filled) when the tier already has a window, and
-// turning it off clears both fields — so an off tier submits the same
-// valid_from/valid_until as an untouched one.
-function ScanWindowSection({
-  tier,
-  onUpdate,
-  onClear,
-}: {
-  tier: TicketTier
-  onUpdate: (field: "valid_from" | "valid_until", value: string) => void
-  onClear: () => void
-}) {
-  const hasWindow = !!(tier.valid_from || tier.valid_until)
-  const [manuallyOpened, setManuallyOpened] = useState(hasWindow)
-  const open = manuallyOpened || hasWindow
-
-  return (
-    <>
-      <div className="mt-3 flex items-center gap-1.5">
-        <label className="flex cursor-pointer items-center gap-2">
-          <input
-            type="checkbox"
-            checked={open}
-            onChange={(e) => {
-              setManuallyOpened(e.target.checked)
-              if (!e.target.checked) onClear()
-            }}
-            className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
-          />
-          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Scan window</span>
-        </label>
-        <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
-        <ValidTimeInfo />
-      </div>
-      {open && (
-        <>
-          <div className="mt-1 grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid from</Label>
-              <Input
-                type="datetime-local"
-                value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
-                onChange={(e) => onUpdate("valid_from", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid until</Label>
-              <Input
-                type="datetime-local"
-                value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
-                onChange={(e) => onUpdate("valid_until", e.target.value)}
-              />
-            </div>
-          </div>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-            When this ticket can be scanned at the door. It can still be bought beforehand, sales just close when the window ends. Leave blank for no limit.
-          </p>
-        </>
-      )}
-    </>
-  )
 }
 
 export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
@@ -208,7 +121,8 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
           </div>
 
           <ScanWindowSection
-            tier={tier}
+            valid_from={tier.valid_from}
+            valid_until={tier.valid_until}
             onUpdate={(field, value) => updateTier(i, field, value)}
             onClear={() => clearTierWindow(i)}
           />
