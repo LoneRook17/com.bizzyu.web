@@ -28,6 +28,7 @@ import {
   depositExportFilename,
   reconcileQuery,
   summaryRenderState,
+  summaryTilesFor,
   sharedAccountCaveat,
   dedicatedReassurance,
   customWindow,
@@ -526,6 +527,38 @@ test("render state: dedicated venue → ✓ badge + reassurance naming the selec
     dedicatedReassurance(undefined),
     "These deposits are for this venue only — not shared with any other venue.",
   )
+})
+
+test("tiles: shared venue leads with the venue trio; dedicated + all-venues show the ACCOUNT trio", () => {
+  // SHARED → the attributed share is the lead figure.
+  assert.deepEqual(summaryTilesFor(sharedSummary()), {
+    deposited_cents: 12000,
+    in_transit_cents: 2000,
+    refunded_cents: 500,
+  })
+  // DEDICATED → the ACCOUNT trio, even when attribution zeroes the venue trio
+  // (attribution keys off events.venue_id — a dedicated venue's events can be
+  // tagged elsewhere, live on 990155). The account figure is the one that ties
+  // to the deposit rows and to the reassurance sentence.
+  const dedicated = normalizeSummary({
+    deposited_cents: 93183,
+    in_transit_cents: 2000,
+    refunded_cents: 8050,
+    venue_scoped: true,
+    venue_deposited_cents: 0,
+    venue_in_transit_cents: 2000,
+    venue_refunded_cents: 0,
+    account_dedicated: true,
+    shared_with_venues: [],
+  } as never)
+  assert.deepEqual(summaryTilesFor(dedicated), {
+    deposited_cents: 93183,
+    in_transit_cents: 2000,
+    refunded_cents: 8050,
+  })
+  // ALL-VENUES → account trio, unchanged.
+  const all = normalizeSummary({ deposited_cents: 100, in_transit_cents: 200, refunded_cents: 300 })
+  assert.deepEqual(summaryTilesFor(all), { deposited_cents: 100, in_transit_cents: 200, refunded_cents: 300 })
 })
 
 test("reconcileQuery: custom since/until window composes with venue_id; days preset unchanged", () => {

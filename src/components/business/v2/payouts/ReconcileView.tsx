@@ -39,6 +39,7 @@ import {
   downloadCsv,
   exportDepositPdf,
   summaryRenderState,
+  summaryTilesFor,
   sharedAccountCaveat,
   dedicatedReassurance,
   customWindow,
@@ -291,31 +292,20 @@ export function SummaryStrip({
     )
   }
 
-  // DEDICATED VENUE: venue figures == account figures — show once, with the badge
-  // and the explicit reassurance sentence.
+  // Which trio the tiles show is the lib's call (summaryTilesFor): the venue's
+  // attributed share when SHARED; the account trio when DEDICATED — a dedicated
+  // account's deposits are all this venue's, and that figure ties to the deposit
+  // rows below (the attributed trio can read 0 when the venue's events are
+  // tagged elsewhere, which would contradict the reassurance sentence).
+  const tiles = summaryTilesFor(summary)
+
   if (state === "dedicated_venue") {
     return (
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <SummaryTile
-            icon={ArrowDownToLine}
-            label="Deposited"
-            cents={summary.venue_deposited_cents ?? summary.deposited_cents}
-            tone="green"
-          />
-          <SummaryTile
-            icon={Truck}
-            label="In transit"
-            cents={summary.venue_in_transit_cents ?? summary.in_transit_cents}
-            tone="blue"
-            note={inTransitNote}
-          />
-          <SummaryTile
-            icon={RotateCcw}
-            label="Refunded"
-            cents={summary.venue_refunded_cents ?? summary.refunded_cents}
-            tone="red"
-          />
+          <SummaryTile icon={ArrowDownToLine} label="Deposited" cents={tiles.deposited_cents} tone="green" />
+          <SummaryTile icon={Truck} label="In transit" cents={tiles.in_transit_cents} tone="blue" note={inTransitNote} />
+          <SummaryTile icon={RotateCcw} label="Refunded" cents={tiles.refunded_cents} tone="red" />
         </div>
         <DedicatedAccountLine venueName={venueName} />
       </div>
@@ -327,25 +317,15 @@ export function SummaryStrip({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <SummaryTile
-          icon={ArrowDownToLine}
-          label={VENUE_TILE_LABELS.deposited}
-          cents={summary.venue_deposited_cents ?? 0}
-          tone="green"
-        />
+        <SummaryTile icon={ArrowDownToLine} label={VENUE_TILE_LABELS.deposited} cents={tiles.deposited_cents} tone="green" />
         <SummaryTile
           icon={Truck}
           label={VENUE_TILE_LABELS.in_transit}
-          cents={summary.venue_in_transit_cents ?? 0}
+          cents={tiles.in_transit_cents}
           tone="blue"
           note={inTransitNote}
         />
-        <SummaryTile
-          icon={RotateCcw}
-          label={VENUE_TILE_LABELS.refunded}
-          cents={summary.venue_refunded_cents ?? 0}
-          tone="red"
-        />
+        <SummaryTile icon={RotateCcw} label={VENUE_TILE_LABELS.refunded} cents={tiles.refunded_cents} tone="red" />
       </div>
       <CombinedAccountLine summary={summary} />
     </div>
