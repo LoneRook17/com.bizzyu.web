@@ -1088,8 +1088,9 @@ export default function LineSkipCheckoutClient({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="mx-auto max-w-3xl px-5 pb-24">
+      {/* Content. Extra mobile bottom padding whenever the sticky CTA bar is
+          mounted, so the last night card / footer can scroll clear of it. */}
+      <div className={`mx-auto max-w-3xl px-5 ${selectedInstance && !venueBlock ? "pb-44 sm:pb-24" : "pb-24"}`}>
         {/* Includes Cover banner */}
         <div
           className="ls-rise mt-7 flex items-center gap-4 rounded-2xl px-5 py-4"
@@ -1409,6 +1410,37 @@ export default function LineSkipCheckoutClient({
           </p>
         </div>
       </div>
+
+      {/* ─── Mobile sticky CTA bar ──────────────────────────────────────────── */}
+      {/* On a phone the in-flow "Get Line Skip" button sits below the whole
+          night list + promo + order summary, so after tapping a night the buyer
+          still has to scroll to buy. This bar duplicates that button — same
+          label, same startCheckout handler, purely presentation — pinned to the
+          viewport bottom the moment a night is selected. Mobile-only
+          (sm:hidden): desktop already shows the full column plus the header
+          anchor CTA. z-40 keeps it under the checkout modal (z-50), whose
+          backdrop dims it like the sticky header; it stays mounted there so the
+          page never shifts mid-flow. safe-area padding clears the iOS home
+          indicator. Hidden while the venue's payouts are paused, exactly like
+          the in-flow CTA. */}
+      {selectedInstance && !venueBlock && (
+        <div
+          className="ls-rise fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0a0f]/90 backdrop-blur-xl sm:hidden"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="mx-auto max-w-3xl px-5 py-3">
+            <button
+              onClick={startCheckout}
+              className="w-full rounded-2xl py-3.5 text-base font-extrabold text-black transition hover:brightness-110 active:scale-[0.99]"
+              style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 12px 32px -10px ${GOLD}80` }}
+            >
+              {fees && fees.total > 0
+                ? `Get Line Skip: ${formatPrice(fees.total)}`
+                : "Get Line Skip: Free"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ─── Checkout Modal ─────────────────────────────────────────────────── */}
       {/* Outcome steps survive without a selected instance: the 3DS redirect
