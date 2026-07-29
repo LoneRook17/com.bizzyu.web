@@ -347,6 +347,28 @@ export function dedicatedReassurance(venueName?: string | null): string {
   return `These deposits are for ${venueName || "this venue"} only — not shared with any other venue.`
 }
 
+/** Which trio the strip's tiles show per state. SHARED leads with the venue's
+ *  attributed share (the honest per-venue figure). DEDICATED shows the ACCOUNT
+ *  trio: a dedicated account's deposits are all this venue's by definition, and
+ *  the account figures are what tie to the deposit rows below — the attributed
+ *  venue_* trio can read 0 when the venue's events are tagged elsewhere
+ *  (attribution keys off events.venue_id, TF-B-s), which would contradict the
+ *  reassurance sentence. ALL-VENUES is the account trio, unchanged. */
+export function summaryTilesFor(s: PayoutsSummary): {
+  deposited_cents: number
+  in_transit_cents: number
+  refunded_cents: number
+} {
+  if (summaryRenderState(s) === "shared_venue") {
+    return {
+      deposited_cents: s.venue_deposited_cents ?? 0,
+      in_transit_cents: s.venue_in_transit_cents ?? 0,
+      refunded_cents: s.venue_refunded_cents ?? 0,
+    }
+  }
+  return { deposited_cents: s.deposited_cents, in_transit_cents: s.in_transit_cents, refunded_cents: s.refunded_cents }
+}
+
 // ── Date window (preset days=N vs custom since/until) ────────────────────────
 //
 // TF-PAYOUTS-SUMMARY-F1: /summary and /deposits accept since=YYYY-MM-DD &
