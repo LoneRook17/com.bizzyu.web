@@ -56,6 +56,70 @@ function ValidTimeInfo() {
   )
 }
 
+// Scan-window inputs behind a reveal toggle, matching the mobile app: off for a
+// new ticket, on (values pre-filled) when the tier already has a window, and
+// turning it off clears both fields — so an off tier submits the same
+// valid_from/valid_until as an untouched one.
+function ScanWindowSection({
+  tier,
+  onUpdate,
+  onClear,
+}: {
+  tier: TicketTier
+  onUpdate: (field: "valid_from" | "valid_until", value: string) => void
+  onClear: () => void
+}) {
+  const hasWindow = !!(tier.valid_from || tier.valid_until)
+  const [manuallyOpened, setManuallyOpened] = useState(hasWindow)
+  const open = manuallyOpened || hasWindow
+
+  return (
+    <>
+      <div className="mt-3 flex items-center gap-1.5">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={open}
+            onChange={(e) => {
+              setManuallyOpened(e.target.checked)
+              if (!e.target.checked) onClear()
+            }}
+            className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+          />
+          <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Scan window</span>
+        </label>
+        <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+        <ValidTimeInfo />
+      </div>
+      {open && (
+        <>
+          <div className="mt-1 grid grid-cols-2 gap-3">
+            <div>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid from</Label>
+              <Input
+                type="datetime-local"
+                value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
+                onChange={(e) => onUpdate("valid_from", e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid until</Label>
+              <Input
+                type="datetime-local"
+                value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
+                onChange={(e) => onUpdate("valid_until", e.target.value)}
+              />
+            </div>
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+            When this ticket can be scanned at the door. It can still be bought beforehand, sales just close when the window ends. Leave blank for no limit.
+          </p>
+        </>
+      )}
+    </>
+  )
+}
+
 export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
   const updateTier = (index: number, field: keyof TicketTier, value: string | number) => {
     const updated = [...tiers]
@@ -63,6 +127,12 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
     if (field === "ticket_type" && value === "free") {
       updated[index].price_usd = 0
     }
+    onChange(updated)
+  }
+
+  const clearTierWindow = (index: number) => {
+    const updated = [...tiers]
+    updated[index] = { ...updated[index], valid_from: "", valid_until: "" }
     onChange(updated)
   }
 
@@ -137,32 +207,11 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
             </p>
           </div>
 
-          <div className="mt-3 flex items-center gap-1.5">
-            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Redeemable / scan window</span>
-            <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
-            <ValidTimeInfo />
-          </div>
-          <div className="mt-1 grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid from</Label>
-              <Input
-                type="datetime-local"
-                value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
-                onChange={(e) => updateTier(i, "valid_from", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid until</Label>
-              <Input
-                type="datetime-local"
-                value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
-                onChange={(e) => updateTier(i, "valid_until", e.target.value)}
-              />
-            </div>
-          </div>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-            When this ticket can be scanned at the door. It can still be bought beforehand, sales just close when the window ends. Leave blank for no limit.
-          </p>
+          <ScanWindowSection
+            tier={tier}
+            onUpdate={(field, value) => updateTier(i, field, value)}
+            onClear={() => clearTierWindow(i)}
+          />
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
