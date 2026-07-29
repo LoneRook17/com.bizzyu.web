@@ -141,6 +141,8 @@ function ReconcileContainer() {
   const { selectedVenue, isAllVenues } = useVenue()
   // Bare venue name for the per-deposit share callout (undefined ⇒ "This venue").
   const venueName = isAllVenues ? undefined : selectedVenue?.name
+  // Venue id marks "this venue" in the summary breakdown table.
+  const venueId = isAllVenues ? undefined : selectedVenue?.id
   // Scope pill label: concrete venue name, else "All venues" (also the transient
   // pre-resolution default, matching the switcher's own fallback).
   const scopeLabel = !isAllVenues && selectedVenue?.name ? selectedVenue.name : "All venues"
@@ -241,6 +243,7 @@ function ReconcileContainer() {
             deposits={deposits}
             venueParam={venueParam}
             venueName={venueName}
+            venueId={venueId}
             untilInPast={untilIsPast(timeWindow, isoDate(new Date()))}
           />
         ) : null}

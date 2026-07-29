@@ -75,6 +75,19 @@ export interface SharedVenueRef {
   name: string
 }
 
+/** One venue's attributed slice of the connected account's totals
+ *  (TF-PAYOUTS-RECONCILE). The server emits one row per venue in the scanned
+ *  account set (selected + siblings), zero-slice venues INCLUDED, sorted by
+ *  venue_id, and guarantees Σ(slices) + unallocated == account total per
+ *  metric. Rendered verbatim — never re-ordered or filtered client-side. */
+export interface VenueBreakdownRow {
+  venue_id: number
+  name: string
+  deposited_cents: number
+  in_transit_cents: number
+  refunded_cents: number
+}
+
 /** Period totals for the summary strip. The account-level trio is the Stripe
  *  CONNECTED ACCOUNT's money — when venue-scoped it is a SUPERSET that may
  *  include other venues' deposits, so it must never be presented as "this
@@ -95,6 +108,17 @@ export interface PayoutsSummary {
   /** Scoped only: the OTHER venues whose deposits commingle into the account
    *  total. Always [] when unscoped or dedicated. */
   shared_with_venues: SharedVenueRef[]
+  /** Scoped only (TF-PAYOUTS-RECONCILE, services :198): per-venue slices of the
+   *  account trio. [] when unscoped OR when the server predates the field —
+   *  `hasBreakdown` distinguishes the two via the unallocated trio. */
+  breakdown: VenueBreakdownRow[]
+  /** Scoped only: account total − Σ(slices) per metric — untagged/legacy rows
+   *  and non-tying payout deltas. CAN BE NEGATIVE (e.g. a −$0.47 fee-recovery
+   *  adjustment); rendering must never clamp it or the table stops footing.
+   *  null when unscoped or the server doesn't send the breakdown contract. */
+  unallocated_deposited_cents: number | null
+  unallocated_in_transit_cents: number | null
+  unallocated_refunded_cents: number | null
 }
 
 /** One deposit in the reverse-chron list (the backbone rows). */
@@ -198,6 +222,16 @@ function normalizeSharedVenue(raw: Partial<SharedVenueRef>): SharedVenueRef {
   return { venue_id: num(raw.venue_id), name: str(raw.name) ?? "—" }
 }
 
+function normalizeBreakdownRow(raw: Partial<VenueBreakdownRow>): VenueBreakdownRow {
+  return {
+    venue_id: num(raw.venue_id),
+    name: str(raw.name) ?? "—",
+    deposited_cents: num(raw.deposited_cents),
+    in_transit_cents: num(raw.in_transit_cents),
+    refunded_cents: num(raw.refunded_cents),
+  }
+}
+
 export function normalizeSummary(raw: Partial<PayoutsSummary> | null | undefined): PayoutsSummary {
   const r = raw ?? {}
   // The venue block exists ONLY on a venue-scoped response (`venue_scoped: true`).
@@ -217,6 +251,16 @@ export function normalizeSummary(raw: Partial<PayoutsSummary> | null | undefined
       scoped && Array.isArray(r.shared_with_venues)
         ? r.shared_with_venues.map((v) => normalizeSharedVenue((v ?? {}) as Partial<SharedVenueRef>))
         : [],
+    breakdown:
+      scoped && Array.isArray(r.breakdown)
+        ? r.breakdown.map((v) => normalizeBreakdownRow((v ?? {}) as Partial<VenueBreakdownRow>))
+        : [],
+    // Keep null unless the server actually sent the field (unlike the slice
+    // rows, 0 and "absent" mean different things here — absent = the breakdown
+    // contract isn't live, so the UI falls back to the caveat line).
+    unallocated_deposited_cents: scoped && r.unallocated_deposited_cents != null ? num(r.unallocated_deposited_cents) : null,
+    unallocated_in_transit_cents: scoped && r.unallocated_in_transit_cents != null ? num(r.unallocated_in_transit_cents) : null,
+    unallocated_refunded_cents: scoped && r.unallocated_refunded_cents != null ? num(r.unallocated_refunded_cents) : null,
   }
 }
 
@@ -367,6 +411,147 @@ export function summaryTilesFor(s: PayoutsSummary): {
     }
   }
   return { deposited_cents: s.deposited_cents, in_transit_cents: s.in_transit_cents, refunded_cents: s.refunded_cents }
+}
+
+// ── Combined-account breakdown table (TF-PAYOUTS-RECONCILE) ──────────────────
+//
+// Luke's "full breakdown" ruling: the Combined Stripe account block must VISIBLY
+// FOOT — every venue's slice, an unallocated line, and the combined total, for
+// all three metrics. The server guarantees Σ(slices) + unallocated == account
+// total per metric; this model re-checks that arithmetic client-side (same
+// philosophy as tiesCheck: never render a total as if it footed without
+// verifying), builds the exact rows the table renders, and pins all the copy.
+
+export const BREAKDOWN_METRIC_LABELS = {
+  deposited: "Deposited",
+  in_transit: "In transit",
+  refunded: "Refunded",
+} as const
+
+export const UNALLOCATED_ROW_LABEL = "Unallocated (not tied to a venue)"
+export const BREAKDOWN_TOTAL_ROW_LABEL = "Combined total"
+export const THIS_VENUE_BADGE_LABEL = "This venue"
+
+/** Shown under the table whenever any unallocated cell is negative. A negative
+ *  amount is REAL (e.g. a fee-recovery adjustment) and must render as-is —
+ *  clamping it to zero would break the footing the table exists to show. */
+export const NEGATIVE_UNALLOCATED_NOTE =
+  "A negative unallocated amount reflects a fee-recovery adjustment on the account — it's part of what makes the column add up to the total."
+
+/** Defensive only — the server asserts footing before responding, so this
+ *  renders only if a response slipped through with broken arithmetic. */
+export const BREAKDOWN_MISMATCH_WARNING =
+  "These rows don't add up to the account total — the figures are shown as received. Contact support if this persists."
+
+export interface BreakdownTableRow {
+  kind: "venue" | "unallocated" | "total"
+  /** null for the unallocated / total rows. */
+  venue_id: number | null
+  label: string
+  /** True on exactly the row for the venue being viewed. */
+  isThisVenue: boolean
+  deposited_cents: number
+  in_transit_cents: number
+  refunded_cents: number
+}
+
+export interface BreakdownTable {
+  /** Render order: every venue slice (server order), then Unallocated, then
+   *  the Combined total. */
+  rows: BreakdownTableRow[]
+  /** Any unallocated cell < 0 → show NEGATIVE_UNALLOCATED_NOTE. */
+  hasNegativeUnallocated: boolean
+  /** Client-side re-check per metric: Σ(venue slices) + unallocated − total.
+   *  All zeros when the table foots (the server-guaranteed invariant). */
+  footing: { deposited: number; in_transit: number; refunded: number }
+  foots: boolean
+}
+
+/** True when the venue-scoped response carries the full breakdown contract
+ *  (services :198+). False → the UI keeps the pre-breakdown caveat line. */
+export function hasBreakdown(s: PayoutsSummary): boolean {
+  return (
+    s.venue_scoped === true &&
+    s.breakdown.length > 0 &&
+    s.unallocated_deposited_cents != null &&
+    s.unallocated_in_transit_cents != null &&
+    s.unallocated_refunded_cents != null
+  )
+}
+
+/** The itemized reconciliation the Combined Stripe account block renders.
+ *  null when the response doesn't carry the breakdown contract. */
+export function buildBreakdownTable(s: PayoutsSummary, selectedVenueId?: number | null): BreakdownTable | null {
+  if (!hasBreakdown(s)) return null
+
+  const venueRows: BreakdownTableRow[] = s.breakdown.map((v) => ({
+    kind: "venue",
+    venue_id: v.venue_id,
+    label: v.name,
+    isThisVenue: selectedVenueId != null && v.venue_id === selectedVenueId,
+    deposited_cents: v.deposited_cents,
+    in_transit_cents: v.in_transit_cents,
+    refunded_cents: v.refunded_cents,
+  }))
+  const unallocated: BreakdownTableRow = {
+    kind: "unallocated",
+    venue_id: null,
+    label: UNALLOCATED_ROW_LABEL,
+    isThisVenue: false,
+    deposited_cents: s.unallocated_deposited_cents as number,
+    in_transit_cents: s.unallocated_in_transit_cents as number,
+    refunded_cents: s.unallocated_refunded_cents as number,
+  }
+  const total: BreakdownTableRow = {
+    kind: "total",
+    venue_id: null,
+    label: BREAKDOWN_TOTAL_ROW_LABEL,
+    isThisVenue: false,
+    deposited_cents: s.deposited_cents,
+    in_transit_cents: s.in_transit_cents,
+    refunded_cents: s.refunded_cents,
+  }
+
+  const sum = (pick: (r: BreakdownTableRow) => number) => venueRows.reduce((n, r) => n + pick(r), 0)
+  const footing = {
+    deposited: sum((r) => r.deposited_cents) + unallocated.deposited_cents - total.deposited_cents,
+    in_transit: sum((r) => r.in_transit_cents) + unallocated.in_transit_cents - total.in_transit_cents,
+    refunded: sum((r) => r.refunded_cents) + unallocated.refunded_cents - total.refunded_cents,
+  }
+
+  return {
+    rows: [...venueRows, unallocated, total],
+    hasNegativeUnallocated:
+      unallocated.deposited_cents < 0 || unallocated.in_transit_cents < 0 || unallocated.refunded_cents < 0,
+    footing,
+    foots: footing.deposited === 0 && footing.in_transit === 0 && footing.refunded === 0,
+  }
+}
+
+/** Whether the strip shows the itemized table at all. SHARED: always (that's
+ *  the ruling — the commingled account must visibly foot). DEDICATED: only when
+ *  it says something the reassurance doesn't — a sibling slice (shouldn't
+ *  happen) or a nonzero unallocated remainder; a trivial one-venue table with
+ *  zero unallocated would just be confusing noise under the ✓ badge. */
+export function showBreakdownTable(s: PayoutsSummary): boolean {
+  if (!hasBreakdown(s)) return false
+  if (summaryRenderState(s) === "dedicated_venue") {
+    return (
+      s.breakdown.length > 1 ||
+      s.unallocated_deposited_cents !== 0 ||
+      s.unallocated_in_transit_cents !== 0 ||
+      s.unallocated_refunded_cents !== 0
+    )
+  }
+  return true
+}
+
+/** Money formatter for breakdown cells: negatives keep their sign (typographic
+ *  minus), never clamped — "−$0.47" is a real fee-recovery adjustment and the
+ *  column only foots if it renders. (The tile-level `money` helper never sees
+ *  negatives; this one must.) */
+export function signedMoneyStr(cents: number): string {
+  return usd(cents)
 }
 
 // ── Date window (preset days=N vs custom since/until) ────────────────────────
