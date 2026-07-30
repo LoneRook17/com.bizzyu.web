@@ -194,7 +194,11 @@ function AcceptFlow({
   // confirms a name instead of retyping it. Their edit stays authoritative —
   // this is only ever an initial value.
   const [name, setName] = useState(validation.provisional_name ?? "")
-  const [email, setEmail] = useState("")
+  // Seeded from the address the invite was actually sent to (invited_email) so
+  // the invitee confirms it instead of retyping it. Editable on purpose — the
+  // account email may legitimately differ, and services does not enforce a
+  // match. Absent on older services → the old empty field.
+  const [email, setEmail] = useState(validation.invited_email ?? "")
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
   // Phase flag for the needs_phone capture: false = details + phone entry,
