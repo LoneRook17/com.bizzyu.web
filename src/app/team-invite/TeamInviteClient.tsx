@@ -194,11 +194,14 @@ function AcceptFlow({
   // confirms a name instead of retyping it. Their edit stays authoritative —
   // this is only ever an initial value.
   const [name, setName] = useState(validation.provisional_name ?? "")
-  // Seeded from the address the invite was actually sent to (invited_email) so
-  // the invitee confirms it instead of retyping it. Editable on purpose — the
-  // account email may legitimately differ, and services does not enforce a
-  // match. Absent on older services → the old empty field.
+  // Seeded from the address the invite was actually sent to (invited_email).
+  // When it is present this is an EMAIL invite, and accept creates the account
+  // with the invited address no matter what email is submitted — so the field
+  // is shown read-only rather than pretending an edit would count. Absent/null
+  // (phone invites, older services) → the old editable empty-or-typed field,
+  // where the server does honor the submitted email.
   const [email, setEmail] = useState(validation.invited_email ?? "")
+  const emailLocked = !!validation.invited_email
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
   // Phase flag for the needs_phone capture: false = details + phone entry,
@@ -231,9 +234,11 @@ function AcceptFlow({
     const errs: Record<string, string> = {}
     if (credential_step === "create_account") {
       if (!name.trim()) errs.name = "Your name is required"
-      if (!isValidEmail(email)) errs.email = "Enter a valid email"
+      // A locked email is the server's own value — never block submit on a
+      // format complaint the invitee has no way to fix.
+      if (!emailLocked && !isValidEmail(email)) errs.email = "Enter a valid email"
     }
-    if (credential_step === "set_password" && needs_email && !isValidEmail(email)) {
+    if (credential_step === "set_password" && needs_email && !emailLocked && !isValidEmail(email)) {
       errs.email = "Enter a valid email"
     }
     if (credential_step !== "none") {
@@ -510,17 +515,26 @@ function AcceptFlow({
         )}
 
         {(credential_step === "create_account" || (credential_step === "set_password" && needs_email)) && (
-          <AuthField
-            label="Email"
-            name="email"
-            type="email"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setErrors({}) }}
-            placeholder="you@example.com"
-            required
-            autoComplete="email"
-            error={errors.email}
-          />
+          <>
+            <AuthField
+              label="Email"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setErrors({}) }}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+              error={errors.email}
+              readOnly={emailLocked}
+              className={emailLocked ? "bg-neutral-50 text-neutral-500 focus-visible:ring-0 focus-visible:border-neutral-300 dark:bg-neutral-800 dark:text-neutral-400 dark:focus-visible:border-neutral-700" : undefined}
+            />
+            {emailLocked && (
+              <p className="-mt-2 mb-4 text-[13px] text-gray-500">
+                Your account will use the email this invite was sent to.
+              </p>
+            )}
+          </>
         )}
 
         {/* Rendered ONLY for create_account and set_password. An existing user
