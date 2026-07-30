@@ -183,6 +183,15 @@ export interface InviteValidation {
    */
   needs_phone?: boolean
   /**
+   * The full email the invite was sent to — seeds the accept page's email
+   * field so the invitee confirms it instead of retyping it. Stays EDITABLE:
+   * the account email may legitimately differ from the invite address, and
+   * services does not enforce a match. Only ever an initial value, exactly
+   * like `provisional_name`. ABSENT on older services → treat as null: the
+   * old empty field.
+   */
+  invited_email?: string | null
+  /**
    * The signed-in dashboard user, if any, as the SERVER sees them — validate is
    * called with credentials:'include'. `matches:false` is the wrong-account
    * state. null = nobody signed in. Comparing client-side is not possible: the
