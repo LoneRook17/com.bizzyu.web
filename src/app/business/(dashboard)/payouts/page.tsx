@@ -20,10 +20,18 @@ import {
 import {
   fetchPayoutsSummary,
   fetchDeposits,
+  fetchPayoutsExportCsv,
+  combineFreshness,
   untilIsPast,
+  COMPUTING_POLL_MS,
+  COMPUTING_GIVE_UP_MS,
+  COMPUTING_COPY,
+  EXPORT_PREPARING_LABEL,
   type PayoutsWindow,
   type PayoutsSummary,
   type DepositListItem,
+  type SummaryFetchResult,
+  type DepositsFetchResult,
 } from "@/lib/business/payouts-reconcile"
 import {
   canAccessPayouts,
@@ -33,6 +41,12 @@ import {
   type ReconcileOutcome,
 } from "@/lib/business/payouts-access"
 import ReconcileView, { RangePicker } from "@/components/business/v2/payouts/ReconcileView"
+
+/** EmptyState-compatible icon for the computing state — the stock Loader2 with
+ *  the spin it needs to read as "working", not "empty". */
+function ComputingSpinner({ className }: { className?: string }) {
+  return <Loader2 className={cn(className, "animate-spin")} />
+}
 
 function PayoutsSkeleton() {
   return (
@@ -72,29 +86,59 @@ export default function PayoutsPage() {
   return <ReconcileContainer />
 }
 
-// ── Global period-level Export CSV (PRESERVED — the existing accountant file) ──
-// Kept on the old full-response endpoint so the period export is byte-for-byte
-// the machinery it was before P2-B1w. Fetches on click (the new view doesn't hold
-// the full row-grain response), builds the same CSV, and downloads it.
+// ── Global period-level Export CSV (server file, fetch-then-blob) ─────────────
+// Services :125 serves /business/payouts/export.csv from the shared payouts
+// cache: 200 + Content-Disposition is the file; 202 + Retry-After means the key
+// is still computing — the fetcher waits and retries while the button shows
+// "Preparing export…", and it NEVER blobs the JSON computing body. A 404
+// (pre-contract server) falls back to the original client-side CSV build so the
+// accountant file keeps working everywhere.
+
+type ExportPhase = "idle" | "busy" | "preparing" | "failed"
+
+const EXPORT_LABEL: Record<ExportPhase, string> = {
+  idle: "Export CSV",
+  busy: "Export CSV",
+  preparing: EXPORT_PREPARING_LABEL,
+  failed: "Export failed — retry",
+}
 
 function GlobalCsvExportButton({ timeWindow, venueParam }: { timeWindow: PayoutsWindow; venueParam: string }) {
-  const [busy, setBusy] = useState(false)
+  const [phase, setPhase] = useState<ExportPhase>("idle")
+  const working = phase === "busy" || phase === "preparing"
   const onExport = useCallback(async () => {
-    setBusy(true)
+    setPhase("busy")
     try {
       // Custom window → the exact since/until the summary shows; presets keep
-      // the derived N-day range. Either way the /list fetch (and therefore the
+      // the derived N-day range. Either way the export (and therefore the
       // downloaded file) covers the same window as the page.
       const range =
         timeWindow.kind === "custom"
           ? { since: timeWindow.since, until: timeWindow.until }
           : rangeForDays(timeWindow.days, new Date())
-      const resp = await fetchPayouts({ range, status: "all", venueParam })
-      if (resp) downloadCsv(csvFilename(range), buildPayoutsCsv(resp))
+      const result = await fetchPayoutsExportCsv({
+        range,
+        status: "all",
+        venueParam,
+        onComputing: () => setPhase("preparing"),
+      })
+      if (result === null) {
+        // Endpoint not deployed: the pre-:125 client-side projection, unchanged.
+        const resp = await fetchPayouts({ range, status: "all", venueParam })
+        if (resp) downloadCsv(csvFilename(range), buildPayoutsCsv(resp))
+        setPhase("idle")
+        return
+      }
+      if (result.kind === "ready") {
+        downloadCsv(result.filename, result.csv)
+        setPhase("idle")
+      } else {
+        // gave_up — the walk outlived our patience; the button turns retryable.
+        setPhase("failed")
+      }
     } catch {
       // Non-fatal: the period export is a convenience, never blocks the page.
-    } finally {
-      setBusy(false)
+      setPhase("failed")
     }
   }, [timeWindow, venueParam])
 
@@ -102,12 +146,13 @@ function GlobalCsvExportButton({ timeWindow, venueParam }: { timeWindow: Payouts
     <button
       type="button"
       onClick={onExport}
-      disabled={busy}
+      disabled={working}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 shadow-sm transition-colors hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800/60",
+        phase === "failed" && "border-red-200 text-red-700 dark:border-red-900 dark:text-red-400",
       )}
     >
-      {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} Export CSV
+      {working ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />} {EXPORT_LABEL[phase]}
     </button>
   )
 }
@@ -151,7 +196,10 @@ function ReconcileContainer() {
   const [timeWindow, setTimeWindow] = useState<PayoutsWindow>({ kind: "days", days: DEFAULT_PAYOUT_RANGE_DAYS })
   const [summary, setSummary] = useState<PayoutsSummary | null>(null)
   const [deposits, setDeposits] = useState<DepositListItem[] | null>(null)
+  const [freshness, setFreshness] = useState<{ computedAt: string | null; refreshing: boolean } | null>(null)
   const [mode, setMode] = useState<ReconMode>("loading")
+  // Bumped by Retry to restart the whole fetch/poll cycle after a give-up.
+  const [fetchNonce, setFetchNonce] = useState(0)
 
   // fetchAll does NO state work (just returns the two payloads) so the effect
   // never contains a synchronous state update. Applying the result happens in the
@@ -165,35 +213,61 @@ function ReconcileContainer() {
     [timeWindow, venueParam],
   )
 
-  const apply = useCallback((s: PayoutsSummary | null, d: DepositListItem[] | null) => {
+  const apply = useCallback((s: SummaryFetchResult | null, d: DepositsFetchResult | null) => {
     const outcome = reconcileOutcomeFromData(s, d)
-    if (outcome === "ready") {
-      setSummary(s)
-      setDeposits(d)
+    if (outcome === "ready" && s?.kind === "ready" && d?.kind === "ready") {
+      setSummary(s.summary)
+      setDeposits(d.deposits)
+      // One cache key feeds both endpoints, so their freshness agrees; merge
+      // defensively anyway. ready+refreshing renders data normally — the view
+      // just gets a subtle indicator, never a spinner wall.
+      setFreshness(combineFreshness(s, d))
     }
     setMode(outcome)
   }, [])
 
   useEffect(() => {
     // `mode` initializes to "loading"; on a range re-fetch the current deposits
-    // stay on screen until the new data resolves (no skeleton flash).
+    // stay on screen until the new data resolves (no skeleton flash) — EXCEPT
+    // a cold cache key ({state:'computing'}), which swaps in the crunching
+    // state and polls every COMPUTING_POLL_MS until the walk finishes. The
+    // same `active` cleanup that guarded the single fetch now also cancels the
+    // poll timer, so a window/venue change (new fetchAll identity) or unmount
+    // stops the loop mid-computing. Past COMPUTING_GIVE_UP_MS we stop polling
+    // and hand over to the existing error + Retry state.
     let active = true
-    fetchAll()
-      .then(([s, d]) => {
-        if (active) apply(s, d)
-      })
-      .catch((err) => {
-        if (active) setMode(reconcileOutcomeFromError(err))
-      })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const startedAt = Date.now()
+    const attempt = () => {
+      fetchAll()
+        .then(([s, d]) => {
+          if (!active) return
+          if (reconcileOutcomeFromData(s, d) === "computing") {
+            if (Date.now() - startedAt >= COMPUTING_GIVE_UP_MS) {
+              setMode("error")
+              return
+            }
+            setMode("computing")
+            timer = setTimeout(attempt, COMPUTING_POLL_MS)
+            return
+          }
+          apply(s, d)
+        })
+        .catch((err) => {
+          if (active) setMode(reconcileOutcomeFromError(err))
+        })
+    }
+    attempt()
     return () => {
       active = false
+      if (timer) clearTimeout(timer)
     }
-  }, [fetchAll, apply])
+  }, [fetchAll, apply, fetchNonce])
 
   const retry = () => {
-    fetchAll()
-      .then(([s, d]) => apply(s, d))
-      .catch((err) => setMode(reconcileOutcomeFromError(err)))
+    // Restart the effect's fetch/poll cycle (fresh give-up clock included).
+    setMode("loading")
+    setFetchNonce((n) => n + 1)
   }
 
   // A 403 on an owner-looking session (stale role) → the clean access state, not
@@ -216,6 +290,16 @@ function ReconcileContainer() {
       <div className="mt-6">
         {mode === "loading" ? (
           <PayoutsSkeleton />
+        ) : mode === "computing" ? (
+          // Non-alarming: a cold cache key is expected behavior (first visit,
+          // new window/venue, Eastern-midnight key rotation) — never $0.00
+          // tiles, never an error. The effect above is polling; this state
+          // resolves itself.
+          <EmptyState
+            icon={ComputingSpinner}
+            title={COMPUTING_COPY.title}
+            description={COMPUTING_COPY.description}
+          />
         ) : mode === "notdeployed" ? (
           <EmptyState
             icon={Info}
@@ -245,6 +329,7 @@ function ReconcileContainer() {
             venueName={venueName}
             venueId={venueId}
             untilInPast={untilIsPast(timeWindow, isoDate(new Date()))}
+            freshness={freshness ?? undefined}
           />
         ) : null}
       </div>

@@ -45,14 +45,30 @@ test("a session with no role yet is denied (safe default, no flash of access)", 
 })
 
 // ── (2) Owner reconcile-fetch: data outcomes ─────────────────────────────────
+// The typed client returns discriminated results ({kind:'ready'|'computing'})
+// since the :125 cached-serve contract; null still means 404 / not deployed.
 
-test("both payloads present → ready (render the reconciliation view)", () => {
-  assert.equal(reconcileOutcomeFromData({ deposited_cents: 0 }, []), "ready")
+const READY = { kind: "ready" } as const
+const COMPUTING = { kind: "computing" } as const
+
+test("both results ready → ready (render the reconciliation view)", () => {
+  assert.equal(reconcileOutcomeFromData(READY, READY), "ready")
 })
 
-test("either payload null (P2-B1s not deployed / 404) → notdeployed, not error", () => {
-  assert.equal(reconcileOutcomeFromData(null, []), "notdeployed")
-  assert.equal(reconcileOutcomeFromData({ deposited_cents: 0 }, null), "notdeployed")
+test("either result computing → computing (poll, never $0.00 tiles)", () => {
+  assert.equal(reconcileOutcomeFromData(COMPUTING, READY), "computing")
+  assert.equal(reconcileOutcomeFromData(READY, COMPUTING), "computing")
+  assert.equal(reconcileOutcomeFromData(COMPUTING, COMPUTING), "computing")
+})
+
+test("computing is checked BEFORE the null→notdeployed mapping (mixed deploy)", () => {
+  assert.equal(reconcileOutcomeFromData(COMPUTING, null), "computing")
+  assert.equal(reconcileOutcomeFromData(null, COMPUTING), "computing")
+})
+
+test("either result null (contract not deployed / 404) → notdeployed, not error", () => {
+  assert.equal(reconcileOutcomeFromData(null, READY), "notdeployed")
+  assert.equal(reconcileOutcomeFromData(READY, null), "notdeployed")
   assert.equal(reconcileOutcomeFromData(null, null), "notdeployed")
 })
 

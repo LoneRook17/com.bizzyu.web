@@ -27,16 +27,28 @@ export function payoutsRouteGate(role: BusinessRole | null | undefined): Payouts
 
 // ── Owner reconcile-fetch outcomes ───────────────────────────────────────────
 
-/** Which state the owner's Payouts screen shows after the reconcile fetch. */
-export type ReconcileOutcome = "ready" | "notdeployed" | "forbidden" | "error"
+/** Which state the owner's Payouts screen shows after the reconcile fetch.
+ *  `computing` (services :125 cached-serve contract) = the cache key has never
+ *  been computed; the page shows a non-alarming crunching state and polls. */
+export type ReconcileOutcome = "ready" | "computing" | "notdeployed" | "forbidden" | "error"
 
-/** Both endpoints resolved: `null` from either means P2-B1s isn't deployed (404
+/** Discriminated fetch results from the typed client (payouts-reconcile.ts);
+ *  structural here so this file keeps zero imports (pure, node --test). */
+interface FetchResultLike {
+  kind: "ready" | "computing"
+}
+
+/** Both endpoints resolved. `computing` from either wins and is checked FIRST —
+ *  during a mixed deploy one endpoint can be cold while the other 404s, and
+ *  polling until ready is the safe read (never "coming soon" over a warming
+ *  cache). Then `null` from either means the contract isn't deployed (404
  *  degrades to null in the typed client) → a graceful "coming soon", never an
- *  error. Both present → render the reconciliation view. */
+ *  error. Both present and ready → render the reconciliation view. */
 export function reconcileOutcomeFromData(
-  summary: unknown | null,
-  deposits: unknown | null,
-): "ready" | "notdeployed" {
+  summary: FetchResultLike | null,
+  deposits: FetchResultLike | null,
+): "ready" | "computing" | "notdeployed" {
+  if (summary?.kind === "computing" || deposits?.kind === "computing") return "computing"
   return summary === null || deposits === null ? "notdeployed" : "ready"
 }
 
