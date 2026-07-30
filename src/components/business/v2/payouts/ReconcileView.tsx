@@ -42,6 +42,12 @@ import {
   summaryTilesFor,
   sharedAccountCaveat,
   dedicatedReassurance,
+  depositRowView,
+  visibleDeposits,
+  allVenueRowsHidden,
+  venueShareLabel,
+  depositContextLabel,
+  venueEmptyDepositsCopy,
   customWindow,
   buildBreakdownTable,
   showBreakdownTable,
@@ -823,9 +829,11 @@ function DepositRow({
   venueName?: string
 }) {
   const [open, setOpen] = useState(false)
-  // A venue is selected up top ⇒ the amount is the WHOLE deposit (Stripe pays the
-  // account, not the venue); label it so the unchanged total reads as intentional.
-  const scoped = !!venueParam
+  // The whole presentation decision (headline number, context, count, mode) is
+  // the lib's — venue_slice leads with THIS venue's share, keeping the full bank
+  // deposit as quiet context; all_venues / venue_whole render as today. $0-venue
+  // rows are filtered out upstream (visibleDeposits), so `hidden` never fires here.
+  const view = depositRowView(deposit, !!venueParam)
   return (
     <Card className="overflow-hidden">
       <button
@@ -840,12 +848,21 @@ function DepositRow({
             <CopyableId id={deposit.payout_id} />
           </div>
           <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-            {deposit.sales_count} {deposit.sales_count === 1 ? "sale" : "sales"}
+            {view.salesCount} {view.salesCount === 1 ? "sale" : "sales"}
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-base font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{money(deposit.amount_cents)}</p>
-          <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{scoped ? "whole deposit" : "deposited"}</p>
+          <p className="text-base font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{money(view.headlineCents)}</p>
+          {view.mode === "venue_slice" ? (
+            <>
+              <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{venueShareLabel(venueName)}</p>
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{depositContextLabel(view.depositCents)}</p>
+            </>
+          ) : (
+            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+              {view.mode === "venue_whole" ? "whole deposit" : "deposited"}
+            </p>
+          )}
         </div>
         <ChevronDown className={cn("size-4 shrink-0 text-neutral-400 transition-transform dark:text-neutral-500", open && "rotate-180")} />
       </button>
@@ -913,19 +930,29 @@ export default function ReconcileView({
    *  server predates the contract; the view renders exactly as before. */
   freshness?: { computedAt: string | null; refreshing: boolean }
 }) {
+  const venueScoped = !!venueParam
+  // Venue-scoped: $0-venue deposits are hidden client-side (the server keeps
+  // them). All-venues: `shown` is `deposits` unchanged — the hard regression gate.
+  const shown = visibleDeposits(deposits, venueScoped)
+  // Deposits landed on the account, but none of them was this venue's money →
+  // a clean, venue-named empty state rather than the generic "no deposits".
+  const allHidden = allVenueRowsHidden(deposits, venueScoped)
   const hasAny = deposits.length > 0 || summary.deposited_cents > 0 || summary.in_transit_cents > 0
+  const venueEmpty = venueEmptyDepositsCopy(venueName)
 
   return (
     <div className="space-y-4">
       {freshness && <FreshnessLine freshness={freshness} />}
       <SummaryStrip summary={summary} venueName={venueName} venueId={venueId} untilInPast={untilInPast} />
       <InTransitBanner cents={summary.in_transit_cents} />
-      {deposits.length > 0 ? (
+      {shown.length > 0 ? (
         <div className="space-y-3">
-          {deposits.map((d) => (
+          {shown.map((d) => (
             <DepositRow key={d.payout_id || `${d.arrival_date}-${d.amount_cents}`} deposit={d} venueParam={venueParam} venueName={venueName} />
           ))}
         </div>
+      ) : allHidden ? (
+        <EmptyState icon={Banknote} title={venueEmpty.title} description={venueEmpty.description} />
       ) : hasAny ? (
         <p className="px-1 text-sm text-neutral-500 dark:text-neutral-400">
           No individual deposits landed in this range yet — check back once Stripe deposits your collected sales.
