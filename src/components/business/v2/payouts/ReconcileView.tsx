@@ -46,6 +46,8 @@ import {
   visibleDeposits,
   allVenueRowsHidden,
   venueShareLabel,
+  venueRefundLabel,
+  VENUE_REFUND_QUALIFIER,
   depositContextLabel,
   venueEmptyDepositsCopy,
   customWindow,
@@ -829,10 +831,12 @@ function DepositRow({
   venueName?: string
 }) {
   const [open, setOpen] = useState(false)
-  // The whole presentation decision (headline number, context, count, mode) is
-  // the lib's — venue_slice leads with THIS venue's share, keeping the full bank
-  // deposit as quiet context; all_venues / venue_whole render as today. $0-venue
-  // rows are filtered out upstream (visibleDeposits), so `hidden` never fires here.
+  // The whole presentation decision (headline number, context, count, mode,
+  // refund) is the lib's — venue_slice leads with THIS venue's share, keeping the
+  // full bank deposit as quiet context; a NEGATIVE slice (isVenueRefund) is money
+  // returned for this venue, shown as a refund rather than a bare negative share;
+  // all_venues / venue_whole render as today. $0-venue rows are filtered out
+  // upstream (visibleDeposits), so `hidden` never fires here.
   const view = depositRowView(deposit, !!venueParam)
   return (
     <Card className="overflow-hidden">
@@ -852,16 +856,35 @@ function DepositRow({
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-base font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{money(view.headlineCents)}</p>
-          {view.mode === "venue_slice" ? (
+          {view.isVenueRefund ? (
+            // NEGATIVE venue slice — money returned for this venue in this deposit.
+            // Muted headline with a typographic minus (signedMoneyStr) + a "refund"
+            // qualifier so "−$18.75" never reads as a bare negative "share"; the
+            // full deposit stays as quiet context, exactly as the positive case.
             <>
-              <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{venueShareLabel(venueName)}</p>
+              <p className="flex items-center justify-end gap-1.5 text-base font-semibold tabular-nums text-neutral-500 dark:text-neutral-400">
+                {signedMoneyStr(view.headlineCents)}
+                <span className="rounded bg-neutral-100 px-1 py-px text-[10px] font-medium uppercase tracking-wide text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+                  {VENUE_REFUND_QUALIFIER}
+                </span>
+              </p>
+              <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{venueRefundLabel(venueName)}</p>
               <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{depositContextLabel(view.depositCents)}</p>
             </>
           ) : (
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-              {view.mode === "venue_whole" ? "whole deposit" : "deposited"}
-            </p>
+            <>
+              <p className="text-base font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{money(view.headlineCents)}</p>
+              {view.mode === "venue_slice" ? (
+                <>
+                  <p className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{venueShareLabel(venueName)}</p>
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">{depositContextLabel(view.depositCents)}</p>
+                </>
+              ) : (
+                <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                  {view.mode === "venue_whole" ? "whole deposit" : "deposited"}
+                </p>
+              )}
+            </>
           )}
         </div>
         <ChevronDown className={cn("size-4 shrink-0 text-neutral-400 transition-transform dark:text-neutral-500", open && "rotate-180")} />

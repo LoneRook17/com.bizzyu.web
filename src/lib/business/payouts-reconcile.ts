@@ -376,6 +376,12 @@ export interface DepositRowView {
   /** venue_slice + slice === 0 → hide the row entirely (client-side). Never for
    *  all_venues / venue_whole, and NOT for a negative slice (a real movement). */
   hidden: boolean
+  /** venue_slice AND slice < 0 → the slice is a net REFUND for this venue in the
+   *  deposit (its refunds outweighed its sales, or only refunds landed). Drives
+   *  the refund presentation — typographic-minus headline + a "refund" qualifier +
+   *  money-returned copy — instead of "<venue>'s share". Always false for
+   *  all_venues / venue_whole and for a zero or positive slice. */
+  isVenueRefund: boolean
   /** Primary/headline number: the venue's slice in venue_slice mode, else the
    *  full deposit total. */
   headlineCents: number
@@ -392,6 +398,7 @@ export function depositRowView(d: DepositListItem, venueScoped: boolean): Deposi
   return {
     mode,
     hidden: slice && d.venue_amount_cents === 0,
+    isVenueRefund: slice && (d.venue_amount_cents as number) < 0,
     headlineCents: slice ? (d.venue_amount_cents as number) : d.amount_cents,
     depositCents: d.amount_cents,
     salesCount: slice && d.venue_sales_count != null ? d.venue_sales_count : d.sales_count,
@@ -415,9 +422,23 @@ export function allVenueRowsHidden(deposits: DepositListItem[], venueScoped: boo
 }
 
 /** Small label on the venue-slice headline, e.g. "Nauti Parrot's share". Names
- *  the venue so the number never reads as the whole bank deposit. */
+ *  the venue so the number never reads as the whole bank deposit. POSITIVE slices
+ *  only — a negative slice is a refund (venueRefundLabel), never a "share". */
 export function venueShareLabel(venueName?: string | null): string {
   return `${venueName || "This venue"}'s share`
+}
+
+/** The at-a-glance qualifier beside a NEGATIVE venue-slice headline so "−$18.75"
+ *  reads as a refund, not a bare negative "share". Rendered small + muted. */
+export const VENUE_REFUND_QUALIFIER = "refund"
+
+/** Caption for a NEGATIVE venue-slice row — the money-returned counterpart to
+ *  venueShareLabel. The slice went negative because this venue's refunds
+ *  outweighed its sales in the deposit (sales fully refunded, or only refunds
+ *  landed), so it is money RETURNED for the venue, never its "share". Names the
+ *  venue so the negative headline is unambiguous. */
+export function venueRefundLabel(venueName?: string | null): string {
+  return `returned for ${venueName || "this venue"}`
 }
 
 /** Quiet context caption under the venue slice: "of a $8,688.50 deposit". Uses

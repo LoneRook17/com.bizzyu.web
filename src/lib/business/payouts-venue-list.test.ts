@@ -9,7 +9,10 @@
 //  (2) the venue slice (venue_amount_cents) is the headline and amount_cents is
 //      the quiet context — with the pre-contract-server fallback and all-venues
 //      both intact,
-//  (3) $0-venue rows are hidden; negative + positive kept,
+//  (3) $0-venue rows are hidden; a POSITIVE slice is a "share", a NEGATIVE slice
+//      is a REFUND — kept and shown as money returned for the venue (typographic-
+//      minus headline + "refund" qualifier + money-returned copy), NOT a bare
+//      negative "share",
 //  (4) all rows hidden → the venue empty state fires (deposits still exist),
 //  (5) the all-venues path is byte-unchanged (hard regression gate),
 //  (6) the CSV export path carries venue_id, and
@@ -27,6 +30,9 @@ import {
   visibleDeposits,
   allVenueRowsHidden,
   venueShareLabel,
+  venueRefundLabel,
+  VENUE_REFUND_QUALIFIER,
+  signedMoneyStr,
   depositContextLabel,
   venueEmptyDepositsCopy,
   type DepositListItem,
@@ -86,6 +92,7 @@ test("venue_slice mode: venue_amount_cents is the headline, amount_cents is the 
   assert.equal(v.depositCents, 868850) // the full bank deposit is CONTEXT
   assert.equal(v.salesCount, 4) // venue count, not the account's 214
   assert.equal(v.hidden, false)
+  assert.equal(v.isVenueRefund, false) // a positive slice is a "share", not a refund
 })
 
 test("venue-slice copy: share label names the venue, context names the full deposit", () => {
@@ -101,6 +108,7 @@ test("venue_whole mode: a scoped request against a pre-contract server keeps who
   assert.equal(v.headlineCents, 868850) // the whole deposit — we can't compute a slice
   assert.equal(v.salesCount, 214)
   assert.equal(v.hidden, false)
+  assert.equal(v.isVenueRefund, false) // no slice to be negative → never a refund
   assert.equal(depositRowMode(d, true), "venue_whole")
 })
 
@@ -111,6 +119,42 @@ test("$0-venue slice is hidden; a negative (refund-heavy) slice is kept", () => 
   assert.equal(depositRowView(a, true).hidden, false) // +$63.50
   assert.equal(depositRowView(b, true).hidden, true) // $0 → hide
   assert.equal(depositRowView(c, true).hidden, false) // −$18.75 → keep (real movement)
+})
+
+// ── (3b) negative venue slice → refund presentation (not a bare negative share) ─
+
+test("negative venue slice → isVenueRefund, kept (not hidden), still a venue_slice", () => {
+  const c = normalizeDeposit(scopedRaw()[2]) // po_C, venue_amount_cents −1875
+  const v = depositRowView(c, true)
+  assert.equal(v.mode, "venue_slice")
+  assert.equal(v.isVenueRefund, true) // the slice is money RETURNED for this venue
+  assert.equal(v.hidden, false) // a real movement — kept so the list still foots
+  assert.equal(v.headlineCents, -1875) // the negative slice IS the headline
+})
+
+test("refund headline renders a typographic minus (−$18.75), not a bare '$-18.75'", () => {
+  const c = normalizeDeposit(scopedRaw()[2])
+  const v = depositRowView(c, true)
+  const headline = signedMoneyStr(v.headlineCents)
+  assert.equal(headline, "−$18.75") // U+2212 minus BEFORE the $ — reads as a refund
+  assert.doesNotMatch(headline, /\$-/) // never "$-18.75"
+})
+
+test("refund copy reads as money returned for the venue — never a 'share'", () => {
+  assert.equal(VENUE_REFUND_QUALIFIER, "refund") // the small at-a-glance qualifier
+  assert.equal(venueRefundLabel("Nauti Parrot"), "returned for Nauti Parrot")
+  assert.equal(venueRefundLabel(undefined), "returned for this venue")
+  assert.doesNotMatch(venueRefundLabel("Nauti Parrot"), /share/) // NOT the share wording
+  // The share label stays exclusively for positive slices.
+  assert.match(venueShareLabel("Nauti Parrot"), /share/)
+})
+
+test("a positive slice is a share (isVenueRefund false); a zero slice is hidden and not a refund", () => {
+  const pos = normalizeDeposit(scopedRaw()[0]) // +$63.50
+  const zero = normalizeDeposit(scopedRaw()[1]) // $0
+  assert.equal(depositRowView(pos, true).isVenueRefund, false)
+  assert.equal(depositRowView(zero, true).isVenueRefund, false)
+  assert.equal(depositRowView(zero, true).hidden, true) // zero still hidden, unchanged
 })
 
 test("visibleDeposits drops exactly the $0-venue rows when scoped", () => {
@@ -161,6 +205,7 @@ test("all-venues: each row renders amount_cents as headline, 'deposited' semanti
     assert.equal(v.headlineCents, d.amount_cents)
     assert.equal(v.salesCount, d.sales_count)
     assert.equal(v.hidden, false)
+    assert.equal(v.isVenueRefund, false) // refund presentation is venue-slice only
   }
 })
 
