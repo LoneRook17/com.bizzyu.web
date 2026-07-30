@@ -183,12 +183,13 @@ export interface InviteValidation {
    */
   needs_phone?: boolean
   /**
-   * The full email the invite was sent to — seeds the accept page's email
-   * field so the invitee confirms it instead of retyping it. Stays EDITABLE:
-   * the account email may legitimately differ from the invite address, and
-   * services does not enforce a match. Only ever an initial value, exactly
-   * like `provisional_name`. ABSENT on older services → treat as null: the
-   * old empty field.
+   * The full email the invite was sent to — pre-fills the accept page's email
+   * field. Present ⇒ EMAIL invite, and accept creates the account with this
+   * address regardless of what email is submitted (enforcement by
+   * construction, services @ :203 recon) — so the page renders the field
+   * READ-ONLY with a why-hint instead of accepting edits it would silently
+   * discard. null (phone invites) or ABSENT (older services) → the editable
+   * field, where the server does honor the submitted email.
    */
   invited_email?: string | null
   /**

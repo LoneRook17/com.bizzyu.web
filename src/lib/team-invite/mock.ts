@@ -270,10 +270,11 @@ export async function mockValidateInvite(token: string): Promise<InviteValidatio
       }
     case 'valid_email_needs_phone':
       // TI-4s: brand-new invitee by email — name pre-filled from the inviter's
-      // entry, email pre-filled from the address the invite went to (still
-      // editable), and a phone step so the account is app-capable on day one.
-      // The other email arms deliberately omit invited_email — they are the
-      // pre-invited_email services shape, i.e. the old empty field.
+      // entry, email pre-filled from the address the invite went to (READ-ONLY:
+      // accept ignores a submitted email on this path), and a phone step so the
+      // account is app-capable on day one. The other email arms deliberately
+      // omit invited_email — they are the pre-invited_email services shape,
+      // i.e. the old editable empty field.
       return {
         ...base,
         state: 'valid',
