@@ -3,7 +3,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { apiClient } from "./api-client"
 import { useAuth } from "./auth-context"
+import { resolveInitialVenueSelection, persistedVenueValue } from "./venue-selection"
 import type { Venue } from "./types"
+import { userVenueIds, resolveSwitcherScope, initialSetSelection } from "./team-venues"
 
 const VENUE_STORAGE_KEY = "bizzy_selected_venue_id"
 const WIZARD_DISMISSED_KEY = "bizzy_venue_wizard_dismissed"
@@ -16,6 +18,7 @@ interface VenueContextValue {
   isLoading: boolean
   showWizard: boolean
   setSelectedVenue: (id: number | "all") => void
+  resetToAllVenues: () => void
   refreshVenues: () => Promise<void>
   dismissWizard: () => void
 }
@@ -48,45 +51,49 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
       const data = await apiClient.get<{ venues: Venue[] }>("/business/venues")
       let active = data.venues.filter((v) => v.is_active)
 
-      // If user is assigned to a specific venue (not Global), restrict to only that venue
-      const userVenueId = user?.venue_id ?? null
-      if (userVenueId !== null) {
-        active = active.filter((v) => v.id === userVenueId)
-      }
+      // TM-B2 (#15): a member may be scoped to a SET of venues. Reconcile the
+      // caller's effective set (venue_ids ?? scalar venue_id) against the active
+      // list. mode "global" ⇒ unchanged; "single" ⇒ today's hard lock byte-for-
+      // byte; "set" (>1) ⇒ restrict to the set with an "all-of-mine" default.
+      const myVenueIds = userVenueIds(user)
+      const scope = resolveSwitcherScope(myVenueIds, active)
+      active = scope.venues
 
       setVenues(active)
 
-      // If venue-restricted, always lock to that venue
-      if (userVenueId !== null) {
-        setSelectedVenueId(userVenueId)
-        localStorage.setItem(VENUE_STORAGE_KEY, String(userVenueId))
+      // Resolve the initial selection per scope mode:
+      //  - "set" (>1 venues): the TM-B2 addition — switchable across the set with
+      //    an all-of-mine default (initialSetSelection).
+      //  - "single" / "global": defer to dev's scalar resolver, which is unchanged
+      //    here. lockedVenueId is the one id in "single" (hard lock) and null in
+      //    "global" (where the resolver defaults to "all" — so venue-scoped fetches
+      //    like Payouts are never silently single-venue filtered).
+      const urlParams = new URLSearchParams(window.location.search)
+      // Persist the RESOLVED (clamped) selection, never the raw stored/URL value:
+      // a concrete id is kept; "all" (incl. the resolver's out-of-scope fallback)
+      // CLEARS the key so a stale venue can't survive a scope narrowing (F1 clamp).
+      const persistSelection = (sel: number | "all" | null) => {
+        const v = persistedVenueValue(sel)
+        if (v === null) localStorage.removeItem(VENUE_STORAGE_KEY)
+        else localStorage.setItem(VENUE_STORAGE_KEY, v)
+      }
+      if (scope.mode === "set") {
+        const initial = initialSetSelection(
+          myVenueIds,
+          urlParams.get("venue_id"),
+          localStorage.getItem(VENUE_STORAGE_KEY),
+        )
+        setSelectedVenueId(initial)
+        persistSelection(initial)
       } else {
-        // Restore persisted selection: URL param > localStorage > first venue
-        const urlParams = new URLSearchParams(window.location.search)
-        const urlVenueId = urlParams.get("venue_id")
-
-        if (urlVenueId === "all") {
-          setSelectedVenueId("all")
-          localStorage.setItem(VENUE_STORAGE_KEY, "all")
-        } else if (urlVenueId && active.some((v) => v.id === Number(urlVenueId))) {
-          const id = Number(urlVenueId)
-          setSelectedVenueId(id)
-          localStorage.setItem(VENUE_STORAGE_KEY, String(id))
-        } else {
-          const stored = localStorage.getItem(VENUE_STORAGE_KEY)
-          if (stored === "all") {
-            setSelectedVenueId("all")
-          } else if (stored) {
-            const id = parseInt(stored, 10)
-            if (active.some((v) => v.id === id)) {
-              setSelectedVenueId(id)
-            } else {
-              setSelectedVenueId(active[0]?.id ?? null)
-            }
-          } else {
-            setSelectedVenueId(active[0]?.id ?? null)
-          }
-        }
+        const selection = resolveInitialVenueSelection({
+          userVenueId: scope.lockedVenueId,
+          activeVenueIds: active.map((v) => v.id),
+          urlVenueId: urlParams.get("venue_id"),
+          storedVenueId: localStorage.getItem(VENUE_STORAGE_KEY),
+        })
+        setSelectedVenueId(selection)
+        persistSelection(selection)
       }
 
       // Check if first-time wizard should show:
@@ -133,6 +140,23 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // TF-ANALYTICS-EVENTS-F1 — scope-404 self-heal. A dashboard fetch that 404s with
+  // "Venue not found" means the selected venue is outside the caller's server
+  // effective scope (a stale persisted selection that survived a scope narrowing).
+  // Reset the switcher to All venues, CLEAR the stale persisted id, and drop
+  // ?venue_id from the URL. Callers refetch automatically: `useVenueParam()` flips
+  // to "" and the fetch effect (keyed on it) re-fires — a global fetch the server
+  // re-scopes to the caller's own window, so it cannot 404 again (no loop).
+  const resetToAllVenues = useCallback(() => {
+    setSelectedVenueId("all")
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(VENUE_STORAGE_KEY)
+      const url = new URL(window.location.href)
+      url.searchParams.delete("venue_id")
+      window.history.replaceState({}, "", url.toString())
+    }
+  }, [])
+
   const dismissWizard = useCallback(() => {
     setShowWizard(false)
     localStorage.setItem(WIZARD_DISMISSED_KEY, "1")
@@ -155,6 +179,7 @@ export function VenueProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         showWizard,
         setSelectedVenue,
+        resetToAllVenues,
         refreshVenues: fetchVenues,
         dismissWizard,
       }}

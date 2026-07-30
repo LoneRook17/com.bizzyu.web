@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import dynamic from "next/dynamic"
 
 
 import { getApiBaseUrl } from "@/lib/api-url"
@@ -8,6 +9,23 @@ import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { nativeShare } from "@/lib/share"
 import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
 import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
+import LineSkipPaymentPanel from "@/components/checkout/LineSkipPaymentPanel"
+import {
+  MOCK_ENABLED,
+  completePayment,
+  createPaymentIntent,
+  fetchPiConfig,
+  pollComplete,
+} from "@/lib/lineskip-pi/client"
+import {
+  LineSkipSoldOutError,
+  type LineSkipCompleteResponse,
+  type LineSkipPiBreakdown,
+} from "@/lib/lineskip-pi/types"
+import { nightAvailability, remainingCapacity } from "@/lib/lineskip/availability"
+import { CHECKOUT_PANEL_CLASS } from "@/lib/lineskip/checkout-modal"
+import { isLineSkipSuccessArrival } from "@/lib/lineskip/success-params"
+import { fireConfetti } from "./success/confetti"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
@@ -15,6 +33,14 @@ const API_URL = getApiBaseUrl()
 // differentiate them from events/deals across the whole flow.
 const GOLD = "#D4AF37"
 const GOLD_LIGHT = "#F0CD6E"
+
+// Dev-only scenario switch for the PI mock. MOCK_ENABLED is a build-time
+// constant, so in a prod build this is `null` and the dynamic import behind it
+// is never emitted.
+const MockScenarioPicker =
+  process.env.NEXT_PUBLIC_LINESKIP_PI_MOCK === "1"
+    ? dynamic(() => import("@/components/checkout/MockScenarioPicker"), { ssr: false })
+    : null
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -85,7 +111,20 @@ interface PageData {
   fee_config: FeeConfig
 }
 
-type CheckoutStep = "idle" | "phone" | "name" | "verify" | "processing"
+type CheckoutStep =
+  | "idle"
+  | "phone"
+  | "name"
+  | "verify"
+  | "processing"
+  // ── PI-flow-only steps (never reached with pi_flow_enabled false) ─────────
+  | "pay"
+  | "finalizing"
+  // Sold out at intent-creation (409) — nothing was ever charged.
+  | "sold_out_unpaid"
+  // Sold out between charge and issue — charged, then auto-refunded.
+  | "sold_out_refunded"
+  | "pending_fallback"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -176,6 +215,15 @@ export default function LineSkipCheckoutClient({
   // SMS marketing opt-in (default-checked, optional). Sent with the purchase so
   // the backend sets business_followers.sms_enabled. Unchecking doesn't block.
   const [smsOptIn, setSmsOptIn] = useState(true)
+  // ── PI (Elements) flow state ───────────────────────────────────────────────
+  // All of this stays null/false when the server reports pi_flow_enabled false,
+  // which is what keeps the session redirect below untouched.
+  const [piEnabled, setPiEnabled] = useState(false)
+  const [piPublishableKey, setPiPublishableKey] = useState<string | null>(null)
+  const [piClientSecret, setPiClientSecret] = useState<string | null>(null)
+  const [piId, setPiId] = useState<string | null>(null)
+  const [piBreakdown, setPiBreakdown] = useState<LineSkipPiBreakdown | null>(null)
+
   // Keyboard overlap (px) reported by visualViewport; 0 on desktop / unsupported.
   // Applied as a translateY on the modal's offset WRAPPER (never the ls-rise panel).
   const [kbOffset, setKbOffset] = useState(0)
@@ -259,11 +307,38 @@ export default function LineSkipCheckoutClient({
   // Selected instance
   const selectedInstance = instances.find((i) => i.id === selectedInstanceId) || null
 
+  // Ask the server whether this instance takes the in-page PI flow. The answer
+  // is per-instance (the flag carries an allowlist), so it is re-asked on every
+  // selection. Any failure leaves piEnabled false — the buyer silently keeps
+  // today's Checkout-Session flow rather than losing the ability to pay.
+  useEffect(() => {
+    if (!selectedInstanceId) {
+      setPiEnabled(false)
+      setPiPublishableKey(null)
+      return
+    }
+    let cancelled = false
+    fetchPiConfig(selectedInstanceId)
+      .then((cfg) => {
+        if (cancelled) return
+        setPiEnabled(cfg.pi_flow_enabled && Boolean(cfg.publishable_key))
+        setPiPublishableKey(cfg.publishable_key)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPiEnabled(false)
+          setPiPublishableKey(null)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedInstanceId])
+
   // Quantity helpers
   const adjustQty = (val: number) => {
-    const remaining = selectedInstance?.capacity !== null && selectedInstance
-      ? selectedInstance.capacity! - selectedInstance.tickets_sold
-      : 10
+    // Internal clamp only — remaining is never shown to the buyer (LS-UI-2).
+    const remaining = selectedInstance ? remainingCapacity(selectedInstance) ?? 10 : 10
     setQuantity(Math.max(1, Math.min(10, Math.min(remaining, val))))
   }
 
@@ -545,6 +620,42 @@ export default function LineSkipCheckoutClient({
         return
       }
 
+      // Paid checkout, flag ON: stay in-page. Create the PaymentIntent, then
+      // hand off to Elements. The session path below is left exactly as it was
+      // and still runs whenever the server says the flag is off.
+      if (piEnabled && piPublishableKey) {
+        try {
+          const localFees = calcFees()
+          const pi = await createPaymentIntent(
+            {
+              instance_id: selectedInstance.id,
+              quantity: qty,
+              phone_number: fullPhone,
+              promo_code: promo?.code ?? null,
+              attendee_name: finalName,
+              sms_opt_in: smsOptIn,
+            },
+            {
+              base_cents: localFees?.subtotal ?? 0,
+              discount_cents: localFees?.discount ?? 0,
+              fee_cents: localFees?.service_fee ?? 0,
+            }
+          )
+          setPiClientSecret(pi.pi_client_secret)
+          setPiId(pi.pi_id)
+          setPiBreakdown(pi.breakdown)
+          setCheckoutStep("pay")
+        } catch (e) {
+          if (e instanceof LineSkipSoldOutError) {
+            setCheckoutStep("sold_out_unpaid")
+            return
+          }
+          setCheckoutError(e instanceof Error ? e.message : "Could not start payment")
+          setCheckoutStep("phone")
+        }
+        return
+      }
+
       // Paid checkout: create Stripe session
       const res = await fetch(`${API_URL}/line-skips/checkout/create-session`, {
         method: "POST",
@@ -581,6 +692,76 @@ export default function LineSkipCheckoutClient({
     }
   }
 
+  // ─── PI flow: fulfilment ─────────────────────────────────────────────────
+
+  /** Hand off to the param-driven success screen this page already renders. */
+  const goToSuccess = (data: LineSkipCompleteResponse, qty: number) => {
+    const inst = selectedInstance
+    const rawDate = data.instance_date || (inst?.date as string) || ""
+    const params = new URLSearchParams({
+      purchase_success: "1",
+      venue_name: data.venue_name || venue?.name || "",
+      business_name: data.business_name || business?.name || "",
+      venue_id: String(data.venue_id ?? venue?.venue_id ?? venueId),
+      date: typeof rawDate === "string" ? rawDate.substring(0, 10) : rawDate,
+      start: data.start_time || inst?.start_time || "",
+      end: data.end_time || inst?.end_time || "",
+      count: String(data.tickets?.length || qty),
+      tickets: (data.tickets || []).map((t) => t.uuid).join(","),
+      wallet_token: data.wallet_token || "",
+    })
+    window.location.href = `/lineskip/${venueId}?${params.toString()}`
+  }
+
+  /**
+   * Stripe says the money moved. From here the buyer is charged, so there is no
+   * failure state left that should read as an error: every arm below either
+   * shows their passes, tells them the refund is on its way, or tells them the
+   * passes are coming by text.
+   */
+  const finalize = async (id: string) => {
+    setCheckoutStep("finalizing")
+    try {
+      let result = await completePayment(id)
+      if (result.status === "pending") {
+        result = await pollComplete(id)
+      }
+      if (result.status === "fulfilled") {
+        goToSuccess(result, quantity)
+        return
+      }
+      if (result.status === "refunded_sold_out") {
+        setCheckoutStep("sold_out_refunded")
+        return
+      }
+      setCheckoutStep("pending_fallback")
+    } catch {
+      // Charged but we can't confirm — never an error screen. The webhook is
+      // the authoritative fulfiller and will text them.
+      setCheckoutStep("pending_fallback")
+    }
+  }
+
+  const handlePaid = () => {
+    if (piId) finalize(piId)
+  }
+
+  // Return leg of an off-site confirmation (3DS challenge, bank app). Stripe
+  // sends the buyer back to returnUrl with ?payment_intent=…, which is all
+  // `complete` needs — so the redirect lands in exactly the same finalizer as
+  // the inline path, with no page state to restore.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("pi_return") !== "1") return
+    const returnedPi = params.get("payment_intent")
+    if (!returnedPi) return
+    setPiId(returnedPi)
+    finalize(returnedPi)
+    // Once only, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ─── Free Success State ──────────────────────────────────────────────────
 
   const [freeSuccess, setFreeSuccess] = useState(false)
@@ -600,7 +781,10 @@ export default function LineSkipCheckoutClient({
   useEffect(() => {
     if (typeof window === "undefined") return
     const params = new URLSearchParams(window.location.search)
-    if (params.get("free_success") === "1") {
+    // `purchase_success` is the PI flow's arrival; `free_success` is the
+    // pre-existing free-checkout arrival. Same screen, same params — the only
+    // difference is which flow paid for it, which this screen never mentions.
+    if (isLineSkipSuccessArrival(window.location.search)) {
       setFreeSuccess(true)
       const ticketParam = params.get("tickets") || ""
       setFreeSuccessData({
@@ -617,6 +801,23 @@ export default function LineSkipCheckoutClient({
       setShowFreeWalletButton(isAppleWalletCapable())
     }
   }, [])
+
+  // Celebrate a confirmed line-skip purchase with one confetti burst — the same
+  // module and guarantees the /success route uses (TF-HI-W1), now on the venue
+  // page where the LIVE PI/free flow actually lands (TF-DRIVE-W1). The ref makes
+  // it fire exactly once per arrival — no replay on re-render or React
+  // StrictMode's double-effect — and it is gated on `freeSuccess`, which is only
+  // ever set from a success param, so it never fires on the plain venue page.
+  // fireConfetti() itself no-ops under prefers-reduced-motion. A manual refresh
+  // of a success URL remounts the component (fresh ref) and fires again, which
+  // is acceptable for a success page.
+  const confettiFired = useRef(false)
+  useEffect(() => {
+    if (freeSuccess && !confettiFired.current) {
+      confettiFired.current = true
+      fireConfetti()
+    }
+  }, [freeSuccess])
 
   // ─── Render: Loading / Error ─────────────────────────────────────────────
 
@@ -791,6 +992,12 @@ export default function LineSkipCheckoutClient({
     (i) => !(i.capacity !== null && i.tickets_sold >= i.capacity)
   ).length
 
+  const isOutcomeStep =
+    checkoutStep === "finalizing" ||
+    checkoutStep === "sold_out_unpaid" ||
+    checkoutStep === "sold_out_refunded" ||
+    checkoutStep === "pending_fallback"
+
   // ─── Render: Main Page ───────────────────────────────────────────────────
 
   return (
@@ -881,8 +1088,9 @@ export default function LineSkipCheckoutClient({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="mx-auto max-w-3xl px-5 pb-24">
+      {/* Content. Extra mobile bottom padding whenever the sticky CTA bar is
+          mounted, so the last night card / footer can scroll clear of it. */}
+      <div className={`mx-auto max-w-3xl px-5 ${selectedInstance && !venueBlock ? "pb-44 sm:pb-24" : "pb-24"}`}>
         {/* Includes Cover banner */}
         <div
           className="ls-rise mt-7 flex items-center gap-4 rounded-2xl px-5 py-4"
@@ -930,9 +1138,11 @@ export default function LineSkipCheckoutClient({
                 const isSelected = selectedInstanceId === inst.id
                 const promo = getPromoForInstance(inst.id)
                 const discountedPrice = getDiscountedPrice(inst.price_cents, promo)
-                const remaining = inst.capacity !== null ? inst.capacity - inst.tickets_sold : null
-                const isSoldOut = inst.capacity !== null && inst.tickets_sold >= inst.capacity
-                const pctSold = inst.capacity ? Math.min(100, Math.round((inst.tickets_sold / inst.capacity) * 100)) : 0
+                // Customer-facing rule (LS-UI-2): a limited-but-open night reads
+                // exactly like an unlimited one — no count, no bar. `remaining` is
+                // kept ONLY to clamp the quantity stepper, never rendered.
+                const isSoldOut = nightAvailability(inst) === "sold_out"
+                const remaining = remainingCapacity(inst)
                 const dateOnly = typeof inst.date === "string" ? inst.date.substring(0, 10) : inst.date
 
                 return (
@@ -965,11 +1175,9 @@ export default function LineSkipCheckoutClient({
                               <span className="mt-1.5 inline-block rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-bold text-gray-400">
                                 Sold out
                               </span>
-                            ) : remaining !== null ? (
-                              <span className="mt-1.5 inline-block text-xs font-semibold text-white/40">
-                                {remaining} left{pctSold >= 75 ? ", going fast" : ""}
-                              </span>
                             ) : (
+                              // Never disclose remaining counts: limited and unlimited
+                              // nights both read "Available" (LS-UI-2).
                               <span className="mt-1.5 inline-block text-xs font-semibold text-white/40">Available</span>
                             )}
                           </div>
@@ -1003,15 +1211,8 @@ export default function LineSkipCheckoutClient({
                         </div>
                       </div>
 
-                      {/* Capacity bar */}
-                      {inst.capacity !== null && !isSoldOut && (
-                        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${pctSold}%`, background: `linear-gradient(90deg, ${GOLD_LIGHT}, ${GOLD})` }}
-                          />
-                        </div>
-                      )}
+                      {/* Capacity bar removed (LS-UI-2): a progress bar discloses how
+                          full a night is, which is a remaining-count signal. */}
 
                       {/* Quantity selector (shown when selected) */}
                       {isSelected && !isSoldOut && (
@@ -1210,8 +1411,42 @@ export default function LineSkipCheckoutClient({
         </div>
       </div>
 
+      {/* ─── Mobile sticky CTA bar ──────────────────────────────────────────── */}
+      {/* On a phone the in-flow "Get Line Skip" button sits below the whole
+          night list + promo + order summary, so after tapping a night the buyer
+          still has to scroll to buy. This bar duplicates that button — same
+          label, same startCheckout handler, purely presentation — pinned to the
+          viewport bottom the moment a night is selected. Mobile-only
+          (sm:hidden): desktop already shows the full column plus the header
+          anchor CTA. z-40 keeps it under the checkout modal (z-50), whose
+          backdrop dims it like the sticky header; it stays mounted there so the
+          page never shifts mid-flow. safe-area padding clears the iOS home
+          indicator. Hidden while the venue's payouts are paused, exactly like
+          the in-flow CTA. */}
+      {selectedInstance && !venueBlock && (
+        <div
+          className="ls-rise fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0a0f]/90 backdrop-blur-xl sm:hidden"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="mx-auto max-w-3xl px-5 py-3">
+            <button
+              onClick={startCheckout}
+              className="w-full rounded-2xl py-3.5 text-base font-extrabold text-black transition hover:brightness-110 active:scale-[0.99]"
+              style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 12px 32px -10px ${GOLD}80` }}
+            >
+              {fees && fees.total > 0
+                ? `Get Line Skip: ${formatPrice(fees.total)}`
+                : "Get Line Skip: Free"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Checkout Modal ─────────────────────────────────────────────────── */}
-      {checkoutStep !== "idle" && selectedInstance && (
+      {/* Outcome steps survive without a selected instance: the 3DS redirect
+          lands back on a freshly mounted page with nothing selected, and the
+          buyer is already charged, so the outcome must still render. */}
+      {checkoutStep !== "idle" && (selectedInstance || isOutcomeStep) && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
           {/* Keyboard-offset wrapper - owns the dynamic translateY so it never fights
               the panel's ls-rise entrance transform. Do NOT move this transform onto
@@ -1221,7 +1456,7 @@ export default function LineSkipCheckoutClient({
             className="ls-kb-shift w-full max-w-md sm:m-4"
             style={{ transform: `translateY(-${kbOffset}px)` }}
           >
-            <div className="ls-rise w-full rounded-t-3xl border border-[#1e1e2e] bg-[#141420] p-6 sm:rounded-3xl">
+            <div className={CHECKOUT_PANEL_CLASS}>
             {/* Modal header */}
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-extrabold text-white">
@@ -1229,6 +1464,11 @@ export default function LineSkipCheckoutClient({
                 {checkoutStep === "name" && "Your name"}
                 {checkoutStep === "verify" && "Verify your number"}
                 {checkoutStep === "processing" && "Processing..."}
+                {checkoutStep === "pay" && "Payment"}
+                {checkoutStep === "finalizing" && "Confirming..."}
+                {checkoutStep === "sold_out_unpaid" && "Just sold out"}
+                {checkoutStep === "sold_out_refunded" && "Just sold out"}
+                {checkoutStep === "pending_fallback" && "Payment received"}
               </h2>
               <button
                 onClick={closeCheckout}
@@ -1240,7 +1480,10 @@ export default function LineSkipCheckoutClient({
               </button>
             </div>
 
-            {/* Summary */}
+            {/* Summary. Hidden on the pay step, where the server's own
+                breakdown is the summary, and on outcome steps, where the money
+                question is already settled. */}
+            {selectedInstance && checkoutStep !== "pay" && !isOutcomeStep && (
             <div
               className="mb-5 rounded-xl px-4 py-3"
               style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}25` }}
@@ -1264,6 +1507,7 @@ export default function LineSkipCheckoutClient({
                 </div>
               </div>
             </div>
+            )}
 
             {/* Phone step - phone number only */}
             {checkoutStep === "phone" && (
@@ -1406,6 +1650,134 @@ export default function LineSkipCheckoutClient({
                   style={{ borderTopColor: GOLD }}
                 />
                 <p className="text-sm text-white/60">Setting up your payment...</p>
+              </div>
+            )}
+
+            {/* ── PI flow steps ─────────────────────────────────────────── */}
+
+            {checkoutStep === "pay" && piPublishableKey && piBreakdown && (
+              <div>
+                {MockScenarioPicker && <MockScenarioPicker />}
+                <LineSkipPaymentPanel
+                  publishableKey={piPublishableKey}
+                  clientSecret={MOCK_ENABLED ? null : piClientSecret}
+                  mock={MOCK_ENABLED}
+                  breakdown={piBreakdown}
+                  quantity={quantity}
+                  returnUrl={`${WEB_BASE_URL}/lineskip/${venueId}?pi_return=1`}
+                  onPaid={handlePaid}
+                />
+              </div>
+            )}
+
+            {checkoutStep === "finalizing" && (
+              <div className="py-8 text-center">
+                <div
+                  className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/20"
+                  style={{ borderTopColor: GOLD }}
+                />
+                <p className="text-sm text-white/60">Confirming your Line Skip...</p>
+                <p className="mt-1 text-xs text-white/30">Don&apos;t close this page.</p>
+              </div>
+            )}
+
+            {/* Sold out at intent creation — no money ever moved. */}
+            {checkoutStep === "sold_out_unpaid" && (
+              <div className="py-4 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+                  <svg className="h-7 w-7 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-extrabold text-white">This night just sold out</h3>
+                <p className="mt-2 text-sm text-white/60">
+                  The last Line Skip went while you were checking out.
+                  <span className="mt-1 block font-semibold text-white/80">
+                    You have not been charged.
+                  </span>
+                </p>
+                <button
+                  onClick={() => {
+                    closeCheckout()
+                    setSelectedInstanceId(null)
+                    fetchData()
+                  }}
+                  className="mt-5 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110"
+                  style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+                >
+                  Pick another night
+                </button>
+              </div>
+            )}
+
+            {/* Sold out between charge and issue — charged, then auto-refunded. */}
+            {checkoutStep === "sold_out_refunded" && (
+              <div className="py-4 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10">
+                  <svg className="h-7 w-7 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h11M9 21V3m11 7l-4 4m0 0l4 4m-4-4h8" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-extrabold text-white">This night just sold out</h3>
+                <p className="mt-2 text-sm text-white/60">
+                  The last Line Skip went as your payment went through, so we couldn&apos;t
+                  issue your pass.
+                </p>
+                <div
+                  className="mt-4 rounded-xl px-4 py-3 text-sm font-semibold"
+                  style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}30`, color: GOLD }}
+                >
+                  You have not been charged — your refund is already on its way.
+                </div>
+                <p className="mt-3 text-xs text-white/40">
+                  Refunds land back on your card in 5&ndash;10 business days.
+                </p>
+                <button
+                  onClick={() => {
+                    closeCheckout()
+                    setSelectedInstanceId(null)
+                    fetchData()
+                  }}
+                  className="mt-5 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110"
+                  style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+                >
+                  Pick another night
+                </button>
+              </div>
+            )}
+
+            {/* Charged, fulfilment not confirmed in-page. The webhook finishes
+                the job out of band, so this is a reassurance screen, not an
+                error — it must never suggest the payment failed. */}
+            {checkoutStep === "pending_fallback" && (
+              <div className="py-4 text-center">
+                <div
+                  className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+                  style={{ backgroundColor: `${GOLD}1f`, border: `1px solid ${GOLD}33` }}
+                >
+                  <svg className="h-7 w-7" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-extrabold text-white">Your payment went through</h3>
+                <p className="mt-2 text-sm text-white/60">
+                  We&apos;re still finishing up your Line Skip
+                  {quantity > 1 ? "s" : ""}.
+                  <span className="mt-1 block font-semibold text-white/80">
+                    Check your texts &mdash; your pass{quantity > 1 ? "es" : ""} will arrive in a
+                    moment.
+                  </span>
+                </p>
+                <p className="mt-3 text-xs text-white/40">
+                  Nothing else to do here. They&apos;ll also be in the Bizzy app under the phone
+                  number you used.
+                </p>
+                <button
+                  onClick={closeCheckout}
+                  className="mt-5 w-full rounded-xl border border-white/15 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  Done
+                </button>
               </div>
             )}
             </div>

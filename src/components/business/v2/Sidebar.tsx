@@ -7,7 +7,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X, Repeat,
+  Sun, Moon, TicketPercent, Menu, X, Repeat, Banknote,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -21,6 +21,7 @@ import {
 } from "./ui/dropdown-menu"
 
 type Feature = "showDeals" | "showEvents" | "showLineSkips" | "showRecurring"
+type BusinessRole = "owner" | "manager" | "staff" | "promoter"
 
 type Item = {
   label: string
@@ -29,6 +30,8 @@ type Item = {
   lockWhenPending?: boolean
   /** Only show when the mode config flag is true; undefined = always show */
   feature?: Feature
+  /** Only show for these roles; undefined = show for all. Server enforces regardless. */
+  roles?: BusinessRole[]
 }
 
 const GROUPS: { label?: string; items: Item[] }[] = [
@@ -43,6 +46,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
   { label: "Grow", items: [
     { label: "Marketing", href: "/business/marketing", icon: Megaphone, lockWhenPending: true },
     { label: "Analytics", href: "/business/analytics", icon: BarChart3, lockWhenPending: true },
+    { label: "Payouts", href: "/business/payouts", icon: Banknote, lockWhenPending: true, roles: ["owner"] },
   ] },
   { label: "Workspace", items: [
     { label: "Team", href: "/business/team", icon: Users },
@@ -69,9 +73,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
   const venueName = isAllVenues ? "All venues" : selectedVenue?.name ?? business?.name ?? "Select venue"
 
+  const role = user?.business_role
   const visibleGroups = GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.feature || config[item.feature]),
+    items: group.items.filter(
+      (item) =>
+        (!item.feature || config[item.feature]) &&
+        (!item.roles || (role != null && item.roles.includes(role))),
+    ),
   })).filter((group) => group.items.length > 0)
 
   return (

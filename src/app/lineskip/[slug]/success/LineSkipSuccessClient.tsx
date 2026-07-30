@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
 import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { nativeShare } from "@/lib/share"
+import { fireConfetti } from "./confetti"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 
@@ -68,6 +69,18 @@ export default function LineSkipSuccessClient({
   useEffect(() => {
     verifyPayment()
   }, [verifyPayment])
+
+  // Celebrate a confirmed purchase with one confetti burst. The ref guard makes
+  // it fire exactly once — no replay on re-render (or React StrictMode's double
+  // effect) — and it only runs on the "success" branch, never on
+  // verifying/error (i.e. never on a failed or cancelled payment).
+  const confettiFired = useRef(false)
+  useEffect(() => {
+    if (status === "success" && !confettiFired.current) {
+      confettiFired.current = true
+      fireConfetti()
+    }
+  }, [status])
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return ""

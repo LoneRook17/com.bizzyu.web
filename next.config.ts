@@ -1,6 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pin both dev-mock switches to a literal at build time. Next only inlines a
+  // NEXT_PUBLIC_ var it can see a value for — left unset it stays a runtime
+  // lookup, the `MOCK_ENABLED` compare never folds to false, and the dev mock
+  // plus its scenario picker get bundled into the production build (verified:
+  // they did). Defaulting each here means the compare always folds and the mock
+  // is dropped unless someone opts in explicitly. Both keys are required — one
+  // guards the line-skip PI checkout mock, the other the team-invite mock.
+  env: {
+    NEXT_PUBLIC_LINESKIP_PI_MOCK: process.env.NEXT_PUBLIC_LINESKIP_PI_MOCK || "0",
+    NEXT_PUBLIC_TEAM_INVITE_MOCK: process.env.NEXT_PUBLIC_TEAM_INVITE_MOCK || "0",
+  },
   // The support bot's knowledge pack is read from disk at runtime — make sure
   // the markdown files ship inside the serverless bundle on Vercel.
   outputFileTracingIncludes: {
@@ -72,6 +83,25 @@ const nextConfig: NextConfig = {
         source: "/events-contact",
         destination: "/events",
         permanent: true,
+      },
+      // Team-invite accept page moved to the unclaimed /team-invite. Forward the
+      // two older entry points to it, preserving ?token= (Next passes through
+      // any query the destination doesn't itself specify). Temporary (307): an
+      // invite link is transient, so we never want a browser caching this detour
+      // the way it would a 308. These mirror src/middleware.ts (which handles
+      // /business/accept-invite) and src/app/accept-invite/page.tsx — config +
+      // page + middleware are intentional twins so the token survives no matter
+      // which layer catches the request first. The vercel.json redirects block
+      // carries a platform-level third copy.
+      {
+        source: "/accept-invite",
+        destination: "/team-invite",
+        permanent: false,
+      },
+      {
+        source: "/business/accept-invite",
+        destination: "/team-invite",
+        permanent: false,
       },
       {
         source: "/event/:id(\\d+)",

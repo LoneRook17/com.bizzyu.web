@@ -32,7 +32,7 @@ function PromoterView() {
   useEffect(() => {
     setLoading(true)
     apiClient
-      .get<PromoterLink[]>(`/business/analytics/promoter-stats?_=1${venueParam}`)
+      .get<PromoterLink[]>(`/business/insights/promoter-stats?_=1${venueParam}`)
       .then(setLinks)
       .catch((err) => { console.error("Failed to load promoter stats:", err); setLinks([]) })
       .finally(() => setLoading(false))
@@ -55,7 +55,7 @@ function StaffView() {
   useEffect(() => {
     setLoading(true)
     apiClient
-      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
+      .get<DealsOverviewType>(`/business/insights/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch((err) => { console.error("Failed to load deals analytics:", err); setDeals(null) })
       .finally(() => setLoading(false))
@@ -86,13 +86,13 @@ function OwnerManagerView() {
     setLineSkipsLoading(true)
 
     apiClient
-      .get<DealsOverviewType>(`/business/analytics/deals/overview?_=1${venueParam}`)
+      .get<DealsOverviewType>(`/business/insights/deals/overview?_=1${venueParam}`)
       .then(setDeals)
       .catch((err) => { console.error("Failed to load deals analytics:", err); setDeals(null) })
       .finally(() => setDealsLoading(false))
 
     apiClient
-      .get<EventsOverviewType>(`/business/analytics/events/overview?_=1${venueParam}`)
+      .get<EventsOverviewType>(`/business/insights/events/overview?_=1${venueParam}`)
       .then(setEvents)
       .catch((err) => { console.error("Failed to load events analytics:", err); setEvents(null) })
       .finally(() => setEventsLoading(false))

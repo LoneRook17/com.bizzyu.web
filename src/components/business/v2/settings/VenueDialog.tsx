@@ -12,8 +12,18 @@ import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle,
 } from "@/components/business/v2/ui/dialog"
 import { Button } from "@/components/business/v2/ui/button"
-import { Input, Textarea } from "@/components/business/v2/ui/input"
+import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
+import {
+  CAMPUS_FIELD_HELPER,
+  CAMPUS_FIELD_LABEL,
+  SAME_AS_BUSINESS_LABEL,
+  campusOptionLabel,
+  campusSelectValue,
+  venueCampusPayload,
+  venueSaveErrorMessage,
+  type CampusOption,
+} from "@/lib/business/venue-campus"
 
 const BASE_URL = getApiBaseUrl()
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024
@@ -52,6 +62,9 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
   const photoInputRef = useRef<HTMLInputElement>(null)
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [sameAsBusiness, setSameAsBusiness] = useState(false)
+  // #14 per-venue campus. "" = "Same as business (default)" (inherit).
+  const [campusValue, setCampusValue] = useState("")
+  const [campuses, setCampuses] = useState<CampusOption[]>([])
 
   // Sync form to venue (or reset for create) whenever opened / venue changes
   useEffect(() => {
@@ -67,7 +80,23 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
     setPhotoError("")
     setError("")
     setSameAsBusiness(false)
+    // Edit prefills the venue's campus; create defaults to "Same as business".
+    setCampusValue(campusSelectValue(venue?.campus_id))
   }, [open, venue])
+
+  // Campus options (#14): the live universities list, same source the signup
+  // campus picker reads (GET /business/auth/campuses). Fetched once, lazily,
+  // when the dialog first opens; a failure just leaves "Same as business" — the
+  // safe inherit default — as the only option.
+  useEffect(() => {
+    if (!open || campuses.length > 0) return
+    let cancelled = false
+    apiClient
+      .authGet<{ campuses: CampusOption[] }>("/business/auth/campuses")
+      .then((data) => { if (!cancelled && data.campuses?.length) setCampuses(data.campuses) })
+      .catch(() => {}) // picker falls back to inherit-only
+    return () => { cancelled = true }
+  }, [open, campuses.length])
 
   // Create mode: load the business profile so we can offer "same as my
   // business" autofill - most businesses' first venue is their own location.
@@ -166,6 +195,9 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
           description: description.trim() || null,
           website: normalizeWebsite(website),
           instagram: instagram.trim() || null,
+          // null resets the venue to inherit the business campus; PATCH leaves
+          // campus_id untouched only when the field is ABSENT, so it is always sent.
+          campus_id: venueCampusPayload(campusValue),
         })
         const ok = await uploadPhoto(venue.id)
         await refreshVenues()
@@ -182,6 +214,8 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
           description: description.trim() || undefined,
           website: normalizeWebsite(website) ?? undefined,
           instagram: instagram.trim() || undefined,
+          // null → the server inherits the business campus (same as omitting).
+          campus_id: venueCampusPayload(campusValue),
         })
         const venueId = created.venue.id
         const ok = await uploadPhoto(venueId)
@@ -194,8 +228,12 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
         }
         onOpenChange(false)
       }
-    } catch {
-      setError(isEdit ? "Failed to update venue. Please try again." : "Failed to create venue. Please try again.")
+    } catch (err) {
+      // Surface the API's 400 (e.g. an invalid campus_id) verbatim; everything
+      // else keeps the generic mode-specific retry line.
+      const status = err instanceof ApiError ? err.status : null
+      const message = err instanceof ApiError ? err.message : undefined
+      setError(venueSaveErrorMessage(status, message, isEdit))
     } finally {
       setLoading(false)
     }
@@ -242,17 +280,34 @@ export default function VenueDialog({ open, onOpenChange, venue }: VenueDialogPr
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="venue-desc">Description</Label>
+            <Label htmlFor="venue-campus">{CAMPUS_FIELD_LABEL}</Label>
+            <Select
+              id="venue-campus"
+              value={campusValue}
+              onChange={(e) => setCampusValue(e.target.value)}
+            >
+              <option value="">{SAME_AS_BUSINESS_LABEL}</option>
+              {campuses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {campusOptionLabel(c)}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{CAMPUS_FIELD_HELPER}</p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="venue-desc">Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
             <Textarea id="venue-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Brief description of this venue…" />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="venue-website">Website</Label>
+              <Label htmlFor="venue-website">Website <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
               <Input id="venue-website" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="www.example.com" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="venue-instagram">Instagram</Label>
+              <Label htmlFor="venue-instagram">Instagram <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
               <Input id="venue-instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@yourvenue" />
             </div>
           </div>

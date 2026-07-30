@@ -4,11 +4,13 @@ import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 import type { DealsOverview, DealOverviewItem, DealAnalytics } from "@/lib/business/types"
 import { apiClient } from "@/lib/business/api-client"
+import { dealPanelModel } from "@/lib/business/deals-overview-panel"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { Tag } from "lucide-react"
+import { DealFunnel } from "@/components/business/dashboard/DealFunnel"
 import { StatTile, StatGrid, Section, VenueGroupLabel, RowStat } from "./shared"
 
 function DealDetail({ data }: { data: DealAnalytics }) {
@@ -92,7 +94,7 @@ function DealCard({
     if (!isExpanded && !detail) {
       setDetailLoading(true)
       apiClient
-        .get<DealAnalytics>(`/business/analytics/deals/${deal.deal_id}`)
+        .get<DealAnalytics>(`/business/insights/deals/${deal.deal_id}`)
         .then(setDetail)
         .catch(() => setDetail(null))
         .finally(() => setDetailLoading(false))
@@ -136,7 +138,12 @@ function DealCard({
       </button>
 
       {isExpanded && (
-        <div className="border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-800/50 p-4">
+        <div className="space-y-5 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-800/50 p-4">
+          {/* Engagement funnel — impressions -> views -> claims. Self-fetches its
+              own DI-B3s stats and zero-fills when unavailable, so it renders
+              independently of the claims-detail load below (never gated by it). */}
+          <DealFunnel dealId={dealPanelModel({ dealId: deal.deal_id, detailLoading, detail }).funnelDealId} />
+
           {detailLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-4 w-32" />

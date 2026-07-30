@@ -88,18 +88,21 @@ export function AuthPasswordField({ label, name, error, required, className, ...
           required={required}
           aria-invalid={error ? true : undefined}
           className={cn(
-            "h-10 pr-10",
+            "h-10 pr-12",
             error && "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/20",
             className
           )}
           {...props}
         />
+        {/* Full-height 44px-wide zone, not an icon-sized button: a fingertip
+            needs ~44px, and misses land on the input (focus + keyboard, no
+            toggle) — which read as the eye "doing nothing" on phones. */}
         <button
           type="button"
           tabIndex={-1}
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? "Hide password" : "Show password"}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+          className="absolute inset-y-0 right-0 z-10 flex w-11 touch-manipulation items-center justify-center text-neutral-400 transition-colors hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
         >
           {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </button>

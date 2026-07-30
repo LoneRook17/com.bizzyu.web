@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/support/auth.test.ts src/lib/business/email-change.test.ts src/lib/business/verify-email-copy.test.ts"
+    "test": "node --test src/lib/support/auth.test.ts src/lib/business/email-change.test.ts src/lib/business/verify-email-copy.test.ts src/lib/lineskip-pi/element-binding.test.ts src/lib/business/deal-stats.test.ts src/lib/business/deals-overview-panel.test.ts src/lib/business/payouts.test.ts src/lib/business/payouts-reconcile.test.ts src/lib/business/payouts-cache-contract.test.ts src/lib/business/payouts-access.test.ts src/lib/business/analytics-access.test.ts src/lib/business/adblock-safe-api-paths.test.ts src/lib/business/promoter-view-removal.test.ts src/lib/business/login-error.test.ts src/lib/business/venue-selection.test.ts src/lib/team-invite/delivery.test.ts src/lib/team-invite/lookup.test.ts src/lib/team-invite/display.test.ts src/lib/lineskip/availability.test.ts src/lib/lineskip/checkout-modal.test.ts src/lib/lineskip/success-params.test.ts src/lib/business/venue-campus.test.ts src/lib/business/team-venues.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
@@ -25,6 +25,8 @@
     "@radix-ui/react-switch": "^1.3.0",
     "@radix-ui/react-tabs": "^1.1.14",
     "@radix-ui/react-tooltip": "^1.2.9",
+    "@stripe/react-stripe-js": "^6.8.0",
+    "@stripe/stripe-js": "^9.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.36.0",

@@ -84,7 +84,7 @@ function EventCard({
     if (!isExpanded && !detail) {
       setDetailLoading(true)
       apiClient
-        .get<EventAnalytics>(`/business/analytics/events/${event.event_id}`)
+        .get<EventAnalytics>(`/business/insights/events/${event.event_id}`)
         .then(setDetail)
         .catch((err) => { console.error("Failed to load event detail:", err); setDetail(null) })
         .finally(() => setDetailLoading(false))

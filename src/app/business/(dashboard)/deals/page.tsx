@@ -8,8 +8,17 @@ import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { DEAL_TABS } from "@/lib/business/constants"
+import { canCreateDeal } from "@/lib/business/analytics-access"
 import { cn } from "@/lib/v2/utils"
 import type { DealListItem } from "@/lib/business/types"
+import {
+  fetchDealStats,
+  indexStatsByDeal,
+  rangeForDays,
+  DEFAULT_RANGE_DAYS,
+  type DealStatRow,
+} from "@/lib/business/deal-stats"
+import { DealStatColumn } from "@/components/business/dashboard/DealStatColumn"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card } from "@/components/business/v2/ui/card"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -53,11 +62,17 @@ function DealRow({
   tab,
   showVenue,
   onReactivate,
+  stat,
+  statsLoading,
+  statsUnavailable,
 }: {
   deal: DealListItem
   tab: string
   showVenue: boolean
   onReactivate?: (id: number) => void
+  stat?: DealStatRow
+  statsLoading: boolean
+  statsUnavailable: boolean
 }) {
   return (
     <div className="flex items-center gap-4 px-5 py-4">
@@ -97,6 +112,32 @@ function DealRow({
             <span>{timeRemaining(deal.expired_date)}</span>
           ) : null}
         </div>
+      </div>
+
+      {/* impressions / views / claims columns (DI-B3w) */}
+      <div className="hidden shrink-0 items-start gap-5 lg:flex">
+        <DealStatColumn
+          label="Impr."
+          value={stat?.impressions}
+          unique={stat?.unique_impressions}
+          loading={statsLoading}
+          unavailable={statsUnavailable}
+        />
+        <DealStatColumn
+          label="Views"
+          value={stat?.views}
+          unique={stat?.unique_views}
+          loading={statsLoading}
+          unavailable={statsUnavailable}
+        />
+        <DealStatColumn
+          label="Claims"
+          // Claims predate 4.2.6 tracking — fall back to the list's own count so
+          // this column is populated even when impression tracking isn't live.
+          value={stat?.claims ?? deal.claim_count ?? 0}
+          loading={statsLoading && stat === undefined && deal.claim_count === undefined}
+          unavailable={false}
+        />
       </div>
 
       {/* status + actions */}
@@ -146,12 +187,20 @@ function DealsContent() {
   const [loading, setLoading] = useState(true)
   const [counts, setCounts] = useState<DealCounts>({ live: 0, expired: 0, deactivated: 0 })
   const [reactivateNotice, setReactivateNotice] = useState("")
+  // Engagement stats join by deal_id, fetched SEPARATELY from the deals list so
+  // rows render immediately and never jank while stats load. null map =
+  // endpoint not deployed yet (404) → columns quietly show "—".
+  const [statsByDeal, setStatsByDeal] = useState<Map<number, DealStatRow>>(new Map())
+  const [statsLoading, setStatsLoading] = useState(true)
+  const [statsUnavailable, setStatsUnavailable] = useState(false)
 
   // Stale notices don't follow you across tabs
   useEffect(() => setReactivateNotice(""), [tab])
 
-  const canCreate =
-    user?.business_role === "owner" || user?.business_role === "manager" || user?.business_role === "staff"
+  // Owner/manager only — mirrors the event-create gate (events/page.tsx) and
+  // backstops the services authz fix (TF-DEAL-AUTHZ-F1): don't show a "Create
+  // deal" button that staff would only get a 403 from. The server is the real block.
+  const canCreate = canCreateDeal(user?.business_role)
   const canManage = user?.business_role === "owner" || user?.business_role === "manager"
 
   const handleCreate = () => {
@@ -190,6 +239,34 @@ function DealsContent() {
     fetchDeals()
     fetchCounts()
   }, [fetchDeals, fetchCounts])
+
+  // Stats are range-based per-deal aggregates (tab- AND venue-independent): one
+  // fetch covers every tab, and rows join by deal_id so the visible venue's
+  // deals pick their own rows out of the map. Flipping tabs reuses it (no jank).
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true)
+    const { from, to } = rangeForDays(DEFAULT_RANGE_DAYS, new Date())
+    try {
+      const resp = await fetchDealStats(from, to)
+      if (resp === null) {
+        setStatsUnavailable(true)
+        setStatsByDeal(new Map())
+      } else {
+        setStatsUnavailable(false)
+        setStatsByDeal(indexStatsByDeal(resp))
+      }
+    } catch {
+      // A real failure shouldn't break the deals list — degrade to "—".
+      setStatsUnavailable(true)
+      setStatsByDeal(new Map())
+    } finally {
+      setStatsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
 
   const handleReactivate = async (dealId: number) => {
     // Publishing is approval-gated server-side (403) - explain instead of
@@ -286,6 +363,9 @@ function DealsContent() {
               tab={tab}
               showVenue={isAllVenues}
               onReactivate={canManage ? handleReactivate : undefined}
+              stat={statsByDeal.get(deal.id)}
+              statsLoading={statsLoading}
+              statsUnavailable={statsUnavailable}
             />
           ))}
         </Card>

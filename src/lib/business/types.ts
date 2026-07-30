@@ -1,9 +1,15 @@
+import type { InviteDelivery } from '@/lib/team-invite/types'
+
 export interface BusinessUser {
   id: number
   email: string
   full_name: string
   business_role: 'owner' | 'manager' | 'staff' | 'promoter'
   venue_id: number | null
+  // TM-B2 (#15) venue-SET: the caller's own venue set when they're scoped to
+  // more than one. Optional/additive — absent on legacy /me deploys, where the
+  // scalar venue_id above still governs the switcher lock byte-identically.
+  venue_ids?: number[] | null
 }
 
 export type DashboardMode = 'deals' | 'events' | 'hybrid'
@@ -282,6 +288,38 @@ export interface TeamMember {
   created_at: string
   venue_id: number | null
   venue_name: string | null
+  // ── #5 invite fields. OPTIONAL, and that is the grandfather guarantee in the
+  // type system: every one of the 196 legacy rows arrives without them and
+  // renders exactly as it did before this change. A row is never badged
+  // "broken" for lacking a field the new flow writes.
+  /** How the invite actually went out. Absent on legacy rows. */
+  invite_delivery?: InviteDelivery | null
+  /** Explicit — NOT inferred from is_active, which legacy rows use for
+   *  deactivated-but-real memberships (the ghost-invite lesson). */
+  invite_revoked_at?: string | null
+  // ── TI-3 never-blank fields (GET /business/team, reconciled to TI-3s
+  // as-built). OPTIONAL — grandfather guarantee holds: a legacy row lacks them
+  // and falls back to its `email` exactly as before.
+  /**
+   * Guaranteed non-blank by TI-3s: real name (joined member) → provisional_name
+   * → typed email → masked phone → "Pending invite". The primary text a row
+   * shows when present. See lib/team-invite/display.ts.
+   */
+  display_name?: string | null
+  /** The real name only for joined members; null for pending invites. */
+  full_name?: string | null
+  /** The owner's provisional label for an unresolved invite; else null. */
+  provisional_name?: string | null
+  /**
+   * Masked `invited_phone` for a phone-only provisional row with no name yet —
+   * so the row is recognisable without leaking the number back to the dashboard.
+   * TI-3s names this `masked_phone` (was `invited_contact_masked` pre-reconcile).
+   */
+  masked_phone?: string | null
+  // TM-B2 (#15) venue-SET: assigned venues as a pivot set. EMPTY or ABSENT ⇒
+  // legacy — fall back to the scalar venue_id/venue_name above (venue_id null =
+  // global). See lib/business/team-venues.ts for the reconciliation.
+  venues?: { venue_id: number; name: string }[] | null
 }
 
 // Analytics types

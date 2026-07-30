@@ -16,7 +16,11 @@ class BusinessApiClient {
   private isRefreshing = false
   private refreshPromise: Promise<boolean> | null = null
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  // The shared transport: fetch + 401-silent-refresh-then-retry-once + the
+  // login redirect on refresh failure. request() layers JSON parsing and the
+  // !ok → ApiError mapping on top; send() exists so header-aware callers
+  // (getWithHeaders / getRaw) reuse the exact same auth semantics.
+  private async send(path: string, options: RequestInit = {}): Promise<Response> {
     const base = getApiBaseUrl()
     const url = `${base}${path}`
     const config: RequestInit = {
@@ -46,6 +50,12 @@ class BusinessApiClient {
         throw new ApiError('Session expired', 401)
       }
     }
+
+    return response
+  }
+
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const response = await this.send(path, options)
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}))
@@ -82,6 +92,35 @@ class BusinessApiClient {
 
   get<T>(path: string) {
     return this.request<T>(path)
+  }
+
+  /** GET that surfaces the response headers alongside the parsed JSON body —
+   *  for endpoints whose freshness contract rides in headers (the payouts
+   *  X-Payouts-* trio). Same 401-silent-refresh + ApiError semantics as get(). */
+  async getWithHeaders<T>(path: string): Promise<{ body: T; headers: Headers; status: number }> {
+    const response = await this.send(path)
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new ApiError(body.message || body.error || 'Request failed', response.status, body)
+    }
+
+    return { body: await response.json(), headers: response.headers, status: response.status }
+  }
+
+  /** GET that returns the raw Response without consuming the body — for
+   *  non-JSON payloads (the payouts CSV export, where 202 = still computing
+   *  and 200 = the file). Same 401-silent-refresh semantics; non-2xx still
+   *  maps to ApiError so callers keep one error shape. */
+  async getRaw(path: string): Promise<Response> {
+    const response = await this.send(path)
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new ApiError(body.message || body.error || 'Request failed', response.status, body)
+    }
+
+    return response
   }
 
   post<T>(path: string, body?: unknown) {

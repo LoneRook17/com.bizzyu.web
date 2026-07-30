@@ -7,7 +7,8 @@ import AuthCard from "@/components/business/auth/AuthCard"
 import FormInput from "@/components/business/auth/FormInput"
 import FormPasswordInput from "@/components/business/auth/FormPasswordInput"
 import AuthSubmitButton from "@/components/business/auth/AuthSubmitButton"
-import { apiClient, ApiError } from "@/lib/business/api-client"
+import { apiClient } from "@/lib/business/api-client"
+import { loginErrorMessage } from "@/lib/business/login-error"
 import type { LoginResponse } from "@/lib/business/types"
 
 export default function LoginPage() {
@@ -45,19 +46,7 @@ function LoginPageInner() {
       // biz_session cookie is set by the server (httpOnly=false, for Next.js middleware routing)
       router.push("/business")
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 403 && err.message.toLowerCase().includes("verify")) {
-          setError("Please verify your email before logging in.")
-        } else if (err.status === 403) {
-          setError(err.message)
-        } else if (err.status === 401) {
-          setError("Invalid email or password.")
-        } else {
-          setError(err.message)
-        }
-      } else {
-        setError("Something went wrong. Please try again.")
-      }
+      setError(loginErrorMessage(err))
     } finally {
       setLoading(false)
     }

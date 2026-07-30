@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { Info, Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { TICKET_TYPES } from "@/lib/business/constants"
 import type { TicketTier } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
+import { ScanWindowSection } from "@/components/business/v2/events/ScanWindowSection"
 import { cn } from "@/lib/v2/utils"
 
 interface TicketTierFormProps {
@@ -33,29 +33,6 @@ const TICKET_TYPE_LABELS: Record<string, string> = {
   free: "Free",
 }
 
-function ValidTimeInfo() {
-  const [open, setOpen] = useState(false)
-  return (
-    <span className="relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="What does the redeemable / scan window do?"
-        className="inline-flex size-4 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-      >
-        <Info className="size-2.5" />
-      </button>
-      {open && (
-        <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400 shadow-lg">
-          <strong className="mb-1 block text-neutral-800 dark:text-neutral-200">Redeemable / scan window (optional)</strong>
-          Sets when this ticket can be <strong>scanned in at the door</strong>. It can still be{" "}
-          <strong>bought beforehand</strong>, sales just <strong>close when the window ends</strong>.
-        </span>
-      )}
-    </span>
-  )
-}
-
 export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
   const updateTier = (index: number, field: keyof TicketTier, value: string | number) => {
     const updated = [...tiers]
@@ -63,6 +40,12 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
     if (field === "ticket_type" && value === "free") {
       updated[index].price_usd = 0
     }
+    onChange(updated)
+  }
+
+  const clearTierWindow = (index: number) => {
+    const updated = [...tiers]
+    updated[index] = { ...updated[index], valid_from: "", valid_until: "" }
     onChange(updated)
   }
 
@@ -137,32 +120,12 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
             </p>
           </div>
 
-          <div className="mt-3 flex items-center gap-1.5">
-            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Redeemable / scan window</span>
-            <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
-            <ValidTimeInfo />
-          </div>
-          <div className="mt-1 grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid from</Label>
-              <Input
-                type="datetime-local"
-                value={(tier.valid_from ?? "").replace(" ", "T").slice(0, 16)}
-                onChange={(e) => updateTier(i, "valid_from", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Valid until</Label>
-              <Input
-                type="datetime-local"
-                value={(tier.valid_until ?? "").replace(" ", "T").slice(0, 16)}
-                onChange={(e) => updateTier(i, "valid_until", e.target.value)}
-              />
-            </div>
-          </div>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-            When this ticket can be scanned at the door. It can still be bought beforehand, sales just close when the window ends. Leave blank for no limit.
-          </p>
+          <ScanWindowSection
+            valid_from={tier.valid_from}
+            valid_until={tier.valid_until}
+            onUpdate={(field, value) => updateTier(i, field, value)}
+            onClear={() => clearTierWindow(i)}
+          />
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">

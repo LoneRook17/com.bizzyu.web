@@ -13,6 +13,7 @@ import { Label } from "@/components/business/v2/ui/label"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
+import { ScanWindowSection } from "@/components/business/v2/events/ScanWindowSection"
 
 type FormState = {
   ticket_id?: number
@@ -277,18 +278,17 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
                   <Label className="mb-1 block text-xs">Max per person</Label>
                   <Input type="number" min="1" value={editing.max_per_person} placeholder="No limit" onChange={(e) => setEditing({ ...editing, max_per_person: e.target.value })} />
                 </div>
-                <div>
-                  <Label className="mb-1 block text-xs">Valid from <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
-                  <Input type="datetime-local" value={editing.valid_from} onChange={(e) => setEditing({ ...editing, valid_from: e.target.value })} />
-                </div>
-                <div>
-                  <Label className="mb-1 block text-xs">Valid until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span></Label>
-                  <Input type="datetime-local" value={editing.valid_until} onChange={(e) => setEditing({ ...editing, valid_until: e.target.value })} />
+                {/* Keyed so the toggle's open/closed state re-initializes when the
+                    edited ticket changes without the form unmounting. */}
+                <div key={editing.ticket_id ?? "new"} className="sm:col-span-2">
+                  <ScanWindowSection
+                    valid_from={editing.valid_from}
+                    valid_until={editing.valid_until}
+                    onUpdate={(field, value) => setEditing({ ...editing, [field]: value })}
+                    onClear={() => setEditing({ ...editing, valid_from: "", valid_until: "" })}
+                  />
                 </div>
               </div>
-              <p className="-mt-1 text-xs text-neutral-400 dark:text-neutral-500">
-                Redeemable / scan window: when this ticket can be scanned at the door. It can still be bought beforehand; sales just close when the window ends.
-              </p>
               {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
               <div className="flex items-center gap-2 pt-1">
                 <Button type="submit" disabled={saving}>

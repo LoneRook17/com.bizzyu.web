@@ -6,6 +6,7 @@ import type { RecurringTemplateTicket } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
+import { ScanWindowToggle } from "@/components/business/v2/events/ScanWindowSection"
 import { TICKET_DESCRIPTION_MAX } from "@/components/business/v2/events/TicketTierForm"
 import { cn } from "@/lib/v2/utils"
 
@@ -196,32 +197,34 @@ export function RecurringTierEditor({
             </p>
           </div>
 
-          <div className="mt-3 flex items-center gap-1.5">
-            <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Scan window — relative to each night</span>
-            <span className="text-xs font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
-            <WindowInfo />
-          </div>
-          <div className="mt-1 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">From</Label>
-              <Input type="time" value={tier.valid_from_time} onChange={(e) => update(i, { valid_from_time: e.target.value })} />
+          <ScanWindowToggle
+            label="Scan window — relative to each night"
+            info={<WindowInfo />}
+            hasWindow={!!(tier.valid_from_time || tier.valid_until_time)}
+            onClear={() => update(i, { valid_from_time: "", valid_until_time: "", valid_from_day_offset: 0, valid_until_day_offset: 0 })}
+          >
+            <div className="mt-1 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div>
+                <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">From</Label>
+                <Input type="time" value={tier.valid_from_time} onChange={(e) => update(i, { valid_from_time: e.target.value })} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>
+                <OffsetSelect idPrefix={`from_offset_${i}`} value={tier.valid_from_day_offset} onChange={(v) => update(i, { valid_from_day_offset: v })} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Until</Label>
+                <Input type="time" value={tier.valid_until_time} onChange={(e) => update(i, { valid_until_time: e.target.value })} />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>
+                <OffsetSelect idPrefix={`until_offset_${i}`} value={tier.valid_until_day_offset} onChange={(v) => update(i, { valid_until_day_offset: v })} />
+              </div>
             </div>
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>
-              <OffsetSelect idPrefix={`from_offset_${i}`} value={tier.valid_from_day_offset} onChange={(v) => update(i, { valid_from_day_offset: v })} />
-            </div>
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Until</Label>
-              <Input type="time" value={tier.valid_until_time} onChange={(e) => update(i, { valid_until_time: e.target.value })} />
-            </div>
-            <div>
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>
-              <OffsetSelect idPrefix={`until_offset_${i}`} value={tier.valid_until_day_offset} onChange={(v) => update(i, { valid_until_day_offset: v })} />
-            </div>
-          </div>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-            Example: doors at 9 PM &ldquo;the night of&rdquo; until 2 AM &ldquo;the day after&rdquo;. Applies to every night in the series.
-          </p>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
+              Example: doors at 9 PM &ldquo;the night of&rdquo; until 2 AM &ldquo;the day after&rdquo;. Applies to every night in the series.
+            </p>
+          </ScanWindowToggle>
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
