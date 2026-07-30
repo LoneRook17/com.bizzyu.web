@@ -48,12 +48,50 @@
 // The fetchers import apiClient lazily (not top-level) so everything else here is
 // pure and unit-testable under the Node built-in test runner (`npm test`) without
 // resolving the extensionless api-client import chain.
+//
+// CACHED-SERVE contract (services :125, notes/payouts-listexport-cache-contract.md):
+// all four payouts endpoints (/summary, /deposits, the / list, /export.csv) serve
+// from ONE background-computed cache keyed (business | venue-or-all |
+// since-eastern-day | until) — the reconciliation walk never runs on the request
+// path. Once one endpoint warms the key, all four are warm. Freshness signals:
+//
+//   /summary     — body-only. COLD: 200 {state:'computing', computed_at:null,
+//                  refreshing:true}. READY: the summary payload + computed_at
+//                  (ISO instant) + refreshing (bool). The computing body MUST be
+//                  detected BEFORE normalizeSummary() — normalization would
+//                  coerce it into an all-zeros summary ($0.00 tiles).
+//   /deposits    — body STAYS a bare array; freshness rides in headers
+//                  X-Payouts-State (ready|computing) / X-Payouts-Computed-At /
+//                  X-Payouts-Refreshing (1|0). computing = [] body + header.
+//                  MISSING headers → ready (back-compat with older servers).
+//   / (list)     — COLD: 200 {state:'computing'} (the summary shape). READY: the
+//                  familiar list body + computed_at + refreshing (body AND headers).
+//   /export.csv  — COLD: 202 + X-Payouts-State: computing + Retry-After: 5, JSON
+//                  body, NO Content-Disposition. READY: 200 CSV with
+//                  Content-Disposition. Fetch-then-blob: on 202 wait Retry-After
+//                  and retry; NEVER blob the JSON computing body.
+//
+// A stale-but-computed key is served as-is immediately with refreshing:true while
+// exactly one background recompute runs — so "ready + refreshing" renders data
+// normally with a subtle indicator, never a spinner wall.
+//
+// ⚠ ?payout_id is WINDOW-BOUND on the cached list/export: the cache is window-
+// keyed, so a payout outside the current since/until returns an EMPTY payouts
+// list (200), not the payout. For a range-free single-payout lookup use the
+// per-deposit route (fetchReconciliation → /deposits/:payoutId/reconciliation),
+// never ?payout_id.
 
 import {
   type PayoutStatus,
+  type PayoutsResponse,
+  type PayoutsRange,
+  type PayoutStatusFilter,
   centsToUsdStr,
+  csvFilename,
   downloadCsv,
   isNotDeployed,
+  normalizePayoutsResponse,
+  payoutsQuery,
   PAYOUT_RANGE_PRESETS,
   DEFAULT_PAYOUT_RANGE_DAYS,
 } from "./payouts.ts"
@@ -881,6 +919,238 @@ export function exportDepositPdf(recon: Reconciliation): void {
   }
 }
 
+// ── Cached-serve freshness (services :125) ───────────────────────────────────
+//
+// Pure result-shaping for the four cached endpoints. The fetchers below are thin
+// transport wrappers around these, so the computing/ready/back-compat decisions
+// are unit-tested without a network.
+
+/** The freshness trio every cached payouts response carries (headers on
+ *  /deposits + /export.csv + the list; body-only on /summary). */
+export interface PayoutsFreshness {
+  state: "ready" | "computing"
+  /** ISO-8601 instant the background walk finished; null while computing (or
+   *  from a pre-:125 server that doesn't send it). */
+  computedAt: string | null
+  /** True while a background recompute for this cache key is in flight — data
+   *  on screen is the last computed payload, being refreshed. */
+  refreshing: boolean
+}
+
+/** The cold-cache body all JSON endpoints share:
+ *  { state:'computing', computed_at:null, refreshing:true }. Detected on the RAW
+ *  body — before any normalize*() call, which would coerce it into an all-zeros
+ *  payload ($0.00 tiles / an empty list that looks final). */
+export function isComputingBody(raw: unknown): boolean {
+  return typeof raw === "object" && raw !== null && (raw as { state?: unknown }).state === "computing"
+}
+
+/** Parse the X-Payouts-* trio. MISSING X-Payouts-State → "ready": a pre-:125
+ *  server sends no headers and its array body IS the final data (back-compat). */
+export function parsePayoutsHeaders(headers: { get(name: string): string | null }): PayoutsFreshness {
+  return {
+    state: headers.get("x-payouts-state") === "computing" ? "computing" : "ready",
+    computedAt: str(headers.get("x-payouts-computed-at")),
+    refreshing: headers.get("x-payouts-refreshing") === "1",
+  }
+}
+
+export type SummaryFetchResult =
+  | { kind: "computing" }
+  | { kind: "ready"; summary: PayoutsSummary; computedAt: string | null; refreshing: boolean }
+
+/** /summary body → result. The computing check runs FIRST — normalizeSummary on
+ *  the computing body would return an all-zeros summary and the strip would
+ *  render $0.00 tiles as if that were the answer. */
+export function summaryResultFromBody(raw: unknown): SummaryFetchResult {
+  if (isComputingBody(raw)) return { kind: "computing" }
+  const r = (raw ?? {}) as Partial<PayoutsSummary> & { computed_at?: unknown; refreshing?: unknown }
+  return {
+    kind: "ready",
+    summary: normalizeSummary(r),
+    computedAt: str(r.computed_at),
+    refreshing: r.refreshing === true,
+  }
+}
+
+export type DepositsFetchResult =
+  | { kind: "computing" }
+  | { kind: "ready"; deposits: DepositListItem[]; computedAt: string | null; refreshing: boolean }
+
+/** /deposits body + headers → result. The body stays a bare array in every
+ *  state; only the headers distinguish "computing (empty for now)" from "ready
+ *  (genuinely empty)". No headers → ready (older server). */
+export function depositsResultFromBody(
+  raw: unknown,
+  headers: { get(name: string): string | null },
+): DepositsFetchResult {
+  const f = parsePayoutsHeaders(headers)
+  if (f.state === "computing") return { kind: "computing" }
+  return { kind: "ready", deposits: normalizeDeposits(raw), computedAt: f.computedAt, refreshing: f.refreshing }
+}
+
+export type PayoutsListFetchResult =
+  | { kind: "computing" }
+  | { kind: "ready"; response: PayoutsResponse; computedAt: string | null; refreshing: boolean }
+
+/** /business/payouts (list) body → result. Same computing-first rule as the
+ *  summary: normalizePayoutsResponse on the computing body would fabricate an
+ *  empty-but-final-looking list. Under ?payout_id an out-of-window deposit is a
+ *  READY response with empty payouts[] (the cache is window-keyed) — that is
+ *  data, not an error; range-free lookups belong to fetchReconciliation. */
+export function listResultFromBody(raw: unknown): PayoutsListFetchResult {
+  if (isComputingBody(raw)) return { kind: "computing" }
+  const r = (raw ?? {}) as Partial<PayoutsResponse> & { computed_at?: unknown; refreshing?: unknown }
+  return {
+    kind: "ready",
+    response: normalizePayoutsResponse(r),
+    computedAt: str(r.computed_at),
+    refreshing: r.refreshing === true,
+  }
+}
+
+/** Summary and deposits share one cache key, so their freshness should agree;
+ *  merge defensively (first computed_at wins, refreshing if either says so). */
+export function combineFreshness(
+  a: { computedAt: string | null; refreshing: boolean },
+  b: { computedAt: string | null; refreshing: boolean },
+): { computedAt: string | null; refreshing: boolean } {
+  return { computedAt: a.computedAt ?? b.computedAt, refreshing: a.refreshing || b.refreshing }
+}
+
+// ── Computing-state UI rulings (pinned copy + cadence) ───────────────────────
+
+/** Poll cadence while the key is computing (contract suggests 2–5 s). */
+export const COMPUTING_POLL_MS = 4000
+
+/** Give-up ceiling: the prod walks we've measured run 6–8 min COLD only at
+ *  whale scale, but a normal business computes in seconds; past 2 minutes the
+ *  page stops silently spinning and offers the existing error + Retry state. */
+export const COMPUTING_GIVE_UP_MS = 120_000
+
+/** Non-alarming first-load copy — computing is expected behavior, not a fault. */
+export const COMPUTING_COPY = {
+  title: "Crunching your payouts",
+  description:
+    "First load can take a minute — we're reconciling every deposit with Stripe. This page will update by itself.",
+} as const
+
+/** Subtle indicator text while a background recompute is in flight. */
+export const REFRESHING_LABEL = "Refreshing…"
+
+/** Export button label while the server answers 202 (key still computing). */
+export const EXPORT_PREPARING_LABEL = "Preparing export…"
+
+/** "Updated h:mm a (ET)" from the computed_at instant; null when absent or
+ *  unparseable (the label simply doesn't render). Explicit America/New_York —
+ *  computed_at is an ISO instant and the product's book time is Eastern. */
+export function freshnessLabel(computedAtIso: string | null): string | null {
+  if (!computedAtIso) return null
+  const d = new Date(computedAtIso)
+  if (Number.isNaN(d.getTime())) return null
+  const t = d.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "America/New_York",
+  })
+  return `Updated ${t} (ET)`
+}
+
+// ── Export.csv fetch-then-blob (202 → wait → retry → 200 CSV) ────────────────
+
+/** Parse Retry-After (delta-seconds). Absent/garbage → the contract's 5 s;
+ *  clamped to [1, 30] so a bad header can neither hammer nor hang the loop. */
+export function retryAfterSeconds(header: string | null): number {
+  const n = header == null ? NaN : Number(header)
+  if (!Number.isFinite(n) || n <= 0) return 5
+  return Math.min(30, Math.max(1, Math.round(n)))
+}
+
+/** Extract the filename from Content-Disposition; null when absent. */
+export function csvFilenameFromDisposition(header: string | null): string | null {
+  if (!header) return null
+  const m = /filename="([^"]+)"/.exec(header) ?? /filename=([^;]+)/.exec(header)
+  return m ? m[1].trim() : null
+}
+
+/** A response is the actual CSV only when it says so: Content-Disposition
+ *  present or a text/csv Content-Type. A 200 without either is treated as
+ *  still-computing (defensive) — the JSON computing body must NEVER be blobbed
+ *  into a .csv download. */
+export function isCsvExportResponse(headers: { get(name: string): string | null }): boolean {
+  if (headers.get("content-disposition")) return true
+  return (headers.get("content-type") ?? "").includes("text/csv")
+}
+
+/** Minimal response surface the export loop needs (Response satisfies it;
+ *  tests inject a stub). */
+export interface ExportResponseLike {
+  status: number
+  headers: { get(name: string): string | null }
+  text(): Promise<string>
+}
+
+export type ExportFetchResult = { kind: "ready"; filename: string; csv: string } | { kind: "gave_up" }
+
+/** Fetch the server CSV export. 200 + CSV markers → the file. 202 (or a
+ *  defensive non-CSV 200) → still computing: notify, wait Retry-After, retry —
+ *  up to maxWaitSeconds, then give up (caller shows a retryable failure).
+ *  404 → null (endpoint not deployed — caller falls back to the client-side
+ *  CSV build). Other errors propagate as ApiError. */
+export async function fetchPayoutsExportCsv(params: {
+  range: PayoutsRange
+  status?: PayoutStatusFilter
+  venueParam?: string
+  payoutId?: string
+  /** Fires on each computing response — flips the button to "Preparing export…". */
+  onComputing?: () => void
+  /** Test seams; default to apiClient.getRaw + a real timer. */
+  request?: (path: string) => Promise<ExportResponseLike>
+  sleep?: (seconds: number) => Promise<void>
+  maxWaitSeconds?: number
+}): Promise<ExportFetchResult | null> {
+  const {
+    range,
+    status = "all",
+    venueParam = "",
+    payoutId,
+    onComputing,
+    sleep = (s) => new Promise<void>((resolve) => setTimeout(resolve, s * 1000)),
+    maxWaitSeconds = COMPUTING_GIVE_UP_MS / 1000,
+  } = params
+  const request =
+    params.request ??
+    (async (path: string): Promise<ExportResponseLike> => {
+      const { apiClient } = await import("./api-client")
+      return apiClient.getRaw(path)
+    })
+  const path = `/business/payouts/export.csv${payoutsQuery({ range, status, venueParam, payoutId })}`
+
+  let waited = 0
+  try {
+    for (;;) {
+      const res = await request(path)
+      if (res.status === 200 && isCsvExportResponse(res.headers)) {
+        return {
+          kind: "ready",
+          filename: csvFilenameFromDisposition(res.headers.get("content-disposition")) ?? csvFilename(range, payoutId),
+          csv: await res.text(),
+        }
+      }
+      // 202 — or a 200 that isn't the CSV — the key is still computing.
+      onComputing?.()
+      const delay = retryAfterSeconds(res.headers.get("retry-after"))
+      if (waited + delay > maxWaitSeconds) return { kind: "gave_up" }
+      await sleep(delay)
+      waited += delay
+    }
+  } catch (err) {
+    if (isNotDeployed(err)) return null
+    throw err
+  }
+}
+
 // ── Fetch (degrade to null on 404 — endpoint not deployed yet) ───────────────
 
 /** Window → the query the summary/deposits endpoints share (+ venue scope).
@@ -898,13 +1168,13 @@ export function reconcileQuery(window: number | PayoutsWindow, venueParam = ""):
 export async function fetchPayoutsSummary(params: {
   window: number | PayoutsWindow
   venueParam?: string
-}): Promise<PayoutsSummary | null> {
+}): Promise<SummaryFetchResult | null> {
   const { apiClient } = await import("./api-client")
   try {
-    const raw = await apiClient.get<Partial<PayoutsSummary>>(
+    const raw = await apiClient.get<unknown>(
       `/business/payouts/summary${reconcileQuery(params.window, params.venueParam)}`,
     )
-    return normalizeSummary(raw)
+    return summaryResultFromBody(raw)
   } catch (err) {
     if (isNotDeployed(err)) return null
     throw err
@@ -914,13 +1184,34 @@ export async function fetchPayoutsSummary(params: {
 export async function fetchDeposits(params: {
   window: number | PayoutsWindow
   venueParam?: string
-}): Promise<DepositListItem[] | null> {
+}): Promise<DepositsFetchResult | null> {
   const { apiClient } = await import("./api-client")
   try {
-    const raw = await apiClient.get<unknown>(
+    const { body, headers } = await apiClient.getWithHeaders<unknown>(
       `/business/payouts/deposits${reconcileQuery(params.window, params.venueParam)}`,
     )
-    return normalizeDeposits(raw)
+    return depositsResultFromBody(body, headers)
+  } catch (err) {
+    if (isNotDeployed(err)) return null
+    throw err
+  }
+}
+
+/** The /business/payouts list on the cached contract. Kept beside the other
+ *  cached-serve fetchers; payouts.ts's fetchPayouts stays as the legacy
+ *  full-response fetcher (it would coerce a computing body into an empty list —
+ *  new consumers must use this one). */
+export async function fetchPayoutsList(params: {
+  range: PayoutsRange
+  status?: PayoutStatusFilter
+  venueParam?: string
+  payoutId?: string
+}): Promise<PayoutsListFetchResult | null> {
+  const { apiClient } = await import("./api-client")
+  const { range, status = "all", venueParam = "", payoutId } = params
+  try {
+    const raw = await apiClient.get<unknown>(`/business/payouts${payoutsQuery({ range, status, venueParam, payoutId })}`)
+    return listResultFromBody(raw)
   } catch (err) {
     if (isNotDeployed(err)) return null
     throw err

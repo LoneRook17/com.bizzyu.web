@@ -46,6 +46,8 @@ import {
   buildBreakdownTable,
   showBreakdownTable,
   signedMoneyStr,
+  freshnessLabel,
+  REFRESHING_LABEL,
   type BreakdownTable,
   VENUE_TILE_LABELS,
   COMBINED_ACCOUNT_LABEL,
@@ -868,6 +870,28 @@ export function ReconcileEmpty() {
   )
 }
 
+/** Freshness line for the cached-serve contract (services :125): when the
+ *  payload's computed_at is known, say when the numbers were computed —
+ *  "Updated h:mm a (ET)" — and, while a background recompute is in flight
+ *  (refreshing:true), add a subtle spinner + "Refreshing…". Deliberately quiet:
+ *  data on screen is real (the last computed walk), so this is a caption, not a
+ *  loading state. Renders nothing when there's no computed_at (older servers). */
+function FreshnessLine({ freshness }: { freshness: { computedAt: string | null; refreshing: boolean } }) {
+  const label = freshnessLabel(freshness.computedAt)
+  if (!label && !freshness.refreshing) return null
+  return (
+    <div className="flex items-center justify-end gap-2 px-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+      {label && <span>{label}</span>}
+      {freshness.refreshing && (
+        <span className="inline-flex items-center gap-1">
+          <Loader2 className="size-3 animate-spin" />
+          {REFRESHING_LABEL}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function ReconcileView({
   summary,
   deposits,
@@ -875,6 +899,7 @@ export default function ReconcileView({
   venueName,
   venueId,
   untilInPast,
+  freshness,
 }: {
   summary: PayoutsSummary
   deposits: DepositListItem[]
@@ -884,11 +909,15 @@ export default function ReconcileView({
   venueId?: number
   /** Custom window with a past `until` → in-transit clarity note in the strip. */
   untilInPast?: boolean
+  /** Cached-serve freshness (computed_at + refreshing) — omitted when the
+   *  server predates the contract; the view renders exactly as before. */
+  freshness?: { computedAt: string | null; refreshing: boolean }
 }) {
   const hasAny = deposits.length > 0 || summary.deposited_cents > 0 || summary.in_transit_cents > 0
 
   return (
     <div className="space-y-4">
+      {freshness && <FreshnessLine freshness={freshness} />}
       <SummaryStrip summary={summary} venueName={venueName} venueId={venueId} untilInPast={untilInPast} />
       <InTransitBanner cents={summary.in_transit_cents} />
       {deposits.length > 0 ? (
