@@ -23,8 +23,6 @@ import {
   fetchPayoutsExportCsv,
   combineFreshness,
   untilIsPast,
-  COMPUTING_POLL_MS,
-  COMPUTING_GIVE_UP_MS,
   COMPUTING_COPY,
   EXPORT_PREPARING_LABEL,
   type PayoutsWindow,
@@ -33,6 +31,11 @@ import {
   type SummaryFetchResult,
   type DepositsFetchResult,
 } from "@/lib/business/payouts-reconcile"
+import {
+  startComputingPoll,
+  COMPUTING_PATIENT_COPY,
+  type ComputingPhase,
+} from "@/lib/business/payouts-computing-poll"
 import {
   canAccessPayouts,
   reconcileOutcomeFromData,
@@ -198,6 +201,9 @@ function ReconcileContainer() {
   const [deposits, setDeposits] = useState<DepositListItem[] | null>(null)
   const [freshness, setFreshness] = useState<{ computedAt: string | null; refreshing: boolean } | null>(null)
   const [mode, setMode] = useState<ReconMode>("loading")
+  // calm → the standard crunching copy; patient (past ~90 s) → the softened
+  // "large accounts take a few minutes" copy. Never an error while computing.
+  const [crunchPhase, setCrunchPhase] = useState<ComputingPhase>("calm")
   // Bumped by Retry to restart the whole fetch/poll cycle after a give-up.
   const [fetchNonce, setFetchNonce] = useState(0)
 
@@ -230,38 +236,24 @@ function ReconcileContainer() {
     // `mode` initializes to "loading"; on a range re-fetch the current deposits
     // stay on screen until the new data resolves (no skeleton flash) — EXCEPT
     // a cold cache key ({state:'computing'}), which swaps in the crunching
-    // state and polls every COMPUTING_POLL_MS until the walk finishes. The
-    // same `active` cleanup that guarded the single fetch now also cancels the
-    // poll timer, so a window/venue change (new fetchAll identity) or unmount
-    // stops the loop mid-computing. Past COMPUTING_GIVE_UP_MS we stop polling
-    // and hand over to the existing error + Retry state.
-    let active = true
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const startedAt = Date.now()
-    const attempt = () => {
-      fetchAll()
-        .then(([s, d]) => {
-          if (!active) return
-          if (reconcileOutcomeFromData(s, d) === "computing") {
-            if (Date.now() - startedAt >= COMPUTING_GIVE_UP_MS) {
-              setMode("error")
-              return
-            }
-            setMode("computing")
-            timer = setTimeout(attempt, COMPUTING_POLL_MS)
-            return
-          }
-          apply(s, d)
-        })
-        .catch((err) => {
-          if (active) setMode(reconcileOutcomeFromError(err))
-        })
-    }
-    attempt()
-    return () => {
-      active = false
-      if (timer) clearTimeout(timer)
-    }
+    // state and polls until the walk finishes. The loop itself lives in
+    // payouts-computing-poll.ts (pure, unit-tested): calm copy first, the
+    // softened "large accounts" copy past ~90 s, and only past
+    // COMPUTING_GIVE_UP_MS (10 min — clear of whale cold walks) does it hand
+    // over to the existing error + Retry state. Its cancel function is this
+    // effect's cleanup — the same `active` semantics as before, so a
+    // window/venue change (new fetchAll identity) or unmount stops the loop
+    // mid-computing.
+    return startComputingPoll({
+      fetchAll,
+      onSettled: apply,
+      onComputing: (phase) => {
+        setCrunchPhase(phase)
+        setMode("computing")
+      },
+      onGiveUp: () => setMode("error"),
+      onError: (err) => setMode(reconcileOutcomeFromError(err)),
+    })
   }, [fetchAll, apply, fetchNonce])
 
   const retry = () => {
@@ -294,11 +286,12 @@ function ReconcileContainer() {
           // Non-alarming: a cold cache key is expected behavior (first visit,
           // new window/venue, Eastern-midnight key rotation) — never $0.00
           // tiles, never an error. The effect above is polling; this state
-          // resolves itself.
+          // resolves itself. Past ~90 s the copy softens to set expectations
+          // for whale-scale first walks — still no error, no Retry.
           <EmptyState
             icon={ComputingSpinner}
-            title={COMPUTING_COPY.title}
-            description={COMPUTING_COPY.description}
+            title={(crunchPhase === "patient" ? COMPUTING_PATIENT_COPY : COMPUTING_COPY).title}
+            description={(crunchPhase === "patient" ? COMPUTING_PATIENT_COPY : COMPUTING_COPY).description}
           />
         ) : mode === "notdeployed" ? (
           <EmptyState

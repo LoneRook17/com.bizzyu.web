@@ -12,9 +12,13 @@
 //  (4) export.csv fetch-then-blob: 202 → wait Retry-After → retry → 200 CSV;
 //      the JSON computing body is NEVER returned as the file; give-up is finite,
 //  (5) ?payout_id is window-bound (empty payouts is READY data, and the window
-//      params always ride along), and
+//      params always ride along),
 //  (6) freshness display — "Updated h:mm a (ET)" in America/New_York + the
-//      refreshing indicator + non-alarming computing copy.
+//      refreshing indicator + non-alarming computing copy, and
+//  (7) the PAGE poll's patience rulings (payouts-computing-poll.ts): calm
+//      crunching persists past the old 2-minute mark, the copy softens at
+//      ~90 s, error + Retry only past the 10-minute ceiling (clear of whale
+//      cold walks), and cancel (window/venue change) stops the loop cold.
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -37,7 +41,16 @@ import {
   REFRESHING_LABEL,
   EXPORT_PREPARING_LABEL,
   type ExportResponseLike,
+  type SummaryFetchResult,
+  type DepositsFetchResult,
 } from "./payouts-reconcile.ts"
+import {
+  startComputingPoll,
+  computingPhaseAt,
+  COMPUTING_PATIENCE_MS,
+  COMPUTING_PATIENT_COPY,
+  COMPUTING_GIVE_UP_MS as PAGE_COMPUTING_GIVE_UP_MS,
+} from "./payouts-computing-poll.ts"
 import { normalizePayoutsResponse, payoutsQuery } from "./payouts.ts"
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -393,8 +406,16 @@ test("combineFreshness: first computed_at wins; refreshing if either says so", (
   )
 })
 
-test("computing cadence pins: poll inside the contract's 2–5s, give up at 2 minutes", () => {
+test("computing cadence pins: poll inside the contract's 2–5s; PAGE give-up 10 min, clear of whale walks", () => {
   assert.ok(COMPUTING_POLL_MS >= 2000 && COMPUTING_POLL_MS <= 5000)
+  assert.equal(PAGE_COMPUTING_GIVE_UP_MS, 600_000)
+  // The worst observed whale (Backroads/RBS) cold walk is ~8 min — the page
+  // ceiling must clear it with at least 2 minutes of margin.
+  const WORST_OBSERVED_WHALE_WALK_MS = 8 * 60_000
+  assert.ok(PAGE_COMPUTING_GIVE_UP_MS >= WORST_OBSERVED_WHALE_WALK_MS + 120_000)
+  assert.equal(COMPUTING_PATIENCE_MS, 90_000)
+  // The export button keeps the contract's own 2-minute ceiling — its give-up
+  // is a soft retryable button state, not an error wall.
   assert.equal(COMPUTING_GIVE_UP_MS, 120_000)
 })
 
@@ -403,4 +424,160 @@ test("computing copy is non-alarming and sets the 'first load can take a minute'
   assert.doesNotMatch(`${COMPUTING_COPY.title} ${COMPUTING_COPY.description}`, /error|fail|wrong|problem/i)
   assert.equal(REFRESHING_LABEL, "Refreshing…")
   assert.equal(EXPORT_PREPARING_LABEL, "Preparing export…")
+})
+
+test("patient copy sets the 'few minutes' expectation and stays just as calm", () => {
+  assert.match(COMPUTING_PATIENT_COPY.description, /few minutes/i)
+  assert.doesNotMatch(`${COMPUTING_PATIENT_COPY.title} ${COMPUTING_PATIENT_COPY.description}`, /error|fail|wrong|problem/i)
+})
+
+// ── (7) Page poll patience rulings (payouts-computing-poll.ts) ───────────────
+
+test("computingPhaseAt: calm under 90 s, patient at and past it", () => {
+  assert.equal(computingPhaseAt(0), "calm")
+  assert.equal(computingPhaseAt(COMPUTING_PATIENCE_MS - 1), "calm")
+  assert.equal(computingPhaseAt(COMPUTING_PATIENCE_MS), "patient")
+  assert.equal(computingPhaseAt(150_000), "patient")
+})
+
+type PollResults = [SummaryFetchResult | null, DepositsFetchResult | null]
+
+function computingResults(): PollResults {
+  return [{ kind: "computing" }, { kind: "computing" }]
+}
+
+function readyResults(): PollResults {
+  return [summaryResultFromBody(readySummaryBody()), depositsResultFromBody([], headersOf(READY_HEADERS))]
+}
+
+const flush = () => new Promise<void>((resolve) => setImmediate(resolve))
+
+/** Drive startComputingPoll with a fake clock and fake timers. The loop
+ *  schedules at most one poll timer at a time; fire() runs it and flushes. */
+function startPollHarness(fetchAll: () => Promise<PollResults>) {
+  let clock = 0
+  let nextTimerId = 1
+  const events: string[] = []
+  const pending: Array<{ id: number; fn: () => void; ms: number }> = []
+  const cleared: number[] = []
+  const cancel = startComputingPoll({
+    fetchAll,
+    onSettled: (s, d) => events.push(`settled:${s?.kind}/${d?.kind}`),
+    onComputing: (phase) => events.push(`computing:${phase}`),
+    onGiveUp: () => events.push("gave_up"),
+    onError: () => events.push("error"),
+    now: () => clock,
+    schedule: (fn, ms) => {
+      const id = nextTimerId++
+      pending.push({ id, fn, ms })
+      return id
+    },
+    unschedule: (t) => {
+      cleared.push(t as number)
+      const i = pending.findIndex((p) => p.id === t)
+      if (i >= 0) pending.splice(i, 1)
+    },
+  })
+  return {
+    events,
+    pending,
+    cleared,
+    cancel,
+    tick: (ms: number) => {
+      clock = ms
+    },
+    fire: async () => {
+      const p = pending.shift()
+      if (!p) throw new Error("no pending poll timer")
+      p.fn()
+      await flush()
+    },
+  }
+}
+
+test("page poll: calm-waiting persists PAST the old 2-minute mark — patient copy, still polling, never an error", async () => {
+  const h = startPollHarness(async () => computingResults())
+  await flush()
+  assert.deepEqual(h.events, ["computing:calm"]) // first response: the standard crunching state
+  assert.equal(h.pending[0]?.ms, COMPUTING_POLL_MS) // cadence unchanged (~4 s)
+
+  h.tick(COMPUTING_PATIENCE_MS) // ~90 s — the copy escalation fires
+  await h.fire()
+  assert.equal(h.events.at(-1), "computing:patient")
+
+  h.tick(150_000) // past the OLD 120 s give-up — the false-error this change removes
+  await h.fire()
+  assert.equal(h.events.at(-1), "computing:patient")
+
+  h.tick(480_000) // 8 min — worst observed whale walk, still calmly polling
+  await h.fire()
+  assert.equal(h.events.at(-1), "computing:patient")
+  assert.ok(!h.events.includes("gave_up") && !h.events.includes("error"))
+  assert.equal(h.pending.length, 1) // the loop is still alive
+  h.cancel()
+})
+
+test("page poll: error + Retry is reached only past the NEW 10-minute ceiling", async () => {
+  const h = startPollHarness(async () => computingResults())
+  await flush()
+  h.tick(PAGE_COMPUTING_GIVE_UP_MS - 1)
+  await h.fire()
+  assert.equal(h.events.at(-1), "computing:patient") // one ms under: still waiting
+  h.tick(PAGE_COMPUTING_GIVE_UP_MS)
+  await h.fire()
+  assert.equal(h.events.at(-1), "gave_up") // the genuine-failure safety net
+  assert.equal(h.pending.length, 0) // polling stopped for good
+})
+
+test("page poll: a long walk that FINISHES settles into ready data, no give-up on the way", async () => {
+  let calls = 0
+  const h = startPollHarness(async () => (++calls < 3 ? computingResults() : readyResults()))
+  await flush()
+  h.tick(300_000) // 5 min in — a realistic whale walk completing
+  await h.fire()
+  await h.fire()
+  assert.equal(h.events.at(-1), "settled:ready/ready")
+  assert.ok(!h.events.includes("gave_up"))
+  assert.equal(h.pending.length, 0)
+})
+
+test("page poll: cancel (window/venue change) clears the pending timer AND drops an in-flight result", async () => {
+  // Pending-timer case: the cleanup must unschedule the poll.
+  const a = startPollHarness(async () => computingResults())
+  await flush()
+  assert.equal(a.pending.length, 1)
+  const timerId = a.pending[0].id
+  a.cancel()
+  assert.deepEqual(a.cleared, [timerId])
+  assert.equal(a.pending.length, 0)
+
+  // In-flight case: the fetch resolves AFTER cancel — nothing may land.
+  let release!: (r: PollResults) => void
+  const gate = new Promise<PollResults>((resolve) => {
+    release = resolve
+  })
+  const b = startPollHarness(() => gate)
+  b.cancel()
+  release(computingResults())
+  await flush()
+  assert.deepEqual(b.events, []) // no state update, no new timer
+  assert.equal(b.pending.length, 0)
+})
+
+test("page poll: a rejected fetch is an error immediately (unchanged) — but not after cancel", async () => {
+  const h = startPollHarness(async () => {
+    throw { status: 500 }
+  })
+  await flush()
+  assert.deepEqual(h.events, ["error"])
+
+  let reject!: (err: unknown) => void
+  const gate = new Promise<PollResults>((_resolve, rej) => {
+    reject = rej
+  })
+  const c = startPollHarness(() => gate)
+  c.cancel()
+  reject({ status: 500 })
+  await flush()
+  assert.deepEqual(c.events, [])
 })
