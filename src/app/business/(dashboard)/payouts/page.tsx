@@ -67,9 +67,10 @@ function PayoutsSkeleton() {
 }
 
 // ── Access state (never an error) ────────────────────────────────────────────
-// Payouts is owner-only (TF-B ruling). Non-owners never see a FAIL: the nav tab
-// is hidden, and a direct visit — or a 403 on the reconcile endpoints despite an
-// owner-looking session (a stale role) — lands on this clean, no-error state.
+// Payouts is owner OR owner-granted (PAYOUTS-PER-PERSON-ACCESS). Users without
+// access never see a FAIL: the nav tab is hidden, and a direct visit — or a 403
+// on the reconcile endpoints despite an access-looking session (a just-revoked
+// grant / stale role) — lands on this clean, no-error state.
 
 function PayoutsAccessState() {
   return (
@@ -85,7 +86,9 @@ function PayoutsAccessState() {
 export default function PayoutsPage() {
   const { user } = useAuth()
   // Gate is the ONE predicate the sidebar nav also uses — tab and screen agree.
-  if (!canAccessPayouts(user?.business_role)) return <PayoutsAccessState />
+  // PAYOUTS-PER-PERSON-ACCESS: owner OR an owner-granted member (/me →
+  // can_view_payouts). Users without access still land on the clean access state.
+  if (!canAccessPayouts(user?.business_role, user?.can_view_payouts)) return <PayoutsAccessState />
   return <ReconcileContainer />
 }
 

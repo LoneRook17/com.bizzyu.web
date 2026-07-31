@@ -10,6 +10,12 @@ export interface BusinessUser {
   // more than one. Optional/additive — absent on legacy /me deploys, where the
   // scalar venue_id above still governs the switcher lock byte-identically.
   venue_ids?: number[] | null
+  // Per-person Payouts access: whether THIS caller may open the Payouts page +
+  // export CSVs — true for the owner OR an owner-granted member (services
+  // feat/payouts-per-person-access). Optional/additive: ABSENT on a pre-contract
+  // /me deploy, where the owner-role fallback in canAccessPayouts() still lets
+  // owners in exactly as before.
+  can_view_payouts?: boolean
 }
 
 export type DashboardMode = 'deals' | 'events' | 'hybrid'
@@ -320,6 +326,11 @@ export interface TeamMember {
   // legacy — fall back to the scalar venue_id/venue_name above (venue_id null =
   // global). See lib/business/team-venues.ts for the reconciliation.
   venues?: { venue_id: number; name: string }[] | null
+  // Per-member Payouts-page access grant. Present ONLY when the CALLER is the
+  // business owner (the server omits it for everyone else, and on a pre-contract
+  // deploy) — its presence is what drives the owner-only toggle. ABSENT ⇒ render
+  // the row exactly as today. See lib/business/team-payouts-access.ts.
+  can_view_payouts?: boolean
 }
 
 // Analytics types

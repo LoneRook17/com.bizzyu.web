@@ -1,28 +1,43 @@
-// Owner-only Payouts gating — the ONE source of truth shared by the sidebar nav
-// filter and the /business/payouts route guard, so the tab and the screen can
-// never disagree. Pure (no React, no api-client import) → unit-testable under
+// Payouts gating — the ONE source of truth shared by the sidebar nav filter and
+// the /business/payouts route guard, so the tab and the screen can never
+// disagree. Pure (no React, no api-client import) → unit-testable under
 // `node --test`, mirroring payouts.ts's isNotDeployed helper.
 //
-// Ruling (Luke, TF-B): Payouts is owner-only. Non-owners never see a FAIL — the
-// nav item is hidden, and a direct visit renders a clean access state, never an
-// error wall. A 403 on the reconcile endpoints despite an owner-looking session
-// (a stale role) collapses to the same access state, not an error.
+// PAYOUTS-PER-PERSON-ACCESS: Payouts was owner-only (TF-B). It is now the OWNER
+// **OR** any member the owner has granted — the server tells us via /me
+// (user.can_view_payouts, true for owner OR granted). Users WITHOUT access never
+// see a FAIL: the nav item is hidden, and a direct visit renders a clean access
+// state, never an error wall. A 403 on the reconcile endpoints despite an
+// access-looking session (a just-revoked grant / stale role) collapses to the
+// same access state, not an error.
 
 export type BusinessRole = "owner" | "manager" | "staff" | "promoter"
 
-/** The single predicate: only the business owner may see Payouts. Drives BOTH the
- *  sidebar nav visibility and the route guard. `null`/undefined (no session yet)
- *  is treated as no access — safe default. */
-export function canAccessPayouts(role: BusinessRole | null | undefined): boolean {
-  return role === "owner"
+/** The single predicate: may this user see Payouts? Drives BOTH the sidebar nav
+ *  visibility and the route guard.
+ *
+ *  `canViewPayouts` is the server's per-user grant signal from /business/auth/me
+ *  (true for the owner OR an owner-granted member) — the source of truth. The
+ *  `role === "owner"` clause is (a) the backward-compat fallback for a
+ *  pre-contract /me deploy that omits the field (owners never lose access), and
+ *  (b) a belt-and-suspenders for owners on new deploys. `null`/undefined role +
+ *  no grant (no session yet) → no access, a safe default with no flash. */
+export function canAccessPayouts(
+  role: BusinessRole | null | undefined,
+  canViewPayouts?: boolean | null,
+): boolean {
+  return canViewPayouts === true || role === "owner"
 }
 
-/** What /business/payouts renders before any fetch: the owner container, or the
- *  clean access state for every other role. */
+/** What /business/payouts renders before any fetch: the access container, or the
+ *  clean access state for a user without access. */
 export type PayoutsGate = "owner" | "denied"
 
-export function payoutsRouteGate(role: BusinessRole | null | undefined): PayoutsGate {
-  return canAccessPayouts(role) ? "owner" : "denied"
+export function payoutsRouteGate(
+  role: BusinessRole | null | undefined,
+  canViewPayouts?: boolean | null,
+): PayoutsGate {
+  return canAccessPayouts(role, canViewPayouts) ? "owner" : "denied"
 }
 
 // ── Owner reconcile-fetch outcomes ───────────────────────────────────────────
@@ -59,9 +74,10 @@ export function reconcileOutcomeFromError(err: unknown): "forbidden" | "error" {
   return (err as { status?: number } | null)?.status === 403 ? "forbidden" : "error"
 }
 
-/** Copy for the access state — shared by the route guard (non-owner direct visit)
- *  and the 403 fallback (stale owner session). Short, no error styling. */
+/** Copy for the access state — shared by the route guard (no-access direct visit)
+ *  and the 403 fallback (a just-revoked grant / stale session). Short, no error
+ *  styling. Reflects the grant model: owner OR a member they've granted. */
 export const PAYOUTS_ACCESS_COPY = {
-  title: "Owner access only",
-  description: "Payouts are only available to the business owner.",
+  title: "Payouts access needed",
+  description: "Payouts are available to the business owner and any team member they grant access to.",
 } as const

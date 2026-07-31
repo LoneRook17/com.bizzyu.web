@@ -9,11 +9,13 @@ import {
   memberVenueIds, venueScopeLabel, venueEditorModel,
   type EditorScope,
 } from "@/lib/business/team-venues"
+import { payoutsToggleState } from "@/lib/business/team-payouts-access"
 import { Avatar, AvatarFallback } from "@/components/business/v2/ui/avatar"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Select } from "@/components/business/v2/ui/input"
 import VenueMultiSelect from "./VenueMultiSelect"
+import PayoutsAccessControl from "./PayoutsAccessControl"
 
 interface TeamMemberRowProps {
   member: TeamMember
@@ -29,6 +31,12 @@ interface TeamMemberRowProps {
   onResend?: (member: TeamMember) => void
   /** TM-B3 (#15b): inline error for this row (e.g. 403 VENUE_SCOPE_FORBIDDEN). */
   venueError?: string
+  /** PAYOUTS-PER-PERSON-ACCESS: owner flips a member's Payouts-page access. */
+  onPayoutsAccessChange?: (memberId: number, enabled: boolean) => void
+  /** This row's Payouts-access grant is saving (disable the toggle). */
+  payoutsAccessSaving?: boolean
+  /** Inline error for a failed Payouts-access flip (post-revert). */
+  payoutsAccessError?: string
 }
 
 const ROLE_BADGE: Record<string, { className: string }> = {
@@ -76,10 +84,16 @@ function inviteBadge(member: TeamMember, isExpired: boolean): { label: string; v
 
 export default function TeamMemberRow({
   member, currentUserRole, editorScope, venues, onRemove, onRoleChange, onVenuesChange, onResend, venueError,
+  onPayoutsAccessChange, payoutsAccessSaving, payoutsAccessError,
 }: TeamMemberRowProps) {
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const scopeIds = memberVenueIds(member)
+  // PAYOUTS-PER-PERSON-ACCESS: "hidden" for every non-owner viewer and every
+  // legacy/absent grant, so the row renders exactly as today for them. "owner"
+  // (inherent, disabled chip) / "on" / "off" (mutable) for an owner viewer.
+  const payoutsState = payoutsToggleState(currentUserRole, member)
+  const showsPayouts = payoutsState !== "hidden"
   // UNCHANGED by the #5 work, deliberately. It mirrors the server's own access
   // rule (resolveActiveBusinessId.ts:34 — is_active=1 AND (invite_accepted_at
   // IS NOT NULL OR role='owner')), so the badge agrees with who can actually
@@ -144,12 +158,28 @@ export default function TeamMemberRow({
               <span>{venueError}</span>
             </p>
           )}
+          {/* PAYOUTS-PER-PERSON-ACCESS: inline error after a failed flip (reverted). */}
+          {payoutsAccessError && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+              <AlertCircle className="size-3 shrink-0" />
+              <span>{payoutsAccessError}</span>
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Actions — owner (role + venue + remove) or manager (venue only), non-owner members */}
-      {showActions && (
+      {/* Actions — owner (role + venue + remove + payouts) or manager (venue only),
+          non-owner members. The payouts control ALSO shows on the owner's own row
+          (as a disabled "Owner" chip), which has no other actions. */}
+      {(showActions || showsPayouts) && (
         <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:pl-0">
+          {showsPayouts && (
+            <PayoutsAccessControl
+              state={payoutsState}
+              saving={payoutsAccessSaving}
+              onChange={(enabled) => onPayoutsAccessChange?.(member.id, enabled)}
+            />
+          )}
           {editor.canEdit && (
             <VenueMultiSelect
               editor={editor}

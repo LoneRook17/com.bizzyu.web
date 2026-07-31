@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
+import { canAccessPayouts } from "@/lib/business/payouts-access"
 import { useTheme } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
@@ -23,6 +24,8 @@ import {
 type Feature = "showDeals" | "showEvents" | "showLineSkips" | "showRecurring"
 type BusinessRole = "owner" | "manager" | "staff" | "promoter"
 
+type NavContext = { role?: BusinessRole; canViewPayouts?: boolean }
+
 type Item = {
   label: string
   href: string
@@ -32,6 +35,9 @@ type Item = {
   feature?: Feature
   /** Only show for these roles; undefined = show for all. Server enforces regardless. */
   roles?: BusinessRole[]
+  /** Fine-grained visibility predicate (e.g. Payouts: owner OR granted member).
+   *  undefined = always show. Server enforces regardless. */
+  show?: (ctx: NavContext) => boolean
 }
 
 const GROUPS: { label?: string; items: Item[] }[] = [
@@ -46,7 +52,10 @@ const GROUPS: { label?: string; items: Item[] }[] = [
   { label: "Grow", items: [
     { label: "Marketing", href: "/business/marketing", icon: Megaphone, lockWhenPending: true },
     { label: "Analytics", href: "/business/analytics", icon: BarChart3, lockWhenPending: true },
-    { label: "Payouts", href: "/business/payouts", icon: Banknote, lockWhenPending: true, roles: ["owner"] },
+    // PAYOUTS-PER-PERSON-ACCESS: owner OR a member the owner has granted
+    // (/me → can_view_payouts). Same predicate the /business/payouts route guard
+    // uses, so the tab and the screen can never disagree.
+    { label: "Payouts", href: "/business/payouts", icon: Banknote, lockWhenPending: true, show: (ctx) => canAccessPayouts(ctx.role, ctx.canViewPayouts) },
   ] },
   { label: "Workspace", items: [
     { label: "Team", href: "/business/team", icon: Users },
@@ -74,12 +83,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const venueName = isAllVenues ? "All venues" : selectedVenue?.name ?? business?.name ?? "Select venue"
 
   const role = user?.business_role
+  const navContext: NavContext = { role, canViewPayouts: user?.can_view_payouts }
   const visibleGroups = GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
       (item) =>
         (!item.feature || config[item.feature]) &&
-        (!item.roles || (role != null && item.roles.includes(role))),
+        (!item.roles || (role != null && item.roles.includes(role))) &&
+        (!item.show || item.show(navContext)),
     ),
   })).filter((group) => group.items.length > 0)
 
