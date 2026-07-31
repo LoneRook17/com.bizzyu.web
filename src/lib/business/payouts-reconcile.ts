@@ -136,6 +136,13 @@ export interface PayoutsSummary {
   refunded_cents: number
   /** true ONLY on a venue-scoped response; gates every field below. */
   venue_scoped: boolean
+  /** PAYOUTS-PER-PERSON-ACCESS: true ONLY on a SCOPED granted member's response.
+   *  The server OMITS the account totals, per-venue breakdown, and
+   *  shared_with_venues from a scope_restricted summary (they arrive as 0 / [] /
+   *  null after normalize), so the UI hides the combined-account siblings and
+   *  shows only the venue tiles. false/absent on every owner/global response —
+   *  those render the full combined view exactly as today. */
+  scope_restricted: boolean
   /** THIS venue's attributed share (null when unscoped). */
   venue_deposited_cents: number | null
   venue_in_transit_cents: number | null
@@ -295,6 +302,11 @@ export function normalizeSummary(raw: Partial<PayoutsSummary> | null | undefined
     in_transit_cents: num(r.in_transit_cents),
     refunded_cents: num(r.refunded_cents),
     venue_scoped: scoped,
+    // PAYOUTS-PER-PERSON-ACCESS: a scoped member's summary carries this marker and
+    // OMITS the account/breakdown/shared fields (they normalize to 0 / [] / null
+    // above/below). Gated on scoped so a stray flag on an unscoped payload is
+    // ignored — the all-venues render can never hide its combined view.
+    scope_restricted: scoped && (r as { scope_restricted?: unknown }).scope_restricted === true,
     venue_deposited_cents: scoped && r.venue_deposited_cents != null ? num(r.venue_deposited_cents) : null,
     venue_in_transit_cents: scoped && r.venue_in_transit_cents != null ? num(r.venue_in_transit_cents) : null,
     venue_refunded_cents: scoped && r.venue_refunded_cents != null ? num(r.venue_refunded_cents) : null,

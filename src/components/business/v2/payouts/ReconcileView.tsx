@@ -66,6 +66,7 @@ import {
   NEGATIVE_UNALLOCATED_NOTE,
   BREAKDOWN_MISMATCH_WARNING,
 } from "@/lib/business/payouts-reconcile"
+import { hideCombinedAccount } from "@/lib/business/payouts-scope"
 
 // ── Range picker (segmented, 90d default) — mirrors DealFunnel's RangePicker ──
 // Relocated here from the removed PayoutsView; the owner reconcile container is
@@ -375,6 +376,29 @@ export function SummaryStrip({
 }) {
   const state = summaryRenderState(summary)
   const inTransitNote = untilInPast ? IN_TRANSIT_PAST_UNTIL_NOTE : undefined
+
+  // SIBLING-HIDE (PAYOUTS-PER-PERSON-ACCESS): a scope_restricted summary belongs
+  // to a venue-scoped member and carries ONLY this venue's figures — the server
+  // omits the account totals, the per-venue breakdown, and shared_with_venues. So
+  // we render JUST the venue tiles: no combined-account table, no "Also includes
+  // deposits for…" caveat, no account-level totals. The strip reads as complete,
+  // not as missing pieces. (summaryTilesFor returns this venue's trio here.)
+  if (hideCombinedAccount(summary)) {
+    const scopedTiles = summaryTilesFor(summary)
+    return (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <SummaryTile icon={ArrowDownToLine} label={VENUE_TILE_LABELS.deposited} cents={scopedTiles.deposited_cents} tone="green" />
+        <SummaryTile
+          icon={Truck}
+          label={VENUE_TILE_LABELS.in_transit}
+          cents={scopedTiles.in_transit_cents}
+          tone="blue"
+          note={inTransitNote}
+        />
+        <SummaryTile icon={RotateCcw} label={VENUE_TILE_LABELS.refunded} cents={scopedTiles.refunded_cents} tone="red" />
+      </div>
+    )
+  }
 
   // ALL-VENUES (hard regression gate): the pre-fix account-level strip, unchanged.
   if (state === "all_venues") {

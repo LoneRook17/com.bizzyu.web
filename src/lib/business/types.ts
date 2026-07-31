@@ -1,4 +1,5 @@
 import type { InviteDelivery } from '@/lib/team-invite/types'
+import type { PayoutsAccess } from './payouts-scope'
 
 export interface BusinessUser {
   id: number
@@ -16,6 +17,13 @@ export interface BusinessUser {
   // /me deploy, where the owner-role fallback in canAccessPayouts() still lets
   // owners in exactly as before.
   can_view_payouts?: boolean
+  // PAYOUTS-PER-PERSON-ACCESS venue-scope: which payouts MODE the web renders
+  // without guessing — { granted, all_venues, venues? }. Owner / global granted
+  // members are all_venues:true (full account view). A SCOPED granted member is
+  // all_venues:false and carries `venues` (id+name) for the venue picker.
+  // Optional/additive: ABSENT on a pre-contract /me — the VENUE_SCOPE_REQUIRED
+  // 403 fallback still drives the picker in that case. See payouts-scope.ts.
+  payouts_access?: PayoutsAccess
 }
 
 export type DashboardMode = 'deals' | 'events' | 'hybrid'
