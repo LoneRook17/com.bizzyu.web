@@ -12,7 +12,8 @@ import {
   AuthSubmit,
 } from "@/components/business/v2/auth/auth-shell"
 import { Label } from "@/components/business/v2/ui/label"
-import { Select, Textarea } from "@/components/business/v2/ui/input"
+import { Textarea } from "@/components/business/v2/ui/input"
+import CampusCombobox from "@/components/business/v2/ui/campus-combobox"
 import AddressAutocomplete from "@/components/business/dashboard/AddressAutocomplete"
 import TurnstileWidget from "@/components/ui/TurnstileWidget"
 import { apiClient, ApiError } from "@/lib/business/api-client"
@@ -50,7 +51,7 @@ interface CampusOption {
   full_name?: string | null
 }
 
-const FALLBACK_CAMPUSES: CampusOption[] = CAMPUSES.map(({ id, name }) => ({ id, name }))
+const FALLBACK_CAMPUSES: CampusOption[] = CAMPUSES.map(({ id, name, full_name }) => ({ id, name, full_name }))
 
 const errorRing = "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/20"
 
@@ -262,20 +263,17 @@ export default function SignupPage() {
           <Label htmlFor="campus_id" className="mb-1.5 block">
             Campus<span className="ml-0.5 text-red-500 dark:text-red-400">*</span>
           </Label>
-          <Select
+          <CampusCombobox
             id="campus_id"
-            name="campus_id"
+            campuses={campuses}
             value={form.campus_id}
-            onChange={handleChange}
-            className={cn("h-10", errors.campus_id && errorRing)}
-          >
-            <option value="">Select a campus</option>
-            {campuses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+            onChange={(campusId) => {
+              setForm((prev) => ({ ...prev, campus_id: campusId }))
+              setErrors((prev) => ({ ...prev, campus_id: undefined }))
+              setServerError("")
+            }}
+            error={!!errors.campus_id}
+          />
           {errors.campus_id && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.campus_id}</p>}
         </div>
 

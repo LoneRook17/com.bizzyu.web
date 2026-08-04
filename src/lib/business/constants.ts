@@ -26,12 +26,12 @@ export const ROLE_LABELS: Record<string, string> = {
 }
 
 export const CAMPUSES = [
-  { id: 58, name: 'ASU' },
-  { id: 1, name: 'FGCU' },
-  { id: 59, name: 'OSU' },
-  { id: 60, name: 'Southern' },
-  { id: 57, name: 'UGA' },
-  { id: 33, name: 'USF' },
+  { id: 58, name: 'ASU', full_name: 'Arizona State University' },
+  { id: 1, name: 'FGCU', full_name: 'Florida Gulf Coast University' },
+  { id: 59, name: 'OSU', full_name: 'The Ohio State University' },
+  { id: 60, name: 'Southern', full_name: 'Georgia Southern University' },
+  { id: 57, name: 'UGA', full_name: 'University of Georgia' },
+  { id: 33, name: 'USF', full_name: 'University of South Florida' },
 ] as const
 
 // Content-creation routes that require approved status
