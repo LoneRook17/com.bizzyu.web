@@ -74,9 +74,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Unauthenticated user visiting dashboard pages → redirect to login
+  // Unauthenticated user visiting dashboard pages → redirect to login,
+  // carrying where they were headed so the login can send them back. Without
+  // this, every emailed dashboard deep link (the Stripe-reminder CTA at
+  // /business/settings?tab=payments, and every other one) dumped the user on
+  // the dashboard root to go hunting. The query string is part of the
+  // destination - ?tab=payments is what opens the right tab - so it rides
+  // along. searchParams.set URL-encodes the whole value.
+  // The login page re-validates `next` before using it (safeNextPath in
+  // lib/business/login-redirect) - this is a convenience, not a trust boundary.
   if (!isAuthPage && !hasSession) {
-    return NextResponse.redirect(new URL("/business/login", request.url))
+    const loginUrl = new URL("/business/login", request.url)
+    loginUrl.searchParams.set("next", pathname + request.nextUrl.search)
+    return NextResponse.redirect(loginUrl)
   }
 
   return NextResponse.next()

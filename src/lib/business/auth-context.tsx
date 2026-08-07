@@ -4,10 +4,17 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import { useRouter } from "next/navigation"
 import { apiClient } from "./api-client"
 import { clearBizSession } from "./cookies"
+import { safeNextPath } from "./login-redirect"
 import type { BusinessUser, Business, AuthState, MeResponse } from "./types"
 
 interface AuthContextValue extends AuthState {
-  login: (email: string, password: string) => Promise<void>
+  /**
+   * `destination` is optional and defaults to the dashboard root, so existing
+   * behaviour is unchanged for any caller that omits it. It is passed through
+   * the same safeNextPath guard the login page uses, so an untrusted value
+   * (e.g. a ?next= param) can be handed straight in.
+   */
+  login: (email: string, password: string, destination?: string | null) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -59,7 +66,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     fetchMe().finally(() => setIsLoading(false))
   }, [fetchMe])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, destination?: string | null) => {
     const data = await apiClient.authPost<{
       user: BusinessUser
       business: Business
@@ -67,8 +74,10 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
 
     setUser(data.user)
     setBusiness(data.business)
-    // biz_session cookie is now set by the server response
-    router.push("/business")
+    // biz_session cookie is now set by the server response.
+    // safeNextPath(undefined) === "/business", so omitting `destination` keeps
+    // the pre-existing behaviour byte for byte.
+    router.push(safeNextPath(destination))
   }
 
   const logout = async () => {

@@ -13,6 +13,7 @@ import {
 } from "@/components/business/v2/auth/auth-shell"
 import { apiClient } from "@/lib/business/api-client"
 import { loginErrorMessage } from "@/lib/business/login-error"
+import { safeNextPath } from "@/lib/business/login-redirect"
 import type { LoginResponse } from "@/lib/business/types"
 
 export default function LoginPage() {
@@ -33,6 +34,10 @@ function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const justRegistered = searchParams.get("registered") === "1"
+  // Where the middleware was taking them before the login wall. Untrusted
+  // query input, so it is validated down to a same-origin dashboard path;
+  // anything else resolves to the dashboard root exactly as before.
+  const nextPath = safeNextPath(searchParams.get("next"))
   const [form, setForm] = useState({ email: "", password: "" })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -53,7 +58,7 @@ function LoginPageInner() {
         password: form.password,
       })
 
-      router.push("/business")
+      router.push(nextPath)
     } catch (err) {
       setError(loginErrorMessage(err))
     } finally {
