@@ -49,7 +49,50 @@ export function stepMultiplier(baseCents: number, priceCents: number): number {
   return Math.round((priceCents / baseCents) * 10) / 10
 }
 
-/** Only owner + manager may configure surge (D18). */
+/**
+ * At or above this multiplier the editor stops being quiet: the step row turns
+ * amber and a worded warning appears naming the actual dollar amounts (D8).
+ *
+ * 3× is deliberately low. This is not a judgement about what a business may
+ * charge — they can save any ladder they like. It exists because the failure it
+ * guards is a MISPLACED DECIMAL ("10.00" typed into a $1.00 base), and that
+ * mistake multiplies what every remaining buyer pays. Cheap to dismiss when
+ * intended, and the only thing standing between a typo and a real charge.
+ */
+export const LOUD_MULTIPLIER = 3
+
+/**
+ * Only owner + manager may configure surge (D18).
+ *
+ * Mirrors requireBusinessRole('owner','manager') on all seven services
+ * `/business/surge` routes. This is a VISIBILITY gate, not an error gate — the
+ * server is the real block, but a control that 403s on every click should never
+ * have been drawn. Anything not explicitly owner/manager — staff, promoter,
+ * blank, or some future role — is excluded.
+ */
 export function canConfigureSurge(role: string | null | undefined): boolean {
   return role === 'owner' || role === 'manager'
+}
+
+/** The tier fields the surge placement needs. Structural, so this module keeps
+ *  its no-imports property and stays runnable under `node --test`. */
+export interface SurgeableTier {
+  ticket_id?: number
+  name: string
+  ticket_type: 'paid' | 'free' | 'guest'
+  is_hidden?: boolean
+}
+
+/**
+ * Which of an event's tiers get a surge card (D10).
+ *
+ * A ladder steps a PRICE up as a tier sells, so it is meaningless on a free or
+ * guest tier, and unreachable on a hidden one (nobody can buy it, so no sale
+ * can ever fire a step). A tier with no id has not been persisted yet and has
+ * nothing for the API to key a ladder to.
+ */
+export function surgeableTiers<T extends SurgeableTier>(tickets: T[] | undefined | null): T[] {
+  return (tickets ?? []).filter(
+    (t) => t.ticket_type === 'paid' && !t.is_hidden && typeof t.ticket_id === 'number',
+  )
 }

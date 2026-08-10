@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { Flame, Plus, Trash2, TriangleAlert } from "lucide-react"
 import {
   surgeApi,
   type SurgeLadderView,
@@ -11,19 +12,38 @@ import {
   stepMultiplier,
   fmtCents,
   canConfigureSurge,
+  LOUD_MULTIPLIER,
   type SurgeEntityType,
   type StepInput,
 } from "@/lib/business/surge-validation"
+import { cn } from "@/lib/v2/utils"
+import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Button } from "@/components/business/v2/ui/button"
+import { Input } from "@/components/business/v2/ui/input"
+import {
+  Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
+} from "@/components/business/v2/ui/dialog"
 
 /**
- * Surge card (S3, D10/D11) — the per-item surge configurator on the event page
- * and the line-skip-night page. Owner + manager only (D18); the engine + oracle
- * live in the Node services (this only talks to `/business/surge`).
+ * Surge card (S3, D10/D11) — the per-item surge configurator, rendered on the
+ * event manage page (once per paid tier) and on the line-skip night panel. The
+ * engine and the price oracle live in the Node services; this only talks to
+ * `/business/surge`.
  *
- * Covers: ladder editor with strictly-increasing validation (D8), a LOUD
- * multiplier preview so a fat-fingered "$10 → $100" is obvious (D8 mitigation),
- * live-edit with the fire-on-save confirmation dialog (D7), manual price
- * override (D2), and the fire history + surge revenue attribution (D13).
+ * Owner + manager only (D18), and the gate is VISIBILITY, not just failure: a
+ * staff session renders nothing at all rather than a card whose every button
+ * 403s. Mirrors requireBusinessRole('owner','manager') on all seven services
+ * routes.
+ *
+ * Covers: the ladder editor with strictly-increasing validation (D8), a LOUD
+ * multiplier badge so a fat-fingered "$10 → $100" is impossible to miss (D8
+ * mitigation), live edit with the fire-on-save confirmation dialog (D7), manual
+ * price override (D2), and fire history + surge revenue attribution (D13).
+ *
+ * Styling follows the v2 dashboard system (Card/Button/Badge/Input/Dialog,
+ * neutral palette, dark-mode pairs) because it renders INSIDE those pages —
+ * the earlier standalone styling read as a foreign element bolted on.
  */
 
 type DraftStep = { threshold: string; price: string } // dollars, as typed
@@ -45,11 +65,13 @@ export function SurgeCard({
   entityId,
   role,
   label,
+  className,
 }: {
   entityType: SurgeEntityType
   entityId: number
   role: string | null | undefined
   label?: string
+  className?: string
 }) {
   const [view, setView] = useState<SurgeLadderView | null>(null)
   const [history, setHistory] = useState<FireHistory | null>(null)
@@ -92,11 +114,23 @@ export function SurgeCard({
   }, [entityType, entityId])
 
   useEffect(() => {
+    if (!editable) return // never fire the fetch for a role the server would 403
     void load()
-  }, [load])
+  }, [load, editable])
 
-  if (!editable) return null // D18: staff never see the configurator
-  if (loading) return <div className="rounded-lg border p-4 text-sm text-gray-500">Loading surge…</div>
+  // D18: a non-owner/manager never sees this surface at all.
+  if (!editable) return null
+
+  if (loading) {
+    return (
+      <Card className={className}>
+        <CardContent className="p-4">
+          <div className="h-5 w-40 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+          <div className="mt-3 h-16 animate-pulse rounded bg-neutral-100 dark:bg-neutral-800" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   const inputs = draftToInputs(draft)
   const validationError = validateLadderSteps(baseCents, inputs)
@@ -114,8 +148,7 @@ export function SurgeCard({
     setError(null)
     try {
       if (!ladder) {
-        const v = await surgeApi.createLadder(entityType, entityId, { base_price_cents: baseCents, steps: inputs })
-        setView(v)
+        await surgeApi.createLadder(entityType, entityId, { base_price_cents: baseCents, steps: inputs })
         await load()
       } else {
         const r = await surgeApi.saveSteps(ladder.id, inputs, confirm)
@@ -166,134 +199,226 @@ export function SurgeCard({
     }
   }
 
+  // The loudest thing on the card: the largest jump the operator has typed.
+  const peakMultiplier = inputs.reduce((max, s) => {
+    const m = Number.isFinite(s.price_cents) ? stepMultiplier(baseCents, s.price_cents) : 0
+    return m > max ? m : max
+  }, 0)
+
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-gray-900">Surge Pricing{label ? ` — ${label}` : ""}</h3>
-          <p className="text-xs text-gray-500">The price steps up automatically as passes sell. Never drops on its own.</p>
-        </div>
-        <div className="text-right">
-          <div className="text-xs uppercase tracking-wide text-gray-400">Current price</div>
-          <div className="text-lg font-bold text-gray-900">{fmtCents(currentPrice ?? baseCents)}</div>
-          {view?.current_sold_count != null && <div className="text-xs text-gray-500">{view.current_sold_count} sold</div>}
-        </div>
-      </header>
-
-      {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
-
-      <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="text-gray-600">Base price</span>
-        <span className="font-medium">{fmtCents(baseCents)}</span>
-      </div>
-
-      {/* Ladder editor */}
-      <div className="space-y-2">
-        {draft.map((s, i) => {
-          const cents = centsFromDollars(s.price)
-          const mult = Number.isFinite(cents) ? stepMultiplier(baseCents, cents) : 0
-          const loud = mult >= 3
-          const fired = view?.steps?.[i]?.fired_at != null
-          return (
-            <div key={i} className="flex flex-wrap items-center gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
-              <span className="text-sm text-gray-500">When</span>
-              <input
-                type="number" min={1} value={s.threshold} onChange={(e) => setStep(i, "threshold", e.target.value)}
-                className="w-20 rounded border px-2 py-1 text-sm" placeholder="N" aria-label={`Step ${i + 1} threshold`}
-              />
-              <span className="text-sm text-gray-500">sold → charge $</span>
-              <input
-                type="number" min="0" step="0.01" value={s.price} onChange={(e) => setStep(i, "price", e.target.value)}
-                className="w-24 rounded border px-2 py-1 text-sm" placeholder="0.00" aria-label={`Step ${i + 1} price`}
-              />
-              <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${loud ? "bg-amber-100 text-amber-800" : "text-gray-400"}`}>
-                {mult > 0 ? `${mult}×` : ""}{loud ? " ⚠" : ""}
-              </span>
-              {fired && <span className="rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">fired</span>}
-              <button onClick={() => removeStep(i)} className="ml-auto text-xs text-red-500 hover:underline" type="button">remove</button>
+    <>
+      <Card className={className}>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Flame className="size-4 shrink-0 text-[#05EB54]" />
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                  Surge pricing{label ? ` — ${label}` : ""}
+                </h3>
+                {ladder && (
+                  <Badge variant={ladder.is_active ? "success" : "neutral"} size="sm">
+                    {ladder.is_active ? "Active" : "Disabled"}
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+                The price steps up automatically as passes sell. It never drops on its own.
+              </p>
             </div>
-          )
-        })}
-      </div>
+            <div className="text-right">
+              <div className="text-[11px] uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Current price</div>
+              <div className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{fmtCents(currentPrice ?? baseCents)}</div>
+              {view?.current_sold_count != null && (
+                <div className="text-[13px] text-neutral-500 dark:text-neutral-400">{view.current_sold_count} sold</div>
+              )}
+            </div>
+          </div>
 
-      <button onClick={addStep} type="button" className="mt-2 text-sm font-medium text-blue-600 hover:underline">+ Add step</button>
+          {error && (
+            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+              {error}
+            </div>
+          )}
 
-      {validationError && <div className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{validationError}</div>}
+          <div className="mt-3 flex items-center justify-between border-t border-neutral-100 pt-3 text-[13px] dark:border-neutral-800">
+            <span className="text-neutral-500 dark:text-neutral-400">Base price</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">{fmtCents(baseCents)}</span>
+          </div>
 
-      <div className="mt-4 flex items-center gap-2">
-        <button
-          onClick={() => save(false)} disabled={busy || !!validationError} type="button"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {ladder ? "Save ladder" : "Create ladder"}
-        </button>
-        {ladder && (
-          <button onClick={toggleActive} disabled={busy} type="button" className="rounded-md border px-3 py-2 text-sm">
-            {ladder.is_active ? "Disable" : "Enable"}
+          {/* Ladder editor */}
+          <div className="mt-3 space-y-2">
+            {draft.map((s, i) => {
+              const cents = centsFromDollars(s.price)
+              const mult = Number.isFinite(cents) ? stepMultiplier(baseCents, cents) : 0
+              const loud = mult >= LOUD_MULTIPLIER
+              const fired = view?.steps?.[i]?.fired_at != null
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2",
+                    loud
+                      ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                      : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60",
+                  )}
+                >
+                  <span className="text-[13px] text-neutral-500 dark:text-neutral-400">When</span>
+                  <Input
+                    type="number" min={1} value={s.threshold}
+                    onChange={(e) => setStep(i, "threshold", e.target.value)}
+                    className="w-20" placeholder="N" aria-label={`Step ${i + 1} threshold`}
+                  />
+                  <span className="text-[13px] text-neutral-500 dark:text-neutral-400">sold → charge $</span>
+                  <Input
+                    type="number" min="0" step="0.01" value={s.price}
+                    onChange={(e) => setStep(i, "price", e.target.value)}
+                    className="w-24" placeholder="0.00" aria-label={`Step ${i + 1} price`}
+                  />
+                  {mult > 0 && (
+                    <Badge variant={loud ? "warning" : "neutral"} size="sm">
+                      {loud && <TriangleAlert className="mr-1 inline size-3" />}
+                      {mult}×
+                    </Badge>
+                  )}
+                  {fired && <Badge variant="success" size="sm">Fired</Badge>}
+                  <button
+                    onClick={() => removeStep(i)} type="button"
+                    aria-label={`Remove step ${i + 1}`}
+                    className="ml-auto text-neutral-400 transition-colors hover:text-red-600 dark:hover:text-red-400"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          <button
+            onClick={addStep} type="button"
+            className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-[#05EB54] hover:underline"
+          >
+            <Plus className="size-3.5" /> Add step
           </button>
-        )}
-      </div>
 
-      {/* Manual override (D2) */}
-      {ladder && (
-        <div className="mt-4 border-t pt-4">
-          <div className="mb-1 text-sm font-medium text-gray-700">Manual price override</div>
-          <p className="mb-2 text-xs text-gray-500">Set any price now — the only way to lower below a fired step. Persists until you clear it.</p>
-          <div className="flex items-center gap-2">
-            <span className="text-sm">$</span>
-            <input
-              type="number" min="0" step="0.01" value={overrideDollars} onChange={(e) => setOverrideDollars(e.target.value)}
-              className="w-28 rounded border px-2 py-1 text-sm" placeholder="e.g. 12.00" aria-label="Override price"
-            />
-            <button onClick={() => applyOverride(false)} disabled={busy} type="button" className="rounded-md border px-3 py-1.5 text-sm">Set</button>
-            {ladder.manual_override_cents != null && (
-              <button onClick={() => applyOverride(true)} disabled={busy} type="button" className="text-sm text-red-500 hover:underline">Clear</button>
+          {/* LOUD multiplier warning (D8). The per-step badge above marks WHICH
+              row is extreme; this states the consequence in words, because a
+              small "10×" chip is easy to skim past when you are about to
+              multiply what every remaining buyer pays. */}
+          {peakMultiplier >= LOUD_MULTIPLIER && !validationError && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/40">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <div className="text-[13px] text-amber-800 dark:text-amber-300">
+                <span className="font-semibold">That is a {peakMultiplier}× price increase.</span>{" "}
+                At the top step a buyer pays {fmtCents(Math.max(...inputs.map((s) => s.price_cents)))} instead of{" "}
+                {fmtCents(baseCents)}. Double-check the decimal point before saving.
+              </div>
+            </div>
+          )}
+
+          {validationError && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+              {validationError}
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button onClick={() => save(false)} disabled={busy || !!validationError} size="sm">
+              {ladder ? "Save ladder" : "Create ladder"}
+            </Button>
+            {ladder && (
+              <Button onClick={toggleActive} disabled={busy} variant="secondary" size="sm">
+                {ladder.is_active ? "Disable" : "Enable"}
+              </Button>
             )}
           </div>
-        </div>
-      )}
 
-      {/* Fire history + revenue attribution (D13) */}
-      {history && history.fired_steps.length > 0 && (
-        <div className="mt-4 border-t pt-4">
-          <div className="mb-2 text-sm font-medium text-gray-700">Fire history</div>
-          <ul className="space-y-1 text-sm">
-            {history.fired_steps.map((f) => (
-              <li key={f.step_index} className="flex items-center justify-between">
-                <span className="text-gray-600">
-                  Step at {f.threshold_sold} sold → {fmtCents(f.price_cents)}
-                  {f.fired_at ? ` · fired ${f.fired_at}` : ""}
-                </span>
-                <span className="font-medium text-green-700">+{fmtCents(f.surge_over_base_cents)} over base</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Fire-on-save confirmation dialog (D7) */}
-      {confirmFire && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
-            <h4 className="text-base font-semibold text-gray-900">Fire steps now?</h4>
-            <p className="mt-2 text-sm text-gray-600">
-              These step(s) are already at or below the current sold count and will fire <strong>immediately</strong> on save — the price jumps right away:
-            </p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {confirmFire.map((s, i) => (
-                <li key={i} className="rounded bg-amber-50 px-2 py-1 text-amber-800">
-                  When {s.threshold_sold} sold → {fmtCents(s.price_cents)} ({stepMultiplier(baseCents, s.price_cents)}×)
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setConfirmFire(null)} type="button" className="rounded-md border px-3 py-2 text-sm">Cancel</button>
-              <button onClick={() => save(true)} disabled={busy} type="button" className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">Fire &amp; save</button>
+          {/* Manual override (D2) */}
+          {ladder && (
+            <div className="mt-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+              <div className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">Manual price override</div>
+              <p className="mt-0.5 mb-2 text-[13px] text-neutral-500 dark:text-neutral-400">
+                Set any price now — the only way to go below a step that already fired. Persists until you clear it.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[13px] text-neutral-500 dark:text-neutral-400">$</span>
+                <Input
+                  type="number" min="0" step="0.01" value={overrideDollars}
+                  onChange={(e) => setOverrideDollars(e.target.value)}
+                  className="w-28" placeholder="e.g. 12.00" aria-label="Override price"
+                />
+                <Button onClick={() => applyOverride(false)} disabled={busy} variant="secondary" size="sm">Set</Button>
+                {ladder.manual_override_cents != null && (
+                  <button
+                    onClick={() => applyOverride(true)} disabled={busy} type="button"
+                    className="text-[13px] font-medium text-red-600 hover:underline dark:text-red-400"
+                  >
+                    Clear override
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-    </section>
+          )}
+
+          {/* Fire history + revenue attribution (D13) */}
+          {history && history.fired_steps.length > 0 && (
+            <div className="mt-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+              <div className="mb-2 text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">Fire history</div>
+              <ul className="space-y-1.5">
+                {history.fired_steps.map((f) => (
+                  <li key={f.step_index} className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+                    <span className="text-neutral-600 dark:text-neutral-400">
+                      {f.threshold_sold} sold → {fmtCents(f.price_cents)}
+                      {f.fired_at ? ` · ${f.fired_at}` : ""}
+                      {f.fired_source ? ` · ${f.fired_source}` : ""}
+                    </span>
+                    <span className="font-medium text-green-700 dark:text-green-400">
+                      +{fmtCents(f.surge_over_base_cents)} over base
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Fire-on-save confirmation dialog (D7). These steps are already at or
+          below the current sold count, so saving fires them IMMEDIATELY — the
+          price jumps for the next buyer. Never save straight through. */}
+      <Dialog open={confirmFire !== null} onOpenChange={(o) => !o && setConfirmFire(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fire these steps now?</DialogTitle>
+            <DialogDescription>
+              These step(s) are already at or below the current sold count and will fire{" "}
+              <strong>immediately</strong> on save — the price jumps right away for the next buyer.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-1.5">
+            {(confirmFire ?? []).map((s, i) => {
+              const m = stepMultiplier(baseCents, s.price_cents)
+              return (
+                <li
+                  key={i}
+                  className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                >
+                  <span>{s.threshold_sold} sold → {fmtCents(s.price_cents)}</span>
+                  <Badge variant="warning" size="sm">
+                    {m >= LOUD_MULTIPLIER && <TriangleAlert className="mr-1 inline size-3" />}
+                    {m}×
+                  </Badge>
+                </li>
+              )
+            })}
+          </ul>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setConfirmFire(null)} disabled={busy}>Cancel</Button>
+            <Button onClick={() => save(true)} disabled={busy}>Fire &amp; save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

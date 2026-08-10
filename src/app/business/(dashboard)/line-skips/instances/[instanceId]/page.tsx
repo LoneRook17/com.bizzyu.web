@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { Input, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import LineSkipInstanceModal from "@/components/business/v2/line-skips/LineSkipInstanceModal"
+import { SurgeCard } from "@/components/business/SurgeCard"
 
 type InstanceModalMode = "edit_price" | "edit_quantity" | "edit_details" | "cancel"
 
@@ -298,6 +299,19 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
             </div>
           </StatTile>
         </div>
+      )}
+
+      {/* Surge pricing for this night (D11). Directly under the price stat tile
+          it drives, and above the analytics blocks, which are read-only
+          reporting. A cancelled night is not sellable, so it gets no pricing
+          control — same rule the price/quantity edit buttons use. The card
+          self-hides for non owner/manager. */}
+      {instance && instance.status !== "cancelled" && (
+        <SurgeCard
+          entityType="line_skip_night"
+          entityId={Number(instanceId)}
+          role={user?.business_role}
+        />
       )}
 
       {/* channel split + purchase time */}
