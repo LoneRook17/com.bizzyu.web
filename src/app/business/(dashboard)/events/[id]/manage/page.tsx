@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { DoorCodeCard } from "@/components/business/v2/events/DoorCodeCard"
 import { EventVenuePayoutBanner } from "@/components/business/v2/settings/VenuePayoutPaused"
+import { EventSurgeSection } from "@/components/business/v2/events/EventSurgeSection"
 import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
@@ -215,6 +216,12 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} />
         ))}
       </div>
+
+      {/* Surge pricing, one card per priced tier (D10). Sits below the manage
+          tiles because it is a live pricing control, not navigation — and above
+          the cancellation/danger blocks, which must stay last. Self-hides for
+          non owner/manager and for events with no priced tier. */}
+      <EventSurgeSection tickets={event.tickets} role={user?.business_role} />
 
       {/* cancellation banners */}
       {cancellationStatus === "pending" && (

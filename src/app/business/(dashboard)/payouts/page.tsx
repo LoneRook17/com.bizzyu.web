@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Lock, Banknote, Download, Loader2, Info, MapPin } from "lucide-react"
+import { Lock, Banknote, Download, Loader2, Info, MapPin, ChevronRight } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -43,6 +43,16 @@ import {
   PAYOUTS_ACCESS_COPY,
   type ReconcileOutcome,
 } from "@/lib/business/payouts-access"
+import {
+  isScopedPayoutsMember,
+  shouldShowVenuePicker,
+  pickerVenueList,
+  scopeRequiredVenuesFromError,
+  scoped404IsOutOfScope,
+  venuePickIntent,
+  PAYOUTS_VENUE_PICKER_COPY,
+  type ScopeVenue,
+} from "@/lib/business/payouts-scope"
 import ReconcileView, { RangePicker } from "@/components/business/v2/payouts/ReconcileView"
 
 /** EmptyState-compatible icon for the computing state — the stock Loader2 with
@@ -67,9 +77,10 @@ function PayoutsSkeleton() {
 }
 
 // ── Access state (never an error) ────────────────────────────────────────────
-// Payouts is owner-only (TF-B ruling). Non-owners never see a FAIL: the nav tab
-// is hidden, and a direct visit — or a 403 on the reconcile endpoints despite an
-// owner-looking session (a stale role) — lands on this clean, no-error state.
+// Payouts is owner OR owner-granted (PAYOUTS-PER-PERSON-ACCESS). Users without
+// access never see a FAIL: the nav tab is hidden, and a direct visit — or a 403
+// on the reconcile endpoints despite an access-looking session (a just-revoked
+// grant / stale role) — lands on this clean, no-error state.
 
 function PayoutsAccessState() {
   return (
@@ -82,10 +93,51 @@ function PayoutsAccessState() {
   )
 }
 
+// ── Venue-scoped picker state (PAYOUTS-PER-PERSON-ACCESS) ─────────────────────
+// A scoped granted member on "All venues" can't see a whole-account view (the
+// server 403s an all-venues payouts call for them). Instead of an error, we mirror
+// the line-skips tab's "pick a venue" pattern EXACTLY: a calm chooser of only
+// their accessible venues, no payouts data, no error styling. Choosing one sets
+// the GLOBAL venue switcher (onPick → setSelectedVenue), and from then on the page
+// behaves like today's single-venue view. Owner / global members never reach here.
+
+function PayoutsVenuePickerState({
+  venues,
+  onPick,
+}: {
+  venues: ScopeVenue[]
+  onPick: (id: number) => void
+}) {
+  return (
+    <>
+      <PageHeader title="Payouts" description="Reconcile every deposit to the tickets and refunds inside it." />
+      <div className="mt-6 rounded-xl border border-neutral-200 p-5 dark:border-neutral-800">
+        <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">{PAYOUTS_VENUE_PICKER_COPY.prompt}</p>
+        <div className="space-y-2">
+          {venues.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => onPick(v.id)}
+              className="flex w-full items-center justify-between rounded-lg border border-neutral-200 px-4 py-3 text-left text-sm font-medium text-neutral-800 transition-colors hover:border-[#05EB54]/40 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-800/60"
+            >
+              <span className="inline-flex items-center gap-2">
+                <MapPin className="size-4 text-neutral-400" /> {v.name}
+              </span>
+              <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function PayoutsPage() {
   const { user } = useAuth()
   // Gate is the ONE predicate the sidebar nav also uses — tab and screen agree.
-  if (!canAccessPayouts(user?.business_role)) return <PayoutsAccessState />
+  // PAYOUTS-PER-PERSON-ACCESS: owner OR an owner-granted member (/me →
+  // can_view_payouts). Users without access still land on the clean access state.
+  if (!canAccessPayouts(user?.business_role, user?.can_view_payouts)) return <PayoutsAccessState />
   return <ReconcileContainer />
 }
 
@@ -185,8 +237,16 @@ function ScopePill({ label }: { label: string }) {
 }
 
 function ReconcileContainer() {
+  const { user } = useAuth()
   const venueParam = useVenueParam()
-  const { selectedVenue, isAllVenues } = useVenue()
+  const { venues, selectedVenue, isAllVenues, setSelectedVenue } = useVenue()
+  // PAYOUTS-PER-PERSON-ACCESS: /me tells us the payouts MODE. A SCOPED granted
+  // member (all_venues:false) can only see one of THEIR venues at a time; owner /
+  // global members (all_venues:true) are undefined-scoped and keep today's full
+  // account view. `access` is absent on a pre-contract /me — the VENUE_SCOPE_REQUIRED
+  // 403 fallback below still drives the picker in that case.
+  const access = user?.payouts_access
+  const scoped = isScopedPayoutsMember(access)
   // Bare venue name for the per-deposit share callout (undefined ⇒ "This venue").
   const venueName = isAllVenues ? undefined : selectedVenue?.name
   // Venue id marks "this venue" in the summary breakdown table.
@@ -206,6 +266,33 @@ function ReconcileContainer() {
   const [crunchPhase, setCrunchPhase] = useState<ComputingPhase>("calm")
   // Bumped by Retry to restart the whole fetch/poll cycle after a give-up.
   const [fetchNonce, setFetchNonce] = useState(0)
+  // Set when a fetch PROVES scope is needed: a VENUE_SCOPE_REQUIRED 403 (no venue
+  // chosen) or a scoped member's out-of-scope 404. Either forces the venue picker.
+  // Only ever set for a provably-scoped caller, so owner/global can't reach it.
+  const [scopeForcedPicker, setScopeForcedPicker] = useState(false)
+  // Venues from a VENUE_SCOPE_REQUIRED 403 body — the fallback venue source for a
+  // pre-contract /me that didn't carry payouts_access.venues.
+  const [scopeRequiredVenues, setScopeRequiredVenues] = useState<ScopeVenue[] | null>(null)
+
+  // A scoped member on "All venues" has no whole-account view — render the picker
+  // (below) instead of firing an all-venues fetch the server would 403.
+  const skipFetch = scoped && isAllVenues
+
+  // Clear a stale fetch-forced picker whenever the fetch INPUTS change (a new venue
+  // via the top switcher, a new window, or a Retry). React's "adjust state when a
+  // key changes" pattern (done in render, not an effect): a 403/404-forced chooser
+  // for one venue must never survive onto the next. Only touches the scope flags —
+  // summary/deposits/mode are left alone, so prior data still stays on screen while
+  // the next window loads (no skeleton flash).
+  const fetchKey = `${venueParam}|${
+    timeWindow.kind === "custom" ? `${timeWindow.since}~${timeWindow.until}` : `d${timeWindow.days}`
+  }|${fetchNonce}`
+  const [seenFetchKey, setSeenFetchKey] = useState(fetchKey)
+  if (seenFetchKey !== fetchKey) {
+    setSeenFetchKey(fetchKey)
+    setScopeForcedPicker(false)
+    setScopeRequiredVenues(null)
+  }
 
   // fetchAll does NO state work (just returns the two payloads) so the effect
   // never contains a synchronous state update. Applying the result happens in the
@@ -219,20 +306,32 @@ function ReconcileContainer() {
     [timeWindow, venueParam],
   )
 
-  const apply = useCallback((s: SummaryFetchResult | null, d: DepositsFetchResult | null) => {
-    const outcome = reconcileOutcomeFromData(s, d)
-    if (outcome === "ready" && s?.kind === "ready" && d?.kind === "ready") {
-      setSummary(s.summary)
-      setDeposits(d.deposits)
-      // One cache key feeds both endpoints, so their freshness agrees; merge
-      // defensively anyway. ready+refreshing renders data normally — the view
-      // just gets a subtle indicator, never a spinner wall.
-      setFreshness(combineFreshness(s, d))
-    }
-    setMode(outcome)
-  }, [])
+  const apply = useCallback(
+    (s: SummaryFetchResult | null, d: DepositsFetchResult | null) => {
+      const outcome = reconcileOutcomeFromData(s, d)
+      // A scoped member's 404 (both endpoints degrade to null) means the SELECTED
+      // venue is outside their scope — fold it into the picker, never "coming soon".
+      if (scoped404IsOutOfScope(access, outcome)) {
+        setScopeForcedPicker(true)
+        return
+      }
+      if (outcome === "ready" && s?.kind === "ready" && d?.kind === "ready") {
+        setSummary(s.summary)
+        setDeposits(d.deposits)
+        // One cache key feeds both endpoints, so their freshness agrees; merge
+        // defensively anyway. ready+refreshing renders data normally — the view
+        // just gets a subtle indicator, never a spinner wall.
+        setFreshness(combineFreshness(s, d))
+      }
+      setMode(outcome)
+    },
+    [access],
+  )
 
   useEffect(() => {
+    // Scoped member on All venues → the picker renders below; never fetch (a
+    // whole-account payouts call 403s VENUE_SCOPE_REQUIRED for them).
+    if (skipFetch) return
     // `mode` initializes to "loading"; on a range re-fetch the current deposits
     // stay on screen until the new data resolves (no skeleton flash) — EXCEPT
     // a cold cache key ({state:'computing'}), which swaps in the crunching
@@ -252,14 +351,47 @@ function ReconcileContainer() {
         setMode("computing")
       },
       onGiveUp: () => setMode("error"),
-      onError: (err) => setMode(reconcileOutcomeFromError(err)),
+      onError: (err) => {
+        // A VENUE_SCOPE_REQUIRED 403 (a scoped member hit the endpoint with no
+        // venue) is NOT the stale-role 403 → drive the picker with the body's
+        // venues, not the access-denied state.
+        const scopeVenues = scopeRequiredVenuesFromError(err)
+        if (scopeVenues) {
+          setScopeRequiredVenues(scopeVenues)
+          setScopeForcedPicker(true)
+          return
+        }
+        setMode(reconcileOutcomeFromError(err))
+      },
     })
-  }, [fetchAll, apply, fetchNonce])
+  }, [fetchAll, apply, fetchNonce, skipFetch])
 
   const retry = () => {
     // Restart the effect's fetch/poll cycle (fresh give-up clock included).
     setMode("loading")
     setFetchNonce((n) => n + 1)
+  }
+
+  // SWITCHER SYNC: choosing a venue from the picker sets the GLOBAL venue switcher
+  // to it (exactly the line-skips tab) — `venueParam` flips, the fetch effect
+  // re-fires for that venue, and the page becomes today's single-venue view. Clear
+  // the fetch-forced flag so a prior 403/404 can't strand us on the chooser.
+  const pickVenue = (id: number) => {
+    const intent = venuePickIntent(id)
+    if (intent.clearScopeForced) setScopeForcedPicker(false)
+    setSelectedVenue(intent.switcherVenueId)
+  }
+
+  // PICKER STATE: a scoped member on All venues (or after a scope-required/out-of-
+  // scope fetch) gets the calm "pick a venue" chooser instead of any payouts data.
+  // Owner / global members never satisfy this — their view is byte-identical to
+  // today. Venues come from /me payouts_access.venues, then the 403 body, then the
+  // switcher's own restricted set (defensive — always non-empty for a scoped user).
+  if (shouldShowVenuePicker({ isAllVenues, access, scopeForced: scopeForcedPicker })) {
+    const fromContract = pickerVenueList(access, scopeRequiredVenues)
+    const pickerVenues =
+      fromContract.length > 0 ? fromContract : venues.map((v) => ({ id: v.id, name: v.name }))
+    return <PayoutsVenuePickerState venues={pickerVenues} onPick={pickVenue} />
   }
 
   // A 403 on an owner-looking session (stale role) → the clean access state, not

@@ -136,6 +136,13 @@ export interface PayoutsSummary {
   refunded_cents: number
   /** true ONLY on a venue-scoped response; gates every field below. */
   venue_scoped: boolean
+  /** PAYOUTS-PER-PERSON-ACCESS: true ONLY on a SCOPED granted member's response.
+   *  The server OMITS the account totals, per-venue breakdown, and
+   *  shared_with_venues from a scope_restricted summary (they arrive as 0 / [] /
+   *  null after normalize), so the UI hides the combined-account siblings and
+   *  shows only the venue tiles. false/absent on every owner/global response —
+   *  those render the full combined view exactly as today. */
+  scope_restricted: boolean
   /** THIS venue's attributed share (null when unscoped). */
   venue_deposited_cents: number | null
   venue_in_transit_cents: number | null
@@ -164,9 +171,23 @@ export interface DepositListItem {
   payout_id: string
   /** Stripe arrival_date, US/Eastern (YYYY-MM-DD). */
   arrival_date: string | null
+  /** The FULL bank deposit total — always the whole payout, never a venue slice
+   *  (Stripe pays the connected account, not the venue). Unchanged by venue scope. */
   amount_cents: number
   sales_count: number
   status: PayoutStatus
+  /** ADDITIVE (payouts-venue-scoping contract §1): the selected venue's attributed
+   *  slice of this payout — the engine's `venue_subtotal_cents`, the SAME per-venue
+   *  sum behind the summary venue tile, and equal to the drill-down's
+   *  `venue_subtotal_cents` for this payout. Present ONLY on a venue-scoped
+   *  (`?venue_id=`) /deposits response; `null` when unscoped OR from a pre-contract
+   *  server (no venue_* leak). Can be `0` (hide the row client-side) or negative
+   *  (refund-heavy payout — a real movement, kept). */
+  venue_amount_cents: number | null
+  /** ADDITIVE (§1): the venue's sale count within the payout (ticket + door qty
+   *  over the venue's rows; refunds/adjustments excluded — mirrors `sales_count`).
+   *  `null` when unscoped or pre-contract. */
+  venue_sales_count: number | null
 }
 
 /** One ticket tier inside an event group. */
@@ -281,6 +302,11 @@ export function normalizeSummary(raw: Partial<PayoutsSummary> | null | undefined
     in_transit_cents: num(r.in_transit_cents),
     refunded_cents: num(r.refunded_cents),
     venue_scoped: scoped,
+    // PAYOUTS-PER-PERSON-ACCESS: a scoped member's summary carries this marker and
+    // OMITS the account/breakdown/shared fields (they normalize to 0 / [] / null
+    // above/below). Gated on scoped so a stray flag on an unscoped payload is
+    // ignored — the all-venues render can never hide its combined view.
+    scope_restricted: scoped && (r as { scope_restricted?: unknown }).scope_restricted === true,
     venue_deposited_cents: scoped && r.venue_deposited_cents != null ? num(r.venue_deposited_cents) : null,
     venue_in_transit_cents: scoped && r.venue_in_transit_cents != null ? num(r.venue_in_transit_cents) : null,
     venue_refunded_cents: scoped && r.venue_refunded_cents != null ? num(r.venue_refunded_cents) : null,
@@ -309,6 +335,12 @@ export function normalizeDeposit(raw: Partial<DepositListItem>): DepositListItem
     amount_cents: num(raw.amount_cents),
     sales_count: num(raw.sales_count),
     status: normStatus(raw.status),
+    // Additive venue slice: coerce ONLY when the server actually sent it (a
+    // venue-scoped response against a contract-aware build). Absent → null, so
+    // an unscoped payload can never leak a venue_* field and the list falls back
+    // to today's whole-deposit rendering.
+    venue_amount_cents: raw.venue_amount_cents == null ? null : num(raw.venue_amount_cents),
+    venue_sales_count: raw.venue_sales_count == null ? null : num(raw.venue_sales_count),
   }
 }
 
@@ -320,6 +352,121 @@ export function normalizeDeposits(raw: unknown): DepositListItem[] {
       ? (raw as { deposits: unknown[] }).deposits
       : []
   return arr.map((d) => normalizeDeposit((d ?? {}) as Partial<DepositListItem>))
+}
+
+// ── Deposit-row venue-slice projection (payouts-venue-scoping contract §1) ────
+//
+// When a single venue is selected, each deposit row leads with THAT venue's
+// slice (`venue_amount_cents`) and keeps the full bank deposit (`amount_cents`)
+// as quiet context; $0-venue rows are hidden client-side (the server keeps them
+// — a deposit's existence on the shared account is real, but it isn't this
+// venue's money). All of that is decided here (pure, test-pinned) so the
+// component can't drift, exactly as SummaryStrip defers to summaryTilesFor.
+//
+// Three modes, chosen from (is a venue selected?) × (did the server send a slice?):
+//   all_venues   → no venue selected: render EXACTLY as today (amount_cents,
+//                  "deposited", sales_count, nothing hidden). Hard regression gate.
+//   venue_slice  → venue selected AND the server implements the contract
+//                  (venue_amount_cents != null): the venue-slice layout; hide $0.
+//   venue_whole  → venue selected but a PRE-contract server (venue_amount_cents
+//                  == null): the account pays the whole deposit and we can't
+//                  compute a slice, so keep today's whole-deposit rendering
+//                  (labelled "whole deposit") — no regression before services ships.
+
+export type DepositRowMode = "all_venues" | "venue_slice" | "venue_whole"
+
+export function depositRowMode(d: DepositListItem, venueScoped: boolean): DepositRowMode {
+  if (!venueScoped) return "all_venues"
+  return d.venue_amount_cents != null ? "venue_slice" : "venue_whole"
+}
+
+/** Everything the deposit row needs to render, decided here so the render is
+ *  test-governed. `venueScoped` is the caller's "a single venue is selected"
+ *  signal (`!!venueParam`). */
+export interface DepositRowView {
+  mode: DepositRowMode
+  /** venue_slice + slice === 0 → hide the row entirely (client-side). Never for
+   *  all_venues / venue_whole, and NOT for a negative slice (a real movement). */
+  hidden: boolean
+  /** venue_slice AND slice < 0 → the slice is a net REFUND for this venue in the
+   *  deposit (its refunds outweighed its sales, or only refunds landed). Drives
+   *  the refund presentation — typographic-minus headline + a "refund" qualifier +
+   *  money-returned copy — instead of "<venue>'s share". Always false for
+   *  all_venues / venue_whole and for a zero or positive slice. */
+  isVenueRefund: boolean
+  /** Primary/headline number: the venue's slice in venue_slice mode, else the
+   *  full deposit total. */
+  headlineCents: number
+  /** The full bank deposit — quiet secondary context in venue_slice mode. */
+  depositCents: number
+  /** Count for the sales line: venue_sales_count in venue_slice mode (when the
+   *  server sent it), else the account-level sales_count. */
+  salesCount: number
+}
+
+export function depositRowView(d: DepositListItem, venueScoped: boolean): DepositRowView {
+  const mode = depositRowMode(d, venueScoped)
+  const slice = mode === "venue_slice"
+  return {
+    mode,
+    hidden: slice && d.venue_amount_cents === 0,
+    isVenueRefund: slice && (d.venue_amount_cents as number) < 0,
+    headlineCents: slice ? (d.venue_amount_cents as number) : d.amount_cents,
+    depositCents: d.amount_cents,
+    salesCount: slice && d.venue_sales_count != null ? d.venue_sales_count : d.sales_count,
+  }
+}
+
+/** The deposits the list actually renders. Venue-scoped: $0-venue rows hidden;
+ *  negative and positive slices kept. Unscoped: the array unchanged (byte-for-
+ *  byte the all-venues list — the hard regression gate). */
+export function visibleDeposits(deposits: DepositListItem[], venueScoped: boolean): DepositListItem[] {
+  if (!venueScoped) return deposits
+  return deposits.filter((d) => !depositRowView(d, true).hidden)
+}
+
+/** True when a venue is selected and deposits DO exist on the account for the
+ *  range, but every one nets $0 to this venue (all rows hidden) → show the clean
+ *  venue empty state instead of the generic "no deposits". */
+export function allVenueRowsHidden(deposits: DepositListItem[], venueScoped: boolean): boolean {
+  if (!venueScoped || deposits.length === 0) return false
+  return visibleDeposits(deposits, true).length === 0
+}
+
+/** Small label on the venue-slice headline, e.g. "Nauti Parrot's share". Names
+ *  the venue so the number never reads as the whole bank deposit. POSITIVE slices
+ *  only — a negative slice is a refund (venueRefundLabel), never a "share". */
+export function venueShareLabel(venueName?: string | null): string {
+  return `${venueName || "This venue"}'s share`
+}
+
+/** The at-a-glance qualifier beside a NEGATIVE venue-slice headline so "−$18.75"
+ *  reads as a refund, not a bare negative "share". Rendered small + muted. */
+export const VENUE_REFUND_QUALIFIER = "refund"
+
+/** Caption for a NEGATIVE venue-slice row — the money-returned counterpart to
+ *  venueShareLabel. The slice went negative because this venue's refunds
+ *  outweighed its sales in the deposit (sales fully refunded, or only refunds
+ *  landed), so it is money RETURNED for the venue, never its "share". Names the
+ *  venue so the negative headline is unambiguous. */
+export function venueRefundLabel(venueName?: string | null): string {
+  return `returned for ${venueName || "this venue"}`
+}
+
+/** Quiet context caption under the venue slice: "of a $8,688.50 deposit". Uses
+ *  the same signed `usd` formatter the rest of this view uses. */
+export function depositContextLabel(depositCents: number): string {
+  return `of a ${usd(depositCents)} deposit`
+}
+
+/** Empty state when a venue is selected but every deposit in the range nets $0
+ *  to it (all rows hidden). Names the venue; NOT the generic "no deposits". */
+export function venueEmptyDepositsCopy(venueName?: string | null): { title: string; description: string } {
+  const who = venueName || "this venue"
+  return {
+    title: `No ${who} money in these deposits for this range`,
+    description: `Stripe deposited money to your account in this range, but none of it came from ${who}'s sales. Switch venues or widen the date range to see more.`,
+  }
 }
 
 function normalizeTier(raw: Partial<ReconTier>): ReconTier {

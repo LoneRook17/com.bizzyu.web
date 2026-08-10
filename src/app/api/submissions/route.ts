@@ -22,12 +22,14 @@ async function uploadBase64ToS3(base64: string, folder: string): Promise<string>
   const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const bucket = process.env.AWS_BUCKET || "bizzy-dev";
 
+  // No ACL: the bucket uses Object Ownership "BucketOwnerEnforced", which
+  // rejects any request carrying an ACL (AccessControlListNotSupported).
+  // Public read is granted by the bucket's PublicReadGetObject policy instead.
   await s3.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     Body: buffer,
     ContentType: `image/${match[1]}`,
-    ACL: "public-read",
   }));
 
   return `https://${bucket}.s3.amazonaws.com/${key}`;

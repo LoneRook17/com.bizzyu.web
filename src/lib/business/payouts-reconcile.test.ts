@@ -102,6 +102,7 @@ test("normalizeSummary coerces string cents and tolerates null", () => {
     in_transit_cents: 0,
     refunded_cents: 0,
     venue_scoped: false,
+    scope_restricted: false,
     venue_deposited_cents: null,
     venue_in_transit_cents: null,
     venue_refunded_cents: null,
@@ -493,6 +494,39 @@ test("normalizeSummary: stray venue fields WITHOUT venue_scoped:true are dropped
   assert.equal(s.venue_deposited_cents, null)
   assert.equal(s.account_dedicated, null)
   assert.deepEqual(s.shared_with_venues, [])
+})
+
+test("normalizeSummary: a scope_restricted scoped-member payload keeps ONLY the venue trio", () => {
+  // PAYOUTS-PER-PERSON-ACCESS: the server sends exactly this for a SCOPED member —
+  // account totals / breakdown / shared_with_venues are OMITTED entirely.
+  const s = normalizeSummary({
+    venue_scoped: true,
+    scope_restricted: true,
+    venue_id: 262,
+    venue_deposited_cents: 8300,
+    venue_in_transit_cents: 1200,
+    venue_refunded_cents: 350,
+  } as never)
+  assert.equal(s.scope_restricted, true)
+  assert.equal(s.venue_scoped, true)
+  // Venue tiles survive (the honest per-venue figure).
+  assert.equal(s.venue_deposited_cents, 8300)
+  assert.equal(s.venue_in_transit_cents, 1200)
+  assert.equal(s.venue_refunded_cents, 350)
+  // Omitted account/sibling fields normalize to their empty forms — the UI hides
+  // the combined siblings, so these never render.
+  assert.equal(s.deposited_cents, 0)
+  assert.deepEqual(s.shared_with_venues, [])
+  assert.deepEqual(s.breakdown, [])
+  assert.equal(s.account_dedicated, false)
+})
+
+test("normalizeSummary: scope_restricted is DROPPED on an unscoped payload (no venue_scoped)", () => {
+  // A stray scope_restricted without venue_scoped:true must never hide the
+  // all-venues combined view.
+  const s = normalizeSummary({ deposited_cents: 100, scope_restricted: true } as never)
+  assert.equal(s.venue_scoped, false)
+  assert.equal(s.scope_restricted, false)
 })
 
 test("render state: all-venues (venue_scoped absent) → unchanged account-level strip", () => {

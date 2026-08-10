@@ -12,6 +12,7 @@ import {
   userVenueIds, isVenueScopeForbidden, groupMembersByScope,
   type EditorScope,
 } from "@/lib/business/team-venues"
+import { togglePayoutsAccess, PAYOUTS_ACCESS_TOGGLE } from "@/lib/business/team-payouts-access"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -38,6 +39,9 @@ export default function V2TeamPage() {
   const [removeError, setRemoveError] = useState<string | null>(null)
   // TM-B3 (#15b): per-row venue-assignment errors (e.g. 403 VENUE_SCOPE_FORBIDDEN).
   const [venueErrors, setVenueErrors] = useState<Record<number, string>>({})
+  // PAYOUTS-PER-PERSON-ACCESS: per-row Payouts-access errors + in-flight rows.
+  const [accessErrors, setAccessErrors] = useState<Record<number, string>>({})
+  const [accessSaving, setAccessSaving] = useState<Record<number, boolean>>({})
 
   const canInvite = user?.business_role === "owner" || user?.business_role === "manager"
   const isOwner = user?.business_role === "owner"
@@ -101,6 +105,39 @@ export default function V2TeamPage() {
       setVenueErrors((prev) => ({ ...prev, [memberId]: message }))
     }
   }
+
+  // PAYOUTS-PER-PERSON-ACCESS: owner flips a member's Payouts-page access.
+  // Optimistic (functional setState composes on the latest roster), with a clean
+  // revert + inline error on failure. The pure orchestration lives in
+  // team-payouts-access.ts (unit-tested); this only wires state + the client.
+  const handlePayoutsAccessChange = useCallback(async (memberId: number, enabled: boolean) => {
+    // Clear any prior error for this row before retrying.
+    setAccessErrors((prev) => {
+      if (!(memberId in prev)) return prev
+      const next = { ...prev }
+      delete next[memberId]
+      return next
+    })
+    const previous = members.find((m) => m.id === memberId)?.can_view_payouts ?? false
+    setAccessSaving((prev) => ({ ...prev, [memberId]: true }))
+    await togglePayoutsAccess({
+      memberId,
+      enabled,
+      previous,
+      patch: (path, body) => apiClient.patch(path, body),
+      setMembers,
+      onError: (id, err) =>
+        setAccessErrors((prev) => ({
+          ...prev,
+          [id]: err instanceof ApiError ? err.message : PAYOUTS_ACCESS_TOGGLE.errorLabel,
+        })),
+    })
+    setAccessSaving((prev) => {
+      const next = { ...prev }
+      delete next[memberId]
+      return next
+    })
+  }, [members])
 
   // Resend prefills the invite dialog rather than firing a request behind the
   // owner's back: a resend mints a fresh link, and under the #5 contract the
@@ -214,6 +251,9 @@ export default function V2TeamPage() {
                     onVenuesChange={handleVenuesChange}
                     onResend={isOwner ? handleResend : undefined}
                     venueError={venueErrors[member.id]}
+                    onPayoutsAccessChange={isOwner ? handlePayoutsAccessChange : undefined}
+                    payoutsAccessSaving={accessSaving[member.id]}
+                    payoutsAccessError={accessErrors[member.id]}
                   />
                 ))}
               </div>
