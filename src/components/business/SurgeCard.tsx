@@ -213,6 +213,29 @@ export function SurgeCard({
   })
   const saveBtn = saveButtonState({ dirty, validationError, busy })
 
+  /**
+   * LIVE TINT (visual experiment) — while surge is on, the whole card is
+   * green, so "which of my tiers is currently surging" is answerable from
+   * across the page instead of by reading each switch. Purely cosmetic: it
+   * reads `isActive` and changes nothing else.
+   *
+   * The inner surfaces flip with it. A grey `bg-neutral-50` panel on a green
+   * card reads as a dead/disabled region, so the price line and the step rows
+   * go white-on-tint instead — which also keeps the green "Fired" badge
+   * sitting on a neutral background, where it stays distinguishable from the
+   * card itself. Amber (loud multiplier, validation) is deliberately NOT
+   * tinted; it has to keep winning the page.
+   */
+  const tintCard = isActive
+    ? "border-green-200 bg-green-50/70 dark:border-green-900/70 dark:bg-green-950/20"
+    : undefined
+  const tintSurface = isActive
+    ? "border-green-200 bg-white/75 dark:border-green-900/60 dark:bg-neutral-900/50"
+    : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60"
+  const tintDivider = isActive
+    ? "border-green-200/80 dark:border-green-900/50"
+    : "border-neutral-100 dark:border-neutral-800"
+
   const addStep = () => setDraft((d) => [...d, { threshold: "", price: "" }])
   const removeStep = (i: number) => setDraft((d) => d.filter((_, idx) => idx !== i))
   const setStep = (i: number, key: keyof DraftStep, val: string) =>
@@ -311,7 +334,7 @@ export function SurgeCard({
 
   return (
     <>
-      <Card className={className}>
+      <Card className={cn(tintCard, className)}>
         <CardContent className="p-4">
           {/* Header: what this is, and the one control that decides whether it
               is live. The switch sits apart from every draft control on the
@@ -344,7 +367,7 @@ export function SurgeCard({
           )}
 
           {/* The question the operator actually came here with. */}
-          <div className="mt-3 flex flex-wrap items-end justify-between gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-900/60">
+          <div className={cn("mt-3 flex flex-wrap items-end justify-between gap-2 rounded-lg border px-3 py-2.5", tintSurface)}>
             <div className="min-w-0">
               <div className="text-[13px] text-neutral-500 dark:text-neutral-400">Customers pay</div>
               <div className="flex items-baseline gap-2">
@@ -390,7 +413,7 @@ export function SurgeCard({
                         "flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2",
                         loud
                           ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
-                          : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60",
+                          : tintSurface,
                       )}
                     >
                       <span className="text-[13px] text-neutral-500 dark:text-neutral-400">When</span>
@@ -468,12 +491,12 @@ export function SurgeCard({
               </div>
             </>
           ) : (
-            <ReadOnlySteps steps={serverSteps} baseCents={baseCents} />
+            <ReadOnlySteps steps={serverSteps} baseCents={baseCents} surfaceClass={tintSurface} />
           )}
 
           {/* Manual override (D2) */}
           {ladder && (
-            <div className="mt-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+            <div className={cn("mt-4 border-t pt-4", tintDivider)}>
               <div className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{SURGE_LABELS.override}</div>
               <p className="mt-0.5 mb-2 text-[13px] text-neutral-500 dark:text-neutral-400">
                 Set any price now — the only way to go below a step that already fired. Persists until you clear it.
@@ -500,7 +523,7 @@ export function SurgeCard({
 
           {/* Fire history + revenue attribution (D13) */}
           {history && history.fired_steps.length > 0 && (
-            <div className="mt-4 border-t border-neutral-100 pt-4 dark:border-neutral-800">
+            <div className={cn("mt-4 border-t pt-4", tintDivider)}>
               <div className="mb-2 text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{SURGE_LABELS.fireHistory}</div>
               <ul className="space-y-1.5">
                 {history.fired_steps.map((f) => (
@@ -630,7 +653,13 @@ function SurgeSwitch({
 
 /** The default face of the card: the saved ladder, stated, with nothing on it
  *  that can be changed by accident. */
-function ReadOnlySteps({ steps, baseCents }: { steps: Array<{ threshold_sold: number; price_cents: number; fired_at?: string | null }>; baseCents: number }) {
+function ReadOnlySteps({ steps, baseCents, surfaceClass }: {
+  steps: Array<{ threshold_sold: number; price_cents: number; fired_at?: string | null }>
+  baseCents: number
+  /** Row background/border — flips with the live tint so the rows never read
+   *  as a grey dead zone sitting on a green card. */
+  surfaceClass?: string
+}) {
   if (steps.length === 0) {
     return (
       <p className="mt-2 rounded-lg border border-dashed border-neutral-200 px-3 py-3 text-[13px] text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
@@ -645,7 +674,10 @@ function ReadOnlySteps({ steps, baseCents }: { steps: Array<{ threshold_sold: nu
         return (
           <li
             key={i}
-            className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-[13px] dark:border-neutral-800 dark:bg-neutral-900/60"
+            className={cn(
+              "flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-[13px]",
+              surfaceClass ?? "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/60",
+            )}
           >
             <span className="text-neutral-600 dark:text-neutral-300">
               When <span className="font-medium text-neutral-900 dark:text-neutral-100">{s.threshold_sold}</span> sold →{" "}
