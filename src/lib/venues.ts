@@ -45,6 +45,24 @@ export interface Venue {
 const API_BASE = "https://services.bizzy-deals.com";
 
 /**
+ * Test venues that live under REAL universities, which the Naperville
+ * university filter can't catch: "Bottle Caps Test Bar" (venue 5) is parked
+ * under Ohio State. Same shape as the universities filter, and for the same
+ * reason it lives here in the one fetch every caller goes through: matched on
+ * id AND name so a rename or a reseed with a new id still can't leak it, and
+ * a per-page filter is one someone forgets to add.
+ *
+ * \btest\b, not /test/i: "Contest Bar" would be a real name; "... Test ..."
+ * as its own word is not.
+ */
+const TEST_VENUE_IDS = new Set([5]);
+const TEST_VENUE_NAME = /\btest\b/i;
+
+function isTestVenue(v: RawVenue): boolean {
+  return TEST_VENUE_IDS.has(v.venue_id) || TEST_VENUE_NAME.test(v.venue_name ?? "");
+}
+
+/**
  * Venues for one campus. Naperville can't reach here: fetchUniversities drops it.
  *
  * THROWS on failure, like fetchDealsForSchool and for the same reason: campus.ts
@@ -59,7 +77,7 @@ export async function fetchVenuesForUniversity(u: University): Promise<Venue[]> 
   if (!Array.isArray(rows)) return [];
 
   return (rows as RawVenue[])
-    .filter((v) => v?.venue_id && v?.venue_name)
+    .filter((v) => v?.venue_id && v?.venue_name && !isTestVenue(v))
     .map((v): Venue => ({
       id: v.venue_id,
       name: v.venue_name as string,

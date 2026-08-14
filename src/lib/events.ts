@@ -56,6 +56,7 @@ export async function fetchAllEvents(): Promise<CampusEvent[]> {
   return (rows as RawEvent[])
     .filter((e) => e?.event_id && e?.name && e.status === "published")
     .filter((e) => e.university_id != null && !isTestUniversityId(e.university_id))
+    .filter((e) => !isTestVenueName(e.venue_name))
     .map((e) => ({
       id: e.event_id,
       name: e.name as string,
@@ -79,6 +80,16 @@ export async function fetchAllEvents(): Promise<CampusEvent[]> {
  */
 const TEST_UNIVERSITY_IDS = new Set([91]);
 const isTestUniversityId = (id: number) => TEST_UNIVERSITY_IDS.has(id);
+
+/**
+ * Test venues parked under REAL universities, which the filter above cannot
+ * catch: "Bottle Caps Test Bar" lives under Ohio State. This feed has no
+ * venue_id, so the name is all there is to match on. Same \btest\b pattern as
+ * venues.ts, and word-bounded for the same reason: "Contest Bar" would be a
+ * real name.
+ */
+const TEST_VENUE_NAME = /\btest\b/i;
+const isTestVenueName = (name: string | null) => TEST_VENUE_NAME.test(name ?? "");
 
 /** This campus's events, soonest first. */
 export function eventsForUniversity(events: CampusEvent[], universityId: number): CampusEvent[] {
