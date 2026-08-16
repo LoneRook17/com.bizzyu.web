@@ -44,6 +44,22 @@ export const metadata: Metadata = {
   // Smart App Banner (was a raw <meta> in <head>; moved into the metadata API so
   // individual routes like /setup-password can opt out with `itunes: null`)
   itunes: { appId: "6683306360" },
+  // Google Search Console ownership, for the https://bizzyu.com/ URL-prefix
+  // property on admin@bizzy.university.
+  //
+  // Through the metadata API rather than a raw <meta> in <head>, so it lands in
+  // the same place as everything else here and cannot be lost to a head rewrite.
+  //
+  // LEAVE THIS IN. Google re-checks the tag periodically and silently unverifies
+  // the property when it disappears, which takes the sitemap and every report
+  // with it. It renders on every page, which is harmless and is what makes the
+  // check robust to the homepage changing.
+  //
+  // The domain is also verifiable by DNS TXT with this same token, if the
+  // Domain property (all subdomains, http and https) is ever wanted instead.
+  verification: {
+    google: "G5idoL7Jjd_js8ICTZc3W2VIJvA7DV_PN0tuCZJnUio",
+  },
   title: {
     default: "Bizzy: Student Deals & Discounts at Your College Campus",
     template: "%s | Bizzy",
