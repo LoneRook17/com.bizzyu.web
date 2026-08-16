@@ -492,9 +492,11 @@ export default function VenuePageClient({
               {orderedLineSkips.map((ls) => {
                 const today = isLsToday(ls)
                 const isHighlighted = highlightLineSkip === String(ls.id) || today
-                const available = ls.capacity !== null ? Math.max(0, ls.capacity - ls.tickets_sold) : null
+                // Sold out is the ONLY availability fact a customer may learn here.
+                // No remaining count, no percentage, no progress bar — see the ruling
+                // at the top of src/lib/lineskip/availability.ts. The server keeps
+                // sending capacity/tickets_sold; this surface just stops rendering it.
                 const soldOut = ls.capacity !== null && ls.tickets_sold >= ls.capacity
-                const pctSold = ls.capacity ? Math.min(100, Math.round((ls.tickets_sold / ls.capacity) * 100)) : 0
 
                 return (
                   <Link
@@ -528,20 +530,6 @@ export default function VenuePageClient({
                         )}
                       </div>
                     </div>
-
-                    {ls.capacity !== null && !soldOut && (
-                      <div className="mt-4">
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-[#2ECB4E] to-[#05EB54]"
-                            style={{ width: `${pctSold}%` }}
-                          />
-                        </div>
-                        <p className="mt-1.5 text-xs font-semibold text-gray-400">
-                          {available} of {ls.capacity} left{pctSold >= 75 ? ", going fast" : ""}
-                        </p>
-                      </div>
-                    )}
 
                     <div className="mt-4 flex items-center justify-between">
                       <span className="text-2xl font-extrabold text-[#05EB54]">{formatPrice(ls.price_cents)}</span>
