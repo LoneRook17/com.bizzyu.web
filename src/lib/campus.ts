@@ -80,7 +80,7 @@ async function fetchCampusesUncached(): Promise<Campus[]> {
   const settled = await mapLimit(universities, 6, (u) => hydrate(u, allEvents));
 
   // A rejected school is unknown, not empty, so it drops out of THIS list and
-  // says so. It keeps its page: [campus]/page.tsx sets dynamicParams=true, so a
+  // says so. It keeps its page: [slug]/page.tsx sets dynamicParams=true, so a
   // slug missed by a flaky build still renders on demand rather than 404ing.
   const failed = settled.filter((r) => r.status === "rejected");
   if (failed.length > 0) {
@@ -100,7 +100,7 @@ async function fetchCampusesUncached(): Promise<Campus[]> {
 /**
  * Cached, and this is the important one.
  *
- * [campus]/page.tsx calls this a third time per page just to list sibling
+ * [slug]/page.tsx calls this a third time per page just to list sibling
  * campuses, on top of generateStaticParams and the sitemap. Uncached, a build
  * with 9 campus pages ran the 34-school fan-out ~11 times: ~620 requests at
  * bizzy-deals.com in seconds, up to ~1,860 once fetchJSONRetry retried the

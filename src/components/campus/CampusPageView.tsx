@@ -1,110 +1,25 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import SectionContainer from "@/components/ui/SectionContainer";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import Button from "@/components/ui/Button";
-import SplitHeading from "@/components/ui/gsap/SplitHeading";
 import CountUp from "@/components/ui/gsap/CountUp";
 import CampusDeals from "@/components/campus/CampusDeals";
 import CampusNights from "@/components/campus/CampusNights";
 import CampusEvents from "@/components/campus/CampusEvents";
 import CampusWeekly from "@/components/campus/CampusWeekly";
-import { fetchCampus, fetchCampuses } from "@/lib/campus";
+import { fetchCampuses, type Campus } from "@/lib/campus";
 import { fetchWeeklySummary } from "@/lib/weekly";
 import { APP_STORE_URL } from "@/lib/constants";
-import { og } from "@/lib/og";
 
 /**
- * One page per campus, built from that campus's live deals and venues.
+ * The campus hub page, lifted out of the route file unchanged.
  *
- * Deliberately NOT one page per university. A survey of all 35 live schools
- * found 22 with zero deals and zero venues, so the page list follows the data
- * (see lib/campus.ts). Everything on the page is a real row from the app, which
- * is what makes 5 of these worth having and 35 of them a doorway farm.
- *
- * Revalidates every 30 min, so "this week's deals" is true without a deploy and
- * without generating a word of prose.
+ * It moved because the single top-level dynamic segment now serves two kinds of
+ * page (a campus and a venue), and a route file that dispatches between them
+ * should not also be 200 lines of one of them. Nothing about what this renders
+ * changed in the move.
  */
-export const revalidate = 1800;
-
-// TRUE, not false. The V1 API is flaky, so generateStaticParams' output varies
-// build to build: one bad pass and a real campus vanishes from the list. With
-// dynamicParams=false that vanished slug becomes a hard 404 on a page that was
-// live an hour ago.
-//
-// Letting it render on demand costs nothing, because fetchCampus applies the
-// same content gate at request time: a school with no data, a made-up slug, and
-// the test university all still return null and 404 below. The gate is the
-// guard, not this flag.
-export const dynamicParams = true;
-
-export async function generateStaticParams() {
-  // Deliberately prebuild NOTHING at build time — campus pages render on demand
-  // instead (dynamicParams=true above + the revalidate=1800 ISR window), so the
-  // first request in each 30-min window does a cached SSR and the rest serve
-  // from cache.
-  //
-  // Why not prebuild the publishable list here: prerendering N campus pages ran
-  // fetchCampus() once PER page, and Vercel's prerender workers don't share the
-  // unstable_cache across processes, so each worker re-fanned-out ~34 POSTs to
-  // the prod home_deals API and tripped its rate limit. A single 429 (or an
-  // empty university list) makes fetchCampus throw mid-prerender and takes the
-  // whole export — and the deploy — down with it (observed 3/3, incl. after a
-  // rate-limit cooldown, 2026-07-17). Rendering on demand removes the build-time
-  // API dependency entirely: a transient outage now costs a single live request
-  // (self-healing on the next one), never a cached 404 and never a failed build.
-  // The content gate is unchanged — fetchCampus still returns null → notFound()
-  // for unqualified, nonexistent, and test slugs.
-  return [];
-}
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ campus: string }>;
-}): Promise<Metadata> {
-  const { campus: slug } = await params;
-  const campus = await fetchCampus(slug);
-  if (!campus) return {};
-
-  const businesses = new Set(campus.deals.map((d) => d.business)).size;
-  // Counts come from the same rows the page renders, so the snippet can never
-  // promise more than the page delivers.
-  const parts = [
-    businesses > 0 && `${businesses} local ${businesses === 1 ? "spot" : "spots"}`,
-    campus.venues.length > 0 && `${campus.venues.length} ${campus.venues.length === 1 ? "bar" : "bars"}`,
-    campus.events.length > 0 && `${campus.events.length} upcoming ${campus.events.length === 1 ? "night" : "nights"}`,
-  ].filter(Boolean);
-
-  // No "| Bizzy" suffix: the root layout's title.template already appends it,
-  // and adding it here renders "... | Bizzy | Bizzy".
-  const title = `Student Deals at ${campus.fullName}`;
-  const description = `Live student discounts near ${campus.fullName}${
-    parts.length ? `: ${parts.join(", ")}` : ""
-  }. Claim them free in the Bizzy app.`;
-
-  return {
-    title,
-    description,
-    alternates: { canonical: `https://bizzyu.com/${campus.slug}` },
-    // Through og(), not a bare openGraph object: Next replaces rather than
-    // merges, so a hand-rolled block here silently ships a card with no image.
-    // The suffix is explicit because title.template does not apply to og:title.
-    ...og({ title: `${title} | Bizzy`, description }),
-  };
-}
-
-export default async function CampusPage({
-  params,
-}: {
-  params: Promise<{ campus: string }>;
-}) {
-  const { campus: slug } = await params;
-  const campus = await fetchCampus(slug);
-  if (!campus) notFound();
-
+export default async function CampusPageView({ campus }: { campus: Campus }) {
   // Written weekly by Claude from this campus's real rows; null when it fails or
   // no key is set, and the section then renders nothing.
   const weekly = await fetchWeeklySummary(campus);
