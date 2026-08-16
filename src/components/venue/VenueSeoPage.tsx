@@ -28,128 +28,141 @@ export default function VenueSeoPage({ page }: { page: VenuePage }) {
   const instagram = (venue.instagram || business.instagram)?.replace(/^@/, "") || null;
   const website = venue.website || business.website || null;
   const nextEvent = events[0] ?? null;
-  const cheapestTicket = events
-    .map((e) => (e.min_ticket_price != null ? Number(e.min_ticket_price) : NaN))
-    .filter((n) => Number.isFinite(n) && n > 0)
-    .sort((a, b) => a - b)[0];
 
   return (
     <>
       <JsonLd data={venueJsonLd(page, url)} />
 
       {/* ─── Hero ──────────────────────────────────────────────
-          The venue photo, the name, and where it is. 21 of 23 live venues have
-          a photo and only 8 have a logo, which is why this leans on the room. */}
+          The venue's own image, its name, and where it is.
+
+          The image is SHOWN, not used as wallpaper. It used to be a full-bleed
+          background at opacity-30 under a three-stop scrim, which reduced it to
+          a texture: on Backroads, whose photo_url is a logo lockup rather than
+          a room shot, the bar's own name was a ghost behind the h1. A venue page
+          that cannot show you the venue is missing the one image it has.
+
+          So it sits in its own framed panel, and the wallpaper treatment stays
+          only as a heavily blurred ambient wash that reads as colour, not as a
+          picture competing with the text. */}
       <section className="relative overflow-hidden bg-ink text-white">
         {venue.venuePhotoUrl && (
           <>
+            {/* Ambient only. Blurred past legibility on purpose, so it tints the
+                section with the venue's own colours without ever being mistaken
+                for the image itself. */}
             <Image
               src={venue.venuePhotoUrl}
-              alt={`Inside ${venue.name}`}
+              alt=""
+              aria-hidden="true"
               fill
-              priority
               sizes="100vw"
-              className="object-cover opacity-30"
+              className="object-cover scale-125 blur-3xl opacity-40"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/80 to-ink/50" />
+            <div className="absolute inset-0 bg-ink/70" />
           </>
         )}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(5,235,84,0.16),transparent_55%)] pointer-events-none" />
 
         <SectionContainer className="relative !py-16 md:!py-24">
-          {/* Visible breadcrumb, matching the BreadcrumbList in the JSON-LD.
-              It is also the sideways link back up to the campus hub, which is
-              how crawl equity reaches a brand new venue page at all. */}
-          <nav aria-label="Breadcrumb" className="mb-6">
-            <ol className="flex flex-wrap items-center gap-2 text-xs text-white/50">
-              <li>
-                <Link href="/" className="hover:text-primary transition-colors">
-                  Bizzy
-                </Link>
-              </li>
-              <li aria-hidden="true">/</li>
-              <li>
-                <Link
-                  href={`/${entry.campusSlug}`}
-                  className="hover:text-primary transition-colors"
-                >
-                  {entry.campusFullName}
-                </Link>
-              </li>
-              <li aria-hidden="true">/</li>
-              <li className="text-white/80">{venue.name}</li>
-            </ol>
-          </nav>
+          {/* Two columns only when there is something to put in the second one.
+              A handful of venues have no image at all, and an unconditional
+              two-track grid squeezed their text into 55% of the width beside a
+              column of nothing. */}
+          <div
+            className={`grid gap-10 lg:gap-16 ${
+              venue.venuePhotoUrl
+                ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-center"
+                : ""
+            }`}
+          >
+            <div>
+              {/* Visible breadcrumb, matching the BreadcrumbList in the JSON-LD.
+                  It is also the sideways link back up to the campus hub, which is
+                  how crawl equity reaches a brand new venue page at all. */}
+              <nav aria-label="Breadcrumb" className="mb-6">
+                <ol className="flex flex-wrap items-center gap-2 text-xs text-white/50">
+                  <li>
+                    <Link href="/" className="hover:text-primary transition-colors">
+                      Bizzy
+                    </Link>
+                  </li>
+                  <li aria-hidden="true">/</li>
+                  <li>
+                    <Link
+                      href={`/${entry.campusSlug}`}
+                      className="hover:text-primary transition-colors"
+                    >
+                      {entry.campusFullName}
+                    </Link>
+                  </li>
+                  <li aria-hidden="true">/</li>
+                  <li className="text-white/80">{venue.name}</li>
+                </ol>
+              </nav>
 
-          {/* Not a SplitHeading, for the same reason the campus hero is not:
-              this is the LCP element on a page whose entire job is ranking, and
-              SplitText starts every word at opacity 0. */}
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.02] tracking-tight mb-5 max-w-4xl text-white">
-            {venue.name}
-          </h1>
+              {/* Not a SplitHeading, for the same reason the campus hero is not:
+                  this is the LCP element on a page whose entire job is ranking, and
+                  SplitText starts every word at opacity 0. */}
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-[1.02] tracking-tight mb-5 text-white">
+                {venue.name}
+              </h1>
 
-          <p className="text-lg md:text-xl text-white/70 max-w-2xl leading-relaxed mb-8">
-            {venue.description?.trim()
-              ? venue.description
-              : `Tickets, cover and line skips at ${venue.name}, bought on your phone before you get there.`}
-          </p>
+              <p className="text-lg md:text-xl text-white/70 max-w-2xl leading-relaxed mb-8">
+                {venue.description?.trim()
+                  ? venue.description
+                  : `Tickets, cover and line skips at ${venue.name}, bought on your phone before you get there.`}
+              </p>
 
-          {venue.address && (
-            <p className="text-sm text-white/50 mb-8">
-              {venue.address}
-              {city && ` · near ${entry.campusFullName}`}
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-3 mb-10">
-            <Button href={APP_STORE_URL} external size="lg">
-              Get Bizzy Free
-            </Button>
-            {/* The app deep-link page. Untouched by this work: on an iPhone the
-                universal link opens the venue in the app, and everywhere else
-                it is the live board with checkout on it. */}
-            <Button href={`/venue/${venue.id}`} variant="outline" size="lg">
-              See what&apos;s on sale
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap gap-x-10 gap-y-5">
-            {events.length > 0 && (
-              <div>
-                <p className="text-3xl md:text-4xl font-bold text-primary leading-none">
-                  {events.length}
+              {venue.address && (
+                <p className="text-sm text-white/50 mb-8">
+                  {venue.address}
+                  {city && ` · near ${entry.campusFullName}`}
                 </p>
-                <p className="text-xs text-white/60 mt-1.5">
-                  Upcoming {events.length === 1 ? "night" : "nights"}
-                </p>
+              )}
+
+              {/* The counts that used to sit under here are gone. They restated
+                  the sections directly below them ("5 upcoming nights" above a
+                  list of 5 nights headed "5 nights on sale right now"), so they
+                  cost a screen of height to say nothing new. */}
+              <div className="flex flex-wrap gap-3">
+                <Button href={APP_STORE_URL} external size="lg">
+                  Get Bizzy Free
+                </Button>
+                {/* The app deep-link page. Untouched by this work: on an iPhone the
+                    universal link opens the venue in the app, and everywhere else
+                    it is the live board with checkout on it. */}
+                <Button href={`/venue/${venue.id}`} variant="outline" size="lg">
+                  See what&apos;s on sale
+                </Button>
               </div>
-            )}
-            {lineSkips.length > 0 && (
-              <div>
-                <p className="text-3xl md:text-4xl font-bold text-white leading-none">
-                  {lineSkips.length}
-                </p>
-                <p className="text-xs text-white/60 mt-1.5">
-                  Line {lineSkips.length === 1 ? "skip" : "skips"} this week
-                </p>
-              </div>
-            )}
-            {deals.length > 0 && (
-              <div>
-                <p className="text-3xl md:text-4xl font-bold text-white leading-none">
-                  {deals.length}
-                </p>
-                <p className="text-xs text-white/60 mt-1.5">
-                  Live {deals.length === 1 ? "deal" : "deals"}
-                </p>
-              </div>
-            )}
-            {Number.isFinite(cheapestTicket) && (
-              <div>
-                <p className="text-3xl md:text-4xl font-bold text-white leading-none">
-                  {formatPrice(cheapestTicket)}
-                </p>
-                <p className="text-xs text-white/60 mt-1.5">Cheapest ticket</p>
+            </div>
+
+            {venue.venuePhotoUrl && (
+              /* Two copies of the same file, which is deliberate. A venue's
+                 image is sometimes a room photo and sometimes a logo lockup,
+                 and there is no field telling us which. object-cover crops a
+                 wide lockup; object-contain letterboxes a photo. Cover-and-blur
+                 underneath, contain on top, and both kinds land correctly: the
+                 logo sits whole against its own colours, the photo fills the
+                 frame with an edge that reads as depth rather than as bars. */
+              <div className="relative aspect-[4/3] w-full rounded-3xl overflow-hidden ring-1 ring-white/15 shadow-2xl shadow-black/60">
+                <Image
+                  src={venue.venuePhotoUrl}
+                  alt=""
+                  aria-hidden="true"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 45vw"
+                  className="object-cover scale-110 blur-2xl opacity-70"
+                />
+                <Image
+                  src={venue.venuePhotoUrl}
+                  alt={venue.name}
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 45vw"
+                  className="object-contain"
+                />
               </div>
             )}
           </div>
