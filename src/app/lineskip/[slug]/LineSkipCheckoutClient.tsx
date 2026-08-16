@@ -1446,9 +1446,14 @@ export default function LineSkipCheckoutClient({
               className="w-full rounded-2xl py-3.5 text-base font-extrabold text-black transition hover:brightness-110 active:scale-[0.99]"
               style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 12px 32px -10px ${GOLD}80` }}
             >
-              {fees && fees.total > 0
-                ? `Get Line Skip: ${formatPrice(fees.total)}`
-                : "Get Line Skip: Free"}
+              {/* No price here (LSK-24). This bar floats over the night list,
+                  where each card shows its ticket price; printing the
+                  fee-inclusive total right next to a $1 card read as a
+                  bait-and-switch. The in-flow CTA can still show the total
+                  because it sits directly under the order summary that explains
+                  it — this one has no such context, so it is a pure CTA. The
+                  full breakdown is one tap away, on the phone step. */}
+              Get Line Skip
             </button>
           </div>
         </div>
