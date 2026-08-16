@@ -58,3 +58,41 @@ export class LineSkipSoldOutError extends Error {
     this.name = 'LineSkipSoldOutError'
   }
 }
+
+/**
+ * LSK-18: thrown when the services API refuses the sale because the venue's
+ * Connect account can't take charges yet (Boom 400 with
+ * `code: 'venue_stripe_account_not_ready'`).
+ *
+ * The session and free checkout paths read that body directly and hand it to
+ * parseVenueStripeBlock, which is what renders the friendly "ticket sales are
+ * paused" screen. The in-page PI path goes through client.ts, which collapsed
+ * every non-OK response into `new Error(message)` — so the `code` was gone by
+ * the time the page's catch ran, and a blocked venue showed a raw error string
+ * in the generic error banner instead.
+ *
+ * Carrying the parsed block on a typed error is the smallest thing that lets
+ * the PI catch reach the SAME screen as the other two paths, and it mirrors
+ * how LineSkipSoldOutError already gives that catch its sold-out arm.
+ */
+export class LineSkipVenueBlockedError extends Error {
+  readonly block: VenueStripeBlockLike
+
+  constructor(block: VenueStripeBlockLike, message = 'Ticket sales at this venue are paused.') {
+    super(message)
+    this.name = 'LineSkipVenueBlockedError'
+    this.block = block
+  }
+}
+
+/**
+ * Structurally what `parseVenueStripeBlock` returns. Declared here rather than
+ * imported so this transport module stays free of the checkout page's imports;
+ * the page passes it straight into the same `venueBlock` state the session and
+ * free paths use.
+ */
+export interface VenueStripeBlockLike {
+  reason: 'dangling_account' | 'no_connect_account' | 'not_onboarded'
+  venue_id: number | null
+  business_stripe_account_id: number | null
+}

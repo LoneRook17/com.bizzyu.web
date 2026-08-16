@@ -14,8 +14,8 @@
 
 import { getApiBaseUrl } from '@/lib/api-url'
 
+import { paymentIntentError } from './error-mapping'
 import {
-  LineSkipSoldOutError,
   type LineSkipCompleteResponse,
   type LineSkipPaymentIntentResponse,
   type LineSkipPiConfig,
@@ -76,12 +76,12 @@ export async function createPaymentIntent(
     body: JSON.stringify(args),
   })
   const data = await res.json().catch(() => ({}))
-  if (res.status === 409 && data?.code === 'SOLD_OUT') {
-    throw new LineSkipSoldOutError(data.message)
-  }
-  if (!res.ok) {
-    throw new Error(data?.message || 'Could not start payment')
-  }
+  // LSK-18: classification lives in error-mapping.ts so it is unit-testable and
+  // so a blocked venue keeps its `code` instead of being flattened into a bare
+  // Error — which is what stopped the PI path from ever showing the friendly
+  // paused-sales screen the session and free paths show.
+  const err = paymentIntentError(res.status, data)
+  if (err) throw err
   return data as LineSkipPaymentIntentResponse
 }
 

@@ -19,6 +19,7 @@ import {
 } from "@/lib/lineskip-pi/client"
 import {
   LineSkipSoldOutError,
+  LineSkipVenueBlockedError,
   type LineSkipCompleteResponse,
   type LineSkipPiBreakdown,
 } from "@/lib/lineskip-pi/types"
@@ -648,6 +649,17 @@ export default function LineSkipCheckoutClient({
         } catch (e) {
           if (e instanceof LineSkipSoldOutError) {
             setCheckoutStep("sold_out_unpaid")
+            return
+          }
+          // LSK-18: a venue whose Connect account can't take charges gets the
+          // same friendly paused-sales screen here as on the session and free
+          // paths above. Before this the code was discarded in client.ts, so
+          // this fell through to setCheckoutError and the buyer saw a raw error
+          // string in the generic banner.
+          if (e instanceof LineSkipVenueBlockedError) {
+            setVenueBlock(e.block)
+            setCheckoutStep("idle")
+            setCheckoutError("")
             return
           }
           setCheckoutError(e instanceof Error ? e.message : "Could not start payment")
