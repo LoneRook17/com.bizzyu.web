@@ -38,13 +38,18 @@ export function venueSlug(name: string): string {
  * unreachable forever. Suffixing it is the difference between a wrong page and
  * a working one. Campus slugs get added to this set at build time (below) for
  * the same reason: the dispatcher checks campus first.
+ *
+ * ADD TO THIS LIST when a new top-level route lands. It is every directory in
+ * src/app (minus [slug]) plus the two file routes and the /p rewrite, and the
+ * cost of forgetting is a venue page that silently never renders.
  */
 const RESERVED_SLUGS = new Set([
   "about", "accept-invite", "account", "admin", "api", "business", "businesses",
   "checkin", "checkout", "contact", "deal", "event", "events", "lineskip", "ls",
   "post-a-deal", "premium", "privacy", "promote", "promoter", "robots",
-  "setup-password", "sitemap", "sms-opt-in-proof", "students", "support-chat",
-  "team-invite", "terms", "venue", "verify-email", "p", "_next",
+  "setup-password", "sitemap", "sms-opt-in-proof", "street-interviews",
+  "students", "support-chat", "team-invite", "terms", "venue", "verify-email",
+  "p", "_next",
 ]);
 
 export interface VenueDirectoryEntry {
