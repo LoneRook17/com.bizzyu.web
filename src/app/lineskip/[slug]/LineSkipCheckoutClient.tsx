@@ -25,6 +25,7 @@ import {
 } from "@/lib/lineskip-pi/types"
 import { nightAvailability, remainingCapacity } from "@/lib/lineskip/availability"
 import { CHECKOUT_PANEL_CLASS } from "@/lib/lineskip/checkout-modal"
+import { orderSummaryRows } from "@/lib/lineskip/order-summary"
 import { isLineSkipSuccessArrival } from "@/lib/lineskip/success-params"
 import { fireConfetti } from "./success/confetti"
 
@@ -1515,14 +1516,56 @@ export default function LineSkipCheckoutClient({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-base font-extrabold" style={{ color: GOLD }}>
-                    {fees ? formatPrice(fees.total) : formatPrice(selectedInstance.price_cents * quantity)}
-                  </p>
                   <p className="text-xs text-white/40">
                     {quantity} ticket{quantity > 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
+
+              {/* Cost breakdown (LSK-25). Until now this card showed a bare
+                  total, so the service fee first appeared as a line item on the
+                  payment step — after the buyer had committed. The events
+                  checkout shows Subtotal / Service Fee / Total up front; this is
+                  the line-skip equivalent, in this card's own visual language
+                  rather than a port of the Blade markup.
+
+                  The figures are the SAME `fees` object that drives the payment
+                  request and the in-page order summary — nothing is recomputed
+                  here, so the three cannot disagree. */}
+              {fees && (
+                <div className="mt-3 border-t border-white/10 pt-3 space-y-1.5 text-xs">
+                  {orderSummaryRows(fees, quantity).map((row) =>
+                    row.kind === "total" ? (
+                      <div
+                        key={row.kind}
+                        className="flex justify-between border-t border-white/10 pt-2 mt-2 text-sm font-extrabold text-white"
+                      >
+                        <span>{row.label}</span>
+                        <span style={{ color: GOLD }}>
+                          {row.free ? "Free" : formatPrice(row.cents)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        key={row.kind}
+                        className="flex justify-between"
+                        style={row.kind === "discount" ? { color: GOLD } : undefined}
+                      >
+                        <span className={row.kind === "discount" ? "font-semibold" : "text-white/50"}>
+                          {row.label}
+                        </span>
+                        <span className={row.kind === "discount" ? "font-semibold" : "text-white/70"}>
+                          {row.free
+                            ? "Free"
+                            : row.cents < 0
+                              ? `-${formatPrice(Math.abs(row.cents))}`
+                              : formatPrice(row.cents)}
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              )}
             </div>
             )}
 
