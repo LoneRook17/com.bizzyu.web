@@ -1,8 +1,10 @@
 import Image from "next/image";
+import Link from "next/link";
 import SectionContainer from "@/components/ui/SectionContainer";
 import StaggerGrid from "@/components/ui/gsap/StaggerGrid";
 import SplitHeading from "@/components/ui/gsap/SplitHeading";
 import type { Campus } from "@/lib/campus";
+import { fetchVenueDirectory } from "@/lib/venuePages";
 
 /**
  * The bars Bizzy runs at this campus.
@@ -15,23 +17,25 @@ import type { Campus } from "@/lib/campus";
  * has 4, the rest are deals-only. A "Nights out" heading over an empty grid is
  * worse than no heading.
  */
-export default function CampusNights({ campus }: { campus: Campus }) {
+export default async function CampusNights({ campus }: { campus: Campus }) {
   if (campus.venues.length === 0) return null;
 
-  const fmt = (iso: string) => {
-    // "2026-07-15 21:00:00" is not ISO-8601; Safari returns Invalid Date for it.
-    const d = new Date(iso.replace(" ", "T"));
-    if (Number.isNaN(d.getTime())) return "";
-    // Fixed zone: server and browser must agree or React logs a hydration
-    // mismatch, and "tonight" means nothing to a server in UTC.
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      timeZone: "America/New_York",
-    }).format(d);
-  };
+  // Each bar's own page, where it has one. This is the link DOWN: a brand new
+  // venue page is otherwise an orphan with nothing pointing at it, and an
+  // orphan is a page Google crawls late and ranks badly.
+  //
+  // A venue missing from the directory renders exactly as it did before, as an
+  // unlinked card. Never a link into a 404.
+  let venuePaths = new Map<number, string>();
+  try {
+    venuePaths = new Map((await fetchVenueDirectory()).map((v) => [v.id, v.slug]));
+  } catch {
+    // Decorative. A dead directory costs the links, not the section.
+  }
+
+  // A date formatter used to live here, left behind when events moved out to
+  // CampusEvents. Removed rather than kept: eslint had been flagging it as
+  // unused since that move, and these cards render no dates.
 
   return (
     <section className="relative overflow-hidden bg-ink text-white" id="nights">
@@ -52,8 +56,10 @@ export default function CampusNights({ campus }: { campus: Campus }) {
         </div>
 
         <StaggerGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-14">
-          {campus.venues.map((v) => (
-            <div key={v.id} className="relative rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 aspect-[4/5]">
+          {campus.venues.map((v) => {
+            const path = venuePaths.get(v.id);
+            const card = (
+              <>
                 {v.photo && (
                   <Image
                     src={v.photo}
@@ -69,11 +75,28 @@ export default function CampusNights({ campus }: { campus: Campus }) {
                     {v.upcomingEvents} upcoming
                   </span>
                 )}
-              <div className="absolute inset-x-0 bottom-0 p-3">
-                <p className="text-white font-bold text-sm leading-tight truncate">{v.name}</p>
+                <div className="absolute inset-x-0 bottom-0 p-3">
+                  <p className="text-white font-bold text-sm leading-tight truncate">{v.name}</p>
+                </div>
+              </>
+            );
+            const shell =
+              "relative block rounded-2xl overflow-hidden ring-1 ring-white/10 bg-white/5 aspect-[4/5]";
+
+            return path ? (
+              <Link
+                key={v.id}
+                href={`/${path}`}
+                className={`${shell} hover:ring-primary/50 transition-colors`}
+              >
+                {card}
+              </Link>
+            ) : (
+              <div key={v.id} className={shell}>
+                {card}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </StaggerGrid>
 
       </SectionContainer>
