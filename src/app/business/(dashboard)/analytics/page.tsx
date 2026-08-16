@@ -16,6 +16,11 @@ import {
   EVENT_ANALYTICS_ACCESS_COPY,
 } from "@/lib/business/analytics-access"
 import { isVenueScopeNotFound } from "@/lib/business/venue-selection"
+import {
+  resolveLandingTab,
+  DEFAULT_ANALYTICS_TAB,
+  type AnalyticsTab,
+} from "@/lib/business/analytics-landing-tab"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
@@ -88,7 +93,7 @@ function StaffView() {
 }
 
 function OwnerManagerView() {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const { isAllVenues, resetToAllVenues } = useVenue()
   const venueParam = useVenueParam()
 
@@ -107,6 +112,44 @@ function OwnerManagerView() {
   const [eventsErr, setEventsErr] = useState(false)
   const [eventsForbidden, setEventsForbidden] = useState(false)
   const [lineSkipsErr, setLineSkipsErr] = useState(false)
+
+  // Controlled tab (LSK-23). A line-skip-only venue used to land on a blank
+  // Deals tab, and defaultValue is read on the first render — before any fetch
+  // resolves — so it structurally cannot adapt. We hold the tab instead and
+  // pick it once, the moment all three fetches have settled.
+  //
+  // `tabPinned` is what makes it once-only. It flips on the auto-selection AND
+  // on any manual click, so the operator's choice survives every later refetch
+  // (switching venue re-runs the effect below with fresh data). A click that
+  // lands before the data settles also pins — explicit intent outranks the
+  // heuristic.
+  const [tab, setTab] = useState<AnalyticsTab>(DEFAULT_ANALYTICS_TAB)
+  const [tabPinned, setTabPinned] = useState(false)
+
+  const selectTab = (next: string) => {
+    setTab(next as AnalyticsTab)
+    setTabPinned(true)
+  }
+
+  // `isLoading` is part of "settled" on purpose: showEvents is derived from
+  // user.business_role, so while the session is resolving an owner looks
+  // role-less and the Events tab is hidden. Picking in that window would pin
+  // the tab before Events could ever be a candidate, and the pin is permanent.
+  useEffect(() => {
+    const next = resolveLandingTab(
+      {
+        settled: !authLoading && !dealsLoading && !eventsLoading && !lineSkipsLoading,
+        dealsCount: deals?.deals.length ?? 0,
+        eventsCount: events?.events.length ?? 0,
+        lineSkipsCount: lineSkips?.instances.length ?? 0,
+        showEvents,
+      },
+      tabPinned,
+    )
+    if (!next) return
+    setTab(next)
+    setTabPinned(true)
+  }, [authLoading, dealsLoading, eventsLoading, lineSkipsLoading, deals, events, lineSkips, showEvents, tabPinned])
 
   useEffect(() => {
     setDealsLoading(true)
@@ -164,7 +207,7 @@ function OwnerManagerView() {
     <>
       <PageHeader title="Analytics" description="Performance across deals, events, and line skips." />
 
-      <Tabs defaultValue="deals">
+      <Tabs value={tab} onValueChange={selectTab}>
         <TabsList>
           <TabsTrigger value="deals">Deals</TabsTrigger>
           {showEvents && <TabsTrigger value="events">Events</TabsTrigger>}
