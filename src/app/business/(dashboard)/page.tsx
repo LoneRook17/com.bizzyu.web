@@ -14,6 +14,7 @@ import type {
   DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem,
 } from "@/lib/business/types"
 import { LINE_SKIP_LABEL } from "@/lib/business/line-skip-label"
+import { homeSections } from "@/lib/business/home-sections"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
@@ -109,42 +110,19 @@ export default function V2HomePage() {
   const venueLabel = isAllVenues ? "all your venues" : selectedVenue?.name ?? "your venue"
 
   // LSK-19 — each product section appears only if this business actually RUNS
-  // that product. A venue that only sells line skips was being shown Revenue $0,
-  // Attendees 0, Upcoming events 0 and a "Create an event" button for a product
-  // it does not run, which made a venue that sold three passes this morning look
-  // identical to one that has never sold anything.
-  //
-  // The gate is PRESENCE, never revenue: `total_events` counts every event the
-  // business has ever posted (past or upcoming, any status but deleted) and
-  // `has_line_skip_nights` counts every night ever scheduled, sold or not. A
-  // venue with 27 nights and no sales must see a real $0, not a blank page.
-  //
-  // Still ANDed with the dashboard mode, which stays the operator's own switch:
-  // presence decides whether a product is REAL for this business, mode decides
-  // whether they want to see it. `?? false`/`> 0` mean a failed fetch reads as
-  // "no product" rather than throwing.
-  const hasEvents = (summary?.total_events ?? 0) > 0
-  const hasLineSkips = stats?.has_line_skip_nights ?? false
-  const showEventsSection = config.showEvents && hasEvents
-  const showLineSkipSection = config.showLineSkips && hasLineSkips
-  // "Total attendees" and "Upcoming events" are event counts; they already only
-  // rendered under config.showEvents and now also need an event to count. For a
-  // line-skip-only venue both were a truthful-but-useless zero.
-  const showEventTiles = showEventsSection
-  // "Revenue (all-time)" is ALSO an event figure, but it rendered in every mode,
-  // so dropping it on `showEventTiles` alone would quietly take it off a
-  // deals-only business's page too — a change nobody asked for. It goes only in
-  // the case that motivated LSK-19: a venue with no events and no deals, where
-  // it can only ever read $0. The Skip the Line row below carries its money.
-  const showRevenueTile = showEventsSection || config.showDeals
-  // Every tile is conditional, so the row's own presence and its column count
-  // follow what actually renders rather than being hardcoded per mode — a
-  // hybrid venue with no events would otherwise leave two holes in a 4-up grid.
-  const tileCount =
-    (showRevenueTile ? 1 : 0) +
-    (config.showDeals ? 1 : 0) +
-    (config.showDeals && !config.showEvents ? 1 : 0) +
-    (showEventTiles ? 2 : 0)
+  // that product. The decision itself lives in home-sections.ts, as a pure
+  // function every business shape is pinned against by `npm test`; the reads
+  // below are just the two presence signals it needs. `?? 0`/`?? false` mean a
+  // failed fetch reads as "no product" rather than throwing.
+  const sections = homeSections({
+    totalEvents: summary?.total_events ?? 0,
+    hasLineSkipNights: stats?.has_line_skip_nights ?? false,
+    showEvents: config.showEvents,
+    showLineSkips: config.showLineSkips,
+    showDeals: config.showDeals,
+  })
+  const showEventsSection = sections.events
+  const showLineSkipSection = sections.lineSkips
   // Line-skip money is owner/manager only (the server omits the field for
   // staff) — `null` renders as "—" through usd(), same as event revenue does.
   const lineSkipRevenue =
@@ -192,10 +170,10 @@ export default function V2HomePage() {
       />
 
       {/* metric tiles - filtered by dashboard mode AND by what this business runs */}
-      {(loading || tileCount > 0) && (
+      {(loading || sections.tileCount > 0) && (
         <div className={cn("grid grid-cols-2 gap-4", loading
           ? (config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")
-          : tileCount >= 4 ? "lg:grid-cols-4" : tileCount === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+          : sections.tileCount >= 4 ? "lg:grid-cols-4" : sections.tileCount === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
           {loading ? (
             [0, 1, 2, 3].slice(0, config.showDeals && config.showEvents ? 4 : 3).map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
           ) : (
@@ -203,17 +181,17 @@ export default function V2HomePage() {
               {/* This is the EVENT revenue figure. It is never blended with the
                   line-skip take below — Backroads is $171,782 of events against
                   $12 of line skips, and one total would erase the $12. */}
-              {showRevenueTile && <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />}
+              {sections.revenueTile && <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />}
               {config.showDeals && (
                 <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
               )}
               {config.showDeals && !config.showEvents && (
                 <MetricTile label="Claims this week" value={stats?.claims_this_week ?? 0} sub="Across all live deals" />
               )}
-              {showEventTiles && (
+              {showEventsSection && (
                 <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
               )}
-              {showEventTiles && (
+              {showEventsSection && (
                 <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
               )}
             </>
@@ -311,7 +289,7 @@ export default function V2HomePage() {
               )}
             </div>
           </Card>
-        ) : config.showDeals ? (
+        ) : sections.dealsCard ? (
           <Card className="overflow-hidden">
             <div className="flex items-center px-5 py-4">
               <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Live deals</h2>
