@@ -92,6 +92,20 @@ export interface QuickStats {
   claims_this_week: number
   upcoming_events_count: number
   next_event_date: string | null
+  // LSK-19 line-skip aggregate. Optional because an older server (a rollback to
+  // :150 or below) answers this endpoint without them — the Home page must read
+  // "no line skips" from their absence, never crash on it.
+  /** Has this business EVER scheduled a night? Presence, not revenue — a venue
+   *  with nights and no sales is still a line-skip venue and sees a real $0. */
+  has_line_skip_nights?: boolean
+  /** Host's take in CENTS, all-time, Bizzy's fee excluded. Omitted for staff
+   *  (owner/manager only), exactly like DashboardSummary.total_revenue. */
+  line_skip_revenue_cents?: number
+  line_skip_passes_sold?: number
+  /** Start of the next night that has not ended yet, on the VENUE's clock.
+   *  'YYYY-MM-DD HH:MM:SS' so `new Date()` reads it as local, like
+   *  next_event_date — a bare date would render as the previous day. */
+  next_line_skip_date?: string | null
 }
 
 export interface ActivityFeedItem {

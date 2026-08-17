@@ -13,6 +13,7 @@ import { apiClient } from "@/lib/business/api-client"
 import type {
   DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem,
 } from "@/lib/business/types"
+import { LINE_SKIP_LABEL } from "@/lib/business/line-skip-label"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
@@ -107,9 +108,51 @@ export default function V2HomePage() {
   const firstName = user?.full_name?.split(" ")[0]
   const venueLabel = isAllVenues ? "all your venues" : selectedVenue?.name ?? "your venue"
 
+  // LSK-19 — each product section appears only if this business actually RUNS
+  // that product. A venue that only sells line skips was being shown Revenue $0,
+  // Attendees 0, Upcoming events 0 and a "Create an event" button for a product
+  // it does not run, which made a venue that sold three passes this morning look
+  // identical to one that has never sold anything.
+  //
+  // The gate is PRESENCE, never revenue: `total_events` counts every event the
+  // business has ever posted (past or upcoming, any status but deleted) and
+  // `has_line_skip_nights` counts every night ever scheduled, sold or not. A
+  // venue with 27 nights and no sales must see a real $0, not a blank page.
+  //
+  // Still ANDed with the dashboard mode, which stays the operator's own switch:
+  // presence decides whether a product is REAL for this business, mode decides
+  // whether they want to see it. `?? false`/`> 0` mean a failed fetch reads as
+  // "no product" rather than throwing.
+  const hasEvents = (summary?.total_events ?? 0) > 0
+  const hasLineSkips = stats?.has_line_skip_nights ?? false
+  const showEventsSection = config.showEvents && hasEvents
+  const showLineSkipSection = config.showLineSkips && hasLineSkips
+  // "Total attendees" and "Upcoming events" are event counts; they already only
+  // rendered under config.showEvents and now also need an event to count. For a
+  // line-skip-only venue both were a truthful-but-useless zero.
+  const showEventTiles = showEventsSection
+  // "Revenue (all-time)" is ALSO an event figure, but it rendered in every mode,
+  // so dropping it on `showEventTiles` alone would quietly take it off a
+  // deals-only business's page too — a change nobody asked for. It goes only in
+  // the case that motivated LSK-19: a venue with no events and no deals, where
+  // it can only ever read $0. The Skip the Line row below carries its money.
+  const showRevenueTile = showEventsSection || config.showDeals
+  // Every tile is conditional, so the row's own presence and its column count
+  // follow what actually renders rather than being hardcoded per mode — a
+  // hybrid venue with no events would otherwise leave two holes in a 4-up grid.
+  const tileCount =
+    (showRevenueTile ? 1 : 0) +
+    (config.showDeals ? 1 : 0) +
+    (config.showDeals && !config.showEvents ? 1 : 0) +
+    (showEventTiles ? 2 : 0)
+  // Line-skip money is owner/manager only (the server omits the field for
+  // staff) — `null` renders as "—" through usd(), same as event revenue does.
+  const lineSkipRevenue =
+    stats?.line_skip_revenue_cents == null ? null : stats.line_skip_revenue_cents / 100
+
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
-  const nextEvent = config.showEvents ? events[0] : undefined
+  const nextEvent = showEventsSection ? events[0] : undefined
   if (nextEvent) {
     attention.push({
       icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
@@ -148,28 +191,57 @@ export default function V2HomePage() {
         }
       />
 
-      {/* metric tiles - filtered by dashboard mode */}
-      <div className={cn("grid grid-cols-2 gap-4", config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
-        {loading ? (
-          [0, 1, 2, 3].slice(0, config.showDeals && config.showEvents ? 4 : 3).map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
-        ) : (
-          <>
-            <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />
-            {config.showDeals && (
-              <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
-            )}
-            {config.showDeals && !config.showEvents && (
-              <MetricTile label="Claims this week" value={stats?.claims_this_week ?? 0} sub="Across all live deals" />
-            )}
-            {config.showEvents && (
-              <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
-            )}
-            {config.showEvents && (
-              <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
-            )}
-          </>
-        )}
-      </div>
+      {/* metric tiles - filtered by dashboard mode AND by what this business runs */}
+      {(loading || tileCount > 0) && (
+        <div className={cn("grid grid-cols-2 gap-4", loading
+          ? (config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")
+          : tileCount >= 4 ? "lg:grid-cols-4" : tileCount === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+          {loading ? (
+            [0, 1, 2, 3].slice(0, config.showDeals && config.showEvents ? 4 : 3).map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
+          ) : (
+            <>
+              {/* This is the EVENT revenue figure. It is never blended with the
+                  line-skip take below — Backroads is $171,782 of events against
+                  $12 of line skips, and one total would erase the $12. */}
+              {showRevenueTile && <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />}
+              {config.showDeals && (
+                <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
+              )}
+              {config.showDeals && !config.showEvents && (
+                <MetricTile label="Claims this week" value={stats?.claims_this_week ?? 0} sub="Across all live deals" />
+              )}
+              {showEventTiles && (
+                <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
+              )}
+              {showEventTiles && (
+                <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* LSK-19 — the line-skip figures, as their OWN labelled row so they can
+          never be read as part of (or blended into) the event totals above. */}
+      {!loading && showLineSkipSection && (
+        <section data-testid="line-skip-section">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{LINE_SKIP_LABEL}</h2>
+            <Link href="/business/line-skips" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+              View all <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+            <MetricTile label="Revenue (all-time)" value={usd(lineSkipRevenue)} />
+            <MetricTile label="Passes sold" value={(stats?.line_skip_passes_sold ?? 0).toLocaleString()} />
+            <MetricTile
+              label="Next night"
+              value={stats?.next_line_skip_date ? fmtDate(stats.next_line_skip_date) : "—"}
+              sub={stats?.next_line_skip_date ? undefined : "None scheduled"}
+            />
+          </div>
+        </section>
+      )}
 
       {/* attention hub */}
       {!loading && attention.length > 0 && (
@@ -202,7 +274,14 @@ export default function V2HomePage() {
 
       {/* bento - first card follows the dashboard mode */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {config.showEvents ? (
+        {/* LSK-19: the events card follows PRESENCE now, not just the mode — a
+            venue with no events never posted one, so neither the tiles nor the
+            "Create an event" empty state belong on its Home. The deals branch
+            stays exactly where it was (it only ever rendered when the events
+            card did not), but no longer catches a line-skip-only venue that has
+            deals switched off: that venue gets no product card here at all, and
+            its Skip the Line row above carries the page. */}
+        {showEventsSection ? (
           <Card className="overflow-hidden">
             <div className="flex items-center px-5 py-4">
               <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Upcoming events</h2>
@@ -232,7 +311,7 @@ export default function V2HomePage() {
               )}
             </div>
           </Card>
-        ) : (
+        ) : config.showDeals ? (
           <Card className="overflow-hidden">
             <div className="flex items-center px-5 py-4">
               <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Live deals</h2>
@@ -259,7 +338,7 @@ export default function V2HomePage() {
               )}
             </div>
           </Card>
-        )}
+        ) : null}
 
         {/* recent activity */}
         <Card className="overflow-hidden">
