@@ -66,12 +66,15 @@ export default function V2EventsPage() {
     }
   }
 
+  // D2-1: create is now a FUNNEL, not a form. Both products start here and the
+  // choice screen forks to the event flow or the Door Access wizard. The venue
+  // pick still happens first — both paths attach to one venue.
   const handleCreate = () => {
     if (isAllVenues && venues.length > 1) {
       setShowVenueModal(true)
     } else {
       if (isAllVenues && venues.length === 1) setSelectedVenue(venues[0].id)
-      router.push("/business/events/new")
+      router.push("/business/create")
     }
   }
 
@@ -133,7 +136,7 @@ export default function V2EventsPage() {
         description="Create, manage, and track your events."
         actions={
           canCreate ? (
-            <Button onClick={handleCreate}><Plus /> Create event</Button>
+            <Button onClick={handleCreate}><Plus /> Create</Button>
           ) : undefined
         }
       />
@@ -180,7 +183,7 @@ export default function V2EventsPage() {
           description={tab === "upcoming" ? "Create your first event to start selling tickets." : `No ${tab} events found.`}
           action={
             canCreate && tab === "upcoming" ? (
-              <Button onClick={handleCreate}><Plus /> Create event</Button>
+              <Button onClick={handleCreate}><Plus /> Create</Button>
             ) : undefined
           }
         />
@@ -200,7 +203,7 @@ export default function V2EventsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Which venue?</DialogTitle>
-            <DialogDescription>Pick the venue this event belongs to.</DialogDescription>
+            <DialogDescription>Pick the venue this belongs to.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
             {venues.map((v) => (
@@ -209,7 +212,7 @@ export default function V2EventsPage() {
                 onClick={() => {
                   setSelectedVenue(v.id)
                   setShowVenueModal(false)
-                  router.push("/business/events/new")
+                  router.push("/business/create")
                 }}
                 className="flex items-center gap-2.5 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 text-left text-sm font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:border-[#05EB54]/40 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
               >
