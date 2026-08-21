@@ -1,0 +1,740 @@
+// Door Access — the TYPED CLIENT for services' /business/door-access surface
+// (V5 F14). Same DI-B3w pattern as payouts.ts and escrow.ts: this is the ONE
+// FILE to touch when the wire shape moves. Wire types and pure helpers live
+// here; every page imports from here, never a raw fetch.
+//
+// WHAT THIS SECTION IS. A Door Access "program" is a recurring_event_series
+// row with program_kind = 'door_access'. Its nights are real events rows, so
+// discovery, checkout, wallet and door ops are already served by the event
+// pipeline — this surface is the HOST's view of the template and its
+// schedule, nothing else.
+//
+// D-P5 VOCABULARY SPLIT, enforced by the label constants below:
+//   - Hosts creating one see "Weekly Cover / Skip the Line".
+//   - Host list rows and section headers read WEEKLY ACCESS.
+//   - Students see "Door Access" — a consumer string, never rendered here.
+// The API path, program_kind and every response field stay `door_access`.
+// These are DISPLAY strings only and must not be used to rename a contract.
+//
+// D-F11.1 — a program card opens the SERIES, never a single night. The night
+// is reached from inside the series page. That routing rule is why
+// programHref() and nightHref() live here rather than being inlined.
+//
+// Everything below the fetch functions is pure so the Node built-in test
+// runner (`npm test`) can exercise it without resolving the api-client chain.
+// api-client.ts pulls the `@/` alias, which the runner cannot resolve, so it
+// stays behind a lazy import in the fetch helpers.
+
+// ── D-P5 labels ─────────────────────────────────────────────────────────────
+
+/** F9 card chip on a program row. Host vocabulary. */
+export const WEEKLY_ACCESS_TYPE_LABEL = "WEEKLY ACCESS"
+
+/** F9 card chip on a named-event row. */
+export const EVENT_TYPE_LABEL = "EVENT"
+
+/** Section/nav name. Title case — the chip above is the shouty one. */
+export const WEEKLY_ACCESS_SECTION_LABEL = "Weekly Access"
+
+/**
+ * The creation-flow name (D-P5). Both halves of the product in one string:
+ * hosts recognise "cover" and "skip the line", and neither alone describes a
+ * program that is usually both.
+ */
+export const WEEKLY_ACCESS_CREATION_LABEL = "Weekly Cover / Skip the Line"
+
+/** The accent pair. Green = named event, magenta = access (F9 / D-P5). */
+export const EVENT_ACCENT = "#05EB54"
+export const ACCESS_ACCENT = "#FF3ED1"
+
+// ── Wire shapes (services/src/services/DoorAccessProgramService.ts) ─────────
+
+export const REDEMPTION_MODES = ["native_scan", "camera_tap"] as const
+export type RedemptionMode = (typeof REDEMPTION_MODES)[number]
+
+/**
+ * A program-wide template tier. `tier_key` — not the name, not a ticket id —
+ * is the stable identity a per-night override keys off, because a restamp
+ * deletes and recreates the underlying tickets rows.
+ */
+export interface DoorAccessTemplateTier {
+  tier_key: string
+  name: string
+  description: string | null
+  price_usd: number
+  quantity: number
+  max_per_person: number
+  ticket_type: "paid" | "free"
+  is_hidden: number
+  sort_order: number
+}
+
+/** A row from GET /business/door-access — the F9 list card's source. */
+export interface DoorAccessProgramSummary {
+  id: number
+  name: string
+  /** ISO weekdays: 1 = Monday … 7 = Sunday. */
+  days_of_week: number[]
+  date_range_start: string
+  date_range_end: string | null
+  is_active: boolean
+  venue_id: number | null
+  venue_name: string
+  start_time: string
+  end_time: string
+  flyer_image_url: string | null
+  redemption_mode: RedemptionMode
+  template_tickets: DoorAccessTemplateTier[]
+  migrated_from_line_skip_id: number | null
+  promotion_enabled: boolean
+  upcoming_night_count: number
+  /** "YYYY-MM-DD" or null when nothing is stamped ahead. */
+  next_night_date: string | null
+  tier_count: number
+  /** Server-derived so the card's "From $X" needs no client math. */
+  lowest_price_usd: number | null
+}
+
+/** The full template, as returned inside GET /business/door-access/:id. */
+export interface DoorAccessProgram extends DoorAccessProgramSummary {
+  description: string | null
+  venue_address: string
+  type: "Ticketed" | "Free" | "RSVP"
+  is_21_plus: boolean
+  timezone: string | null
+}
+
+/**
+ * One tier as it will actually sell on one night — template merged with that
+ * night's overrides. `is_overridden` is server-computed, so the editor never
+ * has to diff against the template to know what to mark.
+ */
+export interface DoorAccessNightTier {
+  tier_key: string
+  name: string
+  description: string | null
+  price_usd: number
+  quantity: number
+  max_per_person: number
+  sort_order: number
+  is_disabled: boolean
+  is_overridden: boolean
+  template_price_usd: number
+  template_quantity: number
+}
+
+/**
+ * One night on the schedule.
+ *
+ * `is_stamped` false means core's generator has not materialised the event row
+ * yet — the night is real and on the schedule, and IS overridable, because
+ * overrides key off the date rather than an event id. That is what makes
+ * pricing New Year's Eve in November possible, and it is why this list shows
+ * the SCHEDULE rather than only the stamped rows.
+ */
+export interface DoorAccessNight {
+  occurrence_date: string
+  is_stamped: boolean
+  is_scheduled: boolean
+  event_id: number | null
+  status: string | null
+  start_date_time: string | null
+  end_date_time: string | null
+  passes_sold: number
+  paid_orders: number
+  is_customized: boolean
+  is_closed: boolean
+  has_override: boolean
+  start_time: string
+  end_time: string
+  tiers: DoorAccessNightTier[]
+}
+
+export interface DoorAccessSeries {
+  program: DoorAccessProgram
+  nights: DoorAccessNight[]
+}
+
+/**
+ * A per-night write's result. `restamp_error` is a WARNING, never a failure:
+ * the override is already committed when core's restamp is attempted, so the
+ * UI must show the saved state plus the notice, not an error wall that implies
+ * nothing was written.
+ */
+export interface NightOverrideResult {
+  night: DoorAccessNight
+  restamp: unknown | null
+  restamp_error: string | null
+}
+
+/** A sparse night patch. Omit = leave alone. null = go back to inheriting. */
+export interface NightOverridePayload {
+  start_time?: string | null
+  end_time?: string | null
+  is_closed?: boolean
+  tiers?: Array<{
+    tier_key: string
+    price_usd?: number | null
+    quantity?: number | null
+    is_disabled?: boolean
+  }>
+}
+
+// ── Normalization (MySQL/JSON can hand back strings and 0/1 for booleans) ───
+
+function num(v: unknown, fallback = 0): number {
+  const n = typeof v === "string" ? Number(v) : v
+  return typeof n === "number" && Number.isFinite(n) ? n : fallback
+}
+
+function nullableNum(v: unknown): number | null {
+  if (v == null || v === "") return null
+  const n = num(v, NaN)
+  return Number.isFinite(n) ? n : null
+}
+
+function bool(v: unknown): boolean {
+  return v === true || v === 1 || v === "1"
+}
+
+function str(v: unknown, fallback = ""): string {
+  return typeof v === "string" ? v : v == null ? fallback : String(v)
+}
+
+/** Dates are plain Y-m-d strings end to end — never tz-converted. */
+function dateOnly(v: unknown): string {
+  return str(v).slice(0, 10)
+}
+
+/**
+ * days_of_week arrives as a JSON array, or as a JSON *string* when a caller
+ * hands back the raw column. Both are accepted; anything else is an empty
+ * pattern, which reads as "no nights scheduled" rather than throwing.
+ */
+export function normalizeDays(v: unknown): number[] {
+  let raw = v
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((d) => num(d, 0))
+    .filter((d) => d >= 1 && d <= 7)
+    .sort((a, b) => a - b)
+}
+
+export function normalizeTemplateTier(raw: Record<string, unknown>): DoorAccessTemplateTier {
+  return {
+    tier_key: str(raw.tier_key),
+    name: str(raw.name),
+    description: raw.description == null ? null : str(raw.description),
+    price_usd: num(raw.price_usd),
+    quantity: num(raw.quantity),
+    max_per_person: num(raw.max_per_person),
+    ticket_type: raw.ticket_type === "free" ? "free" : "paid",
+    is_hidden: num(raw.is_hidden),
+    sort_order: num(raw.sort_order),
+  }
+}
+
+function normalizeTemplateTiers(v: unknown): DoorAccessTemplateTier[] {
+  let raw = v
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((t): t is Record<string, unknown> => !!t && typeof t === "object")
+    .map(normalizeTemplateTier)
+    .sort((a, b) => a.sort_order - b.sort_order)
+}
+
+export function normalizeProgramSummary(raw: Record<string, unknown>): DoorAccessProgramSummary {
+  const tiers = normalizeTemplateTiers(raw.template_tickets)
+  return {
+    id: num(raw.id),
+    name: str(raw.name),
+    days_of_week: normalizeDays(raw.days_of_week),
+    date_range_start: dateOnly(raw.date_range_start),
+    date_range_end: raw.date_range_end ? dateOnly(raw.date_range_end) : null,
+    is_active: bool(raw.is_active),
+    venue_id: nullableNum(raw.venue_id),
+    venue_name: str(raw.venue_name),
+    start_time: str(raw.start_time),
+    end_time: str(raw.end_time),
+    flyer_image_url: raw.flyer_image_url ? str(raw.flyer_image_url) : null,
+    redemption_mode: raw.redemption_mode === "native_scan" ? "native_scan" : "camera_tap",
+    template_tickets: tiers,
+    migrated_from_line_skip_id: nullableNum(raw.migrated_from_line_skip_id),
+    promotion_enabled: bool(raw.promotion_enabled),
+    upcoming_night_count: num(raw.upcoming_night_count),
+    next_night_date: raw.next_night_date ? dateOnly(raw.next_night_date) : null,
+    // Trust the server's derived fields, but fall back to the tiers we have —
+    // getProgram()'s presented program carries the template without them.
+    tier_count: raw.tier_count == null ? tiers.length : num(raw.tier_count),
+    lowest_price_usd:
+      raw.lowest_price_usd != null
+        ? nullableNum(raw.lowest_price_usd)
+        : tiers.length > 0
+          ? Math.min(...tiers.map((t) => t.price_usd))
+          : null,
+  }
+}
+
+export function normalizeProgram(raw: Record<string, unknown>): DoorAccessProgram {
+  return {
+    ...normalizeProgramSummary(raw),
+    description: raw.description == null ? null : str(raw.description),
+    venue_address: str(raw.venue_address),
+    type: raw.type === "Free" ? "Free" : raw.type === "RSVP" ? "RSVP" : "Ticketed",
+    is_21_plus: bool(raw.is_21_plus),
+    timezone: raw.timezone == null ? null : str(raw.timezone),
+  }
+}
+
+export function normalizeNightTier(raw: Record<string, unknown>): DoorAccessNightTier {
+  return {
+    tier_key: str(raw.tier_key),
+    name: str(raw.name),
+    description: raw.description == null ? null : str(raw.description),
+    price_usd: num(raw.price_usd),
+    quantity: num(raw.quantity),
+    max_per_person: num(raw.max_per_person),
+    sort_order: num(raw.sort_order),
+    is_disabled: bool(raw.is_disabled),
+    is_overridden: bool(raw.is_overridden),
+    template_price_usd: num(raw.template_price_usd),
+    template_quantity: num(raw.template_quantity),
+  }
+}
+
+export function normalizeNight(raw: Record<string, unknown>): DoorAccessNight {
+  const tiers = Array.isArray(raw.tiers)
+    ? raw.tiers
+        .filter((t): t is Record<string, unknown> => !!t && typeof t === "object")
+        .map(normalizeNightTier)
+        .sort((a, b) => a.sort_order - b.sort_order)
+    : []
+  return {
+    occurrence_date: dateOnly(raw.occurrence_date),
+    is_stamped: bool(raw.is_stamped),
+    is_scheduled: bool(raw.is_scheduled),
+    event_id: nullableNum(raw.event_id),
+    status: raw.status == null ? null : str(raw.status),
+    start_date_time: raw.start_date_time == null ? null : str(raw.start_date_time),
+    end_date_time: raw.end_date_time == null ? null : str(raw.end_date_time),
+    passes_sold: num(raw.passes_sold),
+    paid_orders: num(raw.paid_orders),
+    is_customized: bool(raw.is_customized),
+    is_closed: bool(raw.is_closed),
+    has_override: bool(raw.has_override),
+    start_time: str(raw.start_time),
+    end_time: str(raw.end_time),
+    tiers,
+  }
+}
+
+// ── Reads / writes ──────────────────────────────────────────────────────────
+
+async function client() {
+  const mod = await import("./api-client")
+  return mod.apiClient
+}
+
+/** GET /business/door-access — the WEEKLY ACCESS rows on the combined list. */
+export async function fetchDoorAccessPrograms(): Promise<DoorAccessProgramSummary[]> {
+  const api = await client()
+  const data = await api.get<{ programs?: unknown }>("/business/door-access")
+  const rows = Array.isArray(data?.programs) ? data.programs : []
+  return rows
+    .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
+    .map(normalizeProgramSummary)
+}
+
+/**
+ * The combined list's access half, degraded (D-F9.2).
+ *
+ * A business with no programs, a staff member on an older services build, or a
+ * transient 500 must not take the EVENTS list down with it — access rows are
+ * additive to a surface that worked before they existed. Failure is an empty
+ * section, never an error wall.
+ */
+export async function fetchDoorAccessProgramsSafe(): Promise<DoorAccessProgramSummary[]> {
+  try {
+    return await fetchDoorAccessPrograms()
+  } catch {
+    return []
+  }
+}
+
+/** GET /business/door-access/:id — the F11 series page (D-F11.1). */
+export async function fetchDoorAccessSeries(
+  programId: number,
+  lookaheadDays?: number
+): Promise<DoorAccessSeries> {
+  const api = await client()
+  const qs = lookaheadDays ? `?lookahead_days=${lookaheadDays}` : ""
+  const data = await api.get<{ program: Record<string, unknown>; nights?: unknown }>(
+    `/business/door-access/${programId}${qs}`
+  )
+  const nights = Array.isArray(data?.nights) ? data.nights : []
+  return {
+    program: normalizeProgram(data.program ?? {}),
+    nights: nights
+      .filter((n): n is Record<string, unknown> => !!n && typeof n === "object")
+      .map(normalizeNight),
+  }
+}
+
+/** GET /business/door-access/:id/nights/:date — the override editor's load. */
+export async function fetchDoorAccessNight(
+  programId: number,
+  date: string
+): Promise<{ program: DoorAccessProgram; night: DoorAccessNight }> {
+  const api = await client()
+  const data = await api.get<{ program: Record<string, unknown>; night: Record<string, unknown> }>(
+    `/business/door-access/${programId}/nights/${date}`
+  )
+  return {
+    program: normalizeProgram(data.program ?? {}),
+    night: normalizeNight(data.night ?? {}),
+  }
+}
+
+/** PUT /business/door-access/:id/nights/:date — save a per-night override. */
+export async function saveNightOverride(
+  programId: number,
+  date: string,
+  payload: NightOverridePayload
+): Promise<NightOverrideResult> {
+  const api = await client()
+  const data = await api.put<{
+    night: Record<string, unknown>
+    restamp?: unknown
+    restamp_error?: string | null
+  }>(`/business/door-access/${programId}/nights/${date}`, payload)
+  return {
+    night: normalizeNight(data.night ?? {}),
+    restamp: data.restamp ?? null,
+    restamp_error: data.restamp_error ?? null,
+  }
+}
+
+/** DELETE …/overrides — the night goes back to being pure template. */
+export async function clearNightOverride(
+  programId: number,
+  date: string
+): Promise<NightOverrideResult> {
+  const api = await client()
+  const data = await api.delete<{
+    night: Record<string, unknown>
+    restamp?: unknown
+    restamp_error?: string | null
+  }>(`/business/door-access/${programId}/nights/${date}/overrides`)
+  return {
+    night: normalizeNight(data.night ?? {}),
+    restamp: data.restamp ?? null,
+    restamp_error: data.restamp_error ?? null,
+  }
+}
+
+// ── Routing (D-F11.1: a program card opens the SERIES, never a night) ───────
+
+export function programHref(programId: number): string {
+  return `/business/door-access/${programId}`
+}
+
+export function nightHref(programId: number, date: string): string {
+  return `/business/door-access/${programId}/nights/${date}`
+}
+
+// ── Pure formatting ─────────────────────────────────────────────────────────
+
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+]
+
+/**
+ * "Fri · Sat" from ISO weekdays. Every-night collapses to a phrase rather than
+ * listing seven days, which would eat the whole metadata line.
+ */
+export function formatDays(days: number[]): string {
+  if (days.length === 0) return ""
+  if (days.length === 7) return "Every night"
+  return days.map((d) => DAY_NAMES[d - 1] ?? "").filter(Boolean).join(" · ")
+}
+
+/**
+ * "Fri, Aug 22" from a Y-m-d string.
+ *
+ * Parsed by hand into a UTC date. `new Date("2026-08-22")` is UTC midnight and
+ * renders as the 21st for every US viewer, and `new Date(2026, 7, 22)` drags
+ * in the browser's zone — both silently shift a night by a day. These dates
+ * are plain calendar strings on the server and stay that way here.
+ */
+export function fmtNightDate(iso: string, opts: { withYear?: boolean } = {}): string {
+  const parts = parseIsoDate(iso)
+  if (!parts) return iso
+  const { y, m, d } = parts
+  const weekday = DAY_NAMES[(new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7]
+  const base = `${weekday}, ${MONTH_NAMES[m - 1]} ${d}`
+  return opts.withYear ? `${base}, ${y}` : base
+}
+
+export function parseIsoDate(iso: string): { y: number; m: number; d: number } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str(iso).slice(0, 10))
+  if (!match) return null
+  const y = Number(match[1])
+  const m = Number(match[2])
+  const d = Number(match[3])
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null
+  return { y, m, d }
+}
+
+/** "22:00:00" → "10:00 PM". Wall-clock in, wall-clock out — no zone math. */
+export function fmtTime(value: string | null | undefined): string {
+  const match = /^(\d{1,2}):(\d{2})/.exec(str(value))
+  if (!match) return ""
+  const h24 = Number(match[1])
+  const minutes = match[2]
+  if (h24 < 0 || h24 > 23) return ""
+  const suffix = h24 >= 12 ? "PM" : "AM"
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12
+  return `${h12}:${minutes} ${suffix}`
+}
+
+export function fmtWindow(start: string, end: string): string {
+  const a = fmtTime(start)
+  const b = fmtTime(end)
+  if (!a && !b) return ""
+  if (!b) return a
+  if (!a) return b
+  return `${a} – ${b}`
+}
+
+export function usdPrice(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—"
+  return n === 0
+    ? "Free"
+    : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+/** `quantity` 0 means UNLIMITED across this platform, never "sold out". */
+export function fmtQuantity(quantity: number): string {
+  return quantity === 0 ? "Unlimited" : `${quantity.toLocaleString("en-US")} available`
+}
+
+export function redemptionModeLabel(mode: RedemptionMode): string {
+  return mode === "native_scan" ? "Scan universal access" : "Camera + tap"
+}
+
+/**
+ * The F9 card's single metadata line, mirroring the app's accessProgramMeta:
+ * `Venue · nights · Recurring cover and line skip · From $X`.
+ *
+ * Empty segments are dropped rather than rendered blank, so a program with no
+ * venue reads "Fri · Sat · …" and not " · Fri · Sat · …".
+ */
+export function programMetaLine(program: DoorAccessProgramSummary): string {
+  return [
+    program.venue_name,
+    formatDays(program.days_of_week),
+    "Recurring cover and line skip",
+    program.lowest_price_usd != null ? `From ${usdPrice(program.lowest_price_usd)}` : "",
+  ]
+    .filter((s) => s.length > 0)
+    .join(" · ")
+}
+
+/**
+ * The desktop row's second line — the schedule facts that only exist on a
+ * program. Ends at the next night, which is the thing a host actually looks
+ * for; the full list is one click away on the series page.
+ */
+export function programScheduleLine(program: DoorAccessProgramSummary): string {
+  const parts: string[] = [fmtWindow(program.start_time, program.end_time)]
+  if (program.next_night_date) {
+    parts.push(`Next: ${fmtNightDate(program.next_night_date)}`)
+  }
+  parts.push(
+    program.upcoming_night_count === 1
+      ? "1 night scheduled"
+      : `${program.upcoming_night_count} nights scheduled`
+  )
+  return parts.filter((s) => s.length > 0).join(" · ")
+}
+
+// ── Night presentation ──────────────────────────────────────────────────────
+
+export type NightChip = { label: string; variant: "neutral" | "warning" | "danger" | "info" }
+
+/**
+ * The chips on a night row. Deliberately terse and additive — a night can be
+ * closed AND customized AND unstamped at once, and a host needs to see all
+ * three because each has a different fix.
+ */
+export function nightChips(night: DoorAccessNight): NightChip[] {
+  const chips: NightChip[] = []
+  if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
+  if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
+  if (night.has_override) chips.push({ label: "Overridden", variant: "info" })
+  // "Customized" means the night was edited through the generic event surface,
+  // which stamped series_customized_at and EVICTED it from series-wide edits.
+  // It is a warning, not a state the host chose here.
+  if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
+  if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
+  return chips
+}
+
+/**
+ * Split the schedule at today. Past nights are reporting; upcoming nights are
+ * the work surface, so they lead. Dates are compared as strings — they are
+ * zero-padded Y-m-d, which sorts and compares correctly without parsing.
+ */
+export function splitNights(
+  nights: DoorAccessNight[],
+  todayIso: string
+): { upcoming: DoorAccessNight[]; past: DoorAccessNight[] } {
+  const upcoming: DoorAccessNight[] = []
+  const past: DoorAccessNight[] = []
+  for (const night of nights) {
+    if (night.occurrence_date >= todayIso) upcoming.push(night)
+    else past.push(night)
+  }
+  upcoming.sort((a, b) => a.occurrence_date.localeCompare(b.occurrence_date))
+  // Most recent first — a host scanning history wants last night, not opening night.
+  past.sort((a, b) => b.occurrence_date.localeCompare(a.occurrence_date))
+  return { upcoming, past }
+}
+
+/** Today in US/Eastern as Y-m-d — the platform's day boundary, not the browser's. */
+export function easternToday(now: Date = new Date()): string {
+  return now.toLocaleDateString("en-CA", { timeZone: "America/New_York" })
+}
+
+// ── The per-night override editor's draft model ─────────────────────────────
+
+/**
+ * One tier's draft. `inherit_*` flags are what make the payload sparse: an
+ * inherited field is sent as null (go back to the template) rather than as the
+ * template's current value, which would silently FREEZE that night at today's
+ * price the next time the template changed.
+ */
+export interface NightTierDraft {
+  tier_key: string
+  inherit_price: boolean
+  price_usd: number | null
+  inherit_quantity: boolean
+  quantity: number | null
+  is_disabled: boolean
+}
+
+export interface NightDraft {
+  inherit_times: boolean
+  start_time: string
+  end_time: string
+  is_closed: boolean
+  tiers: NightTierDraft[]
+}
+
+/**
+ * Seed a draft from the night the server returned.
+ *
+ * A tier is "inheriting" when its effective value still equals the template's
+ * — the server's is_overridden covers the tier as a whole, but price and
+ * quantity override independently, so each is compared on its own.
+ */
+export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgram): NightDraft {
+  return {
+    inherit_times: night.start_time === program.start_time && night.end_time === program.end_time,
+    start_time: night.start_time,
+    end_time: night.end_time,
+    is_closed: night.is_closed,
+    tiers: night.tiers.map((tier) => ({
+      tier_key: tier.tier_key,
+      inherit_price: tier.price_usd === tier.template_price_usd,
+      price_usd: tier.price_usd,
+      inherit_quantity: tier.quantity === tier.template_quantity,
+      quantity: tier.quantity,
+      is_disabled: tier.is_disabled,
+    })),
+  }
+}
+
+/**
+ * Build the PUT body from a draft.
+ *
+ * Always explicit: every override-capable field is sent either as a value or
+ * as null. The endpoint treats null as "inherit" and upserts, so a save is
+ * idempotent and the draft alone determines the outcome — no dirty tracking,
+ * and no way for a stale flag to leave an override behind after the host
+ * cleared it.
+ */
+export function buildNightOverridePayload(draft: NightDraft): NightOverridePayload {
+  return {
+    start_time: draft.inherit_times ? null : draft.start_time,
+    end_time: draft.inherit_times ? null : draft.end_time,
+    is_closed: draft.is_closed,
+    tiers: draft.tiers.map((tier) => ({
+      tier_key: tier.tier_key,
+      price_usd: tier.inherit_price ? null : tier.price_usd,
+      quantity: tier.inherit_quantity ? null : tier.quantity,
+      is_disabled: tier.is_disabled,
+    })),
+  }
+}
+
+/** Does this draft still say anything the template doesn't? Drives "Reset". */
+export function draftHasOverrides(draft: NightDraft): boolean {
+  if (!draft.inherit_times || draft.is_closed) return true
+  return draft.tiers.some((t) => !t.inherit_price || !t.inherit_quantity || t.is_disabled)
+}
+
+/**
+ * Client-side validation, mirroring the server's rules so the Save button can
+ * be honest rather than surfacing a 400 after the fact. Returns [] when valid.
+ */
+export function validateNightDraft(draft: NightDraft): string[] {
+  const errors: string[] = []
+  if (!draft.inherit_times) {
+    if (!fmtTime(draft.start_time)) errors.push("Start time must be a valid time.")
+    if (!fmtTime(draft.end_time)) errors.push("End time must be a valid time.")
+  }
+  for (const tier of draft.tiers) {
+    if (!tier.inherit_price && (tier.price_usd == null || tier.price_usd < 0)) {
+      errors.push("Prices cannot be negative.")
+      break
+    }
+  }
+  for (const tier of draft.tiers) {
+    if (
+      !tier.inherit_quantity &&
+      (tier.quantity == null || tier.quantity < 0 || !Number.isInteger(tier.quantity))
+    ) {
+      errors.push("Capacity must be a whole number (0 = unlimited).")
+      break
+    }
+  }
+  return errors
+}
+
+/**
+ * Can this night still be edited here?
+ *
+ * A cancelled night is done, and a customized one has left the program — its
+ * edits now belong on the event surface that captured it, and writing an
+ * override would produce a change the host cannot see there.
+ */
+export function nightIsEditable(night: DoorAccessNight): boolean {
+  return night.status !== "cancelled" && !night.is_customized
+}
