@@ -164,7 +164,7 @@ export default function V2HomePage() {
           <div className="flex items-center gap-2">
             {config.showEvents && (
               <Button variant={config.showDeals ? "secondary" : "primary"} asChild>
-                <Link href="/business/events/new"><Plus /> New event</Link>
+                <Link href="/business/create"><Plus /> Create</Link>
               </Button>
             )}
             {config.showDeals && (
@@ -278,7 +278,7 @@ export default function V2HomePage() {
               {loading ? (
                 [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
               ) : events.length === 0 ? (
-                <div className="p-5"><EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start selling tickets." action={<Button asChild size="sm"><Link href="/business/events/new"><Plus /> Create event</Link></Button>} /></div>
+                <div className="p-5"><EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start selling tickets." action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create event</Link></Button>} /></div>
               ) : (
                 events.map((e, i) => {
                   const b = eventBadge(e.status)

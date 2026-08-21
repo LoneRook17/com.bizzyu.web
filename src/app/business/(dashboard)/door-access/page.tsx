@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Sparkles, Zap } from "lucide-react"
+import { Plus, Sparkles, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   fetchDoorAccessPrograms,
@@ -11,6 +11,7 @@ import {
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { PageHeader } from "@/components/business/v2/PageHeader"
+import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
@@ -64,6 +65,15 @@ export default function DoorAccessProgramsPage() {
       <PageHeader
         title={WEEKLY_ACCESS_SECTION_LABEL}
         description={`${WEEKLY_ACCESS_CREATION_LABEL} — recurring door programs that sell every night they run.`}
+        actions={
+          canBuild ? (
+            <Button asChild>
+              <Link href="/business/door-access/new">
+                <Plus /> New program
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       {loading ? (
@@ -86,6 +96,15 @@ export default function DoorAccessProgramsPage() {
             canBuild
               ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs — set the nights once and each one is generated for you.`
               : "Your managers haven't set up a weekly access program yet."
+          }
+          action={
+            canBuild ? (
+              <Button asChild>
+                <Link href="/business/door-access/new">
+                  <Plus /> New program
+                </Link>
+              </Button>
+            ) : undefined
           }
         />
       ) : (
