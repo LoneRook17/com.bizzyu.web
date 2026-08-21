@@ -58,6 +58,11 @@ export const STUDENT_FAQ = [
     answer:
       "Yes! Businesses can sell tickets directly through Bizzy. You can browse events, buy tickets or RSVP right in the app - no third-party platforms needed.",
   },
+  {
+    question: "Are tickets refundable?",
+    answer:
+      "Ticket sales are final unless the event is cancelled. See our Terms for details.",
+  },
 ];
 
 export const EVENTS_FAQ = [

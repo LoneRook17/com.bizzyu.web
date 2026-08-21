@@ -23,6 +23,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import TrialHome from "@/components/business/v2/TrialHome"
+import EscrowPanel from "@/components/business/v2/EscrowPanel"
 
 function fmtDate(s?: string | null) {
   if (!s) return "—"
@@ -150,6 +151,12 @@ export default function V2HomePage() {
 
   return (
     <>
+      {/* BE-D2: money Bizzy is holding is the single most important thing on
+          this page — first and largest, above the greeting, revenue, and
+          events. Renders nothing (no placeholder) without escrow history, so
+          every other business's homepage is unchanged. */}
+      <EscrowPanel variant="hero" />
+
       <PageHeader
         title={`Good to see you${firstName ? `, ${firstName}` : ""}`}
         description={`Here's what's happening at ${venueLabel}.`}
