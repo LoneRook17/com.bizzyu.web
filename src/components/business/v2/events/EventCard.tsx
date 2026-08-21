@@ -4,7 +4,7 @@ import Link from "next/link"
 import { CalendarDays, ScanLine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
-import { usd } from "@/lib/v2/utils"
+import { eventRowStats } from "@/lib/business/events-list"
 import { Button } from "@/components/business/v2/ui/button"
 import {
   HostCardThumbnail,
@@ -64,11 +64,12 @@ export function EventCard({ event }: { event: EventListItem }) {
           icon={CalendarDays}
         />
       }
-      stats={[
-        { label: "tickets", value: String(event.ticket_sales_count) },
-        { label: "attendees", value: String(event.total_attendees) },
-        { label: "revenue", value: usd(event.total_revenue) },
-      ]}
+      /* D2-C: sold · revenue · when, all from fields this list already fetched.
+         The date is a STAT rather than only a line of prose because "when is
+         this" is the question the row exists to answer, and prose doesn't scan
+         down a column. It stays in the meta line too — with the time, which the
+         stat has no room for. */
+      stats={eventRowStats(event)}
       actions={
         <>
           <Button variant="ghost" size="sm" asChild>

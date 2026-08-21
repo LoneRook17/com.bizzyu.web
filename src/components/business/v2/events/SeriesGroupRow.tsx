@@ -3,8 +3,14 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ChevronDown, Repeat } from "lucide-react"
-import { usd } from "@/lib/v2/utils"
-import { seriesHref, seriesRowStats, type EventRow } from "@/lib/business/events-list"
+import {
+  fmtRowDate,
+  relativeDayLabel,
+  seriesHref,
+  seriesRowNumbers,
+  seriesRowStats,
+  type EventRow,
+} from "@/lib/business/events-list"
 import { Button } from "@/components/business/v2/ui/button"
 import {
   HostCardThumbnail,
@@ -12,7 +18,6 @@ import {
   type HostCardChip,
 } from "@/components/business/v2/host/HostListCard"
 import { EventCard } from "./EventCard"
-import { fmtDate } from "./eventStatus"
 
 /**
  * A recurring SERIES as one green row on the combined list (D2-2).
@@ -41,8 +46,18 @@ export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series
   // `is_active` arrives as 0/1 from MySQL through the API, hence the coercion.
   if (series && !series.is_active) chips.push({ label: "Suspended", variant: "neutral" })
 
-  const nextDate = series?.next_occurrence_date ?? row.events[0]?.start_date_time ?? null
-  const meta = nextDate ? `Next night ${fmtDate(nextDate)}` : "No upcoming nights"
+  // D2-C: the numbers, and whether the sums are the WHOLE series or just the
+  // nights on this page. That distinction decides the labels, so it is computed
+  // once, next to the sums, rather than being re-derived per label below.
+  const numbers = seriesRowNumbers(row)
+  const nextDate = numbers.nextDate
+  const relative = relativeDayLabel(nextDate)
+  // fmtRowDate, not the shared fmtDate: next_occurrence_date is a plain
+  // calendar string and `new Date("2026-09-04")` is UTC midnight, which renders
+  // a Friday night as Thursday for every US viewer.
+  const meta = nextDate
+    ? `Next night ${fmtRowDate(nextDate)}${relative ? ` · ${relative}` : ""}`
+    : "No upcoming nights"
   const secondary =
     series && series.upcoming_count > stats.nights
       ? `${series.upcoming_count} nights upcoming · ${stats.nights} shown on this page`
@@ -66,10 +81,7 @@ export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series
             icon={Repeat}
           />
         }
-        stats={[
-          { label: "Sold", value: stats.sold.toLocaleString() },
-          { label: "Revenue", value: usd(stats.revenue) },
-        ]}
+        stats={numbers.stats}
         actions={
           <>
             <Button

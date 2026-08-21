@@ -2,10 +2,10 @@
 
 import { Zap } from "lucide-react"
 import {
+  accessRowStats,
   programHref,
   programMetaLine,
   programScheduleLine,
-  redemptionModeLabel,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/HostListCard"
@@ -36,10 +36,12 @@ export function AccessProgramRow({ program }: { program: DoorAccessProgramSummar
       thumbnail={
         <HostCardThumbnail kind="access" src={program.flyer_image_url} alt={program.name} icon={Zap} />
       }
-      stats={[
-        { label: "Tiers", value: String(program.tier_count) },
-        { label: "Check-in", value: redemptionModeLabel(program.redemption_mode) },
-      ]}
+      /* D2-C. An access row's at-a-glance question is "how is this week going",
+         so the week leads. Its sold figure is STUBBED — see accessRowStats and
+         MISSING_ROW_AGGREGATES; the nights-left half beside it is real. The
+         check-in mode moved off the row to make space: it is a setting, not a
+         number, and it never changes between two glances at this list. */
+      stats={accessRowStats(program)}
     />
   )
 }

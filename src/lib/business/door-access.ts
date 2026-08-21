@@ -574,6 +574,68 @@ export function programScheduleLine(program: DoorAccessProgramSummary): string {
   return parts.filter((s) => s.length > 0).join(" · ")
 }
 
+// ── D2-C: the row's at-a-glance numbers ─────────────────────────────────────
+
+/**
+ * ISO weekday (1 = Mon … 7 = Sun) for a "YYYY-MM-DD" string, parsed as a
+ * calendar date. Same day-shift rule as fmtNightDate — never `new Date(iso)`.
+ */
+export function isoWeekday(iso: string): number | null {
+  const parts = parseIsoDate(iso)
+  if (!parts) return null
+  return ((new Date(Date.UTC(parts.y, parts.m - 1, parts.d)).getUTCDay() + 6) % 7) + 1
+}
+
+/**
+ * How many of this program's nights are still to come in the CURRENT week
+ * (today through Sunday), inclusive of tonight.
+ *
+ * Derived purely from days_of_week — no request, and correct for a program
+ * whose nights straddle a weekend. An ended program has no nights left, whatever
+ * its pattern says.
+ */
+export function nightsLeftThisWeek(
+  program: DoorAccessProgramSummary,
+  todayIso: string = easternToday(),
+): number {
+  if (!program.is_active) return 0
+  const today = isoWeekday(todayIso)
+  if (today == null) return 0
+  if (program.date_range_end && program.date_range_end < todayIso) return 0
+  return program.days_of_week.filter((d) => d >= today).length
+}
+
+/**
+ * A WEEKLY ACCESS row's numbers.
+ *
+ * "This week's sold" is the number a host actually wants here and it is the one
+ * this payload cannot answer: DoorAccessProgramSummary carries schedule and
+ * pricing, and passes_sold lives per NIGHT inside GET /business/door-access/:id
+ * — one request per row if the client tried. So the cell is STUBBED (muted, an
+ * em dash, a hint that says why) and the gap is registered in
+ * MISSING_ROW_AGGREGATES. The schedule half of the answer — how many nights are
+ * left this week — IS derivable, so it renders for real beside it.
+ */
+export function accessRowStats(
+  program: DoorAccessProgramSummary,
+  todayIso: string = easternToday(),
+): Array<{ label: string; value: string; pending?: boolean; hint?: string }> {
+  const left = nightsLeftThisWeek(program, todayIso)
+  return [
+    {
+      label: "sold this week",
+      value: "—",
+      pending: true,
+      hint: "Per-night sales live on the program page. A week-scoped passes_sold on GET /business/door-access would fill this in.",
+    },
+    {
+      label: left === 1 ? "night left this week" : "nights left this week",
+      value: String(left),
+    },
+    { label: "tiers", value: String(program.tier_count) },
+  ]
+}
+
 // ── Night presentation ──────────────────────────────────────────────────────
 
 export type NightChip = { label: string; variant: "neutral" | "warning" | "danger" | "info" }
