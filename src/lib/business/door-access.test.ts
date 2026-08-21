@@ -17,6 +17,9 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
+  accessRowStats,
+  isoWeekday,
+  nightsLeftThisWeek,
   normalizeDays,
   normalizeProgramSummary,
   normalizeNight,
@@ -527,4 +530,57 @@ test("D-F11.1: a program links to its SERIES, and a night hangs off that", () =>
   assert.equal(nightHref(77, "2026-08-28"), "/business/door-access/77/nights/2026-08-28")
   // The program href must never point at a single night.
   assert.ok(!/nights/.test(programHref(77)))
+})
+
+// ── D2-C: the row's at-a-glance numbers ─────────────────────────────────────
+
+function rowProgram(extra: Record<string, unknown> = {}) {
+  return normalizeProgramSummary({
+    id: 1,
+    name: "Friday Cover",
+    days_of_week: [5, 6],
+    date_range_start: "2026-08-01",
+    date_range_end: null,
+    is_active: 1,
+    venue_name: "The Bar",
+    start_time: "22:00:00",
+    end_time: "02:00:00",
+    tier_count: 3,
+    upcoming_night_count: 8,
+    next_night_date: "2026-08-28",
+    ...extra,
+  })
+}
+
+test("nights left this week counts from today forward, not the whole pattern", () => {
+  // 2026-08-26 is a Wednesday (ISO 3). A Fri+Sat program has both still ahead.
+  assert.equal(nightsLeftThisWeek(rowProgram(), "2026-08-26"), 2)
+  // Saturday (ISO 6) — Friday has already gone.
+  assert.equal(nightsLeftThisWeek(rowProgram(), "2026-08-29"), 1)
+  // Sunday (ISO 7) closes the week out at zero.
+  assert.equal(nightsLeftThisWeek(rowProgram(), "2026-08-30"), 0)
+})
+
+test("an ended program has no nights left, whatever its pattern says", () => {
+  assert.equal(nightsLeftThisWeek(rowProgram({ is_active: 0 }), "2026-08-26"), 0)
+  assert.equal(nightsLeftThisWeek(rowProgram({ date_range_end: "2026-08-20" }), "2026-08-26"), 0)
+})
+
+test("this week's SOLD is stubbed — this payload has no sales in it", () => {
+  const stats = accessRowStats(rowProgram(), "2026-08-26")
+  const sold = stats[0]
+  assert.equal(sold.label, "sold this week")
+  // A dash, never a zero: "0 sold" is a claim about a week that hasn't happened.
+  assert.equal(sold.value, "—")
+  assert.equal(sold.pending, true)
+  assert.match(sold.hint ?? "", /door-access/)
+  // The half that IS derivable renders for real beside it.
+  assert.deepEqual(stats[1], { label: "nights left this week", value: "2" })
+  assert.ok(!stats[1].pending)
+})
+
+test("isoWeekday reads a calendar date without a timezone round trip", () => {
+  assert.equal(isoWeekday("2026-08-24"), 1) // Monday
+  assert.equal(isoWeekday("2026-08-30"), 7) // Sunday
+  assert.equal(isoWeekday("nonsense"), null)
 })

@@ -36,6 +36,14 @@ export interface HostCardChip {
 export interface HostCardStat {
   label: string
   value: string
+  /**
+   * D2-C. The number is real but this payload can't see it yet. Renders muted
+   * with a dashed rule so it reads as "not loaded here", never as a zero — on a
+   * sold or revenue column those two say opposite things.
+   */
+  pending?: boolean
+  /** Hover text on a pending cell: what would have to change to fill it in. */
+  hint?: string
 }
 
 const ACCENTS: Record<HostCardKind, { ink: string; label: string }> = {
@@ -123,11 +131,31 @@ export function HostListCard({
             {stats.length > 0 && (
               <div className="hidden shrink-0 items-center gap-6 md:flex">
                 {stats.map((stat) => (
-                  <div key={stat.label} className="text-right">
-                    <p className="text-sm font-semibold text-neutral-900 tabular-nums dark:text-neutral-100">
+                  <div
+                    key={stat.label}
+                    className="text-right"
+                    title={stat.pending ? stat.hint : undefined}
+                  >
+                    <p
+                      className={cn(
+                        "text-sm font-semibold tabular-nums",
+                        stat.pending
+                          ? "text-neutral-400 decoration-dashed decoration-from-font underline underline-offset-4 dark:text-neutral-600"
+                          : "text-neutral-900 dark:text-neutral-100",
+                      )}
+                    >
                       {stat.value}
                     </p>
-                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400">{stat.label}</p>
+                    <p
+                      className={cn(
+                        "text-[11px]",
+                        stat.pending
+                          ? "text-neutral-400 dark:text-neutral-600"
+                          : "text-neutral-500 dark:text-neutral-400",
+                      )}
+                    >
+                      {stat.label}
+                    </p>
                   </div>
                 ))}
               </div>

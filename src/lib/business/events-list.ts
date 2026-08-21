@@ -127,3 +127,179 @@ export function seriesRowStats(row: Extract<EventRow, { kind: "series" }>): {
     revenue: row.events.reduce((n, e) => n + Number(e.total_revenue ?? 0), 0),
   }
 }
+
+// ── D2-C: the at-a-glance numbers ───────────────────────────────────────────
+//
+// Every figure below comes from a field the list ALREADY fetches. Nothing here
+// adds a request, and nothing here is computed from a second round trip — a
+// list row that fires its own fetch is a list that gets slower with every row.
+//
+// WHAT IS NOT DERIVABLE FROM THE LIST PAYLOADS — see MISSING_ROW_AGGREGATES.
+// Those render as an explicit pending stat, not as a zero. A zero is a claim;
+// "—" is the truth, and on a money column the difference is the whole point.
+
+/**
+ * A row's stat cell. Structurally the HostListCard `HostCardStat` — declared
+ * here rather than imported so this module stays free of the `@/` alias, which
+ * the Node test runner cannot resolve.
+ */
+export interface RowStat {
+  label: string
+  value: string
+  /** Renders muted with a dashed rule: the number exists, we can't see it yet. */
+  pending?: boolean
+  /** `title=` on a pending cell — says WHY, so it doesn't read as a bug. */
+  hint?: string
+}
+
+/**
+ * The two numbers this list cannot answer today, and what each one needs.
+ * Exported so the gap is greppable and testable rather than living only in a
+ * commit message. Both are STUBBED VISUALLY on the rows below.
+ */
+export const MISSING_ROW_AGGREGATES = [
+  {
+    key: "series_totals",
+    row: "series",
+    label: "Series to date",
+    // seriesRowStats can only sum the nights on the CURRENT PAGE. Whole-series
+    // sold/revenue needs the aggregate added to listSeries (services
+    // RecurringSeriesService.listSeries already computes occurrence_count /
+    // upcoming_count the same way — this is two more subqueries there, not a
+    // new endpoint, but it is still a server change and so is not built here).
+    needs: "sold/revenue aggregate on GET /business/recurring-series",
+  },
+  {
+    key: "access_week_sold",
+    row: "access",
+    label: "This week",
+    // DoorAccessProgramSummary carries schedule + pricing only. passes_sold
+    // exists per NIGHT inside GET /business/door-access/:id, so answering this
+    // from the client would be one request per program row.
+    needs: "week-scoped passes_sold on GET /business/door-access",
+  },
+] as const
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+/**
+ * Calendar parts of a date, WITHOUT a timezone round trip where one would be a
+ * bug. A series' next_occurrence_date is a plain "YYYY-MM-DD" — feeding that to
+ * `new Date()` yields UTC midnight and renders Friday's night as Thursday for
+ * every US viewer (the same trap door-access.ts guards). A full datetime keeps
+ * the existing behaviour and parses as local, which is what the rest of this
+ * surface already does with start_date_time.
+ */
+function dayParts(value: string | null | undefined): { y: number; m: number; d: number } | null {
+  if (!value) return null
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim())
+  if (dateOnly) {
+    return { y: Number(dateOnly[1]), m: Number(dateOnly[2]), d: Number(dateOnly[3]) }
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return { y: parsed.getFullYear(), m: parsed.getMonth() + 1, d: parsed.getDate() }
+}
+
+/** "Aug 23" — the row's date cell. Year only when it isn't this one. */
+export function fmtRowDate(value: string | null | undefined, now: Date = new Date()): string {
+  const parts = dayParts(value)
+  if (!parts) return "—"
+  const base = `${MONTHS[parts.m - 1]} ${parts.d}`
+  return parts.y === now.getFullYear() ? base : `${base}, ${parts.y}`
+}
+
+/**
+ * "tonight" / "tomorrow" / "in 5 days" / "12 days ago" — the small line under
+ * the date. Whole calendar days apart, computed from local midnights so an
+ * event at 11 PM tonight never reads as "tomorrow" because of a rounding hour.
+ */
+export function relativeDayLabel(value: string | null | undefined, now: Date = new Date()): string {
+  const parts = dayParts(value)
+  if (!parts) return ""
+  const then = new Date(parts.y, parts.m - 1, parts.d).getTime()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const days = Math.round((then - today) / 86_400_000)
+
+  if (days === 0) return "tonight"
+  if (days === 1) return "tomorrow"
+  if (days === -1) return "yesterday"
+  if (days > 1) return days <= 60 ? `in ${days} days` : "upcoming"
+  return days >= -60 ? `${-days} days ago` : "past"
+}
+
+/**
+ * An EVENT row's numbers: sold · revenue · when.
+ *
+ * Attendees only earn a cell once there is a check-in to report. On an event
+ * that hasn't happened it is a zero next to two live numbers, which reads as
+ * "nobody is coming" rather than "the doors haven't opened".
+ */
+export function eventRowStats(event: EventListItem, now: Date = new Date()): RowStat[] {
+  const stats: RowStat[] = [
+    { label: "sold", value: (event.ticket_sales_count ?? 0).toLocaleString("en-US") },
+  ]
+  if ((event.total_attendees ?? 0) > 0) {
+    stats.push({ label: "checked in", value: (event.total_attendees ?? 0).toLocaleString("en-US") })
+  }
+  stats.push({ label: "revenue", value: money(event.total_revenue) })
+  stats.push({
+    label: relativeDayLabel(event.start_date_time, now) || "date",
+    value: fmtRowDate(event.start_date_time, now),
+  })
+  return stats
+}
+
+/**
+ * A SERIES row's numbers: next occurrence + series totals.
+ *
+ * The sums are page-scoped by construction (groupEventRows only ever sees one
+ * page). So the labels say which is which:
+ *   • the whole series is on this page  → these ARE the series totals;
+ *   • it isn't → the sums are labelled with the night count they cover, and a
+ *     pending "Series to date" cell stands in for the number we can't compute.
+ * Silently labelling a partial sum "Revenue" would be a wrong number on a money
+ * column, which is worse than an honest blank.
+ */
+export function seriesRowNumbers(
+  row: Extract<EventRow, { kind: "series" }>,
+  now: Date = new Date(),
+): { stats: RowStat[]; isWholeSeries: boolean; nextDate: string | null } {
+  const { nights, sold, revenue } = seriesRowStats(row)
+  const total = row.series?.occurrence_count ?? nights
+  const isWholeSeries = total <= nights
+  const scope = isWholeSeries ? "" : ` · ${nights} shown`
+
+  const nextDate = row.series?.next_occurrence_date ?? row.events[0]?.start_date_time ?? null
+
+  const stats: RowStat[] = [
+    { label: `sold${scope}`, value: sold.toLocaleString("en-US") },
+    { label: `revenue${scope}`, value: money(revenue) },
+  ]
+
+  if (!isWholeSeries) {
+    const gap = MISSING_ROW_AGGREGATES[0]
+    stats.push({
+      label: gap.label,
+      value: "—",
+      pending: true,
+      hint: `${total} nights in this series. Whole-series totals need a ${gap.needs}.`,
+    })
+  }
+
+  stats.push({
+    label: relativeDayLabel(nextDate, now) || "next night",
+    value: fmtRowDate(nextDate, now),
+  })
+
+  return { stats, isWholeSeries, nextDate }
+}
+
+/** Local money format — `usd()` lives behind the `@/` alias the runner can't load. */
+function money(n: number | string | null | undefined): string {
+  const v = typeof n === "string" ? Number(n) : n
+  if (v == null || !Number.isFinite(v)) return "$0"
+  // Whole dollars on a list row: cents are noise at a glance and the detail
+  // page is one click away.
+  return `$${Math.round(v).toLocaleString("en-US")}`
+}

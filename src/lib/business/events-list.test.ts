@@ -1,7 +1,12 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
+  MISSING_ROW_AGGREGATES,
+  eventRowStats,
+  fmtRowDate,
   groupEventRows,
+  relativeDayLabel,
+  seriesRowNumbers,
   parseEventTypeFilter,
   seriesHref,
   seriesRowStats,
@@ -135,4 +140,100 @@ test("series stats sum the nights actually on the page", () => {
   assert.equal(rows[0].kind, "series")
   if (rows[0].kind !== "series") return
   assert.deepEqual(seriesRowStats(rows[0]), { nights: 2, sold: 15, revenue: 142.5 })
+})
+
+// ── D2-C: the at-a-glance numbers ───────────────────────────────────────────
+
+test("an event row leads with sold, revenue and when", () => {
+  const now = new Date(2026, 8, 1, 12, 0, 0) // Sep 1 2026, midday local
+  const stats = eventRowStats(
+    ev(1, "2026-09-04 21:00:00", null, { ticket_sales_count: 1234, total_revenue: 8210.4 }),
+    now,
+  )
+  assert.deepEqual(
+    stats.map((s) => [s.label, s.value]),
+    [["sold", "1,234"], ["revenue", "$8,210"], ["in 3 days", "Sep 4"]],
+  )
+})
+
+test("checked-in only earns a cell once someone has actually checked in", () => {
+  const now = new Date(2026, 8, 1)
+  const upcoming = eventRowStats(ev(1, "2026-09-04 21:00:00"), now)
+  // A zero next to two live numbers reads as "nobody is coming", not "the
+  // doors haven't opened" — so it is absent, not zeroed.
+  assert.ok(!upcoming.some((s) => s.label === "checked in"))
+
+  const ran = eventRowStats(ev(1, "2026-08-29 21:00:00", null, { total_attendees: 210 }), now)
+  assert.deepEqual(
+    ran.find((s) => s.label === "checked in"),
+    { label: "checked in", value: "210" },
+  )
+})
+
+test("relative labels are whole calendar days, not rounded hours", () => {
+  const now = new Date(2026, 8, 1, 9, 0, 0)
+  // 11 PM tonight is TONIGHT, however many hours away it is.
+  assert.equal(relativeDayLabel("2026-09-01 23:00:00", now), "tonight")
+  assert.equal(relativeDayLabel("2026-09-02 01:00:00", now), "tomorrow")
+  assert.equal(relativeDayLabel("2026-08-31 23:00:00", now), "yesterday")
+  assert.equal(relativeDayLabel("2026-09-06 21:00:00", now), "in 5 days")
+  assert.equal(relativeDayLabel("2026-08-20 21:00:00", now), "12 days ago")
+  assert.equal(relativeDayLabel(null, now), "")
+})
+
+test("THE DAY-SHIFT TRAP: a date-only string is a calendar date, never UTC midnight", () => {
+  // next_occurrence_date arrives as "YYYY-MM-DD". new Date() would make that
+  // UTC midnight and render Friday's night as Thursday for every US viewer.
+  const now = new Date(2026, 8, 1, 9, 0, 0)
+  assert.equal(fmtRowDate("2026-09-04", now), "Sep 4")
+  assert.equal(relativeDayLabel("2026-09-01", now), "tonight")
+  // And the year shows only when it isn't this one.
+  assert.equal(fmtRowDate("2027-01-02", now), "Jan 2, 2027")
+})
+
+test("a series whose nights are ALL on this page shows real series totals", () => {
+  const rows = groupEventRows(
+    [
+      ev(1, "2026-09-01 21:00:00", 7, { ticket_sales_count: 10, total_revenue: 100 }),
+      ev(2, "2026-09-08 21:00:00", 7, { ticket_sales_count: 5, total_revenue: 42.5 }),
+    ],
+    [series(7, "Trivia Tuesdays", { occurrence_count: 2, upcoming_count: 2 })],
+  )
+  assert.equal(rows[0].kind, "series")
+  if (rows[0].kind !== "series") return
+  const { stats, isWholeSeries } = seriesRowNumbers(rows[0], new Date(2026, 8, 1))
+  assert.equal(isWholeSeries, true)
+  // Unqualified labels, and no pending cell — the sums ARE the totals.
+  assert.deepEqual(stats.map((s) => s.label), ["sold", "revenue", "tonight"])
+  assert.ok(!stats.some((s) => s.pending))
+})
+
+test("a partial series LABELS its sums and stubs the total it cannot compute", () => {
+  const rows = groupEventRows(
+    [ev(1, "2026-09-01 21:00:00", 7, { ticket_sales_count: 10, total_revenue: 100 })],
+    [series(7, "Trivia Tuesdays", { occurrence_count: 12, upcoming_count: 12 })],
+  )
+  assert.equal(rows[0].kind, "series")
+  if (rows[0].kind !== "series") return
+  const { stats, isWholeSeries } = seriesRowNumbers(rows[0], new Date(2026, 8, 1))
+  assert.equal(isWholeSeries, false)
+  // The sums say what they cover. Labelling a one-night sum "Revenue" on a
+  // twelve-night series would be a wrong number on a money column.
+  assert.equal(stats[0].label, "sold · 1 shown")
+  assert.equal(stats[1].label, "revenue · 1 shown")
+  const pending = stats.find((s) => s.pending)
+  assert.ok(pending, "the whole-series total is stubbed, not silently omitted")
+  assert.equal(pending?.value, "—", "a stub is a dash, never a zero")
+  assert.match(pending?.hint ?? "", /12 nights/)
+  assert.match(pending?.hint ?? "", /recurring-series/)
+})
+
+test("the missing aggregates are registered, not just commented", () => {
+  assert.deepEqual(
+    MISSING_ROW_AGGREGATES.map((g) => g.key),
+    ["series_totals", "access_week_sold"],
+  )
+  for (const gap of MISSING_ROW_AGGREGATES) {
+    assert.ok(gap.needs.length > 0, `${gap.key} must say what would fill it in`)
+  }
 })
