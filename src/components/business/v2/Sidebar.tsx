@@ -7,7 +7,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X, Repeat, Banknote,
+  Sun, Moon, TicketPercent, Menu, X, Repeat, Banknote, DoorOpen,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -47,6 +47,24 @@ const GROUPS: { label?: string; items: Item[] }[] = [
     { label: "Recurring", href: "/business/recurring", icon: Repeat, feature: "showRecurring" },
     { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
     { label: "Deals", href: "/business/deals", icon: Tag, feature: "showDeals" },
+    // V5 F14. Sits directly ABOVE Line skips and does not replace it — both
+    // systems run side by side until the F15 conversion moves the data across.
+    //
+    // Gated on `showLineSkips` rather than a flag of its own: Door Access IS the
+    // successor to line skips, so the two must appear and disappear together. A
+    // dedicated flag would let a business end up with one and not the other,
+    // which is the confusing half-state F15 exists to avoid.
+    //
+    // Hidden from promoters, matching the router: the door-access endpoints
+    // admit owner/manager/staff only, so a promoter following this link lands on
+    // a 403. The server enforces it regardless — this only keeps the rail honest.
+    {
+      label: "Door Access",
+      href: "/business/door-access",
+      icon: DoorOpen,
+      feature: "showLineSkips",
+      roles: ["owner", "manager", "staff"],
+    },
     { label: "Line skips", href: "/business/line-skips", icon: Zap, feature: "showLineSkips" },
   ] },
   { label: "Grow", items: [

@@ -1,12 +1,16 @@
 import type { RedemptionMode } from './door-access'
 
+// ⚠️ DEAD — this is the LEGACY dashboard rail's nav data.
+//
+// Its only consumer was components/business/dashboard/Sidebar.tsx, which now
+// has zero importers; the live dashboard at /business renders
+// components/business/v2/Sidebar.tsx, whose nav is a GROUPS array declared in
+// that file. V5 F14's Door Access entry was added here and therefore never
+// rendered — the symptom that found this. Add nav items to the v2 Sidebar.
 export const NAV_LINKS = [
   { label: 'Home', href: '/business', icon: 'home' },
   { label: 'Events', href: '/business/events', icon: 'calendar' },
   { label: 'Event Marketing', href: '/business/marketing', icon: 'megaphone' },
-  // V5 F14. Sits ABOVE Line Skips and does not replace it — both systems are
-  // live side by side until the F15 conversion moves the data across.
-  { label: 'Weekly Access', href: '/business/door-access', icon: 'bolt' },
   { label: 'Line Skips', href: '/business/line-skips', icon: 'bolt' },
   { label: 'Deals', href: '/business/deals', icon: 'tag' },
   { label: 'Analytics', href: '/business/analytics', icon: 'chart' },
@@ -51,9 +55,6 @@ export const APPROVED_ONLY_ROUTES = [
 export const ROLE_HIDDEN_ROUTES: Record<string, string[]> = {
   '/business/analytics': ['staff'],
   '/business/line-skips': ['promoter'],
-  // The door-access endpoints admit owner/manager/staff only — a promoter
-  // would reach a 403, so the link is hidden rather than served as a dead end.
-  '/business/door-access': ['promoter'],
   '/business/settings': ['promoter'],
   '/business/promo-codes': ['staff', 'promoter'],
 }
