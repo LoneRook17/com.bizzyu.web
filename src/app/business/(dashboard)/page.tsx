@@ -21,6 +21,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import TrialHome from "@/components/business/v2/TrialHome"
+import EscrowPanel from "@/components/business/v2/EscrowPanel"
 
 function fmtDate(s?: string | null) {
   if (!s) return "—"
@@ -147,6 +148,9 @@ export default function V2HomePage() {
           </div>
         }
       />
+
+      {/* BE-D: escrow held by Bizzy — self-hides unless the business has escrow history */}
+      <EscrowPanel />
 
       {/* metric tiles - filtered by dashboard mode */}
       <div className={cn("grid grid-cols-2 gap-4", config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
