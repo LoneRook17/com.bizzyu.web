@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
-  Plus, ArrowUpRight, CalendarDays, TrendingUp, Ticket, Sparkles, ChevronRight, Tag,
+  Plus, ArrowUpRight, CalendarDays, TrendingUp, Ticket, Sparkles, ChevronRight, Tag, Zap,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
@@ -15,6 +15,14 @@ import type {
 } from "@/lib/business/types"
 import { LINE_SKIP_LABEL } from "@/lib/business/line-skip-label"
 import { homeSections } from "@/lib/business/home-sections"
+import {
+  ACCESS_ACCENT,
+  WEEKLY_ACCESS_SECTION_LABEL,
+  fetchDoorAccessProgramsSafe,
+  programHref,
+  type DoorAccessProgramSummary,
+} from "@/lib/business/door-access"
+import { homeUpcoming, nextAccessNight } from "@/lib/business/home-upcoming"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
@@ -72,6 +80,10 @@ export default function V2HomePage() {
   const [activity, setActivity] = useState<ActivityFeedItem[]>([])
   const [events, setEvents] = useState<EventListItem[]>([])
   const [deals, setDeals] = useState<DealListItem[]>([])
+  // D2-6: Home reflects BOTH types. Programs load alongside everything else and
+  // degrade to [] — a business that runs no door access, or a build where the
+  // endpoint is down, gets exactly the homepage it had before.
+  const [programs, setPrograms] = useState<DoorAccessProgramSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -105,6 +117,17 @@ export default function V2HomePage() {
     return () => { cancelled = true }
   }, [venueParam, needsSetup, venuesLoading, resetToAllVenues])
 
+  // Kept OUT of the Promise.allSettled above deliberately: that block treats a
+  // 404 as "stale venue selection, self-heal to All venues", and the door-access
+  // endpoint has its own reasons to 404 (older build, role). Folding it in would
+  // let a missing program list reset the operator's venue.
+  useEffect(() => {
+    if (needsSetup || venuesLoading) return
+    let cancelled = false
+    fetchDoorAccessProgramsSafe().then((rows) => { if (!cancelled) setPrograms(rows) })
+    return () => { cancelled = true }
+  }, [needsSetup, venuesLoading])
+
   if (needsSetup) return <TrialHome />
 
   const firstName = user?.full_name?.split(" ")[0]
@@ -129,6 +152,29 @@ export default function V2HomePage() {
   const lineSkipRevenue =
     stats?.line_skip_revenue_cents == null ? null : stats.line_skip_revenue_cents / 100
 
+  // D2-6. Door Access is a TYPE on this page, not a section of its own: it
+  // feeds the same upcoming list, the same tiles and the same attention hub the
+  // events do. Presence-gated exactly like every other product here — a
+  // business with no programs sees no trace of them.
+  const activePrograms = config.showLineSkips ? programs.filter((p) => p.is_active) : []
+  const showAccessSection = activePrograms.length > 0
+  const nextNights = activePrograms
+    .map(nextAccessNight)
+    .filter((n): n is NonNullable<ReturnType<typeof nextAccessNight>> => n !== null)
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const soonestNight = nextNights[0] ?? null
+
+  // The interleaved list (green events + pink nights) this card now shows.
+  const upcoming = homeUpcoming(showEventsSection ? events : [], activePrograms, 4)
+  const showUpcomingCard = showEventsSection || showAccessSection
+
+  // The "next night" tile answers across BOTH systems while they coexist — a
+  // venue mid-F15 has legacy nights AND programs, and two competing "next"
+  // figures would be worse than one honest earliest.
+  const nextAccessDate = [stats?.next_line_skip_date, soonestNight?.date]
+    .filter((d): d is string => !!d)
+    .sort((a, b) => a.localeCompare(b))[0] ?? null
+
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
   const nextEvent = showEventsSection ? events[0] : undefined
@@ -138,6 +184,14 @@ export default function V2HomePage() {
       title: `${nextEvent.name} is coming up`,
       sub: `${fmtDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
       href: `/business/events/${nextEvent.event_id}/manage`, cta: "Manage",
+    })
+  }
+  if (soonestNight) {
+    attention.push({
+      icon: Zap, tint: "bg-pink-50 dark:bg-pink-950/40 text-[#FF3ED1]",
+      title: `${soonestNight.program.name} runs ${fmtDate(soonestNight.date)}`,
+      sub: `${soonestNight.program.upcoming_night_count} nights scheduled · ${soonestNight.program.tier_count} tiers`,
+      href: programHref(soonestNight.program.id), cta: "Manage",
     })
   }
   if (config.showDeals && (stats?.active_deals_count ?? 0) > 0) {
@@ -206,23 +260,42 @@ export default function V2HomePage() {
         </div>
       )}
 
-      {/* LSK-19 — the line-skip figures, as their OWN labelled row so they can
-          never be read as part of (or blended into) the event totals above. */}
-      {!loading && showLineSkipSection && (
+      {/* LSK-19 — the door-side figures, as their OWN labelled row so they can
+          never be read as part of (or blended into) the event totals above.
+          D2-6 widened it from line skips to WEEKLY ACCESS: the same row now
+          covers programs and the legacy nights side by side, because a venue
+          mid-F15 genuinely runs both and needs to see both. "View all" points
+          at the Events page, where Weekly Access now lives — never at the
+          retired nav route. */}
+      {!loading && (showLineSkipSection || showAccessSection) && (
         <section data-testid="line-skip-section">
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{LINE_SKIP_LABEL}</h2>
-            <Link href="/business/line-skips" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+            <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: ACCESS_ACCENT }} />
+            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+              {showAccessSection ? WEEKLY_ACCESS_SECTION_LABEL : LINE_SKIP_LABEL}
+            </h2>
+            <Link href="/business/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
               View all <ArrowUpRight className="size-3.5" />
             </Link>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-            <MetricTile label="Revenue (all-time)" value={usd(lineSkipRevenue)} />
-            <MetricTile label="Passes sold" value={(stats?.line_skip_passes_sold ?? 0).toLocaleString()} />
+            {showLineSkipSection && (
+              <MetricTile label="Revenue (all-time)" value={usd(lineSkipRevenue)} />
+            )}
+            {showLineSkipSection && (
+              <MetricTile label="Passes sold" value={(stats?.line_skip_passes_sold ?? 0).toLocaleString()} />
+            )}
+            {showAccessSection && (
+              <MetricTile
+                label="Active programs"
+                value={activePrograms.length}
+                sub={`${activePrograms.reduce((n, p) => n + (p.upcoming_night_count ?? 0), 0)} nights scheduled`}
+              />
+            )}
             <MetricTile
               label="Next night"
-              value={stats?.next_line_skip_date ? fmtDate(stats.next_line_skip_date) : "—"}
-              sub={stats?.next_line_skip_date ? undefined : "None scheduled"}
+              value={nextAccessDate ? fmtDate(nextAccessDate) : "—"}
+              sub={nextAccessDate ? undefined : "None scheduled"}
             />
           </div>
         </section>
@@ -266,10 +339,12 @@ export default function V2HomePage() {
             card did not), but no longer catches a line-skip-only venue that has
             deals switched off: that venue gets no product card here at all, and
             its Skip the Line row above carries the page. */}
-        {showEventsSection ? (
+        {showUpcomingCard ? (
           <Card className="overflow-hidden">
             <div className="flex items-center px-5 py-4">
-              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Upcoming events</h2>
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+                {showAccessSection ? "Upcoming" : "Upcoming events"}
+              </h2>
               <Link href="/business/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
                 View all <ArrowUpRight className="size-3.5" />
               </Link>
@@ -277,13 +352,43 @@ export default function V2HomePage() {
             <div className="border-t border-neutral-100 dark:border-neutral-800">
               {loading ? (
                 [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
-              ) : events.length === 0 ? (
-                <div className="p-5"><EmptyState icon={CalendarDays} title="No upcoming events" description="Create an event to start selling tickets." action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create event</Link></Button>} /></div>
+              ) : upcoming.length === 0 ? (
+                // D2-B's emptiness test (the interleaved list, not just events)
+                // over D2-A's destination (the funnel, not the event form).
+                <div className="p-5"><EmptyState icon={CalendarDays} title="Nothing coming up" description="Create an event or a weekly access program to start selling." action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create</Link></Button>} /></div>
               ) : (
-                events.map((e, i) => {
+                // Interleaved (D2-6). A pink 2px spine is the whole type marker:
+                // the row shapes are otherwise identical, which is the point —
+                // one list, one reading order, two kinds.
+                upcoming.map((entry, i) => {
+                  const rowClass = cn(
+                    "flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60",
+                    i > 0 && "border-t border-neutral-100 dark:border-neutral-800",
+                  )
+                  if (entry.kind === "access") {
+                    const p = entry.program
+                    return (
+                      <Link key={entry.key} href={programHref(p.id)} className={rowClass}>
+                        <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full" style={{ backgroundColor: ACCESS_ACCENT }} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{p.name}</span>
+                          <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(entry.date)} · {p.venue_name}</span>
+                        </span>
+                        <span
+                          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.06em]"
+                          style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
+                        >
+                          WEEKLY ACCESS
+                        </span>
+                        <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+                      </Link>
+                    )
+                  }
+                  const e = entry.event
                   const b = eventBadge(e.status)
                   return (
-                    <Link key={e.event_id} href={`/business/events/${e.event_id}/manage`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+                    <Link key={entry.key} href={`/business/events/${e.event_id}/manage`} className={rowClass}>
+                      {showAccessSection && <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full bg-[#05EB54]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
                         <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>

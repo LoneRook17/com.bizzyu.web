@@ -163,7 +163,16 @@ export interface EventListItem {
   status: string
   flyer_image_url?: string
   is_21_plus: boolean
+  /** True on the SERIES TEMPLATE row only. Generated nights carry false. */
   is_recurring: boolean
+  /**
+   * D2-2. The series FK, present on every AUTO-GENERATED night and null on a
+   * one-off. `SELECT e.*` has always returned it; the list only started needing
+   * it when the Events page began grouping a series' nights under one row.
+   * Optional because a build that predates the column would otherwise be a
+   * type error rather than an ungrouped list, which is the safer degrade.
+   */
+  recurring_series_id?: number | null
   total_attendees: number
   total_revenue: number
   ticket_sales_count: number
