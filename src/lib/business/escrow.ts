@@ -4,11 +4,12 @@
 // shapes and pure helpers live here, and every consumer imports from here,
 // never a raw fetch.
 //
-// BE-D3: the stub seam is GONE. fetchEscrowPanelData() reads BE-F's real
-// endpoint, GET /api/business/escrow. The degrade rule it was built around
-// still holds and is now the error path: anything other than a good §7 body
-// returns null and the panel renders nothing — never an error wall, never a
-// broken dashboard for the businesses that have no escrow.
+// BE-D3: the stub seam is GONE. fetchEscrowPanelData() reads the real
+// endpoint — services' GET /business/escrow, the §7 twin of core's BE-F route,
+// reached through the dashboard's own proxy + cookie. The degrade rule it was
+// built around still holds and is now the error path: anything other than a
+// good §7 body returns null and the panel renders nothing — never an error
+// wall, never a broken dashboard for the businesses that have no escrow.
 //
 // Contract rules this file enforces:
 // - §7 wire shape verbatim; cents everywhere, formatting is the client's job.
@@ -21,6 +22,13 @@
 //
 // Everything below fetchEscrowPanelData() is pure so the Node built-in test
 // runner (`npm test`) can exercise it without resolving the api-client chain.
+
+// The proxy base URL. Relative + explicit `.ts`, matching how escrow.test.ts
+// imports this module: the Node test runner resolves neither the `@/` alias
+// nor an extensionless specifier. api-url.ts has no imports of its own, so it
+// costs the runner nothing — api-client.ts, which does pull the alias chain,
+// stays lazy-loaded below.
+import { getApiBaseUrl } from "../api-url.ts"
 
 // ── Wire shapes (contract §7) ───────────────────────────────────────────────
 
@@ -346,31 +354,27 @@ export async function fetchEscrowPanelData(opts?: {
 }
 
 /**
- * §7 balance + history from core (Laravel), NOT the Node API — the ledger and
- * its §3 balance definition live there, so the panel reads it at the source
- * rather than through a services mirror that could disagree.
+ * §7 balance + history from SERVICES — `GET /business/escrow`, through the same
+ * `/api/proxy` path and the same `biz_token` cookie every other dashboard read
+ * uses. Core serves the identical contract at `/api/business/escrow`, but that
+ * one is `auth:sanctum` and the dashboard has no Sanctum credential, so it can
+ * only ever 401 here. Services' twin needs nothing new from the client.
  *
- * Auth is Sanctum bearer. In the browser the request goes through the
- * `/api/laravel/*` rewrite (next.config.ts) so it is same-origin — a direct
- * cross-origin call would be blocked as mixed content on HTTPS deploys.
- *
- * ⚠️ The business dashboard session is a services JWT (`biz_token`), which
- * Laravel's `auth:sanctum` does not accept. Until that is bridged this read
- * 401s for dashboard users and the panel stays hidden — the same thing the
- * stub did, and the reason the degrade path above is unconditional.
+ * A RAW fetch, not apiClient, and that is deliberate: apiClient turns a 401
+ * into a silent refresh and then a hard redirect to /business/login. For a
+ * panel whose whole contract is "self-hide on failure", borrowing that
+ * behaviour would mean a broken escrow read could log the user out of the
+ * dashboard — the exact opposite of degrading quietly. The base URL still
+ * comes from getApiBaseUrl(), so the proxy path stays a single source of truth.
  */
 async function fetchEscrowSummary(): Promise<EscrowSummary | null> {
   try {
-    const headers: Record<string, string> = { Accept: "application/json" }
-    const token = typeof window !== "undefined" ? window.localStorage.getItem("bz_auth_token") : null
-    if (token) headers.Authorization = `Bearer ${token}`
-
-    const res = await fetch("/api/laravel/business/escrow", {
+    const res = await fetch(`${getApiBaseUrl()}/business/escrow`, {
       method: "GET",
       credentials: "include",
-      headers,
+      headers: { Accept: "application/json" },
     })
-    // 404 = not deployed yet. 401/403 = no Sanctum credential or no membership.
+    // 404 = not deployed yet. 401/403 = no session, or no active membership.
     // 5xx = broken. All of them mean the same thing to this panel: show nothing.
     if (!res.ok) return null
 

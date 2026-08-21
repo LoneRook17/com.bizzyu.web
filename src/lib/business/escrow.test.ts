@@ -302,7 +302,7 @@ test("a malformed body hides the panel", async () => {
   assert.equal(data, null)
 })
 
-test("the escrow read goes to the Laravel §7 endpoint through the same-origin rewrite", async () => {
+test("the escrow read goes to the services §7 endpoint through the dashboard's own base URL", async () => {
   let seenUrl: string | null = null
   await withFetch(
     async (url: string) => {
@@ -311,7 +311,13 @@ test("the escrow read goes to the Laravel §7 endpoint through the same-origin r
     },
     () => fetchEscrowPanelData(),
   )
-  assert.equal(seenUrl, "/api/laravel/business/escrow")
+  // getApiBaseUrl() is "/api/proxy" in the browser and INTERNAL_API_URL on the
+  // server, so pin the route, not the host.
+  assert.ok(seenUrl, "no request was made")
+  assert.ok(
+    (seenUrl as unknown as string).endsWith("/business/escrow"),
+    `expected the services escrow route, got ${seenUrl}`,
+  )
 })
 
 test("the demo scenario still overrides the real read outside production", async () => {
