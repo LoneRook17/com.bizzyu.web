@@ -19,6 +19,11 @@ import {
 } from "@/components/business/v2/ui/dialog"
 import { EventCard } from "@/components/business/v2/events/EventCard"
 import { Pagination } from "@/components/business/v2/events/Pagination"
+import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
+import {
+  fetchDoorAccessProgramsSafe,
+  type DoorAccessProgramSummary,
+} from "@/lib/business/door-access"
 
 export default function V2EventsPage() {
   const { user } = useAuth()
@@ -31,6 +36,12 @@ export default function V2EventsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+
+  // F9 COMBINED LIST: green EVENT rows + magenta WEEKLY ACCESS rows in one
+  // list. Programs are "ongoing by nature" (D-F9.2) — they have no single date
+  // to sort on, so they PIN ABOVE the dated rows rather than being given a
+  // fake one, and they are never paginated with the events below them.
+  const [programs, setPrograms] = useState<DoorAccessProgramSummary[]>([])
 
   const [showVenueModal, setShowVenueModal] = useState(false)
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
@@ -91,6 +102,25 @@ export default function V2EventsPage() {
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
+  // Access programs load ONCE and independently of the tab/page, because they
+  // are not part of the paginated event query. fetchDoorAccessProgramsSafe
+  // degrades to [] on any failure — this list worked before access rows
+  // existed and must keep working if that endpoint is down or the build
+  // predates it.
+  useEffect(() => {
+    let cancelled = false
+    fetchDoorAccessProgramsSafe().then((rows) => {
+      if (!cancelled) setPrograms(rows)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  // Only on the tab that means "what's on". "Past"/"Drafts"/"Recurring" are
+  // queries about dated events; an ongoing program is not an answer to any of
+  // them, and the Weekly Access section is where the full list lives.
+  const visiblePrograms = tab === "upcoming" ? programs.filter((p) => p.is_active) : []
+  const isEmpty = events.length === 0 && visiblePrograms.length === 0
+
   const handleTabChange = (newTab: string) => {
     setTab(newTab)
     setPage(1)
@@ -143,7 +173,7 @@ export default function V2EventsPage() {
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[124px] rounded-xl" />)}
         </div>
-      ) : events.length === 0 ? (
+      ) : isEmpty ? (
         <EmptyState
           icon={CalendarDays}
           title="No events yet"
@@ -156,6 +186,9 @@ export default function V2EventsPage() {
         />
       ) : (
         <div className="flex flex-col gap-3">
+          {visiblePrograms.map((program) => (
+            <AccessProgramRow key={`program-${program.id}`} program={program} />
+          ))}
           {events.map((event) => <EventCard key={event.event_id} event={event} />)}
         </div>
       )}
