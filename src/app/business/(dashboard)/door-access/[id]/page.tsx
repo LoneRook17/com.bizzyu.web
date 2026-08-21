@@ -21,7 +21,9 @@ import {
   type DoorAccessNight,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
+import { nightLinkState, venuePageUrl } from "@/lib/business/public-links"
 import { PageHeader } from "@/components/business/v2/PageHeader"
+import ShareLinkRow from "@/components/business/v2/ShareLinkRow"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
@@ -123,6 +125,20 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           .join(" · ")}
       />
 
+      {/* The program-level link, first — same reasoning as the event manage
+          page, where Share Link leads: handing out the link is what a host
+          does most. `/venue/:id` is the pipeline's program-level surface (it
+          lists that venue's published upcoming nights and links each to
+          Laravel checkout), and it is the SAME URL the settings Venue page
+          section hands out — not a new public page. */}
+      {program.venue_id != null && (
+        <ShareLinkRow
+          url={venuePageUrl(program.venue_id)}
+          title={program.name || "Weekly access"}
+          label="Program link — every upcoming night"
+        />
+      )}
+
       <ProgramTermsCard program={program} />
 
       <TemplateTiersCard program={program} />
@@ -152,10 +168,17 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
               heading="Upcoming"
               nights={upcoming}
               programId={programId}
+              programName={program.name}
               emptyNote="No upcoming nights in this window."
             />
             {past.length > 0 && (
-              <NightGroup heading="Past" nights={past} programId={programId} muted />
+              <NightGroup
+                heading="Past"
+                nights={past}
+                programId={programId}
+                programName={program.name}
+                muted
+              />
             )}
           </div>
         )}
@@ -309,12 +332,14 @@ function NightGroup({
   heading,
   nights,
   programId,
+  programName,
   muted,
   emptyNote,
 }: {
   heading: string
   nights: DoorAccessNight[]
   programId: number
+  programName: string
   muted?: boolean
   emptyNote?: string
 }) {
@@ -334,6 +359,7 @@ function NightGroup({
               key={night.occurrence_date}
               night={night}
               programId={programId}
+              programName={programName}
               muted={muted}
             />
           ))}
@@ -343,13 +369,56 @@ function NightGroup({
   )
 }
 
+/**
+ * DASH2-D — the share affordance for ONE night.
+ *
+ * A night IS an event (core stamps one `events` row per occurrence), so this
+ * hands out the identical link an event's manage page does, from the same
+ * builder — `bizzyu.com/event/:id/checkout`, which redirects to Laravel
+ * checkout. There is no night-specific URL format and there must not be one.
+ *
+ * Past nights get no link: nothing left to sell.
+ */
+function NightShare({
+  night,
+  programName,
+  isPast,
+}: {
+  night: DoorAccessNight
+  programName: string
+  isPast?: boolean
+}) {
+  if (isPast) return null
+
+  const state = nightLinkState(night)
+  if (state.kind === "ready") {
+    return (
+      <ShareLinkRow
+        url={state.url}
+        title={`${programName} · ${fmtNightDate(night.occurrence_date)}`}
+        variant="inline"
+      />
+    )
+  }
+
+  // No link yet — say WHY. The schedule deliberately lists nights core hasn't
+  // materialised, and a bare missing button would read as a broken row.
+  return (
+    <span className="hidden shrink-0 text-[11px] text-neutral-400 dark:text-neutral-500 sm:inline">
+      {state.kind === "not_generated" ? "Link once generated" : "Not on sale yet"}
+    </span>
+  )
+}
+
 function NightRow({
   night,
   programId,
+  programName,
   muted,
 }: {
   night: DoorAccessNight
   programId: number
+  programName: string
   muted?: boolean
 }) {
   const chips = nightChips(night)
@@ -357,48 +426,61 @@ function NightRow({
   const lowest = priced.length > 0 ? Math.min(...priced.map((t) => t.price_usd)) : null
 
   return (
-    <Link
-      href={nightHref(programId, night.occurrence_date)}
-      className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={
-              muted
-                ? "text-sm font-medium text-neutral-500 dark:text-neutral-400"
-                : "text-sm font-semibold text-neutral-900 dark:text-neutral-100"
-            }
-          >
-            {fmtNightDate(night.occurrence_date)}
-          </span>
-          {chips.map((chip) => (
-            <Badge key={chip.label} variant={chip.variant} size="sm">
-              {chip.label}
-            </Badge>
-          ))}
-        </div>
-        <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400">
-          {[
-            fmtWindow(night.start_time, night.end_time),
-            lowest != null ? `From ${usdPrice(lowest)}` : "No tiers on sale",
-            `${priced.length} of ${night.tiers.length} tiers on sale`,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-      </div>
-
-      <div className="hidden shrink-0 items-center gap-6 sm:flex">
-        <div className="text-right">
-          <p className="text-sm font-semibold text-neutral-900 tabular-nums dark:text-neutral-100">
-            {night.passes_sold.toLocaleString("en-US")}
+    // A row, not a Link: the share buttons cannot legally nest inside an
+    // anchor. The link now wraps the row's CONTENT, and the hover state moved
+    // to the container so the row still reads (and highlights) as one thing.
+    <div className="group flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+      <Link
+        href={nightHref(programId, night.occurrence_date)}
+        className="flex min-w-0 flex-1 items-center gap-4"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={
+                muted
+                  ? "text-sm font-medium text-neutral-500 dark:text-neutral-400"
+                  : "text-sm font-semibold text-neutral-900 dark:text-neutral-100"
+              }
+            >
+              {fmtNightDate(night.occurrence_date)}
+            </span>
+            {chips.map((chip) => (
+              <Badge key={chip.label} variant={chip.variant} size="sm">
+                {chip.label}
+              </Badge>
+            ))}
+          </div>
+          <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400">
+            {[
+              fmtWindow(night.start_time, night.end_time),
+              lowest != null ? `From ${usdPrice(lowest)}` : "No tiers on sale",
+              `${priced.length} of ${night.tiers.length} tiers on sale`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
-          <p className="text-[11px] text-neutral-500 dark:text-neutral-400">passes sold</p>
         </div>
-      </div>
 
-      <ChevronRight className="size-5 shrink-0 text-neutral-400 dark:text-neutral-500" />
-    </Link>
+        <div className="hidden shrink-0 items-center gap-6 sm:flex">
+          <div className="text-right">
+            <p className="text-sm font-semibold text-neutral-900 tabular-nums dark:text-neutral-100">
+              {night.passes_sold.toLocaleString("en-US")}
+            </p>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400">passes sold</p>
+          </div>
+        </div>
+      </Link>
+
+      <NightShare night={night} programName={programName} isPast={muted} />
+
+      <Link
+        href={nightHref(programId, night.occurrence_date)}
+        aria-label={`Open ${fmtNightDate(night.occurrence_date)}`}
+        className="shrink-0"
+      >
+        <ChevronRight className="size-5 text-neutral-400 dark:text-neutral-500" />
+      </Link>
+    </div>
   )
 }

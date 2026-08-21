@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import TrialHome from "@/components/business/v2/TrialHome"
 import EscrowPanel from "@/components/business/v2/EscrowPanel"
+import HomeStripeConnectPrompt from "@/components/business/v2/HomeStripeConnectPrompt"
 
 function fmtDate(s?: string | null) {
   if (!s) return "—"
@@ -229,6 +230,14 @@ export default function V2HomePage() {
           </div>
         }
       />
+
+      {/* DASH2-D: the OTHER half of the no-Stripe story. The hero above covers
+          "money is waiting"; this quiet card covers the zero-balance business,
+          which used to be told nothing at all. Mutually exclusive with the hero
+          by construction (home-stripe-prompt.ts) — never two Stripe CTAs — and
+          renders nothing for a connected business. Below the greeting on
+          purpose: a nudge, not an alarm. */}
+      <HomeStripeConnectPrompt />
 
       {/* metric tiles - filtered by dashboard mode AND by what this business runs */}
       {(loading || sections.tileCount > 0) && (
