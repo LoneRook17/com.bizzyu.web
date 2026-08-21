@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, use } from "react"
 import { Reorder, useDragControls } from "framer-motion"
 import { Eye, EyeOff, Loader2, Plus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import type { TicketTier } from "@/lib/business/types"
+import type { EventDetail, TicketTier } from "@/lib/business/types"
 import { usd } from "@/lib/v2/utils"
-import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
@@ -14,6 +14,8 @@ import { Badge } from "@/components/business/v2/ui/badge"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
 import { ScanWindowSection } from "@/components/business/v2/events/ScanWindowSection"
+import { StockAlertsFields } from "@/components/business/v2/events/StockAlertsFields"
+import { lowstockInputToStored, lowstockValueToInput } from "@/components/business/v2/events/EventForm"
 
 type FormState = {
   ticket_id?: number
@@ -69,6 +71,57 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
   // only the button that was clicked shows a spinner.
   const [toggling, setToggling] = useState<{ id: number; field: "hidden" | "sold_out" } | null>(null)
 
+  // 5.0 F11 — "Manage Tickets absorbs … Stock Alerts". The control already
+  // existed on the create/edit form; this is the same component reading and
+  // writing the same four columns, surfaced where the app puts it. The PUT is
+  // deliberately partial: models/Event.updateEvent builds its SET clause from
+  // the keys present against an allowlist, so sending only these four touches
+  // only these four.
+  const [alerts, setAlerts] = useState({
+    enabled: false,
+    thresholdType: "percent" as "percent" | "count",
+    thresholdInput: "",
+    notifyTeam: false,
+  })
+  const [alertsLoaded, setAlertsLoaded] = useState(false)
+  const [alertsSaving, setAlertsSaving] = useState(false)
+  const [alertsError, setAlertsError] = useState("")
+  const [alertsSaved, setAlertsSaved] = useState(false)
+
+  const saveAlerts = async () => {
+    const { value, error } = lowstockInputToStored(alerts.thresholdType, alerts.thresholdInput)
+    if (error) {
+      setAlertsError(error)
+      return
+    }
+    setAlertsSaving(true)
+    setAlertsError("")
+    setAlertsSaved(false)
+    try {
+      // Mirrors EventForm's payload rules: an enabled-but-blank threshold sends
+      // an explicit null so a stored one is actually cleared (sold-out-only).
+      const payload: Record<string, unknown> = {
+        lowstock_alerts_enabled: alerts.enabled,
+        lowstock_notify_business_team: alerts.notifyTeam,
+      }
+      if (alerts.enabled) {
+        if (value != null) {
+          payload.lowstock_threshold_type = alerts.thresholdType
+          payload.lowstock_threshold_value = value
+        } else {
+          payload.lowstock_threshold_value = null
+        }
+      }
+      await apiClient.put(`/business/events/${id}`, payload)
+      setAlertsSaved(true)
+      setTimeout(() => setAlertsSaved(false), 2500)
+    } catch (err) {
+      setAlertsError(err instanceof ApiError ? err.message : "Failed to save stock alerts")
+    } finally {
+      setAlertsSaving(false)
+    }
+  }
+
   const fetchTickets = async () => {
     try {
       const data = await apiClient.get<{ tickets: TicketTier[] }>(`/business/events/${id}/tickets`)
@@ -83,6 +136,24 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     fetchTickets()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
+  // Seed the stock-alert controls from the event's stored settings. Failure is
+  // silent on purpose — the tier list is this page's job, and a detail hiccup
+  // shouldn't blank it.
+  useEffect(() => {
+    apiClient
+      .get<EventDetail>(`/business/events/${id}`)
+      .then((event) => {
+        setAlerts({
+          enabled: !!event.lowstock_alerts_enabled,
+          thresholdType: event.lowstock_threshold_type ?? "percent",
+          thresholdInput: lowstockValueToInput(event.lowstock_threshold_value),
+          notifyTeam: !!event.lowstock_notify_business_team,
+        })
+        setAlertsLoaded(true)
+      })
+      .catch(() => {})
   }, [id])
 
   // ── Drag-to-reorder ticket tiers (July 2026 QoL #2) ──────────────────
@@ -233,7 +304,7 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
     <>
       <ManageSubheader
         eventId={id}
-        title="Manage tickets"
+        title="Manage sales"
         actions={!editing ? <Button onClick={() => { setSaveError(""); setEditing({ ...EMPTY_FORM }) }}><Plus /> Add ticket</Button> : undefined}
       />
 
@@ -330,6 +401,40 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
           note="Hidden tickets cannot be purchased. Existing ticket holders can still scan in."
           dimmed
         />
+      )}
+
+      {/* Stock alerts — relocated here per F11 so everything that governs what
+          you're selling lives on one page. Group sellout stays exactly as it
+          was: the per-tier "Mark sold out" toggle above. */}
+      {alertsLoaded && (
+        <Card className="mt-6">
+          <CardHeader className="flex-col items-start gap-1">
+            <CardTitle>Stock alerts</CardTitle>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+              Get notified when a ticket tier sells out — and optionally before it does.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <StockAlertsFields
+              idPrefix="manage_"
+              enabled={alerts.enabled}
+              onEnabledChange={(enabled) => { setAlerts((p) => ({ ...p, enabled })); setAlertsError("") }}
+              thresholdType={alerts.thresholdType}
+              onThresholdTypeChange={(thresholdType) => { setAlerts((p) => ({ ...p, thresholdType })); setAlertsError("") }}
+              thresholdInput={alerts.thresholdInput}
+              onThresholdInputChange={(thresholdInput) => { setAlerts((p) => ({ ...p, thresholdInput })); setAlertsError("") }}
+              notifyTeam={alerts.notifyTeam}
+              onNotifyTeamChange={(notifyTeam) => setAlerts((p) => ({ ...p, notifyTeam }))}
+              error={alertsError}
+            />
+            <div className="mt-4 flex items-center gap-3">
+              <Button type="button" onClick={saveAlerts} disabled={alertsSaving}>
+                {alertsSaving && <Loader2 className="animate-spin" />} Save stock alerts
+              </Button>
+              {alertsSaved && <span className="text-xs font-medium text-[#05EB54]">Saved</span>}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </>
   )
