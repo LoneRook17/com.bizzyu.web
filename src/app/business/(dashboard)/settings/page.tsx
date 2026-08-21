@@ -31,6 +31,7 @@ import EmailChangeForm from "@/components/business/v2/settings/EmailChangeForm"
 import { canChangeBusinessEmail } from "@/lib/business/email-change"
 import StripeConnectCard, { StripeReturnBanner } from "@/components/business/v2/settings/StripeConnectCard"
 import VenuePayoutAccountsSection from "@/components/business/v2/settings/VenuePayoutAccountsSection"
+import EscrowPanel from "@/components/business/v2/EscrowPanel"
 import VenueManagementSection from "@/components/business/v2/settings/VenueManagementSection"
 import VenuePageSection from "@/components/business/v2/settings/VenuePageSection"
 import DashboardPreferences, { AppearanceSettings } from "@/components/business/v2/settings/DashboardPreferences"
@@ -260,6 +261,11 @@ function SettingsContent() {
                 }}
               />
             )}
+            {/* BE-D2: escrow held by Bizzy, findable deliberately next to the
+                Stripe cards. Renders nothing without escrow history — the mb-5
+                rides on the panel's card and disappears with it, so this tab is
+                unchanged for businesses without escrow. */}
+            <EscrowPanel variant="compact" className="mb-5" />
             <StripeConnectCard
               onboarded={profile.stripe_connect_onboarded}
               reconnectRequired={profile.stripe_reconnect_required ?? false}

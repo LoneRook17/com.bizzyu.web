@@ -2,6 +2,12 @@
 
 // BE-D — the business escrow panel (BE_LEDGER_CONTRACT.md §7 + A4).
 //
+// Two placements, one component (BE-D2):
+//   hero     dashboard home — first and largest thing on the page; money
+//            Bizzy is holding outranks every other card
+//   compact  settings → Payments, next to StripeConnectCard — same numbers,
+//            same states, sized to the settings card rhythm
+//
 // Renders NOTHING until the business has escrow history: the data seam
 // (lib/business/escrow.ts) is stubbed to the zero fixture until the real read
 // lands, so this panel is invisible on every real dashboard today. States:
@@ -116,6 +122,35 @@ function Ledger({ entries }: { entries: EscrowLedgerEntry[] }) {
   )
 }
 
+export type EscrowPanelVariant = "hero" | "compact"
+
+/** Size-only differences between the two placements — the numbers, states,
+ *  copy, and ledger are identical. */
+const VARIANT_SIZING: Record<EscrowPanelVariant, { pad: string; iconBox: string; icon: string; heroNum: string; heroSuffix: string }> = {
+  hero: {
+    pad: "px-5 py-5 sm:px-6 sm:py-6",
+    iconBox: "size-9",
+    icon: "size-5",
+    heroNum: "text-4xl sm:text-5xl",
+    heroSuffix: "text-base sm:text-lg",
+  },
+  compact: {
+    pad: "px-5 py-4",
+    iconBox: "size-8",
+    icon: "size-4.5",
+    heroNum: "text-2xl",
+    heroSuffix: "text-sm",
+  },
+}
+
+/** Hero placement only: money waiting/moving tints the card border so the
+ *  panel visually leads the page. Paid stays quiet; compact stays neutral. */
+const HERO_STATE_BORDER: Record<Exclude<EscrowPanelState, "empty">, string> = {
+  claimable: "border-green-200 dark:border-green-900/70",
+  processing: "border-blue-200 dark:border-blue-900/70",
+  paid: "",
+}
+
 const STATE_HEADER: Record<Exclude<EscrowPanelState, "empty">, { icon: React.ElementType; tint: string; label: string; badge?: { variant: "info" | "success"; text: string } }> = {
   claimable: {
     icon: Landmark,
@@ -136,7 +171,7 @@ const STATE_HEADER: Record<Exclude<EscrowPanelState, "empty">, { icon: React.Ele
   },
 }
 
-function EscrowPanelInner() {
+function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant; className?: string }) {
   const searchParams = useSearchParams()
   const demoScenario = searchParams.get("escrow_demo")
   const [data, setData] = useState<EscrowPanelData | null>(null)
@@ -156,22 +191,23 @@ function EscrowPanelInner() {
   const header = STATE_HEADER[state]
   const hero = centsUsd(escrowHeroCents(data.summary, state))
   const HeaderIcon = header.icon
+  const sizing = VARIANT_SIZING[variant]
 
   return (
-    <Card className="overflow-hidden">
-      <div className="px-5 py-5">
+    <Card className={cn("overflow-hidden", variant === "hero" && HERO_STATE_BORDER[state], className)}>
+      <div className={sizing.pad}>
         <div className="flex items-center gap-2.5">
-          <span className={cn("flex size-8 items-center justify-center rounded-lg", header.tint)}>
-            <HeaderIcon className="size-4.5" />
+          <span className={cn("flex items-center justify-center rounded-lg", sizing.iconBox, header.tint)}>
+            <HeaderIcon className={sizing.icon} />
           </span>
           <h2 className="min-w-0 flex-1 text-sm font-semibold text-neutral-600 dark:text-neutral-400">{header.label}</h2>
           {header.badge && <Badge variant={header.badge.variant}>{header.badge.text}</Badge>}
         </div>
 
-        <p className="mt-3 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+        <p className={cn("mt-3 font-semibold tracking-tight text-neutral-900 dark:text-neutral-100", sizing.heroNum)}>
           {hero}
           {state === "claimable" && (
-            <span className="ml-2 text-base font-medium text-neutral-500 dark:text-neutral-400">waiting for you</span>
+            <span className={cn("ml-2 font-medium text-neutral-500 dark:text-neutral-400", sizing.heroSuffix)}>waiting for you</span>
           )}
         </p>
 
@@ -207,12 +243,15 @@ function EscrowPanelInner() {
   )
 }
 
-/** Escrow state for the business dashboard home. Self-contained: fetches via
- *  the escrow seam and renders nothing when there is no escrow history. */
-export default function EscrowPanel() {
+/** Escrow state for the dashboard home (hero) and settings → Payments
+ *  (compact). Self-contained: fetches via the escrow seam and renders nothing
+ *  — no wrapper, no margins — when there is no escrow history, so pages that
+ *  mount it are unchanged for businesses without escrow. `className` rides on
+ *  the card root and disappears with it. */
+export default function EscrowPanel({ variant = "hero", className }: { variant?: EscrowPanelVariant; className?: string }) {
   return (
     <Suspense fallback={null}>
-      <EscrowPanelInner />
+      <EscrowPanelInner variant={variant} className={className} />
     </Suspense>
   )
 }

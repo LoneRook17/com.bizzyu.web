@@ -130,6 +130,12 @@ export default function V2HomePage() {
 
   return (
     <>
+      {/* BE-D2: money Bizzy is holding is the single most important thing on
+          this page — first and largest, above the greeting, revenue, and
+          events. Renders nothing (no placeholder) without escrow history, so
+          every other business's homepage is unchanged. */}
+      <EscrowPanel variant="hero" />
+
       <PageHeader
         title={`Good to see you${firstName ? `, ${firstName}` : ""}`}
         description={`Here's what's happening at ${venueLabel}.`}
@@ -148,9 +154,6 @@ export default function V2HomePage() {
           </div>
         }
       />
-
-      {/* BE-D: escrow held by Bizzy — self-hides unless the business has escrow history */}
-      <EscrowPanel />
 
       {/* metric tiles - filtered by dashboard mode */}
       <div className={cn("grid grid-cols-2 gap-4", config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
