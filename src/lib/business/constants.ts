@@ -1,3 +1,5 @@
+import type { RedemptionMode } from './door-access'
+
 export const NAV_LINKS = [
   { label: 'Home', href: '/business', icon: 'home' },
   { label: 'Events', href: '/business/events', icon: 'calendar' },
@@ -88,10 +90,17 @@ export const EVENT_TYPE_HINTS: Record<(typeof EVENT_TYPES)[number], string> = {
 }
 
 // 5.0 D11 / D-F10.1: the host picks, per event, HOW people get checked in.
-// Same two modes the Door Access spine uses (services DoorAccessProgramService
-// REDEMPTION_MODES) so events and access programs speak one vocabulary.
-export const REDEMPTION_MODES = ['native_scan', 'camera_tap'] as const
-export type RedemptionMode = (typeof REDEMPTION_MODES)[number]
+// Same two modes the Door Access spine uses, and now literally the same
+// declaration — this file used to re-declare the pair that door-access.ts
+// already owned, so "events and access programs speak one vocabulary" was a
+// comment rather than something the compiler enforced. Two copies of a wire
+// enum agree right up until someone adds a third mode to one of them.
+//
+// door-access.ts owns it because that is the module mirroring the services wire
+// shapes; this file owns the dashboard's COPY for those modes
+// (REDEMPTION_MODE_OPTIONS below), which is a different concern. Re-exported so
+// no caller had to move.
+export { REDEMPTION_MODES, type RedemptionMode } from './door-access'
 
 // Events default to the Bizzy scanner - that is how every existing event
 // already behaves, so an untouched form keeps today's door flow.
