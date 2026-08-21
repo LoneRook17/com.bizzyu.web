@@ -4,13 +4,11 @@
 // shapes and pure helpers live here, and every consumer imports from here,
 // never a raw fetch.
 //
-// ⚠️ STUB SEAM (BE-D builds ahead of BE-A). The backing table/model/endpoint
-// do not exist yet, so fetchEscrowPanelData() returns fixture data and, by
-// default, the ZERO fixture — meaning the panel renders NOTHING for every
-// real business until the real read is swapped in. Swapping the stub for the
-// real read is a later, separate change confined to fetchEscrowPanelData():
-// keep the §7 normalizer, treat a 404 as "not deployed yet" (return null,
-// degrade silently — never an error wall).
+// BE-D3: the stub seam is GONE. fetchEscrowPanelData() reads BE-F's real
+// endpoint, GET /api/business/escrow. The degrade rule it was built around
+// still holds and is now the error path: anything other than a good §7 body
+// returns null and the panel renders nothing — never an error wall, never a
+// broken dashboard for the businesses that have no escrow.
 //
 // Contract rules this file enforces:
 // - §7 wire shape verbatim; cents everywhere, formatting is the client's job.
@@ -35,7 +33,10 @@ export type EscrowEntryType =
 
 export type EscrowEntryStatus = "pending" | "settled" | "reversed" | "failed"
 
-export type EscrowReferenceType = "order" | "payout" | "withdrawal" | "manual"
+/** A7: line-skip credits carry `line_skip`, and BE-F serves both types in one
+ *  history — an `order`-only list would show line-skip money in the balance
+ *  but never in the entries. */
+export type EscrowReferenceType = "order" | "payout" | "withdrawal" | "manual" | "line_skip"
 
 export interface EscrowLedgerEntry {
   id: number
@@ -304,27 +305,96 @@ export function isEscrowDemoScenario(v: string | null | undefined): v is EscrowD
 // ── The data-access seam ────────────────────────────────────────────────────
 
 /**
- * STUB until BE-A/BE-C land. Real implementation (one function body, nothing
- * else changes):
+ * BE-D3 — the REAL read. The stub is gone: this now calls BE-F's
+ * `GET /api/business/escrow` (contract §7, both reference types) and the
+ * existing services profile read for the two non-ledger fields.
  *
- *   const { apiClient } = await import("./api-client")   // lazy, like payouts
- *   summary  ← GET /business/escrow/summary   (§7 shape → normalizeEscrowSummary)
- *   onboarded ← the existing BusinessProfile read (stripe_connect_onboarded)
- *   404 on the summary endpoint = not deployed yet → return null (panel hidden)
+ * NEVER THROWS, ALWAYS DEGRADES TO HIDDEN. Every failure — endpoint not
+ * deployed (404), unauthenticated (401/403), network, malformed body — returns
+ * null, and the panel renders nothing. This is load-bearing: escrow is a
+ * minority feature living on the main dashboard, so a bad escrow response must
+ * cost nothing to the businesses that have no escrow at all. A zero balance
+ * degrades the same way via `deriveEscrowPanelState` → "empty".
  *
- * Until then: the ZERO fixture, i.e. the panel renders nothing for every real
- * business. `demoScenario` (the ?escrow_demo= query param) selects a fixture
- * for QA/screenshots and is honored only outside production builds.
+ * `demoScenario` (the ?escrow_demo= query param) still selects a fixture for
+ * QA/screenshots, and is still honored only outside production builds. It is
+ * now an explicit opt-in override of the real read rather than the default.
  */
 export async function fetchEscrowPanelData(opts?: {
   demoScenario?: string | null
 }): Promise<EscrowPanelData | null> {
   const requested = opts?.demoScenario
-  const scenario: EscrowDemoScenario =
-    process.env.NODE_ENV !== "production" && isEscrowDemoScenario(requested) ? requested : "zero"
-  const fixture = ESCROW_DEMO_FIXTURES[scenario]
+  if (process.env.NODE_ENV !== "production" && isEscrowDemoScenario(requested)) {
+    const fixture = ESCROW_DEMO_FIXTURES[requested]
+    return { ...fixture, summary: normalizeEscrowSummary(fixture.summary) }
+  }
+
+  const summary = await fetchEscrowSummary()
+  if (!summary) return null
+
+  // Only ask for the profile once there is money to show: the two extra fields
+  // decide the CTA, and a business with an empty ledger never renders one.
+  if (summary.available_cents === 0 && summary.entries.length === 0) return null
+
+  const profile = await fetchEscrowProfile()
+
   return {
-    ...fixture,
-    summary: normalizeEscrowSummary(fixture.summary),
+    summary,
+    stripeOnboarded: profile?.stripe_connect_onboarded ?? false,
+    businessName: profile?.name ?? null,
+  }
+}
+
+/**
+ * §7 balance + history from core (Laravel), NOT the Node API — the ledger and
+ * its §3 balance definition live there, so the panel reads it at the source
+ * rather than through a services mirror that could disagree.
+ *
+ * Auth is Sanctum bearer. In the browser the request goes through the
+ * `/api/laravel/*` rewrite (next.config.ts) so it is same-origin — a direct
+ * cross-origin call would be blocked as mixed content on HTTPS deploys.
+ *
+ * ⚠️ The business dashboard session is a services JWT (`biz_token`), which
+ * Laravel's `auth:sanctum` does not accept. Until that is bridged this read
+ * 401s for dashboard users and the panel stays hidden — the same thing the
+ * stub did, and the reason the degrade path above is unconditional.
+ */
+async function fetchEscrowSummary(): Promise<EscrowSummary | null> {
+  try {
+    const headers: Record<string, string> = { Accept: "application/json" }
+    const token = typeof window !== "undefined" ? window.localStorage.getItem("bz_auth_token") : null
+    if (token) headers.Authorization = `Bearer ${token}`
+
+    const res = await fetch("/api/laravel/business/escrow", {
+      method: "GET",
+      credentials: "include",
+      headers,
+    })
+    // 404 = not deployed yet. 401/403 = no Sanctum credential or no membership.
+    // 5xx = broken. All of them mean the same thing to this panel: show nothing.
+    if (!res.ok) return null
+
+    const body = await res.json()
+    if (!body || typeof body !== "object") return null
+    return normalizeEscrowSummary(body as Partial<EscrowSummary>)
+  } catch {
+    return null
+  }
+}
+
+/** Business name + Stripe state from the services profile the dashboard already reads. */
+async function fetchEscrowProfile(): Promise<{ name: string | null; stripe_connect_onboarded: boolean } | null> {
+  try {
+    const { apiClient } = await import("./api-client")
+    const profile = await apiClient.get<{ name?: string; stripe_connect_onboarded?: boolean }>("/business/profile")
+    return {
+      name: profile?.name ?? null,
+      stripe_connect_onboarded: profile?.stripe_connect_onboarded === true,
+    }
+  } catch {
+    // The panel is still worth rendering without it: `stripeOnboarded: false`
+    // is the conservative read (shows "claim" rather than "processing"), and
+    // the name is decorative.
+    return null
   }
 }

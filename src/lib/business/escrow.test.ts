@@ -244,14 +244,91 @@ test("isEscrowDemoScenario accepts only known scenarios", () => {
   assert.ok(!isEscrowDemoScenario("PAID"))
 })
 
-test("the stub seam defaults to the hidden-panel zero state", async () => {
-  const data = await fetchEscrowPanelData()
-  assert.ok(data)
-  assert.equal(deriveEscrowPanelState(data.summary, data.stripeOnboarded), "empty")
+// ── BE-D3: the real read's degrade path ────────────────────────────────────
+// The panel must render NOTHING rather than break the dashboard when the
+// escrow endpoint is missing, unauthorized, broken or empty. These drive
+// fetchEscrowPanelData through a stubbed global fetch — the only I/O it does
+// before the (lazy, never-reached-here) profile import.
+
+async function withFetch<T>(impl: unknown, fn: () => Promise<T>): Promise<T> {
+  const original = globalThis.fetch
+  ;(globalThis as { fetch: unknown }).fetch = impl
+  try {
+    return await fn()
+  } finally {
+    ;(globalThis as { fetch: unknown }).fetch = original
+  }
+}
+
+const jsonResponse = (body: unknown, ok = true, status = 200) => ({
+  ok,
+  status,
+  json: async () => body,
 })
 
-test("the stub seam ignores unknown demo scenarios", async () => {
-  const data = await fetchEscrowPanelData({ demoScenario: "nonsense" })
+test("a non-OK escrow response hides the panel instead of throwing", async () => {
+  for (const status of [401, 403, 404, 500]) {
+    const data = await withFetch(
+      async () => jsonResponse({ message: "nope" }, false, status),
+      () => fetchEscrowPanelData(),
+    )
+    assert.equal(data, null, `status ${status} must hide the panel`)
+  }
+})
+
+test("a thrown fetch (offline, CORS, DNS) hides the panel instead of throwing", async () => {
+  const data = await withFetch(
+    async () => {
+      throw new Error("network down")
+    },
+    () => fetchEscrowPanelData(),
+  )
+  assert.equal(data, null)
+})
+
+test("an empty ledger hides the panel without asking for the profile", async () => {
+  const data = await withFetch(
+    async () => jsonResponse({ available_cents: 0, pending_cents: 0, currency: "usd", entries: [] }),
+    () => fetchEscrowPanelData(),
+  )
+  assert.equal(data, null)
+})
+
+test("a malformed body hides the panel", async () => {
+  const data = await withFetch(
+    async () => jsonResponse(null),
+    () => fetchEscrowPanelData(),
+  )
+  assert.equal(data, null)
+})
+
+test("the escrow read goes to the Laravel §7 endpoint through the same-origin rewrite", async () => {
+  let seenUrl: string | null = null
+  await withFetch(
+    async (url: string) => {
+      seenUrl = url
+      return jsonResponse({ available_cents: 0, pending_cents: 0, currency: "usd", entries: [] })
+    },
+    () => fetchEscrowPanelData(),
+  )
+  assert.equal(seenUrl, "/api/laravel/business/escrow")
+})
+
+test("the demo scenario still overrides the real read outside production", async () => {
+  const data = await withFetch(
+    async () => {
+      throw new Error("the demo path must not touch the network")
+    },
+    () => fetchEscrowPanelData({ demoScenario: "claimable" }),
+  )
   assert.ok(data)
-  assert.equal(data.summary.available_cents, 0)
+  assert.equal(deriveEscrowPanelState(data.summary, data.stripeOnboarded), "claimable")
+})
+
+test("an unknown demo scenario falls through to the real read, not a fixture", async () => {
+  const data = await withFetch(
+    async () => jsonResponse({ message: "no" }, false, 404),
+    () => fetchEscrowPanelData({ demoScenario: "nonsense" }),
+  )
+  assert.equal(data, null)
 })
