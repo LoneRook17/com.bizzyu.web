@@ -11,9 +11,20 @@ interface StripeConnectCardProps {
   /** Stored Stripe account is no longer valid (deauthorized/deleted) - prompt a reconnect. */
   reconnectRequired?: boolean
   onOnboardingComplete?: () => void
+  /**
+   * DASH2-D. `full` (default) is the settings → Payments card, unchanged.
+   * `compact` is the quiet Home nudge: one line and the CTA, no heading block,
+   * and NOTHING at all once connected — Home is not a status board.
+   */
+  variant?: "full" | "compact"
 }
 
-export default function StripeConnectCard({ onboarded, reconnectRequired = false, onOnboardingComplete }: StripeConnectCardProps) {
+/**
+ * The Stripe onboarding start. Extracted so the compact Home variant runs the
+ * IDENTICAL flow as the settings card — POST for a link, then hand the browser
+ * to Stripe — rather than a second implementation that could drift.
+ */
+function useStripeOnboarding() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,6 +40,40 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
       setError(err instanceof Error ? err.message : "Failed to start Stripe onboarding")
       setLoading(false)
     }
+  }
+
+  return { loading, error, handleStartOnboarding }
+}
+
+export default function StripeConnectCard({ onboarded, reconnectRequired = false, onOnboardingComplete, variant = "full" }: StripeConnectCardProps) {
+  const { loading, error, handleStartOnboarding } = useStripeOnboarding()
+
+  if (variant === "compact") {
+    // Connected businesses see nothing here.
+    if (onboarded && !reconnectRequired) return null
+    return (
+      <Card className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+          <TriangleAlert className="size-4.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            {reconnectRequired ? "Reconnect Stripe to keep getting paid" : "Connect Stripe to get paid automatically"}
+          </p>
+          <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+            {reconnectRequired
+              ? "Your business Stripe account is no longer valid. Reconnect it to keep accepting ticket payments."
+              : "Ticket money pays straight into your business Stripe account. Without one, sales are held by Bizzy until you connect."}
+          </p>
+          {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
+        </div>
+        <Button onClick={handleStartOnboarding} disabled={loading} size="sm" variant="secondary" className="shrink-0">
+          {loading
+            ? (<><Loader2 className="animate-spin" /> Setting up…</>)
+            : reconnectRequired ? "Reconnect Stripe" : "Set up Stripe"}
+        </Button>
+      </Card>
+    )
   }
 
   return (
