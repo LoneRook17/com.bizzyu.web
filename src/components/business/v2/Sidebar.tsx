@@ -5,9 +5,9 @@ import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
-  Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
+  Home, CalendarDays, Tag, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X, Repeat, Banknote, DoorOpen,
+  Sun, Moon, TicketPercent, Menu, X, Banknote,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -22,6 +22,9 @@ import {
 } from "./ui/dropdown-menu"
 
 type Feature = "showDeals" | "showEvents" | "showLineSkips" | "showRecurring"
+// showLineSkips / showRecurring stay in the union on purpose: the mode config
+// still carries them and the Events page still gates its Weekly Access segment
+// on showLineSkips. They are simply no longer NAV features (D2-6).
 type BusinessRole = "owner" | "manager" | "staff" | "promoter"
 
 type NavContext = { role?: BusinessRole; canViewPayouts?: boolean }
@@ -40,36 +43,32 @@ type Item = {
   show?: (ctx: NavContext) => boolean
 }
 
+/**
+ * The 5.0 rail (D2-6). Exactly three groups, and deliberately short.
+ *
+ * What left, and where each capability went — the rail is the ONLY thing that
+ * changed, no route was deleted:
+ *   • Recurring      → recurring events are ordinary events (D2-2). Series are
+ *                      reached from the Events list's grouped series rows,
+ *                      which link to /business/recurring/:id as before.
+ *   • Door Access    → not a nav item (D2-6): it is a TYPE inside Events/Home,
+ *                      the pink Weekly Access rows. /business/door-access/:id
+ *                      is still the series page those rows open.
+ *   • Line skips     → D2-3. Legacy schedules stay reachable through a muted
+ *                      link inside the Events page's Weekly Access view until
+ *                      F15 converts them. NOT nav — that is the whole point.
+ *   • Promo codes    → moved down into GROW, unchanged otherwise.
+ */
 const GROUPS: { label?: string; items: Item[] }[] = [
   { items: [
     { label: "Home", href: "/business", icon: Home },
     { label: "Events", href: "/business/events", icon: CalendarDays, feature: "showEvents" },
-    { label: "Recurring", href: "/business/recurring", icon: Repeat, feature: "showRecurring" },
-    { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
     { label: "Deals", href: "/business/deals", icon: Tag, feature: "showDeals" },
-    // V5 F14. Sits directly ABOVE Line skips and does not replace it — both
-    // systems run side by side until the F15 conversion moves the data across.
-    //
-    // Gated on `showLineSkips` rather than a flag of its own: Door Access IS the
-    // successor to line skips, so the two must appear and disappear together. A
-    // dedicated flag would let a business end up with one and not the other,
-    // which is the confusing half-state F15 exists to avoid.
-    //
-    // Hidden from promoters, matching the router: the door-access endpoints
-    // admit owner/manager/staff only, so a promoter following this link lands on
-    // a 403. The server enforces it regardless — this only keeps the rail honest.
-    {
-      label: "Door Access",
-      href: "/business/door-access",
-      icon: DoorOpen,
-      feature: "showLineSkips",
-      roles: ["owner", "manager", "staff"],
-    },
-    { label: "Line skips", href: "/business/line-skips", icon: Zap, feature: "showLineSkips" },
   ] },
   { label: "Grow", items: [
     { label: "Marketing", href: "/business/marketing", icon: Megaphone, lockWhenPending: true },
     { label: "Analytics", href: "/business/analytics", icon: BarChart3, lockWhenPending: true },
+    { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
     // PAYOUTS-PER-PERSON-ACCESS: owner OR a member the owner has granted
     // (/me → can_view_payouts). Same predicate the /business/payouts route guard
     // uses, so the tab and the screen can never disagree.
