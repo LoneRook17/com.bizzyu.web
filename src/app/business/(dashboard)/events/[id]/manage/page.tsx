@@ -32,6 +32,29 @@ type Tile = {
   show: boolean
 }
 
+// 5.0 F11 / PRD 12.1 — the management page follows the app's control order:
+//   Share Link + Door Code → At the Door → Event Setup → Insights → Promote
+// Every destination below already existed; this is the app's sequence imposed
+// on them, not new surfaces. Door Access programs (DASH-A) get the same order
+// on their own series page.
+function ManageSection({ title, blurb, tiles }: { title: string; blurb: string; tiles: Tile[] }) {
+  const visible = tiles.filter((t) => t.show)
+  if (visible.length === 0) return null
+  return (
+    <section className="flex flex-col gap-3">
+      <div>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{title}</h2>
+        <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{blurb}</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {visible.map((t) => (
+          <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function ManageTile({ href, icon: Icon, title, subtitle }: Omit<Tile, "show">) {
   return (
     <Link
@@ -158,16 +181,29 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // event's checkout page dead-ends (same rule as venue page links).
   const isLive = ["published", "approved", "active"].includes((event.status ?? "").toLowerCase())
 
-  const tiles: Tile[] = [
-    { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, tickets, and flyer", show: canEdit },
-    { href: `${base}/tickets`, icon: Ticket, title: "Manage tickets", subtitle: "Add, edit, or hide tiers", show: canEdit },
-    { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
-    { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Stats and payouts", show: true },
-    { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
-    { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
-    { href: `${base}/analytics`, icon: BarChart3, title: "Event analytics", subtitle: "Revenue and check-ins", show: true },
+  // At the Door — everything you touch on the night itself.
+  const atTheDoorTiles: Tile[] = [
+    { href: `${base}/scanner`, icon: QrCode, title: "Scan", subtitle: "Scanner access and QR codes", show: true },
     { href: `${base}/checkins`, icon: CircleCheck, title: "Check-in history", subtitle: "Attendee scan status", show: true },
-    { href: `${base}/scanner`, icon: QrCode, title: "Scanner & QR codes", subtitle: "Check-in access", show: true },
+  ]
+
+  // Event Setup — the things you configure before the doors open. "Manage
+  // sales" is the tickets page, which owns tiers, the group sellout toggle and
+  // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
+  const setupTiles: Tile[] = [
+    { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
+    { href: `${base}/tickets`, icon: Ticket, title: "Manage sales", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
+    { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
+  ]
+
+  const insightsTiles: Tile[] = [
+    { href: `${base}/analytics`, icon: BarChart3, title: "Event analytics", subtitle: "Revenue and check-ins", show: true },
+  ]
+
+  const promoteTiles: Tile[] = [
+    { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Stats and payouts", show: true },
+    { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
+    { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
   ]
 
   return (
@@ -197,6 +233,8 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           be unmissable on the manage surface. */}
       <EventVenuePayoutBanner venueId={event.venue_id} />
 
+      {/* 1 — Share Link + Door Code. First, because handing out the link and
+          putting a staffer on the door are what a host does most. */}
       {isLive && <EventLinkRow eventId={id} eventName={event.name} />}
 
       {/* Door code — the PRIMARY way to put a staffer on the door tonight.
@@ -210,11 +248,33 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         canManage={canEdit}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {tiles.filter((t) => t.show).map((t) => (
-          <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} />
-        ))}
-      </div>
+      {/* 2 — At the Door */}
+      <ManageSection
+        title="At the door"
+        blurb="Tonight's tools — check guests in and see who has arrived."
+        tiles={atTheDoorTiles}
+      />
+
+      {/* 3 — Event Setup */}
+      <ManageSection
+        title="Event setup"
+        blurb="Details, what you're selling, and who can help run it."
+        tiles={setupTiles}
+      />
+
+      {/* 4 — Insights */}
+      <ManageSection
+        title="Insights"
+        blurb="How the event is performing."
+        tiles={insightsTiles}
+      />
+
+      {/* 5 — Promote */}
+      <ManageSection
+        title="Promote"
+        blurb="Reach more people and reward the ones who bring them."
+        tiles={promoteTiles}
+      />
 
       {/* cancellation banners */}
       {cancellationStatus === "pending" && (

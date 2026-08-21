@@ -1,5 +1,6 @@
 import type { InviteDelivery } from '@/lib/team-invite/types'
 import type { PayoutsAccess } from './payouts-scope'
+import type { ArtworkTemplate, RedemptionMode } from './constants'
 
 export interface BusinessUser {
   id: number
@@ -261,6 +262,11 @@ export interface EventFormData {
   lowstock_threshold_type?: 'percent' | 'count'
   lowstock_threshold_value?: number | null
   lowstock_notify_business_team?: boolean
+  // 5.0 creation fields (D11 scanner mode, D10/D-F4.1 template artwork).
+  // Sent on create/edit; see EventForm for the persistence caveat.
+  redemption_mode?: RedemptionMode
+  artwork_template?: ArtworkTemplate | null
+  artwork_accent?: string | null
 }
 
 // Deal types
