@@ -52,6 +52,7 @@ test("escrow and payments host copy has no em or en dashes", () => {
     ["../../app/business/(dashboard)/payouts/page.tsx", "payouts page"],
     ["../../components/business/v2/payouts/ReconcileView.tsx", "ReconcileView"],
     ["./escrow.ts", "escrow client copy"],
+    ["./stripe-onboard-complete.ts", "stripe onboard complete"],
     ["./email-change.ts", "email-change copy"],
     ["./verify-email-copy.ts", "verify-email copy"],
     ["./payouts-computing-poll.ts", "payouts computing copy"],
@@ -68,6 +69,8 @@ test("escrow and payments host copy has no em or en dashes", () => {
   assert.ok(panel.includes("Once your business Stripe account is set up"))
   assert.ok(panel.includes("No action needed."))
   assert.ok(panel.includes("Nothing waits in escrow anymore."))
+  assert.ok(panel.includes("Ready to send"))
+  assert.ok(panel.includes("It is not on the way"))
   assert.ok(!panel.includes("onboarding —"))
   assert.ok(!panel.includes("needed —"))
   assert.ok(!panel.includes("directly —"))

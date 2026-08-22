@@ -15,6 +15,7 @@ import {
   normalizeEscrowEntry,
   normalizeEscrowSummary,
   deriveEscrowPanelState,
+  hasInFlightEscrowPayout,
   escrowHeroCents,
   centsUsd,
   signedCentsUsd,
@@ -43,6 +44,7 @@ function entry(overrides: Partial<EscrowLedgerEntry>): EscrowLedgerEntry {
     created_at: "2026-08-20 19:04:11",
     event_id: null,
     event_name: null,
+    stripe_transfer_id: null,
     ...overrides,
   }
 }
@@ -86,6 +88,7 @@ test("normalizeEscrowEntry coerces amounts and preserves signs", () => {
   assert.equal(e.reference_id, 9942)
   assert.equal(e.event_id, null)
   assert.equal(e.event_name, null)
+  assert.equal(e.stripe_transfer_id, null)
 })
 
 test("normalizeEscrowEntry keeps flat event identity and nested event objects", () => {
@@ -124,11 +127,48 @@ test("a pending withdrawal means a claim is in flight — processing", () => {
     entries: [entry({ id: 6, entry_type: "withdrawal", amount_cents: -42350, status: "pending", reference_type: "payout", reference_id: 501 }), entry({})],
   })
   assert.equal(deriveEscrowPanelState(s, true), "processing")
+  assert.equal(hasInFlightEscrowPayout(s), true)
 })
 
-test("onboarded with a balance but no claim row yet is still processing, never claimable", () => {
+test("onboarded with a balance and no withdrawal is NOT processing", () => {
   const s = summary({ available_cents: 42350, entries: [entry({})] })
+  assert.equal(deriveEscrowPanelState(s, true), "ready")
+  assert.notEqual(deriveEscrowPanelState(s, true), "processing")
+  assert.equal(hasInFlightEscrowPayout(s), false)
+})
+
+test("a withdrawal with a stripe_transfer_id still in flight is processing", () => {
+  const s = summary({
+    available_cents: 1500,
+    entries: [
+      entry({
+        id: 6,
+        entry_type: "withdrawal",
+        amount_cents: -1500,
+        status: "pending",
+        stripe_transfer_id: "tr_in_flight",
+      }),
+    ],
+  })
   assert.equal(deriveEscrowPanelState(s, true), "processing")
+})
+
+test("a settled withdrawal with a stripe_transfer_id is not in flight", () => {
+  const s = summary({
+    available_cents: 0,
+    entries: [
+      entry({
+        id: 6,
+        entry_type: "withdrawal",
+        amount_cents: -1500,
+        status: "settled",
+        stripe_transfer_id: "tr_done",
+      }),
+      entry({}),
+    ],
+  })
+  assert.equal(hasInFlightEscrowPayout(s), false)
+  assert.equal(deriveEscrowPanelState(s, true), "paid")
 })
 
 test("zero balance with a settled withdrawal is paid", () => {
@@ -160,9 +200,9 @@ test("processing hero is the pending withdrawal amount, positively signed", () =
   assert.equal(escrowHeroCents(s, "processing"), 42350)
 })
 
-test("processing hero falls back to the balance when the claim row is not written yet", () => {
-  const s = summary({ available_cents: 42350, entries: [entry({})] })
-  assert.equal(escrowHeroCents(s, "processing"), 42350)
+test("ready hero is the held balance, not a payout-in-flight number", () => {
+  const s = summary({ available_cents: 1500, entries: [entry({ amount_cents: 1500 })] })
+  assert.equal(escrowHeroCents(s, "ready"), 1500)
 })
 
 test("paid hero is the total of settled withdrawals", () => {

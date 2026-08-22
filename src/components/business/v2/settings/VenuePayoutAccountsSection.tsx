@@ -35,6 +35,10 @@ import {
   isStripeAccountReady,
   getVenuePayoutBlock,
 } from "@/lib/business/venue-payout"
+import {
+  completeAccountStripeOnboardOnce,
+  resetAccountStripeOnboardComplete,
+} from "@/lib/business/stripe-onboard-complete"
 import type { BusinessStripeAccount, Venue } from "@/lib/business/types"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -310,9 +314,7 @@ function AccountReturnBanner({
     setStatus("verifying")
     setError(null)
     try {
-      const data = await apiClient.post<CompleteResponse>(
-        `/business/stripe-accounts/${accountId}/onboard/complete`
-      )
+      const data = await completeAccountStripeOnboardOnce(accountId) as CompleteResponse
       setResult(data)
       setStatus("done")
       await onVerified()
@@ -401,7 +403,13 @@ function AccountReturnBanner({
               {resumeLoading ? "Opening Stripe…" : reconnectRequired ? "Reconnect account" : "Resume onboarding"}
             </button>
             {mode === "return" && (
-              <button onClick={verify} className="cursor-pointer text-[13px] font-semibold text-[#05EB54] hover:underline">
+              <button
+                onClick={() => {
+                  resetAccountStripeOnboardComplete(accountId)
+                  verify()
+                }}
+                className="cursor-pointer text-[13px] font-semibold text-[#05EB54] hover:underline"
+              >
                 Check again
               </button>
             )}
@@ -572,6 +580,16 @@ export default function VenuePayoutAccountsSection() {
       : null
 
   const [addOpen, setAddOpen] = useState(false)
+
+  // Payments load: ready venue accounts POST complete so escrow claims run.
+  // Deduped per id; never starts a new Connect account.
+  useEffect(() => {
+    if (!accounts) return
+    for (const account of accounts) {
+      if (!isStripeAccountReady(account)) continue
+      void completeAccountStripeOnboardOnce(account.id)
+    }
+  }, [accounts])
 
   const refreshAll = useCallback(async () => {
     await Promise.all([refresh(), refreshVenues()])

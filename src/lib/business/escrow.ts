@@ -62,6 +62,11 @@ export interface EscrowLedgerEntry {
    */
   event_id: number | null
   event_name: string | null
+  /**
+   * Connect Transfer id when services attached one. Optional on the §7 wire;
+   * used only to detect an in-flight payout (never rendered).
+   */
+  stripe_transfer_id: string | null
 }
 
 export interface EscrowSummary {
@@ -122,6 +127,7 @@ export function normalizeEscrowEntry(raw: Partial<EscrowLedgerEntry> & { event?:
     created_at: raw.created_at ?? "",
     event_id: event.event_id,
     event_name: event.event_name,
+    stripe_transfer_id: strOrNull(raw.stripe_transfer_id),
   }
 }
 
@@ -136,23 +142,36 @@ export function normalizeEscrowSummary(raw: Partial<EscrowSummary> | null | unde
 
 // ── Panel state ─────────────────────────────────────────────────────────────
 
-export type EscrowPanelState = "empty" | "claimable" | "processing" | "paid"
+export type EscrowPanelState = "empty" | "claimable" | "ready" | "processing" | "paid"
+
+function transferIdInFlight(e: EscrowLedgerEntry): boolean {
+  const id = e.stripe_transfer_id?.trim()
+  if (!id) return false
+  return e.status !== "settled" && e.status !== "failed" && e.status !== "reversed"
+}
+
+/** A bank payout is actually moving: pending withdrawal or a Transfer in flight. */
+export function hasInFlightEscrowPayout(summary: EscrowSummary): boolean {
+  return summary.entries.some((e) => {
+    if (e.entry_type !== "withdrawal") return false
+    if (e.status === "pending") return true
+    return transferIdInFlight(e)
+  })
+}
 
 /**
- * - `processing`: a claim is in flight — a pending withdrawal row exists, or
- *   the business finished Stripe onboarding while still holding a balance
- *   (the payout kickoff is server-side and momentary; showing a "connect
- *   Stripe" CTA to an onboarded business would be wrong).
+ * - `processing`: a payout is actually moving — a pending withdrawal exists,
+ *   or a `stripe_transfer_id` is in flight. Never inferred from onboarded +
+ *   a leftover balance (that is a lie when Stripe+ledger have zero Transfers).
+ * - `ready`: onboarded, money still held, no withdrawal/transfer yet. Hold
+ *   until sent; do not claim it is on the way to the bank.
  * - `claimable`: settled money is waiting and Stripe isn't connected.
  * - `paid`: nothing left and at least one settled withdrawal proves a payout
  *   happened (a ledger that merely netted to zero via reversals is `empty`).
  */
 export function deriveEscrowPanelState(summary: EscrowSummary, stripeOnboarded: boolean): EscrowPanelState {
-  const pendingWithdrawal = summary.entries.some(
-    (e) => e.entry_type === "withdrawal" && e.status === "pending",
-  )
-  if (pendingWithdrawal) return "processing"
-  if (summary.available_cents > 0) return stripeOnboarded ? "processing" : "claimable"
+  if (hasInFlightEscrowPayout(summary)) return "processing"
+  if (summary.available_cents > 0) return stripeOnboarded ? "ready" : "claimable"
   if (summary.entries.some((e) => e.entry_type === "withdrawal" && e.status === "settled")) return "paid"
   return "empty"
 }
@@ -163,8 +182,8 @@ export function escrowHeroCents(summary: EscrowSummary, state: EscrowPanelState)
     const pendingOut = summary.entries
       .filter((e) => e.entry_type === "withdrawal" && e.status === "pending")
       .reduce((sum, e) => sum + e.amount_cents, 0)
-    // Withdrawals are negative; show the amount on its way. If the claim row
-    // hasn't been written yet (onboarded-with-balance), it's the balance.
+    // Withdrawals are negative; show the amount on its way. Fall back to
+    // the balance if only a transfer id marks the row in flight.
     return pendingOut < 0 ? -pendingOut : summary.available_cents
   }
   if (state === "paid") {
@@ -313,11 +332,11 @@ export function groupEscrowEntriesByEvent(entries: EscrowLedgerEntry[]): EscrowE
 export type EscrowDemoScenario = "zero" | "claimable" | "processing" | "paid" | "long"
 
 const EARNINGS: EscrowLedgerEntry[] = [
-  { id: 5, entry_type: "earning", amount_cents: 12600, status: "settled", reference_type: "order", reference_id: 9975, created_at: "2026-08-19 22:41:07", event_id: 101, event_name: "Late Night" },
-  { id: 4, entry_type: "reversal", amount_cents: -1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-16 10:12:55", event_id: 102, event_name: "Alumni Mixer" },
-  { id: 3, entry_type: "earning", amount_cents: 8750, status: "settled", reference_type: "order", reference_id: 9968, created_at: "2026-08-15 21:33:20", event_id: 101, event_name: "Late Night" },
-  { id: 2, entry_type: "earning", amount_cents: 1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-14 20:05:44", event_id: 102, event_name: "Alumni Mixer" },
-  { id: 1, entry_type: "earning", amount_cents: 21000, status: "settled", reference_type: "order", reference_id: 9931, created_at: "2026-08-14 19:04:11", event_id: 102, event_name: "Alumni Mixer" },
+      { id: 5, entry_type: "earning", amount_cents: 12600, status: "settled", reference_type: "order", reference_id: 9975, created_at: "2026-08-19 22:41:07", event_id: 101, event_name: "Late Night", stripe_transfer_id: null },
+  { id: 4, entry_type: "reversal", amount_cents: -1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-16 10:12:55", event_id: 102, event_name: "Alumni Mixer", stripe_transfer_id: null },
+  { id: 3, entry_type: "earning", amount_cents: 8750, status: "settled", reference_type: "order", reference_id: 9968, created_at: "2026-08-15 21:33:20", event_id: 101, event_name: "Late Night", stripe_transfer_id: null },
+  { id: 2, entry_type: "earning", amount_cents: 1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-14 20:05:44", event_id: 102, event_name: "Alumni Mixer", stripe_transfer_id: null },
+  { id: 1, entry_type: "earning", amount_cents: 21000, status: "settled", reference_type: "order", reference_id: 9931, created_at: "2026-08-14 19:04:11", event_id: 102, event_name: "Alumni Mixer", stripe_transfer_id: null },
 ]
 const EARNINGS_TOTAL = 42350
 
@@ -347,6 +366,7 @@ function longEntries(): { entries: EscrowLedgerEntry[]; total: number } {
       created_at: `2026-08-${String(day).padStart(2, "0")} ${String(18 + (i % 5)).padStart(2, "0")}:${String(10 + (i % 47)).padStart(2, "0")}:00`,
       event_id: event.id,
       event_name: event.name,
+      stripe_transfer_id: null,
     })
     total += amount
   }
@@ -371,7 +391,7 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
       pending_cents: 0,
       currency: "usd",
       entries: [
-        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "pending", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null },
+        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "pending", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null, stripe_transfer_id: "tr_demo_pending" },
         ...EARNINGS,
       ],
     },
@@ -384,7 +404,7 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
       pending_cents: 0,
       currency: "usd",
       entries: [
-        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "settled", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null },
+        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "settled", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null, stripe_transfer_id: "tr_demo_settled" },
         ...EARNINGS,
       ],
     },
@@ -489,7 +509,7 @@ async function fetchEscrowProfile(): Promise<{ name: string | null; stripe_conne
     }
   } catch {
     // The panel is still worth rendering without it: `stripeOnboarded: false`
-    // is the conservative read (shows "claim" rather than "processing"), and
+    // is the conservative read (shows "claim" rather than "ready"), and
     // the name is decorative.
     return null
   }
