@@ -411,7 +411,7 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Stock alerts</CardTitle>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-              Get notified when a ticket tier sells out — and optionally before it does.
+              Get notified when a ticket tier sells out, and optionally before it does.
             </p>
           </CardHeader>
           <CardContent className="pt-0">

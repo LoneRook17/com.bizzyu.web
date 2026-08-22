@@ -18,6 +18,7 @@ import {
   type DoorAccessProgram,
   type RedemptionMode,
 } from "@/lib/business/door-access"
+import { applySaveAsDraftFlag, promoterToggleDisabled, willDraftOnCreate } from "@/lib/business/create-publish"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
@@ -53,8 +54,9 @@ import {
  * /business/door-access/:id, keyed off the date — deliberately not duplicated
  * here, where there are no nights to override yet.
  *
- * D-F10.4: a business publishes instantly. The spine writes `is_active = 1`,
- * so there is no draft state to choose and the final CTA says so.
+ * D-F10.4: Publish is the default CTA and POSTs live. Save as draft is the
+ * only path that sends `save_as_draft: true`. Stripe Connect is not a draft
+ * reason — approved hosts publish even without it.
  *
  * ROUTING INDEPENDENCE (D2-6): nothing here reads or requires a "Door Access"
  * nav entry. This page is reached from the create funnel and from Events rows,
@@ -150,12 +152,11 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
   const paidTiers = templateTiers.filter((t) => (t.price_usd ?? 0) > 0)
   const hasPaidTier = paidTiers.length > 0
 
-  const promoToggleDisabled = !hasPaidTier || !stripeOnboarded
-  const promoDisabledReason = !hasPaidTier
+  const promoToggleDisabled = promoterToggleDisabled(hasPaidTier)
+  const promoDisabledReason = promoToggleDisabled
     ? "Add a paid access tier to enable the promoter program."
-    : !stripeOnboarded
-      ? "Connect Stripe to enable the promoter program."
-      : ""
+    : ""
+  const willDraft = willDraftOnCreate(isPending)
 
   // Promotion is silently dropped rather than left dangling if the tiers stop
   // qualifying — the server would 400 on it, and the host has no way to see
@@ -313,17 +314,20 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
     }
   }
 
-  const handlePublish = async () => {
+  const handlePublish = async (saveAsDraft = false) => {
     setSubmitting(true)
     setServerError("")
     try {
-      const data = await apiClient.post<CreateResponse>("/business/door-access", {
-        ...detailsPayload(),
-        ...salesPayload(),
-        flyer_image_url: flyerImageUrl || null,
-      })
+      const data = await apiClient.post<CreateResponse>(
+        "/business/door-access",
+        applySaveAsDraftFlag({
+          ...detailsPayload(),
+          ...salesPayload(),
+          flyer_image_url: flyerImageUrl || null,
+        }, saveAsDraft),
+      )
       const id = Number(data.program?.id)
-      if (data.generation_error) {
+      if (data.generation_error && !saveAsDraft) {
         setGenerationNotice({ id, message: data.generation_error })
         return
       }
@@ -630,21 +634,15 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
                 onChange={(t) => { setTiers(t); setErrors((p) => ({ ...p, tiers: "" })) }}
               />
               {errors.tiers && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tiers}</p>}
-              {hasPaidTier && !stripeOnboarded && (
-                isPending ? (
-                  <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-                    Stripe isn&apos;t connected yet, so paid nights can&apos;t sell. Connect Stripe in Settings and they go live.
+              {hasPaidTier && !stripeOnboarded && !isPending && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    Connect Stripe to receive payments instantly
                   </p>
-                ) : (
-                  <div className="mt-3">
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                      Connect Stripe to receive payments instantly
-                    </p>
-                    <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                      You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
-                    </p>
-                  </div>
-                )
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -755,7 +753,7 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
             <CardHeader className="flex-col items-start gap-1">
               <CardTitle>Stock alerts</CardTitle>
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Get told when a night&apos;s tier sells out — and optionally before it does.
+                Get told when a night&apos;s tier sells out, and optionally before it does.
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -860,16 +858,22 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
             </CardContent>
           </Card>
 
-          {/* D-F10.4 — businesses publish instantly; there is no draft state on
-              the spine, so the CTA says what actually happens. */}
           <div
-            className="rounded-xl border px-4 py-3 text-sm"
-            style={{ borderColor: `${ACCESS_ACCENT}59`, backgroundColor: `${ACCESS_ACCENT}0f` }}
+            className={cn(
+              "rounded-xl border px-4 py-3 text-sm",
+              willDraft
+                ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                : undefined,
+            )}
+            style={willDraft ? undefined : { borderColor: `${ACCESS_ACCENT}59`, backgroundColor: `${ACCESS_ACCENT}0f` }}
           >
-            <p className="font-semibold text-neutral-900 dark:text-neutral-100">This goes live right away</p>
-            <p className="mt-0.5 text-neutral-600 dark:text-neutral-400">
-              Each night is created on your schedule and starts selling. To change a single night&apos;s price or close
-              one, open the program afterwards.
+            <p className={cn("font-semibold", !willDraft && "text-neutral-900 dark:text-neutral-100")}>
+              {willDraft ? "Your business is still in review" : "This goes live right away"}
+            </p>
+            <p className={cn("mt-0.5", willDraft ? undefined : "text-neutral-600 dark:text-neutral-400")}>
+              {willDraft
+                ? "Publishing may stay a draft until you're approved. You can also save as a draft on purpose."
+                : "Each night is created on your schedule and starts selling. To change a single night's price or close one, open the program afterwards."}
             </p>
           </div>
         </>
@@ -898,10 +902,16 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
             Next
           </Button>
         ) : (
-          <Button size="lg" onClick={handlePublish} disabled={submitting}>
-            {submitting && <Loader2 className="animate-spin" />}
-            Publish program
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button variant="secondary" size="lg" onClick={() => handlePublish(true)} disabled={submitting}>
+              {submitting && <Loader2 className="animate-spin" />}
+              Save as draft
+            </Button>
+            <Button size="lg" onClick={() => handlePublish(false)} disabled={submitting}>
+              {submitting && <Loader2 className="animate-spin" />}
+              Publish program
+            </Button>
+          </div>
         )}
       </div>
     </div>
