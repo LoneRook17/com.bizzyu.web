@@ -974,3 +974,84 @@ export function validateNightDraft(draft: NightDraft): string[] {
 export function nightIsEditable(night: DoorAccessNight): boolean {
   return night.status !== "cancelled" && !night.is_customized
 }
+
+/**
+ * A stamped night has a real events row. Ticket name, description, scan window,
+ * hide, and sold-out persist on that row's ticket APIs. Hours still use the
+ * override endpoint so PUT /business/events/:id never evicts the night.
+ */
+export function nightHasEventTickets(
+  night: Pick<DoorAccessNight, "is_stamped" | "event_id">
+): boolean {
+  return night.is_stamped && night.event_id != null
+}
+
+/**
+ * Hours and closed only. Used when the night's tickets are written through the
+ * event ticket APIs: including tiers here would restamp and wipe those edits.
+ */
+export function buildNightHoursPayload(draft: NightDraft): NightOverridePayload {
+  return {
+    start_time: draft.inherit_times ? null : draft.start_time,
+    end_time: draft.inherit_times ? null : draft.end_time,
+    is_closed: draft.is_closed,
+  }
+}
+
+export function nightTierTicketType(
+  tier: Pick<DoorAccessNightTier, "tier_key" | "price_usd">,
+  program: Pick<DoorAccessProgram, "template_tickets">
+): "paid" | "free" {
+  const template = program.template_tickets.find((t) => t.tier_key === tier.tier_key)
+  if (template) return template.ticket_type
+  return (tier.price_usd ?? 0) === 0 ? "free" : "paid"
+}
+
+/** Apply a manage-sales-style price/quantity edit to one override tier. */
+export function applyOverrideTicketForm(
+  draft: NightDraft,
+  tierKey: string,
+  priceUsd: number,
+  quantity: number,
+  templatePrice: number | null | undefined,
+  templateQuantity: number | null | undefined
+): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey
+        ? {
+            ...tier,
+            price_usd: priceUsd,
+            quantity,
+            inherit_price: inheritIfMatchesTemplate(priceUsd, templatePrice),
+            inherit_quantity: inheritIfMatchesTemplate(quantity, templateQuantity),
+          }
+        : tier
+    ),
+  }
+}
+
+export function toggleNightTierDisabled(draft: NightDraft, tierKey: string): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey ? { ...tier, is_disabled: !tier.is_disabled } : tier
+    ),
+  }
+}
+
+export function parseOverrideTicketNumbers(
+  price: string,
+  quantity: string
+): { price_usd: number; quantity: number; error: string | null } {
+  const priceUsd = Number(price)
+  const quantityNum = Number(quantity)
+  if (!Number.isFinite(priceUsd) || priceUsd < 0) {
+    return { price_usd: 0, quantity: 0, error: "Prices cannot be negative." }
+  }
+  if (!Number.isFinite(quantityNum) || quantityNum < 0 || !Number.isInteger(quantityNum)) {
+    return { price_usd: 0, quantity: 0, error: "Capacity must be a whole number (0 = unlimited)." }
+  }
+  return { price_usd: priceUsd, quantity: quantityNum, error: null }
+}

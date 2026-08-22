@@ -46,10 +46,16 @@ import {
   easternToday,
   draftFromNight,
   buildNightOverridePayload,
+  buildNightHoursPayload,
   draftHasOverrides,
   inheritIfMatchesTemplate,
   validateNightDraft,
   nightIsEditable,
+  nightHasEventTickets,
+  nightTierTicketType,
+  applyOverrideTicketForm,
+  toggleNightTierDisabled,
+  parseOverrideTicketNumbers,
   programHref,
   programEditHref,
   nightHref,
@@ -288,29 +294,60 @@ test("inheritIfMatchesTemplate treats editing as the override", () => {
   )
 })
 
-test("night editor shows price and capacity as inputs, not Use default / Override toggles", () => {
+test("night ticket editor matches Manage sales and stays on the night", () => {
   const pagePath = fileURLToPath(
     new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)
   )
+  const editorPath = fileURLToPath(
+    new URL("../../components/business/v2/door-access/NightTicketsEditor.tsx", import.meta.url)
+  )
+  const managePath = fileURLToPath(
+    new URL("../../components/business/v2/events/ManageSalesTickets.tsx", import.meta.url)
+  )
   const src = readFileSync(pagePath, "utf8")
+  const editor = readFileSync(editorPath, "utf8")
+  const manage = readFileSync(managePath, "utf8")
 
-  assert.ok(!src.includes("function FieldOverride"), "do not hide price/capacity behind FieldOverride")
-  assert.ok(!src.includes("{!inheriting && children}"), "inputs must stay visible while inheriting")
-  assert.ok(src.includes("function NightNumberField"), "price/capacity use the always-visible field")
-  assert.ok(src.includes('label="Price"'))
-  assert.ok(src.includes('label="Capacity"'))
-  assert.ok(src.includes('hint="0 = unlimited"'))
-  assert.ok(src.includes("inheritIfMatchesTemplate"), "typing a number is the override")
-  assert.ok(src.includes("inherit_price: inheritIfMatchesTemplate"))
-  assert.ok(src.includes("inherit_quantity: inheritIfMatchesTemplate"))
+  assert.ok(src.includes("NightTicketsEditor"), "night page hosts the shared ticket editor")
+  assert.ok(src.includes("nightHasEventTickets"), "stamped nights must take the event ticket path")
+  assert.ok(src.includes("buildNightHoursPayload"), "stamped Save night must not restamp tickets")
+  assert.ok(!/href=\{?[`'"]\/business\/events/.test(src), "do not link off the night to event edit")
+  assert.ok(src.includes("nightIsEditable"), "customized nights stay read-only here")
+  assert.ok(!src.includes("function NightNumberField"), "price/capacity no longer use the simplified field")
+  assert.ok(!src.includes("function TiersCard"), "replace Tiers this night with Manage sales cards")
+
+  assert.ok(editor.includes("ManageSalesTickets"), "stamped nights reuse the Manage sales editor")
+  assert.ok(editor.includes("/business/events/${eventId}/tickets") || manage.includes("/business/events/${eventId}/tickets"))
+  assert.ok(manage.includes("ScanWindowSection"), "scan window must be the Manage sales control")
+  const scanSrc = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/events/ScanWindowSection.tsx", import.meta.url)),
+    "utf8"
+  )
+  assert.ok(scanSrc.includes("Limit when this ticket can be scanned"))
+  assert.ok(scanSrc.includes("Optional. For early entry"))
+  assert.ok(manage.includes("StockAlertsFields"), "stock alerts stay on the ticket editor")
+  assert.ok(manage.includes("Mark sold out"))
+  assert.ok(manage.includes("Hide"))
+  assert.ok(manage.includes("Save changes"))
+  assert.ok(manage.includes("Quantity (0 = unlimited)"))
+  assert.ok(manage.includes("Max per person"))
+  assert.ok(manage.includes("Price (USD)"))
+
+  assert.ok(editor.includes("OVERRIDE_TICKET_FORM_FIELDS"), "unstamped nights keep the same card")
+  assert.ok(editor.includes("saveNightOverride"), "unstamped persist uses the override API")
+  assert.ok(editor.includes("updateDoorAccessProgram"), "stock alerts persist on the program, not the event")
+  assert.ok(!editor.includes("apiClient.put(`/business/events/"), "program stock alerts must not evict the night")
+  assert.ok(editor.includes("scan_window: false"), "omit scan window when the override cannot store it")
+  assert.ok(editor.includes("soldOut: false"), "omit mark sold out when the override cannot store it")
 
   const inheritToggles = src.match(/<InheritToggle/g) ?? []
   assert.equal(inheritToggles.length, 1, "only hours keep Use default / Override")
   assert.ok(src.includes("inheriting={draft.inherit_times}"))
   assert.ok(src.includes("Use default"))
   assert.ok(src.includes("Override"))
-  assert.ok(src.includes("On sale"))
   assert.ok(!src.includes("\u2014"), "night editor still has an em dash")
+  assert.ok(!editor.includes("\u2014"), "ticket editor still has an em dash")
+  assert.ok(!/Weekly Access|weekly access|WEEKLY ACCESS/.test(editor.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")))
 })
 
 test("custom times survive, and is_closed is always explicit", () => {
@@ -394,6 +431,56 @@ test("nightIsEditable closes the surface where an override would be invisible", 
   // Unstamped is EDITABLE: overrides key off the date, which is what lets a
   // host price a holiday weeks before the generator reaches it.
   assert.equal(nightIsEditable(night({ is_stamped: false, event_id: null, status: null })), true)
+})
+
+test("stamped nights write tickets through the event; unstamped stay on the override", () => {
+  assert.equal(nightHasEventTickets(night()), true)
+  assert.equal(nightHasEventTickets(night({ is_stamped: false, event_id: null })), false)
+  assert.equal(nightHasEventTickets(night({ is_stamped: true, event_id: null })), false)
+
+  const hours = buildNightHoursPayload(
+    draftFromNight(
+      night({ start_time: "21:00:00", end_time: "01:00:00" }),
+      program({ start_time: "22:00:00", end_time: "02:00:00" })
+    )
+  )
+  assert.equal(hours.start_time, "21:00:00")
+  assert.equal(hours.end_time, "01:00:00")
+  assert.equal(hours.tiers, undefined, "hours save must not restamp ticket rows")
+})
+
+test("override ticket form pins price and quantity independently", () => {
+  const base = draftFromNight(night(), program())
+  const next = applyOverrideTicketForm(base, "cover", 15, 0, 10, 0)
+  assert.equal(next.tiers[0].inherit_price, false)
+  assert.equal(next.tiers[0].price_usd, 15)
+  assert.equal(next.tiers[0].inherit_quantity, true)
+  assert.equal(next.tiers[0].quantity, 0)
+
+  const payload = buildNightOverridePayload(next)
+  assert.equal(payload.tiers?.[0].price_usd, 15)
+  assert.equal(payload.tiers?.[0].quantity, null)
+
+  const hidden = toggleNightTierDisabled(base, "cover")
+  assert.equal(hidden.tiers[0].is_disabled, true)
+  assert.equal(buildNightOverridePayload(hidden).tiers?.[0].is_disabled, true)
+})
+
+test("parseOverrideTicketNumbers matches the night draft rules", () => {
+  assert.deepEqual(parseOverrideTicketNumbers("10", "0"), { price_usd: 10, quantity: 0, error: null })
+  assert.equal(parseOverrideTicketNumbers("-1", "0").error, "Prices cannot be negative.")
+  assert.equal(
+    parseOverrideTicketNumbers("10", "2.5").error,
+    "Capacity must be a whole number (0 = unlimited)."
+  )
+})
+
+test("nightTierTicketType reads the program template, then the price", () => {
+  assert.equal(nightTierTicketType(night().tiers[0], program()), "paid")
+  assert.equal(
+    nightTierTicketType({ tier_key: "unknown", price_usd: 0 }, program()),
+    "free"
+  )
 })
 
 // ── 3. defensive normalization ──────────────────────────────────────────────
@@ -828,6 +915,8 @@ test("product copy no longer says Weekly Access (renamed to Weekly Cover)", () =
     "../../app/business/(dashboard)/door-access/[id]/page.tsx",
     "../../app/business/(dashboard)/door-access/[id]/edit/page.tsx",
     "../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx",
+    "../../components/business/v2/door-access/NightTicketsEditor.tsx",
+    "../../components/business/v2/events/ManageSalesTickets.tsx",
     "../../app/business/(dashboard)/help/content.ts",
     "../../app/business/(dashboard)/analytics/page.tsx",
     "./analytics-copy.ts",
