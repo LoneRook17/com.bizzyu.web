@@ -527,21 +527,29 @@ export default function VenuePageClient({
         </div>
       </header>
 
-      {/* Header: photo sizes itself (h-auto). No aspect crop box, no overflow clip. */}
-      <div className="vp-rise mx-auto max-w-5xl px-5 pt-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          {heroImage ? (
-            <div className="w-full min-w-0 rounded-3xl bg-[#0d0d14] lg:max-w-md">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroImage} alt={venue.name} className="block h-auto w-full rounded-3xl object-contain object-center" />
-            </div>
-          ) : (
-            <div className="relative aspect-[4/5] w-full rounded-3xl bg-[#0d0d14] lg:max-w-md">
-              <div className="vp-blob absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#05EB54]/15 blur-3xl" />
-              <div className="vp-blob absolute right-0 top-10 h-80 w-80 rounded-full bg-[#05EB54]/10 blur-3xl" style={{ animationDelay: "-7s" }} />
-            </div>
-          )}
-          <div className="flex min-w-0 shrink-0 flex-col gap-3 lg:w-[280px]">
+      {/* Full-bleed venue hero. Keep the whole flyer readable: the taller frame
+          and object-contain deliberately letterbox portrait artwork instead of
+          zooming it into a short 16:9 crop. */}
+      <section className="vp-rise relative isolate mt-6 min-h-[34rem] overflow-hidden bg-[#0d0d14] sm:min-h-[38rem]">
+        {heroImage ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroImage}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-contain object-center"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/35 to-[#0a0a0f]/10" />
+          </>
+        ) : (
+          <>
+            <div className="vp-blob absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#05EB54]/15 blur-3xl" />
+            <div className="vp-blob absolute right-0 top-10 h-80 w-80 rounded-full bg-[#05EB54]/10 blur-3xl" style={{ animationDelay: "-7s" }} />
+          </>
+        )}
+        <div className="relative z-10 mx-auto flex min-h-[34rem] max-w-5xl items-end px-5 py-10 sm:min-h-[38rem] sm:py-12">
+          <div className="flex min-w-0 max-w-xl flex-col gap-3">
             {business.logo_image_url ? (
               <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[#141420] ring-1 ring-white/10">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -592,7 +600,7 @@ export default function VenuePageClient({
             ) : null}
           </div>
         </div>
-      </div>
+      </section>
 
       <div className="mx-auto max-w-5xl px-5 pb-24">
         {/* About strip */}
