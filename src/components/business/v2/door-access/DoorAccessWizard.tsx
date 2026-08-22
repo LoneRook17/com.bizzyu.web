@@ -9,6 +9,7 @@ import { useVenue } from "@/lib/business/venue-context"
 import { cn } from "@/lib/v2/utils"
 import {
   ACCESS_ACCENT,
+  ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_CREATION_LABEL,
   fmtTime,
   formatDays,
@@ -21,6 +22,10 @@ import {
   type RedemptionMode,
 } from "@/lib/business/door-access"
 import { applySaveAsDraftFlag, promoterToggleDisabled, willDraftOnCreate } from "@/lib/business/create-publish"
+import {
+  WEEKLY_COVER_CHECKBOX_CLASS,
+  WEEKLY_COVER_RADIO_CLASS,
+} from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
@@ -415,7 +420,7 @@ export function DoorAccessWizard({
           <p className="mt-0.5">{generationNotice.message}</p>
         </div>
         <div>
-          <Button size="lg" onClick={() => router.push(programHref(generationNotice.id))}>
+          <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={() => router.push(programHref(generationNotice.id))}>
             Open the program
           </Button>
         </div>
@@ -488,7 +493,7 @@ export function DoorAccessWizard({
                   type="checkbox"
                   checked={is21Plus}
                   onChange={(e) => setIs21Plus(e.target.checked)}
-                  className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
+                  className={WEEKLY_COVER_CHECKBOX_CLASS}
                 />
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">21+ only</span>
               </label>
@@ -737,7 +742,7 @@ export function DoorAccessWizard({
                   checked={promotionEnabled}
                   disabled={promoToggleDisabled}
                   onChange={(e) => { setPromotionEnabled(e.target.checked); setErrors((p) => ({ ...p, promotion_commission_value: "" })) }}
-                  className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
+                  className={WEEKLY_COVER_CHECKBOX_CLASS}
                 />
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">Enable promoter program</span>
               </label>
@@ -754,7 +759,7 @@ export function DoorAccessWizard({
                           name="da_commission_type"
                           checked={commissionType === "percent"}
                           onChange={() => { setCommissionType("percent"); setPromotionValueInput(""); setErrors((p) => ({ ...p, promotion_commission_value: "" })) }}
-                          className="text-[#05EB54] focus:ring-[#05EB54]"
+                          className={WEEKLY_COVER_RADIO_CLASS}
                         />
                         <span className="text-sm text-neutral-700 dark:text-neutral-300">Percent of the pass price</span>
                       </label>
@@ -764,7 +769,7 @@ export function DoorAccessWizard({
                           name="da_commission_type"
                           checked={commissionType === "fixed"}
                           onChange={() => { setCommissionType("fixed"); setPromotionValueInput(""); setErrors((p) => ({ ...p, promotion_commission_value: "" })) }}
-                          className="text-[#05EB54] focus:ring-[#05EB54]"
+                          className={WEEKLY_COVER_RADIO_CLASS}
                         />
                         <span className="text-sm text-neutral-700 dark:text-neutral-300">Fixed amount per pass</span>
                       </label>
@@ -807,7 +812,7 @@ export function DoorAccessWizard({
                   type="checkbox"
                   checked={lowstockEnabled}
                   onChange={(e) => { setLowstockEnabled(e.target.checked); setErrors((p) => ({ ...p, lowstock_threshold_value: "" })) }}
-                  className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
+                  className={WEEKLY_COVER_CHECKBOX_CLASS}
                 />
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">Notify me when a tier sells out</span>
               </label>
@@ -853,7 +858,7 @@ export function DoorAccessWizard({
                       type="checkbox"
                       checked={lowstockNotifyTeam}
                       onChange={(e) => setLowstockNotifyTeam(e.target.checked)}
-                      className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
+                      className={WEEKLY_COVER_CHECKBOX_CLASS}
                     />
                     <span className="text-sm text-neutral-700 dark:text-neutral-300">Also notify business team</span>
                   </label>
@@ -948,22 +953,22 @@ export function DoorAccessWizard({
         )}
 
         {step < 2 ? (
-          <Button size="lg" onClick={handleNext} disabled={checking}>
+          <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={handleNext} disabled={checking}>
             {checking && <Loader2 className="animate-spin" />}
             Next
           </Button>
         ) : isEdit ? (
-          <Button size="lg" onClick={() => handlePublish(false)} disabled={submitting}>
+          <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={() => handlePublish(false)} disabled={submitting}>
             {submitting && <Loader2 className="animate-spin" />}
             Save program
           </Button>
         ) : (
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <Button variant="secondary" size="lg" onClick={() => handlePublish(true)} disabled={submitting}>
+            <Button variant="access-secondary" size="lg" onClick={() => handlePublish(true)} disabled={submitting}>
               {submitting && <Loader2 className="animate-spin" />}
               Save as draft
             </Button>
-            <Button size="lg" onClick={() => handlePublish(false)} disabled={submitting}>
+            <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={() => handlePublish(false)} disabled={submitting}>
               {submitting && <Loader2 className="animate-spin" />}
               Publish program
             </Button>

@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react"
 import { Info } from "lucide-react"
+import { useProductCheckboxClass } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Input } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 
@@ -65,6 +66,7 @@ export function ScanWindowToggle({
 }) {
   const [manuallyOpened, setManuallyOpened] = useState(hasWindow)
   const open = manuallyOpened || hasWindow
+  const checkboxClass = useProductCheckboxClass()
 
   return (
     <>
@@ -78,7 +80,7 @@ export function ScanWindowToggle({
                 setManuallyOpened(e.target.checked)
                 if (!e.target.checked) onClear()
               }}
-              className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+              className={checkboxClass}
             />
             <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">{label}</span>
           </label>

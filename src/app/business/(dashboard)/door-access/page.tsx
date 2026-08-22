@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Plus, Sparkles, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
+  ACCESS_BUTTON_VARIANT,
   fetchDoorAccessPrograms,
   WEEKLY_ACCESS_CREATION_LABEL,
   WEEKLY_ACCESS_SECTION_LABEL,
@@ -67,7 +68,7 @@ export default function DoorAccessProgramsPage() {
         description={`${WEEKLY_ACCESS_CREATION_LABEL}. Recurring door programs that sell every night they run.`}
         actions={
           canBuild ? (
-            <Button asChild>
+            <Button asChild variant={ACCESS_BUTTON_VARIANT}>
               <Link href="/business/door-access/new">
                 <Plus /> New program
               </Link>
@@ -99,7 +100,7 @@ export default function DoorAccessProgramsPage() {
           }
           action={
             canBuild ? (
-              <Button asChild>
+              <Button asChild variant={ACCESS_BUTTON_VARIANT}>
                 <Link href="/business/door-access/new">
                   <Plus /> New program
                 </Link>

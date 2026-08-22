@@ -69,6 +69,9 @@ import {
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_CREATION_LABEL,
   EVENT_TYPE_LABEL,
+  ACCESS_ACCENT,
+  ACCESS_ACCENT_DEEP,
+  ACCESS_BUTTON_VARIANT,
   PROGRAM_LINK_LABEL,
   PROGRAM_LINK_DESCRIPTION,
   NIGHTS_HELPER_EDIT,
@@ -1050,4 +1053,80 @@ test("isoWeekday reads a calendar date without a timezone round trip", () => {
   assert.equal(isoWeekday("2026-08-24"), 1) // Monday
   assert.equal(isoWeekday("2026-08-30"), 7) // Sunday
   assert.equal(isoWeekday("nonsense"), null)
+})
+
+test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green", () => {
+  assert.equal(ACCESS_ACCENT, "#FF3ED1")
+  assert.equal(ACCESS_ACCENT_DEEP, "#D10EA3")
+  assert.equal(ACCESS_BUTTON_VARIANT, "access")
+
+  const theme = readFileSync(fileURLToPath(new URL("../../app/globals.css", import.meta.url)), "utf8")
+  assert.ok(theme.includes("--color-access: #FF3ED1"), "theme token must match ACCESS_ACCENT")
+  assert.ok(theme.includes("--color-access-deep: #D10EA3"), "theme token must match ACCESS_ACCENT_DEEP")
+
+  const button = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/ui/button.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(button.includes("access:"), "Button must expose the Weekly Cover variant")
+  assert.ok(button.includes("from-access-deep to-access"), "access variant uses the shared tokens, not a one-off hex")
+  assert.ok(button.includes("access-secondary"), "Save as draft / Reset stay in the pink family")
+  assert.ok(button.includes("useWeeklyCoverAccent"), "primary remaps to access under Weekly Cover")
+  assert.ok(button.includes('variant === "primary"') || button.includes('variant == null || variant === "primary"'))
+
+  const layout = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/door-access/layout.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(layout.includes("WeeklyCoverAccent"), "every door-access route must wrap the pink provider")
+
+  const weeklyFiles = [
+    "../../components/business/v2/door-access/DoorAccessWizard.tsx",
+    "../../app/business/(dashboard)/door-access/new/page.tsx",
+    "../../app/business/(dashboard)/door-access/[id]/edit/page.tsx",
+    "../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx",
+    "../../app/business/(dashboard)/door-access/page.tsx",
+    "../../app/business/(dashboard)/door-access/[id]/page.tsx",
+  ]
+  for (const rel of weeklyFiles) {
+    const src = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
+    assert.ok(
+      src.includes("ACCESS_ACCENT") ||
+        src.includes("ACCESS_BUTTON_VARIANT") ||
+        src.includes("WEEKLY_COVER_CHECKBOX_CLASS") ||
+        src.includes("text-access") ||
+        src.includes("variant=\"access") ||
+        src.includes("WeeklyCoverAccent") ||
+        src.includes("DoorAccessWizard"),
+      `${rel} must import the pink accent or live under the Weekly Cover wizard/layout`,
+    )
+    assert.ok(
+      !src.includes("text-[#05EB54]") || rel.endsWith("door-access/page.tsx"),
+      `${rel} still hard-codes Bizzy green on a Weekly Cover control`,
+    )
+  }
+
+  const wizard = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(wizard.includes("ACCESS_ACCENT"), "create/edit wizard imports the pink accent")
+  assert.ok(wizard.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "wizard toggles use the shared pink class")
+  assert.ok(wizard.includes('variant="access-secondary"'), "Save as draft is the pink secondary")
+  assert.ok(!wizard.includes("#05EB54"), "wizard must not copy Bizzy green")
+
+  const night = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(night.includes("focus-visible:ring-access"), "night switch focus ring is pink")
+  assert.ok(!night.includes("ring-[#05EB54]"), "night switch must not use the green ring")
+
+  const eventForm = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/events/EventForm.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(!eventForm.includes('variant="access"'), "event create/edit must stay green")
+  assert.ok(!eventForm.includes("WeeklyCoverAccent"), "event form must not wrap the Weekly Cover accent")
+  assert.ok(eventForm.includes("#05EB54") || eventForm.includes("<Button"), "event form still uses the green path")
 })

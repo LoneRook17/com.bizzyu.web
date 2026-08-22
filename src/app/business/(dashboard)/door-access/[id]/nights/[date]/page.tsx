@@ -23,6 +23,7 @@ import {
   resetNightHours,
   saveNightOverride,
   toTimeInput,
+  ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_SECTION_LABEL,
   validateNightDraft,
   type DoorAccessNight,
@@ -195,11 +196,11 @@ export default function DoorAccessNightPage({
           editable ? (
             <div className="flex items-center gap-2">
               {night.has_override && (
-                <Button variant="secondary" onClick={handleReset} disabled={saving}>
+                <Button variant="access-secondary" onClick={handleReset} disabled={saving}>
                   <RotateCcw className="size-4" /> Reset to defaults
                 </Button>
               )}
-              <Button onClick={handleSave} disabled={saving}>
+              <Button variant={ACCESS_BUTTON_VARIANT} onClick={handleSave} disabled={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="size-4 animate-spin" /> Saving…
@@ -418,7 +419,7 @@ function HoursCard({
               onCheckedChange={(closed) => setDraft({ ...draft, is_closed: closed })}
               aria-label="Closed this night"
               className={cn(
-                "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#05EB54] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
+                "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-access focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
                 draft.is_closed ? "bg-red-600" : "bg-neutral-300 dark:bg-neutral-600"
               )}
             >

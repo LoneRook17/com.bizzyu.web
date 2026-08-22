@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react"
 import type { RecurringTemplateTicket } from "@/lib/business/types"
+import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
@@ -116,6 +117,7 @@ export function RecurringTierEditor({
 
   const addTier = () => onChange([...tiers, { ...EMPTY_RECURRING_TIER }])
   const removeTier = (index: number) => onChange(tiers.filter((_, i) => i !== index))
+  const weekly = useWeeklyCoverAccent()
 
   return (
     <div className="space-y-3">
@@ -225,7 +227,7 @@ export function RecurringTierEditor({
         </div>
       ))}
 
-      <Button type="button" variant="secondary" size="sm" onClick={addTier}>
+      <Button type="button" variant={weekly ? "access-secondary" : "secondary"} size="sm" onClick={addTier}>
         <Plus /> Add ticket tier
       </Button>
     </div>

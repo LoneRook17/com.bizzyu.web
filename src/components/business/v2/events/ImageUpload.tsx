@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { ImagePlus, Loader2, X } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
+import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { cn } from "@/lib/v2/utils"
 
 interface ImageUploadProps {
@@ -32,6 +33,7 @@ export function ImageUpload({
   const [error, setError] = useState("")
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const weekly = useWeeklyCoverAccent()
 
   const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -101,7 +103,7 @@ export function ImageUpload({
               }}
               className={cn(
                 "absolute inset-0 flex items-end justify-end p-3 transition-colors",
-                dragOver && "bg-[#05EB54]/10"
+                dragOver && (weekly ? "bg-access/10" : "bg-[#05EB54]/10")
               )}
             >
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm dark:bg-neutral-900/90 dark:text-neutral-200">
@@ -132,11 +134,15 @@ export function ImageUpload({
           className={cn(
             "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors",
             previewClass,
-            dragOver ? "border-[#05EB54] bg-green-50/60 dark:bg-green-950/40" : "border-neutral-300 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/50 hover:border-neutral-400 dark:hover:border-neutral-600"
+            dragOver
+              ? weekly
+                ? "border-access bg-access/10 dark:bg-access/10"
+                : "border-[#05EB54] bg-green-50/60 dark:bg-green-950/40"
+              : "border-neutral-300 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/50 hover:border-neutral-400 dark:hover:border-neutral-600"
           )}
         >
           {uploading ? (
-            <Loader2 className="size-7 animate-spin text-[#05EB54]" />
+            <Loader2 className={cn("size-7 animate-spin", weekly ? "text-access" : "text-[#05EB54]")} />
           ) : (
             <>
               <span className="flex size-11 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">

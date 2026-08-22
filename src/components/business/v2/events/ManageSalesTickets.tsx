@@ -12,6 +12,7 @@ import { Input, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { ScanWindowSection } from "@/components/business/v2/events/ScanWindowSection"
 import { StockAlertsFields } from "@/components/business/v2/events/StockAlertsFields"
 import { lowstockInputToStored, lowstockValueToInput } from "@/components/business/v2/events/EventForm"
@@ -776,6 +777,7 @@ export function StockAlertsCard({
   error: string
   idPrefix?: string
 }) {
+  const weekly = useWeeklyCoverAccent()
   return (
     <Card>
       <CardHeader className="flex-col items-start gap-1">
@@ -807,7 +809,9 @@ export function StockAlertsCard({
           <Button type="button" onClick={onSave} disabled={saving}>
             {saving && <Loader2 className="animate-spin" />} Save stock alerts
           </Button>
-          {saved && <span className="text-xs font-medium text-[#05EB54]">Saved</span>}
+          {saved && (
+            <span className={cn("text-xs font-medium", weekly ? "text-access" : "text-[#05EB54]")}>Saved</span>
+          )}
         </div>
       </CardContent>
     </Card>
