@@ -457,6 +457,8 @@ export function TicketEditForm({
   saving,
   saveError,
   fields = EVENT_TICKET_FORM_FIELDS,
+  saveLabel,
+  saveHint,
 }: {
   editing: TicketFormState
   onChange: (next: TicketFormState) => void
@@ -465,6 +467,8 @@ export function TicketEditForm({
   saving: boolean
   saveError: string
   fields?: TicketFormVisibility
+  saveLabel?: string
+  saveHint?: string
 }) {
   const show = (mode: TicketFormFieldMode | undefined) => mode === true || mode === "readonly"
   const readOnly = (mode: TicketFormFieldMode | undefined) => mode === "readonly"
@@ -564,9 +568,11 @@ export function TicketEditForm({
             )}
           </div>
           {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
+          {saveHint && <p className="text-xs text-neutral-500 dark:text-neutral-400">{saveHint}</p>}
           <div className="flex items-center gap-2 pt-1">
             <Button type="submit" disabled={saving}>
-              {saving && <Loader2 className="animate-spin" />} {editing.ticket_id ? "Save changes" : "Add ticket"}
+              {saving && <Loader2 className="animate-spin" />}{" "}
+              {saveLabel ?? (editing.ticket_id ? "Save changes" : "Add ticket")}
             </Button>
             <Button type="button" variant="secondary" onClick={onCancel}>
               Cancel

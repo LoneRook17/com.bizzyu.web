@@ -4,22 +4,19 @@ import { useMemo, useState } from "react"
 import type { TicketTier } from "@/lib/business/types"
 import {
   applyOverrideTicketForm,
-  nightHasEventTickets,
   nightTierTicketType,
   parseOverrideTicketNumbers,
-  saveNightOverride,
   toggleNightTierDisabled,
   updateDoorAccessProgram,
-  buildNightOverridePayload,
+  NIGHT_TICKET_APPLY_LABEL,
+  NIGHT_TICKET_DRAFT_HINT,
   type DoorAccessNight,
   type DoorAccessNightTier,
   type DoorAccessProgram,
   type NightDraft,
-  type NightOverrideResult,
 } from "@/lib/business/door-access"
 import { lowstockInputToStored, lowstockValueToInput } from "@/components/business/v2/events/EventForm"
 import {
-  ManageSalesTickets,
   StockAlertsCard,
   TicketEditForm,
   TicketSection,
@@ -34,6 +31,9 @@ import {
  * Night override can persist price, quantity, and is_disabled only. Name and
  * type stay visible so the card matches Manage Tickets; fields the API cannot
  * store are omitted instead of rendered as dead controls.
+ *
+ * Edits here draft into the night. Save night on the page is the only write
+ * to door_access_tier_overrides. Do not PUT /business/events/:id/tickets.
  */
 export const OVERRIDE_TICKET_FORM_FIELDS: TicketFormVisibility = {
   name: "readonly",
@@ -115,80 +115,55 @@ function tierIndex(night: DoorAccessNight, ticketId: number | undefined): number
 }
 
 export function NightTicketsEditor({
-  programId,
-  date,
   program,
   night,
   draft,
+  setDraft,
   setProgram,
   editable,
-  onOverrideSaved,
 }: {
-  programId: number
-  date: string
   program: DoorAccessProgram
   night: DoorAccessNight
   draft: NightDraft
+  setDraft: (draft: NightDraft) => void
   setProgram: (program: DoorAccessProgram) => void
   editable: boolean
-  onOverrideSaved: (result: NightOverrideResult) => void
 }) {
-  const useEventTickets = nightHasEventTickets(night)
   const alertsAdapter = useMemo(
     () => programStockAlertsAdapter(program, setProgram),
     [program, setProgram]
   )
 
-  if (useEventTickets && editable) {
-    return (
-      <ManageSalesTickets
-        eventId={String(night.event_id)}
-        allowAdd={false}
-        allowReorder
-        alertsAdapter={alertsAdapter}
-      />
-    )
-  }
-
   return (
     <NightOverrideTickets
-      programId={programId}
-      date={date}
       program={program}
       night={night}
       draft={draft}
+      setDraft={setDraft}
       editable={editable}
-      onOverrideSaved={onOverrideSaved}
       alertsAdapter={alertsAdapter}
     />
   )
 }
 
 function NightOverrideTickets({
-  programId,
-  date,
   program,
   night,
   draft,
+  setDraft,
   editable,
-  onOverrideSaved,
   alertsAdapter,
 }: {
-  programId: number
-  date: string
   program: DoorAccessProgram
   night: DoorAccessNight
   draft: NightDraft
+  setDraft: (draft: NightDraft) => void
   editable: boolean
-  onOverrideSaved: (result: NightOverrideResult) => void
   alertsAdapter: StockAlertsAdapter
 }) {
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editing, setEditing] = useState<TicketFormState | null>(null)
-  const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
-  const [togglingKey, setTogglingKey] = useState<string | null>(null)
-  const [error, setError] = useState("")
 
   const [alertState, setAlertState] = useState<StockAlertsState>({
     enabled: !!program.lowstock_alerts_enabled,
@@ -204,13 +179,7 @@ function NightOverrideTickets({
   const active = tickets.filter((t) => !t.is_hidden)
   const hidden = tickets.filter((t) => t.is_hidden)
 
-  const persistDraft = async (next: NightDraft) => {
-    const result = await saveNightOverride(programId, date, buildNightOverridePayload(next))
-    onOverrideSaved(result)
-    return result
-  }
-
-  const handleSave = async (e: React.FormEvent) => {
+  const applyTicketDraft = (e: React.FormEvent) => {
     e.preventDefault()
     if (!editing || !editingKey) return
     const parsed = parseOverrideTicketNumbers(editing.price_usd, editing.quantity)
@@ -219,43 +188,29 @@ function NightOverrideTickets({
       return
     }
     const source = night.tiers.find((t) => t.tier_key === editingKey)
-    const next = applyOverrideTicketForm(
-      draft,
-      editingKey,
-      parsed.price_usd,
-      parsed.quantity,
-      source?.template_price_usd,
-      source?.template_quantity
+    setDraft(
+      applyOverrideTicketForm(
+        draft,
+        editingKey,
+        parsed.price_usd,
+        parsed.quantity,
+        source?.template_price_usd,
+        source?.template_quantity
+      )
     )
-    setSaving(true)
     setSaveError("")
-    try {
-      await persistDraft(next)
-      setEditing(null)
-      setEditingKey(null)
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save ticket")
-    } finally {
-      setSaving(false)
-    }
+    setEditing(null)
+    setEditingKey(null)
   }
 
-  const handleToggleHidden = async (ticket: TicketTier) => {
+  const handleToggleHidden = (ticket: TicketTier) => {
     const index = tierIndex(night, ticket.ticket_id)
     const source = night.tiers[index]
     if (!source) return
     const next = toggleNightTierDisabled(draft, source.tier_key)
-    setTogglingKey(source.tier_key)
-    setError("")
-    try {
-      await persistDraft(next)
-      if (editingKey === source.tier_key) {
-        setEditing(formFromNightTier(source, next, program, index))
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update visibility")
-    } finally {
-      setTogglingKey(null)
+    setDraft(next)
+    if (editingKey === source.tier_key) {
+      setEditing(formFromNightTier(source, next, program, index))
     }
   }
 
@@ -283,22 +238,35 @@ function NightOverrideTickets({
     ? { edit: true, soldOut: false, hide: true }
     : { edit: false, soldOut: false, hide: false }
 
+  const startEdit = (t: TicketTier) => {
+    const index = tierIndex(night, t.ticket_id)
+    const source = night.tiers[index]
+    if (!source) return
+    setSaveError("")
+    setEditingKey(source.tier_key)
+    setEditing(formFromNightTier(source, draft, program, index))
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {editable && (
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{NIGHT_TICKET_DRAFT_HINT}</p>
+      )}
 
       {editing && (
         <TicketEditForm
           editing={editing}
           onChange={setEditing}
-          onSave={handleSave}
+          onSave={applyTicketDraft}
           onCancel={() => {
             setEditing(null)
             setEditingKey(null)
           }}
-          saving={saving}
+          saving={false}
           saveError={saveError}
           fields={OVERRIDE_TICKET_FORM_FIELDS}
+          saveLabel={NIGHT_TICKET_APPLY_LABEL}
+          saveHint={NIGHT_TICKET_DRAFT_HINT}
         />
       )}
 
@@ -310,21 +278,10 @@ function NightOverrideTickets({
         onReorder={() => {}}
         onDragStart={() => {}}
         onDragEnd={() => {}}
-        onEdit={(t) => {
-          const index = tierIndex(night, t.ticket_id)
-          const source = night.tiers[index]
-          if (!source) return
-          setSaveError("")
-          setEditingKey(source.tier_key)
-          setEditing(formFromNightTier(source, draft, program, index))
-        }}
+        onEdit={startEdit}
         onToggleHidden={handleToggleHidden}
         onToggleSoldOut={() => {}}
-        toggling={
-          togglingKey
-            ? { id: night.tiers.findIndex((t) => t.tier_key === togglingKey) + 1, field: "hidden" }
-            : null
-        }
+        toggling={null}
         emptyText="This program has no tiers."
         actions={actions}
       />
@@ -338,21 +295,10 @@ function NightOverrideTickets({
           onReorder={() => {}}
           onDragStart={() => {}}
           onDragEnd={() => {}}
-          onEdit={(t) => {
-            const index = tierIndex(night, t.ticket_id)
-            const source = night.tiers[index]
-            if (!source) return
-            setSaveError("")
-            setEditingKey(source.tier_key)
-            setEditing(formFromNightTier(source, draft, program, index))
-          }}
+          onEdit={startEdit}
           onToggleHidden={handleToggleHidden}
           onToggleSoldOut={() => {}}
-          toggling={
-            togglingKey
-              ? { id: night.tiers.findIndex((t) => t.tier_key === togglingKey) + 1, field: "hidden" }
-              : null
-          }
+          toggling={null}
           note="Hidden tickets cannot be purchased. Existing ticket holders can still scan in."
           dimmed
           actions={actions}

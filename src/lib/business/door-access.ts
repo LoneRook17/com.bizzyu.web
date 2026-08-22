@@ -187,16 +187,31 @@ export interface DoorAccessSeries {
 }
 
 /**
- * A per-night write's result. `restamp_error` is a WARNING, never a failure:
- * the override is already committed when core's restamp is attempted, so the
- * UI must show the saved state plus the notice, not an error wall that implies
- * nothing was written.
+ * A per-night write's result.
+ *
+ * The override row is committed before core restamps tickets. That does not
+ * mean buyers see the new price: restampNight can return times_only_has_sales
+ * or restamp_error, in which case checkout still has the old tickets.price_usd.
+ * The night page must not show a live Saved banner in those cases.
  */
 export interface NightOverrideResult {
   night: DoorAccessNight
   restamp: unknown | null
   restamp_error: string | null
 }
+
+/** Ticket row on the night page drafts only. Save night is the guest-facing commit. */
+export const NIGHT_TICKET_APPLY_LABEL = "Apply to night"
+
+export const NIGHT_TICKET_DRAFT_HINT =
+  "Drafts until you Save night. Buyers will not see this price until then."
+
+export const NIGHT_SAVE_LIVE = "Saved."
+
+export const NIGHT_SAVE_NOT_LIVE =
+  "Saved is not live. The price buyers see may still be the old one."
+
+export const TIMES_ONLY_HAS_SALES = "times_only_has_sales"
 
 /** A sparse night patch. Omit = leave alone. null = go back to inheriting. */
 export interface NightOverridePayload {
@@ -1043,9 +1058,9 @@ export function nightIsEditable(night: DoorAccessNight): boolean {
 }
 
 /**
- * A stamped night has a real events row. Ticket name, description, scan window,
- * hide, and sold-out persist on that row's ticket APIs. Hours still use the
- * override endpoint so PUT /business/events/:id never evicts the night.
+ * A stamped night has a real events row. Guest checkout reads that row's
+ * tickets. Price still writes through door_access_tier_overrides on Save night;
+ * PUT /business/events/:id/tickets marks series_customized and is the wrong path.
  */
 export function nightHasEventTickets(
   night: Pick<DoorAccessNight, "is_stamped" | "event_id">
@@ -1054,8 +1069,8 @@ export function nightHasEventTickets(
 }
 
 /**
- * Hours and closed only. Used when the night's tickets are written through the
- * event ticket APIs: including tiers here would restamp and wipe those edits.
+ * Hours and closed only. Not the night-page save: Save night always sends
+ * buildNightOverridePayload so ticket price/qty stay on the override.
  */
 export function buildNightHoursPayload(draft: NightDraft): NightOverridePayload {
   return {
@@ -1063,6 +1078,37 @@ export function buildNightHoursPayload(draft: NightDraft): NightOverridePayload 
     end_time: draft.inherit_times ? null : draft.end_time,
     is_closed: draft.is_closed,
   }
+}
+
+/** Core skipped a ticket price restamp because this night already has sales. */
+export function restampSignalsTimesOnlyHasSales(restamp: unknown): boolean {
+  if (restamp == null) return false
+  const blob = typeof restamp === "string" ? restamp : JSON.stringify(restamp)
+  return blob.includes(TIMES_ONLY_HAS_SALES)
+}
+
+/**
+ * Guest prices are not live when core returns restamp_error or
+ * times_only_has_sales. The override may still be stored in the dash.
+ */
+export function nightGuestPricesNotLive(
+  result: Pick<NightOverrideResult, "restamp" | "restamp_error">
+): boolean {
+  if (result.restamp_error) return true
+  return restampSignalsTimesOnlyHasSales(result.restamp)
+}
+
+export function nightSaveFeedback(
+  result: Pick<NightOverrideResult, "restamp" | "restamp_error">
+): { live: boolean; message: string } {
+  if (!nightGuestPricesNotLive(result)) {
+    return { live: true, message: NIGHT_SAVE_LIVE }
+  }
+  const extra = (result.restamp_error ?? "").trim()
+  if (extra && extra !== NIGHT_SAVE_NOT_LIVE) {
+    return { live: false, message: `${NIGHT_SAVE_NOT_LIVE} ${extra}` }
+  }
+  return { live: false, message: NIGHT_SAVE_NOT_LIVE }
 }
 
 export function nightTierTicketType(

@@ -59,6 +59,14 @@ import {
   applyOverrideTicketForm,
   toggleNightTierDisabled,
   parseOverrideTicketNumbers,
+  nightSaveFeedback,
+  nightGuestPricesNotLive,
+  restampSignalsTimesOnlyHasSales,
+  NIGHT_TICKET_APPLY_LABEL,
+  NIGHT_TICKET_DRAFT_HINT,
+  NIGHT_SAVE_LIVE,
+  NIGHT_SAVE_NOT_LIVE,
+  TIMES_ONLY_HAS_SALES,
   programHref,
   programEditHref,
   nightHref,
@@ -328,52 +336,43 @@ test("inheritIfMatchesTemplate treats editing as the override", () => {
   )
 })
 
-test("night ticket editor matches Manage Tickets and stays on the night", () => {
+test("night ticket editor drafts until Save night and stays on the override", () => {
   const pagePath = fileURLToPath(
     new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)
   )
   const editorPath = fileURLToPath(
     new URL("../../components/business/v2/door-access/NightTicketsEditor.tsx", import.meta.url)
   )
-  const managePath = fileURLToPath(
-    new URL("../../components/business/v2/events/ManageSalesTickets.tsx", import.meta.url)
-  )
   const src = readFileSync(pagePath, "utf8")
   const editor = readFileSync(editorPath, "utf8")
-  const manage = readFileSync(managePath, "utf8")
 
-  assert.ok(src.includes("NightTicketsEditor"), "night page hosts the shared ticket editor")
-  assert.ok(src.includes("nightHasEventTickets"), "stamped nights must take the event ticket path")
-  assert.ok(src.includes("buildNightHoursPayload"), "stamped Save night must not restamp tickets")
+  assert.ok(src.includes("NightTicketsEditor"), "night page hosts the ticket editor")
+  assert.ok(src.includes("buildNightOverridePayload"), "Save night commits hours and ticket price/qty")
+  assert.ok(src.includes("nightSaveFeedback"), "Save night must surface restamp as not-live")
+  assert.ok(!src.includes("buildNightHoursPayload"), "do not drop ticket price from Save night")
+  assert.ok(!src.includes("nightHasEventTickets"), "do not route stamped nights onto event ticket PUTs")
   assert.ok(!/href=\{?[`'"]\/business\/events/.test(src), "do not link off the night to event edit")
   assert.ok(src.includes("nightIsEditable"), "customized nights stay read-only here")
   assert.ok(!src.includes("function NightNumberField"), "price/capacity no longer use the simplified field")
   assert.ok(!src.includes("function TiersCard"), "replace Tiers this night with Manage Tickets cards")
 
-  assert.ok(editor.includes("ManageSalesTickets"), "stamped nights reuse the Manage Tickets editor")
-  assert.ok(editor.includes("/business/events/${eventId}/tickets") || manage.includes("/business/events/${eventId}/tickets"))
-  assert.ok(manage.includes("ScanWindowSection"), "scan window must be the Manage Tickets control")
-  const scanSrc = readFileSync(
-    fileURLToPath(new URL("../../components/business/v2/events/ScanWindowSection.tsx", import.meta.url)),
-    "utf8"
-  )
-  assert.ok(scanSrc.includes("Limit when this ticket can be scanned"))
-  assert.ok(scanSrc.includes("Optional. For early entry"))
-  assert.ok(manage.includes("StockAlertsFields"), "stock alerts stay on the ticket editor")
-  assert.ok(manage.includes("Mark sold out"))
-  assert.ok(manage.includes('aria-label="Drag to reorder"'))
-  assert.ok(manage.includes("Hide"))
-  assert.ok(manage.includes("Save changes"))
-  assert.ok(manage.includes("Quantity (0 = unlimited)"))
-  assert.ok(manage.includes("Max per person (0 = unlimited)"))
-  assert.ok(manage.includes("Price (USD)"))
-
-  assert.ok(editor.includes("OVERRIDE_TICKET_FORM_FIELDS"), "unstamped nights keep the same card")
-  assert.ok(editor.includes("saveNightOverride"), "unstamped persist uses the override API")
+  assert.ok(!editor.includes("<ManageSalesTickets"), "do not mount the event ticket writer on this page")
+  assert.ok(!editor.includes("saveNightOverride"), "ticket rows must not persist; Save night does")
+  assert.ok(!/apiClient\.put|apiClient\.patch/.test(editor), "do not PUT event tickets from the night editor")
+  assert.ok(editor.includes("NIGHT_TICKET_APPLY_LABEL"), "inline edit must not say Save changes")
+  assert.ok(editor.includes("NIGHT_TICKET_DRAFT_HINT"), "inline edit must say it drafts until Save night")
   assert.ok(editor.includes("updateDoorAccessProgram"), "stock alerts persist on the program, not the event")
-  assert.ok(!editor.includes("apiClient.put(`/business/events/"), "program stock alerts must not evict the night")
   assert.ok(editor.includes("scan_window: false"), "omit scan window when the override cannot store it")
   assert.ok(editor.includes("soldOut: false"), "omit mark sold out when the override cannot store it")
+
+  assert.equal(NIGHT_TICKET_APPLY_LABEL, "Apply to night")
+  assert.equal(
+    NIGHT_TICKET_DRAFT_HINT,
+    "Drafts until you Save night. Buyers will not see this price until then."
+  )
+  assert.ok(!NIGHT_TICKET_DRAFT_HINT.includes("Save changes"))
+  assert.ok(src.includes("Save night"), "one guest-facing save")
+  assert.ok(!editor.includes("Save changes"), "ticket row must not look like a second guest save")
 
   assert.ok(!src.includes("function InheritToggle"), "hours dropped Use default / Override")
   assert.ok(!src.includes("Use default"))
@@ -473,10 +472,15 @@ test("nightIsEditable closes the surface where an override would be invisible", 
   assert.equal(nightIsEditable(night({ is_stamped: false, event_id: null, status: null })), true)
 })
 
-test("stamped nights write tickets through the event; unstamped stay on the override", () => {
+test("Save night keeps ticket price on the override for stamped and unstamped nights", () => {
   assert.equal(nightHasEventTickets(night()), true)
   assert.equal(nightHasEventTickets(night({ is_stamped: false, event_id: null })), false)
   assert.equal(nightHasEventTickets(night({ is_stamped: true, event_id: null })), false)
+
+  const priced = applyOverrideTicketForm(draftFromNight(night(), program()), "cover", 7.5, 0, 10, 0)
+  const payload = buildNightOverridePayload(priced)
+  assert.equal(payload.tiers?.[0].price_usd, 7.5)
+  assert.equal(payload.is_closed, false)
 
   const hours = buildNightHoursPayload(
     draftFromNight(
@@ -486,7 +490,41 @@ test("stamped nights write tickets through the event; unstamped stay on the over
   )
   assert.equal(hours.start_time, "21:00:00")
   assert.equal(hours.end_time, "01:00:00")
-  assert.equal(hours.tiers, undefined, "hours save must not restamp ticket rows")
+  assert.equal(hours.tiers, undefined, "hours-only helper still omits tiers")
+})
+
+test("restamp_error and times_only_has_sales mean Saved is not live", () => {
+  assert.equal(TIMES_ONLY_HAS_SALES, "times_only_has_sales")
+  assert.equal(nightGuestPricesNotLive({ restamp: null, restamp_error: null }), false)
+  assert.deepEqual(nightSaveFeedback({ restamp: null, restamp_error: null }), {
+    live: true,
+    message: NIGHT_SAVE_LIVE,
+  })
+
+  assert.equal(restampSignalsTimesOnlyHasSales({ status: TIMES_ONLY_HAS_SALES }), true)
+  assert.equal(restampSignalsTimesOnlyHasSales(TIMES_ONLY_HAS_SALES), true)
+  assert.equal(nightGuestPricesNotLive({ restamp: { status: TIMES_ONLY_HAS_SALES }, restamp_error: null }), true)
+
+  const fromCode = nightSaveFeedback({ restamp: { status: TIMES_ONLY_HAS_SALES }, restamp_error: null })
+  assert.equal(fromCode.live, false)
+  assert.equal(fromCode.message, NIGHT_SAVE_NOT_LIVE)
+  assert.ok(fromCode.message.includes("Saved is not live"))
+  assert.ok(fromCode.message.includes("may still be the old one"))
+
+  const fromError = nightSaveFeedback({ restamp: null, restamp_error: "times_only_has_sales" })
+  assert.equal(fromError.live, false)
+  assert.ok(fromError.message.startsWith(NIGHT_SAVE_NOT_LIVE))
+  assert.ok(fromError.message.includes("times_only_has_sales"))
+
+  const page = readFileSync(
+    fileURLToPath(
+      new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)
+    ),
+    "utf8"
+  )
+  assert.ok(page.includes("nightSaveFeedback"), "page must use the not-live helper")
+  assert.ok(page.includes("restampWarning && !notice"), "do not show Saved beside a restamp miss")
+  assert.ok(page.includes("!restampWarning"), "success banner stays off when prices are not live")
 })
 
 test("override ticket form pins price and quantity independently", () => {

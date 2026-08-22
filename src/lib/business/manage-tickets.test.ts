@@ -1,6 +1,6 @@
 // Luke QA: Manage Tickets label, max-per-person 0 = unlimited, and the
 // shared list UX (drag handle + sold-out) must stay on ManageSalesTickets
-// so event edit and Weekly Cover night edit keep the same controls.
+// for event edit. Weekly Cover nights draft on the night page and Save night.
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
@@ -55,6 +55,7 @@ test("shared ticket editor keeps sold-out toggle and drag handle", () => {
   assert.ok(manage.includes("soldOut: true"))
 
   assert.ok(ticketsPage.includes("ManageSalesTickets"), "event Manage Tickets uses the shared editor")
-  assert.ok(editor.includes("ManageSalesTickets"), "Weekly Cover stamped nights reuse the shared editor")
-  assert.ok(editor.includes("allowReorder"), "night editor keeps drag-to-reorder on stamped tickets")
+  assert.ok(editor.includes("TicketEditForm"), "Weekly Cover night edit keeps the shared ticket card")
+  assert.ok(!editor.includes("<ManageSalesTickets"), "night page must not PUT /business/events/:id/tickets")
+  assert.ok(editor.includes("allowReorder={false}"), "night override cannot store ticket order")
 })
