@@ -32,7 +32,7 @@ import {
 
 /**
  * Night override can persist price, quantity, and is_disabled only. Name and
- * type stay visible so the card matches Manage sales; fields the API cannot
+ * type stay visible so the card matches Manage Tickets; fields the API cannot
  * store are omitted instead of rendered as dead controls.
  */
 export const OVERRIDE_TICKET_FORM_FIELDS: TicketFormVisibility = {

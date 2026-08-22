@@ -1074,7 +1074,7 @@ export function nightTierTicketType(
   return (tier.price_usd ?? 0) === 0 ? "free" : "paid"
 }
 
-/** Apply a manage-sales-style price/quantity edit to one override tier. */
+/** Apply a Manage Tickets-style price/quantity edit to one override tier. */
 export function applyOverrideTicketForm(
   draft: NightDraft,
   tierKey: string,

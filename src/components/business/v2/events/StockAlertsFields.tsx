@@ -21,7 +21,7 @@ interface StockAlertsFieldsProps {
  * Stock alerts — sold-out notification, plus an optional low-stock warning.
  *
  * Extracted verbatim from EventForm so the same control can sit in BOTH places
- * 5.0 wants it: step 2 of creation, and Manage sales on the management page
+ * 5.0 wants it: step 2 of creation, and Manage Tickets on the management page
  * (F11 — "Manage Tickets absorbs … Stock Alerts"). Presentational only; the
  * caller owns the state and the `lowstockInputToStored` validation, so create
  * and post-create editing can never drift apart.

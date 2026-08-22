@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type ReactNode } from "react"
 import { Reorder, useDragControls } from "framer-motion"
 import { Eye, EyeOff, Loader2, Plus } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { persistMaxPerPerson } from "@/lib/business/ticket-limits"
 import type { EventDetail, TicketTier } from "@/lib/business/types"
 import { cn, usd } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
@@ -141,14 +142,14 @@ function ticketSaveBody(editing: TicketFormState) {
     ticket_type: editing.ticket_type,
     price_usd: editing.ticket_type === "paid" ? parseFloat(editing.price_usd) || 0 : 0,
     quantity: parseInt(editing.quantity) || 0,
-    max_per_person: editing.max_per_person.trim() ? parseInt(editing.max_per_person) : null,
+    max_per_person: persistMaxPerPerson(editing.max_per_person),
     valid_from: editing.valid_from || null,
     valid_until: editing.valid_until || null,
   }
 }
 
 /**
- * Events → Manage sales ticket editor. Weekly Cover stamped nights reuse this
+ * Events → Manage Tickets editor. Weekly Cover stamped nights reuse this
  * against the night's event_id so Cover edits match General Admission.
  */
 export function ManageSalesTickets({
@@ -540,13 +541,13 @@ export function TicketEditForm({
             )}
             {show(fields.max_per_person) && (
               <div>
-                <Label className="mb-1 block text-xs">Max per person</Label>
+                <Label className="mb-1 block text-xs">Max per person (0 = unlimited)</Label>
                 <Input
                   type="number"
-                  min="1"
+                  min="0"
                   disabled={readOnly(fields.max_per_person)}
                   value={editing.max_per_person}
-                  placeholder="No limit"
+                  placeholder="0 = unlimited"
                   onChange={(e) => onChange({ ...editing, max_per_person: e.target.value })}
                 />
               </div>

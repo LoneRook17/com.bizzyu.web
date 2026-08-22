@@ -53,7 +53,7 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
  * the night stays on the program. A night that HAS been customized elsewhere
  * is read-only here (nightIsEditable) rather than silently written to.
  *
- * Tickets use the Events → Manage sales editor. A stamped night writes through
+ * Tickets use the Events → Manage Tickets editor. A stamped night writes through
  * that night's event ticket APIs (name, description, scan window, hide, sold
  * out). Unstamped nights keep the same card and persist price, quantity, and
  * hide through the override endpoint, which is the only write path before an
