@@ -508,8 +508,11 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   payments go to escrow. Show a soft nudge, not a blocker. */}
               {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && !isPending && (
                 <div className="mt-1.5">
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you&apos;re ready and we send what you&apos;ve earned.
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    Connect Stripe to receive payments instantly
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
                   </p>
                   <button
                     type="button"
@@ -922,9 +925,6 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <div className="flex flex-wrap items-center justify-end gap-3">
           {!isEditing && isPending && (
             <Badge variant="warning">Trial: saved as a draft until you&apos;re approved</Badge>
-          )}
-          {!isEditing && !isPending && hasPaidTicket && !stripeOnboarded && (
-            <Badge variant="warning">Saved as a draft, connect Stripe to publish</Badge>
           )}
           <Button type="submit" size="lg" disabled={loading}>
             {loading && <Loader2 className="animate-spin" />}

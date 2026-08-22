@@ -113,12 +113,12 @@ export default function EventsPage() {
         <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 flex items-start justify-between gap-3">
           <div className="flex-1">
             <p className="text-sm font-medium text-yellow-800">
-              {isPending ? "Stripe Connect not linked" : "You can post and sell now"}
+              {isPending ? "Stripe Connect not linked" : "Connect Stripe to receive payments instantly"}
             </p>
             <p className="text-xs text-yellow-700 mt-0.5">
               {isPending
                 ? "To create paid events, complete Stripe Connect onboarding. Free events can be created without Stripe."
-                : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
+                : "You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away."}
             </p>
             {stripeError && (
               <p className="text-xs text-red-600 mt-2">{stripeError}</p>
