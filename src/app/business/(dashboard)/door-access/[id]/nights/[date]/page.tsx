@@ -2,9 +2,11 @@
 
 import { use, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import * as SwitchPrimitive from "@radix-ui/react-switch"
 import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
+  applyNightHours,
   buildNightHoursPayload,
   buildNightOverridePayload,
   clearNightOverride,
@@ -13,17 +15,21 @@ import {
   fetchDoorAccessNight,
   fmtNightDate,
   fmtWindow,
+  fromTimeInput,
   nightChips,
   nightHasEventTickets,
   nightIsEditable,
   programHref,
+  resetNightHours,
   saveNightOverride,
+  toTimeInput,
   WEEKLY_ACCESS_SECTION_LABEL,
   validateNightDraft,
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
 } from "@/lib/business/door-access"
+import { cn } from "@/lib/v2/utils"
 import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -50,7 +56,9 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
  * that night's event ticket APIs (name, description, scan window, hide, sold
  * out). Unstamped nights keep the same card and persist price, quantity, and
  * hide through the override endpoint, which is the only write path before an
- * event exists. Hours still use Use default / Override.
+ * event exists. Hours are always visible. Matching the program window (or
+ * Reset to program default) sends null so the night tracks the template.
+ * Closed this night is a labeled switch.
  */
 export default function DoorAccessNightPage({
   params,
@@ -296,38 +304,6 @@ function Notice({
   )
 }
 
-/** Hours-only inherit switch. Price and capacity edit in place; this stays for the time window. */
-function InheritToggle({
-  inheriting,
-  onChange,
-  disabled,
-}: {
-  inheriting: boolean
-  onChange: (inherit: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        size="sm"
-        variant={inheriting ? "subtle" : "ghost"}
-        onClick={() => onChange(true)}
-        disabled={disabled}
-      >
-        Use default
-      </Button>
-      <Button
-        size="sm"
-        variant={!inheriting ? "subtle" : "ghost"}
-        onClick={() => onChange(false)}
-        disabled={disabled}
-      >
-        Override
-      </Button>
-    </div>
-  )
-}
-
 function HoursCard({
   draft,
   setDraft,
@@ -350,55 +326,110 @@ function HoursCard({
       <CardContent className="flex flex-col gap-4 pt-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-neutral-700 dark:text-neutral-300">Hours for this night</p>
-          <InheritToggle
-            inheriting={draft.inherit_times}
-            onChange={(inherit) => setDraft({ ...draft, inherit_times: inherit })}
-            disabled={!editable}
-          />
+          {draft.inherit_times ? (
+            <span className="text-[12px] text-neutral-400 dark:text-neutral-500">Program default</span>
+          ) : editable ? (
+            <button
+              type="button"
+              onClick={() => setDraft(resetNightHours(draft, program.start_time, program.end_time))}
+              className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+            >
+              Reset to program default
+            </button>
+          ) : null}
         </div>
 
-        {!draft.inherit_times && (
-          <div className="grid gap-3 sm:grid-cols-2 sm:max-w-md">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                Opens
-              </span>
-              <Input
-                type="time"
-                value={draft.start_time.slice(0, 5)}
-                disabled={!editable}
-                onChange={(e) => setDraft({ ...draft, start_time: `${e.target.value}:00` })}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                Closes
-              </span>
-              <Input
-                type="time"
-                value={draft.end_time.slice(0, 5)}
-                disabled={!editable}
-                onChange={(e) => setDraft({ ...draft, end_time: `${e.target.value}:00` })}
-              />
-            </label>
-          </div>
-        )}
+        <div className="grid gap-3 sm:grid-cols-2 sm:max-w-md">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+              Opens
+            </span>
+            <Input
+              type="time"
+              value={toTimeInput(draft.start_time)}
+              disabled={!editable}
+              onChange={(e) =>
+                setDraft(
+                  applyNightHours(
+                    draft,
+                    fromTimeInput(e.target.value),
+                    draft.end_time,
+                    program.start_time,
+                    program.end_time
+                  )
+                )
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+              Closes
+            </span>
+            <Input
+              type="time"
+              value={toTimeInput(draft.end_time)}
+              disabled={!editable}
+              onChange={(e) =>
+                setDraft(
+                  applyNightHours(
+                    draft,
+                    draft.start_time,
+                    fromTimeInput(e.target.value),
+                    program.start_time,
+                    program.end_time
+                  )
+                )
+              }
+            />
+          </label>
+        </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
-          <div>
-            <p className="text-sm text-neutral-700 dark:text-neutral-300">Closed this night</p>
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3",
+            draft.is_closed
+              ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
+              : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/40"
+          )}
+        >
+          <label htmlFor="closed-this-night" className="min-w-0 cursor-pointer">
+            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+              Closed this night
+            </p>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
               Stops sales for this date only. The rest of the program keeps running.
             </p>
+          </label>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                "text-sm font-semibold",
+                draft.is_closed
+                  ? "text-red-700 dark:text-red-300"
+                  : "text-neutral-500 dark:text-neutral-400"
+              )}
+            >
+              {draft.is_closed ? "On" : "Off"}
+            </span>
+            <SwitchPrimitive.Root
+              id="closed-this-night"
+              checked={draft.is_closed}
+              disabled={!editable}
+              onCheckedChange={(closed) => setDraft({ ...draft, is_closed: closed })}
+              aria-label="Closed this night"
+              className={cn(
+                "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#05EB54] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
+                draft.is_closed ? "bg-red-600" : "bg-neutral-300 dark:bg-neutral-600"
+              )}
+            >
+              <SwitchPrimitive.Thumb
+                className={cn(
+                  "pointer-events-none block size-5 rounded-full bg-white shadow-sm ring-0 transition-transform",
+                  draft.is_closed ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </SwitchPrimitive.Root>
           </div>
-          <Button
-            size="sm"
-            variant={draft.is_closed ? "danger" : "secondary"}
-            disabled={!editable}
-            onClick={() => setDraft({ ...draft, is_closed: !draft.is_closed })}
-          >
-            {draft.is_closed ? "Closed" : "Open"}
-          </Button>
         </div>
       </CardContent>
     </Card>
