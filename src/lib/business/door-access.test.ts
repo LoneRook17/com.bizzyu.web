@@ -517,7 +517,7 @@ test("redemptionModeLabel names both modes in host vocabulary", () => {
 test("D-P5: host surfaces never render the student string", () => {
   assert.equal(WEEKLY_ACCESS_TYPE_LABEL, "WEEKLY ACCESS")
   assert.equal(EVENT_TYPE_LABEL, "EVENT")
-  assert.equal(WEEKLY_ACCESS_CREATION_LABEL, "Weekly Cover / Skip the Line")
+  assert.equal(WEEKLY_ACCESS_CREATION_LABEL, "Weekly Cover")
   // "Door Access" is the CONSUMER name. It is the API path and the
   // program_kind, but it must not appear on a host-facing label.
   for (const label of [WEEKLY_ACCESS_TYPE_LABEL, EVENT_TYPE_LABEL, WEEKLY_ACCESS_CREATION_LABEL]) {
