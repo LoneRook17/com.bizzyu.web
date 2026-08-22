@@ -612,7 +612,12 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
               </p>
             </CardHeader>
             <CardContent className="pt-0">
-              <ImageUpload value={flyerImageUrl} onChange={setFlyerImageUrl} />
+              <ImageUpload
+                value={flyerImageUrl}
+                onChange={setFlyerImageUrl}
+                fallbackSrc={currentVenue?.photo_url ?? null}
+                fallbackCaption="Venue photo. Nights use this until you add a flyer."
+              />
             </CardContent>
           </Card>
         </>

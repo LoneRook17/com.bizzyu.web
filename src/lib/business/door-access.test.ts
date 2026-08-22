@@ -50,6 +50,7 @@ import {
   nightIsEditable,
   programHref,
   nightHref,
+  resolveProgramImageUrl,
   WEEKLY_ACCESS_TYPE_LABEL,
   WEEKLY_ACCESS_CREATION_LABEL,
   EVENT_TYPE_LABEL,
@@ -374,6 +375,7 @@ test("normalizeProgramSummary survives stringified numbers and 0/1 booleans", ()
   assert.equal(p.date_range_start, "2026-08-01", "a datetime is trimmed to its calendar date")
   assert.equal(p.next_night_date, "2026-08-28")
   assert.equal(p.flyer_image_url, null, "an empty string is not an image")
+  assert.equal(p.photo_url, null)
   assert.equal(p.template_tickets[0].price_usd, 10)
   assert.equal(p.tier_count, 1, "derived from the tiers when the server omits it")
   assert.equal(p.lowest_price_usd, 10)
@@ -563,6 +565,88 @@ test("visibleUpcomingNights defaults to the next 4, then expands", () => {
 test("nightDateBlock is calendar parts, never a tz-shifted day", () => {
   assert.deepEqual(nightDateBlock("2026-08-28"), { weekday: "Fri", month: "Aug", day: 28 })
   assert.equal(nightDateBlock("nonsense"), null)
+})
+
+test("normalizeProgramSummary keeps photo_url when the flyer is empty", () => {
+  const p = normalizeProgramSummary({
+    flyer_image_url: "",
+    photo_url: "https://cdn.example/venue.jpg",
+  })
+  assert.equal(p.flyer_image_url, null)
+  assert.equal(p.photo_url, "https://cdn.example/venue.jpg")
+})
+
+test("empty flyer still resolves to the venue photo", () => {
+  const venues = [{ id: 12, photo_url: "https://cdn.example/venue.jpg" }]
+  assert.equal(
+    resolveProgramImageUrl({ flyer_image_url: null, venue_id: 12 }, venues),
+    "https://cdn.example/venue.jpg",
+  )
+  assert.equal(
+    resolveProgramImageUrl({ flyer_image_url: "", venue_id: 12 }, venues),
+    "https://cdn.example/venue.jpg",
+  )
+  assert.equal(
+    resolveProgramImageUrl({ flyer_image_url: "   ", photo_url: "https://cdn.example/program.jpg" }),
+    "https://cdn.example/program.jpg",
+  )
+})
+
+test("a coalesced or uploaded flyer wins over the venue photo", () => {
+  assert.equal(
+    resolveProgramImageUrl(
+      {
+        flyer_image_url: "https://cdn.example/flyer.jpg",
+        photo_url: "https://cdn.example/program.jpg",
+        venue_id: 12,
+      },
+      [{ id: 12, photo_url: "https://cdn.example/venue.jpg" }],
+    ),
+    "https://cdn.example/flyer.jpg",
+  )
+})
+
+test("no image at all stays empty so the date-block / icon tile can stand in", () => {
+  assert.equal(
+    resolveProgramImageUrl({ flyer_image_url: null, venue_id: 12 }, [{ id: 12, photo_url: null }]),
+    null,
+  )
+  assert.equal(
+    resolveProgramImageUrl(
+      { flyer_image_url: null, venue_id: 99 },
+      [{ id: 12, photo_url: "https://cdn.example/venue.jpg" }],
+    ),
+    null,
+  )
+})
+
+test("create wizard previews the venue photo and still posts a null flyer", () => {
+  const wizardPath = fileURLToPath(
+    new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url),
+  )
+  const src = readFileSync(wizardPath, "utf8")
+  assert.ok(src.includes("flyer_image_url: flyerImageUrl || null"), "create still posts the uploaded flyer only")
+  assert.ok(src.includes("fallbackSrc={currentVenue?.photo_url ?? null}"), "empty upload must preview the venue photo")
+  assert.ok(src.includes("the venue photo stands in"), "create helper still promises the venue stand-in")
+  assert.ok(!/photo optional/i.test(src), "do not rewrite the helper to photo optional")
+  const caption = "Venue photo. Nights use this until you add a flyer."
+  assert.ok(src.includes(caption))
+  assert.ok(!caption.includes("\u2014") && !caption.includes("\u2013"))
+})
+
+test("list and program page use the flyer/venue image helper", () => {
+  const rowPath = fileURLToPath(
+    new URL("../../components/business/v2/door-access/AccessProgramRow.tsx", import.meta.url),
+  )
+  const pagePath = fileURLToPath(
+    new URL("../../app/business/(dashboard)/door-access/[id]/page.tsx", import.meta.url),
+  )
+  const row = readFileSync(rowPath, "utf8")
+  const page = readFileSync(pagePath, "utf8")
+  assert.ok(row.includes("resolveProgramImageUrl"))
+  assert.ok(page.includes("resolveProgramImageUrl"))
+  assert.ok(!row.includes("src={program.flyer_image_url}"), "list must not bind flyer only")
+  assert.ok(!page.includes("flyerUrl={program.flyer_image_url}"), "night cards must not bind flyer only")
 })
 
 test("program page host copy has no em dashes", () => {

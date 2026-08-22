@@ -1,11 +1,13 @@
 "use client"
 
 import { Zap } from "lucide-react"
+import { useVenue } from "@/lib/business/venue-context"
 import {
   accessRowStats,
   programHref,
   programMetaLine,
   programScheduleLine,
+  resolveProgramImageUrl,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/HostListCard"
@@ -21,9 +23,11 @@ import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/H
  * and picking one for the host would be a guess.
  */
 export function AccessProgramRow({ program }: { program: DoorAccessProgramSummary }) {
+  const { venues } = useVenue()
   const chips: Array<{ label: string; variant: "neutral" | "info" }> = []
   if (!program.is_active) chips.push({ label: "Ended", variant: "neutral" })
   if (program.promotion_enabled) chips.push({ label: "Promoted", variant: "info" })
+  const imageUrl = resolveProgramImageUrl(program, venues)
 
   return (
     <HostListCard
@@ -34,7 +38,7 @@ export function AccessProgramRow({ program }: { program: DoorAccessProgramSummar
       secondary={programScheduleLine(program)}
       chips={chips}
       thumbnail={
-        <HostCardThumbnail kind="access" src={program.flyer_image_url} alt={program.name} icon={Zap} />
+        <HostCardThumbnail kind="access" src={imageUrl} alt={program.name} icon={Zap} />
       }
       /* D2-C. An access row's at-a-glance question is "how is this week going",
          so the week leads. Its sold figure is STUBBED — see accessRowStats and

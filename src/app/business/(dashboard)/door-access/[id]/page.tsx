@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CalendarDays, Loader2, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
+import { useVenue } from "@/lib/business/venue-context"
 import {
   ACCESS_ACCENT,
   DEFAULT_NIGHT_PREVIEW_COUNT,
@@ -23,6 +24,7 @@ import {
   PROGRAM_LINK_DESCRIPTION,
   PROGRAM_LINK_LABEL,
   redemptionModeLabel,
+  resolveProgramImageUrl,
   splitNights,
   usdPrice,
   visibleUpcomingNights,
@@ -54,6 +56,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const { id } = use(params)
   const programId = Number(id)
   const { user } = useAuth()
+  const { venues } = useVenue()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [nights, setNights] = useState<DoorAccessNight[]>([])
@@ -90,6 +93,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   )
   const hiddenCount = Math.max(0, upcoming.length - visibleNights.length)
   const showMoreControl = upcoming.length > DEFAULT_NIGHT_PREVIEW_COUNT || showMoreNights || program?.is_active
+  const flyerUrl = program ? resolveProgramImageUrl(program, venues) : null
 
   if (loading && !program) {
     return (
@@ -166,7 +170,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                 key={night.occurrence_date}
                 night={night}
                 programId={programId}
-                flyerUrl={program.flyer_image_url}
+                flyerUrl={flyerUrl}
               />
             ))}
           </div>
