@@ -4,7 +4,16 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
-import { fetchVenuePublicData, resolveVenueEventImageUrl, type VenueData } from "@/lib/venuePublic"
+import {
+  eventCalendarDate,
+  fetchVenuePublicData,
+  formatNightChipLabel,
+  groupWeeklyAccessNights,
+  resolveVenueEventImageUrl,
+  weeklyAccessPriceLines,
+  type VenueData,
+  type VenueEvent,
+} from "@/lib/venuePublic"
 
 // How often the board silently re-fetches so newly-added events / tickets /
 // line skips appear on the mounted screen without a manual reload.
@@ -231,6 +240,122 @@ function ListingCard({
   )
 }
 
+/**
+ * One Weekly Access program: flyer (or venue photo), title, Cover $5 or
+ * named tiers, date chips under the card. Get access checks out the
+ * selected night only. No dropdown, no calendar.
+ */
+function WeeklyAccessProgramCard({
+  nights,
+  venue,
+  checkoutBaseUrl,
+  todayKey,
+}: {
+  nights: VenueEvent[]
+  venue: VenueData["venue"]
+  checkoutBaseUrl: string
+  todayKey: string | null
+}) {
+  const theme = DOOR_ACCESS_THEME
+  const first = nights[0]
+  const todayNight = todayKey
+    ? nights.find((night) => eventCalendarDate(night.start_date_time) === todayKey)
+    : undefined
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const selected =
+    nights.find((night) => night.event_id === (selectedId ?? todayNight?.event_id ?? first.event_id)) ?? first
+  const flyerNight = nights.find((night) => night.flyer_image_url) ?? selected
+  const cardImage = resolveVenueEventImageUrl(flyerNight, venue)
+  const prices = weeklyAccessPriceLines(nights)
+  const selectedIsToday =
+    todayKey != null && eventCalendarDate(selected.start_date_time) === todayKey
+
+  return (
+    <div>
+      <div className="overflow-hidden rounded-3xl border border-[#1e1e2e] bg-[#141420]">
+        <div className="relative h-48 w-full overflow-hidden bg-[#0d0d14]">
+          {cardImage ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={cardImage} alt={first.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <svg
+                className="h-10 w-10"
+                style={{ color: `${theme.accent}66` }}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
+          {selectedIsToday && (
+            <span
+              className="absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide text-black shadow-lg"
+              style={{ backgroundColor: theme.accent }}
+            >
+              Today
+            </span>
+          )}
+        </div>
+        <div className="p-5">
+          <h3 className="text-xl font-extrabold leading-snug text-white">{first.name}</h3>
+          {prices.length > 0 && (
+            <div className="mt-3 flex flex-col gap-1">
+              {prices.map((line) => (
+                <p key={line} className="text-2xl font-extrabold" style={{ color: theme.accent }}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+          <div className="mt-4 flex justify-end">
+            <a
+              href={`${checkoutBaseUrl}/checkout/${selected.event_id}`}
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-extrabold text-black transition hover:brightness-110"
+              style={{
+                backgroundImage: `linear-gradient(to bottom right, ${theme.accentDeep}, ${theme.accent})`,
+              }}
+            >
+              Get access
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Upcoming nights">
+        {nights.map((night) => {
+          const active = night.event_id === selected.event_id
+          return (
+            <button
+              key={night.event_id}
+              type="button"
+              onClick={() => setSelectedId(night.event_id)}
+              className="rounded-full px-3.5 py-1.5 text-sm font-bold transition"
+              style={
+                active
+                  ? { backgroundColor: theme.accent, color: "#000" }
+                  : {
+                      backgroundColor: `${theme.accent}1A`,
+                      color: theme.accent,
+                      boxShadow: `inset 0 0 0 1px ${theme.accent}66`,
+                    }
+              }
+            >
+              {formatNightChipLabel(night.start_date_time)}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function VenuePageClient({
   venueId,
   initialData,
@@ -304,6 +429,7 @@ export default function VenuePageClient({
   const isDoorAccessRow = (e: VenueData["events"][number]) => e.access_kind === "door_access"
   const eventRows = events.filter((e) => !isDoorAccessRow(e))
   const doorAccessRows = events.filter(isDoorAccessRow)
+  const weeklyAccessPrograms = groupWeeklyAccessNights(doorAccessRows)
 
   const stats = [
     eventRows.length > 0 && `${eventRows.length} upcoming ${eventRows.length === 1 ? "event" : "events"}`,
@@ -322,7 +448,6 @@ export default function VenuePageClient({
     todayKey ? [...rows.filter(isEventToday), ...rows.filter((e) => !isEventToday(e))] : rows
 
   const orderedEvents = todayFirst(eventRows)
-  const orderedDoorAccess = todayFirst(doorAccessRows)
   const todayEvents = todayKey ? eventRows.filter(isEventToday) : []
   const todayDoorAccess = todayKey ? doorAccessRows.filter(isEventToday) : []
   const hasToday = todayEvents.length > 0 || todayDoorAccess.length > 0
@@ -563,29 +688,22 @@ export default function VenuePageClient({
             section, which is the honest render. Only the Events section carries a
             placeholder, because a venue with neither must not paint a blank page.
 
-            §9 — every night here links to ITS OWN night checkout, via the same
-            per-night URL D2-D built. There is no program-level "buy" on this
-            page: you buy Thursday, not "Thursdays". */}
-        {doorAccessRows.length > 0 && (
+            One program card per series. Date chips pick the night; Get access
+            checks out that night only. */}
+        {weeklyAccessPrograms.length > 0 && (
           <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
-            <SectionHeader title={WEEKLY_ACCESS_SECTION_LABEL} count={doorAccessRows.length} theme={DOOR_ACCESS_THEME} />
+            <SectionHeader title={WEEKLY_ACCESS_SECTION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
             <p className="-mt-3 mb-5 text-sm text-gray-400">
               Pay the cover before you go and walk up. Scan with any phone camera at the door.
             </p>
-            <div className="grid gap-5 md:grid-cols-2">
-              {orderedDoorAccess.map((event) => (
-                <ListingCard
-                  key={event.event_id}
-                  event={event}
-                  theme={DOOR_ACCESS_THEME}
-                  today={isEventToday(event)}
+            <div className="grid gap-8 md:grid-cols-2">
+              {weeklyAccessPrograms.map((nights) => (
+                <WeeklyAccessProgramCard
+                  key={nights[0].recurring_series_id ?? nights[0].event_id}
+                  nights={nights}
+                  venue={venue}
                   checkoutBaseUrl={checkoutBaseUrl}
-                  ctaLabel="Get access"
-                  imageUrl={resolveVenueEventImageUrl(event, venue)}
-                  // A cover charge is one flat number, not a "from" range — the
-                  // tiers under it (cover / skip / VIP) are ways in, not seat
-                  // classes, so leading with "From" would misdescribe it.
-                  priceLabel={(price) => (price === 0 ? "Free" : `$${price.toFixed(2)}`)}
+                  todayKey={todayKey}
                 />
               ))}
             </div>

@@ -16,6 +16,11 @@ export const VENUE_EVENT_LOOKAHEAD = 20
 
 const LIVE_ONE_OFF_STATUSES = new Set(["published", "approved", "active"])
 
+export interface VenueAccessTier {
+  name: string
+  price_usd: number
+}
+
 export interface VenueEvent {
   event_id: number
   name: string
@@ -27,6 +32,8 @@ export interface VenueEvent {
   access_kind?: "event" | "door_access" | null
   status?: string | null
   venue_id?: number | null
+  recurring_series_id?: number | null
+  tickets: VenueAccessTier[]
 }
 
 export interface VenueData {
@@ -91,6 +98,9 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
   const price =
     row.min_ticket_price ?? row.lowest_price ?? null
 
+  const seriesRaw = row.recurring_series_id ?? row.series_id
+  const seriesId = seriesRaw == null || seriesRaw === "" ? null : Number(seriesRaw)
+
   return {
     event_id: eventId,
     name,
@@ -102,6 +112,8 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
     access_kind: accessKind,
     status: typeof row.status === "string" ? row.status : null,
     venue_id: row.venue_id == null ? null : Number(row.venue_id),
+    recurring_series_id: seriesId != null && Number.isFinite(seriesId) ? seriesId : null,
+    tickets: parseVenueAccessTiers(row.tickets ?? row.ticket_tiers),
   }
 }
 
@@ -135,7 +147,100 @@ function pickRicherEvent(a: VenueEvent, b: VenueEvent): VenueEvent {
     access_kind: b.access_kind ?? a.access_kind,
     status: b.status ?? a.status,
     venue_id: b.venue_id ?? a.venue_id,
+    recurring_series_id: b.recurring_series_id ?? a.recurring_series_id,
+    tickets: b.tickets.length > 0 ? b.tickets : a.tickets,
   }
+}
+
+export function parseVenueAccessTiers(raw: unknown): VenueAccessTier[] {
+  let rows = raw
+  if (typeof rows === "string") {
+    try {
+      rows = JSON.parse(rows)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(rows)) return []
+  return rows
+    .filter((tier): tier is Record<string, unknown> => !!tier && typeof tier === "object")
+    .filter((tier) => tier.is_hidden !== true && tier.is_hidden !== 1 && tier.is_hidden !== "1")
+    .map((tier) => {
+      const name =
+        typeof tier.name === "string" && tier.name.trim() ? tier.name.trim() : "Cover"
+      const price = Number(tier.price_usd ?? tier.price ?? tier.lowest_price ?? 0)
+      return { name, price_usd: Number.isFinite(price) ? price : 0 }
+    })
+}
+
+const CHIP_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+/** Calendar date from a wall-clock datetime. Never timezone-shifted. */
+export function eventCalendarDate(dateStr: string): string {
+  return dateStr.slice(0, 10)
+}
+
+/** "Mon 24" from "2026-08-24 21:00:00". Parsed as a calendar date, not a Date(). */
+export function formatNightChipLabel(dateStr: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(eventCalendarDate(dateStr))
+  if (!match) return dateStr
+  const y = Number(match[1])
+  const m = Number(match[2])
+  const d = Number(match[3])
+  if (m < 1 || m > 12 || d < 1 || d > 31) return dateStr
+  const weekday = CHIP_WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]
+  return `${weekday} ${d}`
+}
+
+export function formatAccessPrice(n: number): string {
+  if (!Number.isFinite(n)) return ""
+  if (n === 0) return "Free"
+  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+}
+
+/**
+ * One program card's price lines.
+ * A single Cover (or only a min price) reads "Cover $5".
+ * Two or more real tiers list each name + price.
+ */
+export function weeklyAccessPriceLines(nights: VenueEvent[]): string[] {
+  const withTiers = nights.find((night) => night.tickets.length > 0)
+  if (withTiers && withTiers.tickets.length > 0) {
+    return withTiers.tickets.map(
+      (tier) => `${tier.name} ${formatAccessPrice(tier.price_usd)}`.trim(),
+    )
+  }
+  const priced = nights.find((night) => night.min_ticket_price != null && night.min_ticket_price !== "")
+  if (!priced) return []
+  const n = Number(priced.min_ticket_price)
+  if (!Number.isFinite(n)) return []
+  return [`Cover ${formatAccessPrice(n)}`]
+}
+
+/**
+ * Group weekly nights into programs. Prefer recurring_series_id; if the
+ * public payload omits it, nights with the same name at the same venue
+ * are one program (The Dungeon's three Weekly Cover nights).
+ */
+export function groupWeeklyAccessNights(nights: VenueEvent[]): VenueEvent[][] {
+  const groups = new Map<string, VenueEvent[]>()
+  const order: string[] = []
+  for (const night of nights) {
+    const key =
+      night.recurring_series_id != null
+        ? `series:${night.recurring_series_id}`
+        : `name:${night.venue_id ?? ""}:${night.name.trim().toLowerCase()}`
+    const existing = groups.get(key)
+    if (existing) {
+      existing.push(night)
+      continue
+    }
+    groups.set(key, [night])
+    order.push(key)
+  }
+  return order.map((key) =>
+    (groups.get(key) ?? []).slice().sort((a, b) => a.start_date_time.localeCompare(b.start_date_time)),
+  )
 }
 
 function nonemptyPhotoUrl(v: string | null | undefined): string | null {
@@ -225,21 +330,30 @@ export async function fetchVenuePublicData(
   const seeds = eventIdSeeds([...listed, ...forVenue, ...catalog])
   const venueSeed = Math.max(0, ...eventIdSeeds([...listed, ...forVenue]))
   const catalogSeed = Math.max(0, ...eventIdSeeds(catalog))
+  const doorAccessIds = [...listed, ...forVenue]
+    .filter((event) => event.access_kind === "door_access")
+    .map((event) => event.event_id)
   const ids = new Set<number>([
     ...lookaheadIds(venueSeed),
     ...lookaheadIds(catalogSeed),
+    ...doorAccessIds,
   ])
-  for (const id of seeds) ids.delete(id)
+  for (const id of seeds) {
+    if (!doorAccessIds.includes(id)) ids.delete(id)
+  }
 
   const details = await Promise.all(
     [...ids].map(async (id) => {
       const raw = await fetchJson(`${base}/ui/events/${id}`)
       if (!raw || typeof raw !== "object") return null
-      const event = toVenueEvent(raw as Record<string, unknown>)
+      const event = toVenueEvent(eventPayload(raw))
       if (!event || !eventMatchesVenue(event, venueId)) return null
       return event
     }),
   )
+
+  let events = mergeVenueEvents(listed, forVenue, details.filter((e): e is VenueEvent => e != null))
+  events = await enrichWeeklyAccessTiers(base, events)
 
   return {
     ...venue,
@@ -247,8 +361,39 @@ export async function fetchVenuePublicData(
       ...venue.venue,
       venuePhotoUrl: coalesceVenuePhotoUrl(venue.venue),
     },
-    events: mergeVenueEvents(listed, forVenue, details.filter((e): e is VenueEvent => e != null)),
+    events,
     deals: Array.isArray(venue.deals) ? venue.deals : [],
     line_skips: Array.isArray(venue.line_skips) ? venue.line_skips : [],
   }
+}
+
+function eventPayload(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object") return {}
+  const row = raw as Record<string, unknown>
+  const nested = row.event
+  const base =
+    nested && typeof nested === "object" ? { ...(nested as Record<string, unknown>) } : { ...row }
+  if (!base.tickets && Array.isArray(row.tickets)) base.tickets = row.tickets
+  if (!base.ticket_tiers && Array.isArray(row.ticket_tiers)) base.ticket_tiers = row.ticket_tiers
+  return base
+}
+
+/** Checkout payload has the real tiers when /ui/events/:id only has a lowest price. */
+async function enrichWeeklyAccessTiers(base: string, events: VenueEvent[]): Promise<VenueEvent[]> {
+  const need = events.filter(
+    (event) => event.access_kind === "door_access" && event.tickets.length === 0,
+  )
+  if (need.length === 0) return events
+
+  const extras = await Promise.all(
+    need.map(async (event) => {
+      const raw = await fetchJson(`${base}/checkout/event/${event.event_id}`)
+      if (!raw || typeof raw !== "object") return null
+      const mapped = toVenueEvent(eventPayload(raw))
+      if (!mapped || mapped.event_id !== event.event_id) return null
+      return mapped.tickets.length > 0 || mapped.min_ticket_price != null ? mapped : null
+    }),
+  )
+
+  return mergeVenueEvents(events, extras.filter((e): e is VenueEvent => e != null))
 }
