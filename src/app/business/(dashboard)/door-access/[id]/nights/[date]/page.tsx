@@ -7,7 +7,6 @@ import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   applyNightHours,
-  buildNightHoursPayload,
   buildNightOverridePayload,
   clearNightOverride,
   draftFromNight,
@@ -17,8 +16,8 @@ import {
   fmtWindow,
   fromTimeInput,
   nightChips,
-  nightHasEventTickets,
   nightIsEditable,
+  nightSaveFeedback,
   programHref,
   resetNightHours,
   saveNightOverride,
@@ -29,6 +28,7 @@ import {
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
+  type NightOverrideResult,
 } from "@/lib/business/door-access"
 import { cn } from "@/lib/v2/utils"
 import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
@@ -47,19 +47,16 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
  * without restating the program and without evicting the night from series-wide
  * edits.
  *
- * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id stamps
- * series_customized_at, which permanently detaches the night from the program.
- * Ticket edits on a stamped night use /business/events/:id/tickets instead, so
- * the night stays on the program. A night that HAS been customized elsewhere
- * is read-only here (nightIsEditable) rather than silently written to.
+ * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id and
+ * PUT /business/events/:id/tickets stamp series_customized_at and detach the
+ * night from the program. Save night writes door_access_tier_overrides
+ * (hours + ticket price/qty). Core restamp copies those onto tickets.id.
+ * Ticket rows on this page draft only. A night that HAS been customized
+ * elsewhere is read-only here (nightIsEditable).
  *
- * Tickets use the Events → Manage Tickets editor. A stamped night writes through
- * that night's event ticket APIs (name, description, scan window, hide, sold
- * out). Unstamped nights keep the same card and persist price, quantity, and
- * hide through the override endpoint, which is the only write path before an
- * event exists. Hours are always visible. Matching the program window (or
- * Reset to program default) sends null so the night tracks the template.
- * Closed this night is a labeled switch.
+ * Hours are always visible. Matching the program window (or Reset to program
+ * default) sends null so the night tracks the template. Closed this night is
+ * a labeled switch.
  */
 export default function DoorAccessNightPage({
   params,
@@ -103,10 +100,21 @@ export default function DoorAccessNightPage({
   }, [load])
 
   /** Adopt whatever the server says the night is now. Never the local guess. */
-  const adopt = (result: { night: DoorAccessNight; restamp_error: string | null }) => {
+  const adopt = (result: { night: DoorAccessNight }) => {
     setNight(result.night)
     if (program) setDraft(draftFromNight(result.night, program))
-    setRestampWarning(result.restamp_error)
+  }
+
+  const showSaveOutcome = (result: NightOverrideResult, liveNotice: string) => {
+    adopt(result)
+    const feedback = nightSaveFeedback(result)
+    if (feedback.live) {
+      setNotice(liveNotice)
+      setRestampWarning(null)
+    } else {
+      setNotice(null)
+      setRestampWarning(feedback.message)
+    }
   }
 
   const handleSave = async () => {
@@ -121,12 +129,8 @@ export default function DoorAccessNightPage({
     setNotice(null)
     setRestampWarning(null)
     try {
-      const payload = nightHasEventTickets(night)
-        ? buildNightHoursPayload(draft)
-        : buildNightOverridePayload(draft)
-      const result = await saveNightOverride(programId, date, payload)
-      adopt(result)
-      setNotice("Saved.")
+      const result = await saveNightOverride(programId, date, buildNightOverridePayload(draft))
+      showSaveOutcome(result, "Saved.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save this night.")
     } finally {
@@ -141,8 +145,7 @@ export default function DoorAccessNightPage({
     setRestampWarning(null)
     try {
       const result = await clearNightOverride(programId, date)
-      adopt(result)
-      setNotice("This night is back on the program's defaults.")
+      showSaveOutcome(result, "This night is back on the program's defaults.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not reset this night.")
     } finally {
@@ -235,9 +238,9 @@ export default function DoorAccessNightPage({
       {!canEdit && <Notice tone="info">Only owners and managers can change a night.</Notice>}
 
       {saveError && <Notice tone="danger">{saveError}</Notice>}
-      {/* A restamp failure is a WARNING: the override IS saved. */}
-      {restampWarning && <Notice tone="warning">{restampWarning}</Notice>}
-      {notice && !saveError && <Notice tone="success">{notice}</Notice>}
+      {/* restamp_error / times_only_has_sales: override may be stored, prices are not live. */}
+      {restampWarning && !notice && <Notice tone="warning">{restampWarning}</Notice>}
+      {notice && !saveError && !restampWarning && <Notice tone="success">{notice}</Notice>}
 
       {night.passes_sold > 0 && (
         <Notice tone="info">
@@ -250,14 +253,12 @@ export default function DoorAccessNightPage({
       <HoursCard draft={draft} setDraft={setDraft} program={program} editable={editable} />
 
       <NightTicketsEditor
-        programId={programId}
-        date={date}
         program={program}
         night={night}
         draft={draft}
+        setDraft={setDraft}
         setProgram={setProgram}
         editable={editable}
-        onOverrideSaved={adopt}
       />
 
       {editable && draftHasOverrides(draft) && (
