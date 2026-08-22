@@ -8,13 +8,10 @@ import { apiClient, ApiError } from "@/lib/business/api-client"
 import {
   ARTWORK_TEMPLATE_OPTIONS,
   DEFAULT_ARTWORK_TEMPLATE,
-  DEFAULT_EVENT_REDEMPTION_MODE,
   EVENT_TYPES,
   EVENT_TYPE_HINTS,
   EVENT_TYPE_LABELS,
-  REDEMPTION_MODE_OPTIONS,
   type ArtworkTemplate,
-  type RedemptionMode,
 } from "@/lib/business/constants"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -28,7 +25,6 @@ import { cn } from "@/lib/v2/utils"
 import { ArtworkSection } from "./ArtworkSection"
 import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
 import { fmtDateTime, fmtTime } from "./eventStatus"
-import { ScannerModeSection } from "./ScannerModeSection"
 import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
 
@@ -135,7 +131,6 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     lowstock_threshold_type: initialData?.lowstock_threshold_type || "percent",
     lowstock_threshold_value: initialData?.lowstock_threshold_value ?? null,
     lowstock_notify_business_team: !!initialData?.lowstock_notify_business_team,
-    redemption_mode: initialData?.redemption_mode || DEFAULT_EVENT_REDEMPTION_MODE,
     artwork_template: initialData?.artwork_template ?? null,
     artwork_accent: initialData?.artwork_accent ?? null,
   })
@@ -357,9 +352,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         is_21_plus: form.is_21_plus,
         is_recurring: false,
         flyer_image_url: form.flyer_image_url || undefined,
-        // 5.0 D11 — how the door checks people in. Same vocabulary as the Door
-        // Access spine (native_scan | camera_tap).
-        redemption_mode: form.redemption_mode || DEFAULT_EVENT_REDEMPTION_MODE,
+        // V5 REDEMPTION — `redemption_mode` is NOT sent. The server derives it
+        // from access_kind (services Event.createFullEvent / updateEvent), and a
+        // value posted from here would be accepted and discarded anyway. Omitted
+        // rather than sent-and-ignored so the payload states the actual contract.
       }
 
       // 5.0 D10 — the template is only meaningful when there is no flyer; an
@@ -470,7 +466,6 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       : ""
   const commissionType = form.promotion_commission_type || "percent"
   const lowstockType = form.lowstock_threshold_type || "percent"
-  const redemptionMode: RedemptionMode = form.redemption_mode || DEFAULT_EVENT_REDEMPTION_MODE
 
   // What actually happens when this is submitted, stated in the same terms the
   // server decides it (see the hasPaidTicket comment above). `isPending` is the
@@ -694,19 +689,14 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </Card>
       )}
 
-      {/* Scanner mode — D11: the host chooses, per event, how the door works */}
-      <Card>
-        <CardHeader className="flex-col items-start gap-1">
-          <CardTitle>How will you check people in?</CardTitle>
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Pick the door flow your staff will use on the night.</p>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <ScannerModeSection
-            value={redemptionMode}
-            onChange={(mode) => setForm((prev) => ({ ...prev, redemption_mode: mode }))}
-          />
-        </CardContent>
-      </Card>
+      {/* V5 REDEMPTION — the "How will you check people in?" card is GONE.
+          It asked the host a question the create funnel had already answered one
+          screen earlier: this form builds an EVENT, and an event runs on the
+          Bizzy scanner. (A Door Access night is built by the wizard next door and
+          runs on camera + tap.) The type the host picked IS the choice, and the
+          server derives redemption_mode from it, so a selector here could only
+          ever produce an event whose door tooling contradicted its own product —
+          a contradiction that surfaced at the door, not at creation. */}
 
       {/* Promoter program */}
       {form.type === "Ticketed" && (
@@ -845,10 +835,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             <ReviewRow label="Where" value={[form.venue_name, form.venue_address].filter(Boolean).join(" · ") || "—"} />
             {form.is_21_plus && <ReviewRow label="Age" value="21+" />}
             {form.type === "Ticketed" && <ReviewRow label="Tickets" value={summariseTiers(form.tickets)} />}
-            <ReviewRow
-              label="Door"
-              value={REDEMPTION_MODE_OPTIONS.find((o) => o.value === redemptionMode)?.label ?? redemptionMode}
-            />
+            {/* Still shown, no longer a decision: the host should see what the
+                door will do, they just don't get to pick it. Reads off the same
+                derived value the server will stamp. */}
+            <ReviewRow label="Door" value="Bizzy scanner" />
             <ReviewRow label="Artwork" value={summariseArtwork(form.flyer_image_url, form.artwork_template)} />
             {form.type === "Ticketed" && (
               <ReviewRow

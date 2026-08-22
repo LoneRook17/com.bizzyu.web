@@ -23,7 +23,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { EventStepNav } from "@/components/business/v2/events/EventStepNav"
-import { ScannerModeSection } from "@/components/business/v2/events/ScannerModeSection"
 import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
 import { commissionInputToStored, lowstockInputToStored } from "@/components/business/v2/events/EventForm"
 import { ISO_DAYS, upcomingScheduleDates, scheduleSentence } from "@/components/business/v2/recurring/schedule"
@@ -76,6 +75,15 @@ interface CreateResponse {
   generation_error: string | null
 }
 
+/**
+ * V5 REDEMPTION — what a Door Access program's door ALWAYS does.
+ *
+ * Module scope, not state: it is a property of the product, not a field of this
+ * form. Kept only so the Review step can SHOW the host what their door will do —
+ * the value is derived server-side and this wizard no longer sends one.
+ */
+const DOOR_ACCESS_REDEMPTION_MODE: RedemptionMode = "camera_tap"
+
 export function DoorAccessWizard({ stripeOnboarded = true }: { stripeOnboarded?: boolean }) {
   const router = useRouter()
   const { venues, selectedVenue, setSelectedVenue } = useVenue()
@@ -103,10 +111,6 @@ export function DoorAccessWizard({ stripeOnboarded = true }: { stripeOnboarded?:
   const [tiers, setTiers] = useState<RecurringTierRow[]>([
     { ...EMPTY_RECURRING_TIER, name: "Cover" },
   ])
-  // The spine's default (DoorAccessProgramService.DEFAULT_REDEMPTION_MODE):
-  // this product is pitched on needing no scanner, so it defaults the opposite
-  // way from events.
-  const [redemptionMode, setRedemptionMode] = useState<RedemptionMode>("camera_tap")
   const [notifyFollowers, setNotifyFollowers] = useState(false)
   const [promotionEnabled, setPromotionEnabled] = useState(false)
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">("percent")
@@ -188,7 +192,8 @@ export function DoorAccessWizard({ stripeOnboarded = true }: { stripeOnboarded?:
       // `template_tickets` — the same field name the series template uses, so
       // one editor serves both. The server mints each tier_key.
       template_tickets: templateTiers,
-      redemption_mode: redemptionMode,
+      // V5 REDEMPTION — not sent: services derives camera_tap from the
+      // program's kind and discards anything a client posts here.
       notify_followers_on_publish: notifyFollowers,
       promotion_enabled: false,
     }
@@ -633,17 +638,13 @@ export function DoorAccessWizard({ stripeOnboarded = true }: { stripeOnboarded?:
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex-col items-start gap-1">
-              <CardTitle>How will you check people in?</CardTitle>
-              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                This is set once for the program and applies to every night.
-              </p>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <ScannerModeSection value={redemptionMode} onChange={setRedemptionMode} />
-            </CardContent>
-          </Card>
+          {/* V5 REDEMPTION — the check-in card is GONE from this wizard too, and
+              here the question was even emptier than on the event form: this
+              wizard builds Door Access and nothing else, and Door Access is sold
+              on "no staff setup — scan with any phone camera". Offering "Bizzy
+              scanner" let a host configure a program to demand tooling its own
+              pitch says it doesn't need. The server now derives camera + tap from
+              program_kind, so there is nothing left to ask. */}
 
           <Card>
             <CardHeader className="flex-col items-start gap-1">
@@ -822,7 +823,8 @@ export function DoorAccessWizard({ stripeOnboarded = true }: { stripeOnboarded?:
                 value={`${dateRangeStart || "—"} → ${dateRangeEnd || "no end date"}`}
               />
               <ReviewRow label="Door window" value={`${fmtTime(startTime)} – ${fmtTime(endTime)}`} />
-              <ReviewRow label="Check-in" value={redemptionModeLabel(redemptionMode)} />
+              {/* Shown, not chosen — the host sees what their door will do. */}
+              <ReviewRow label="Check-in" value={redemptionModeLabel(DOOR_ACCESS_REDEMPTION_MODE)} />
               <ReviewRow label="Age" value={is21Plus ? "21+ only" : "All ages"} />
             </CardContent>
           </Card>

@@ -173,6 +173,17 @@ export interface EventListItem {
    * type error rather than an ungrouped list, which is the safer degrade.
    */
   recurring_series_id?: number | null
+  /**
+   * V5 F14 — the pink flag. `'door_access'` marks one night of a Weekly Access
+   * program; `'event'` is everything else and is the column default.
+   *
+   * V5 REDEMPTION reads it to pick the DOOR SURFACE (scanner vs redemption list)
+   * on the manage page, because redemption is derived from kind rather than
+   * chosen. `SELECT e.*` has returned it since the F14 migration; optional so a
+   * response that predates the column degrades to 'event' rather than a type
+   * error — which is also the correct reading of a missing value.
+   */
+  access_kind?: 'event' | 'door_access' | null
   total_attendees: number
   total_revenue: number
   ticket_sales_count: number
