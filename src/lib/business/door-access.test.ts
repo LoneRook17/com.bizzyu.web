@@ -47,6 +47,7 @@ import {
   draftFromNight,
   buildNightOverridePayload,
   draftHasOverrides,
+  inheritIfMatchesTemplate,
   validateNightDraft,
   nightIsEditable,
   programHref,
@@ -262,6 +263,54 @@ test("clearing an override in the draft sends null, undoing the pin", () => {
 
   const payload = buildNightOverridePayload(draft)
   assert.equal(payload.tiers?.[0].price_usd, null)
+})
+
+test("inheritIfMatchesTemplate treats editing as the override", () => {
+  assert.equal(inheritIfMatchesTemplate(10, 10), true)
+  assert.equal(inheritIfMatchesTemplate(15, 10), false)
+  assert.equal(inheritIfMatchesTemplate(0, 0), true, "capacity 0 is unlimited and can still inherit")
+  assert.equal(inheritIfMatchesTemplate(null, 10), false)
+  assert.equal(inheritIfMatchesTemplate(Number.NaN, Number.NaN), false)
+  assert.equal(inheritIfMatchesTemplate(5, undefined), false)
+
+  const draft = draftFromNight(night(), program())
+  const template = night().tiers[0].template_price_usd
+  draft.tiers[0].price_usd = 15
+  draft.tiers[0].inherit_price = inheritIfMatchesTemplate(15, template)
+  assert.equal(buildNightOverridePayload(draft).tiers?.[0].price_usd, 15)
+
+  draft.tiers[0].price_usd = template
+  draft.tiers[0].inherit_price = inheritIfMatchesTemplate(template, template)
+  assert.equal(
+    buildNightOverridePayload(draft).tiers?.[0].price_usd,
+    null,
+    "matching the program default must un-pin"
+  )
+})
+
+test("night editor shows price and capacity as inputs, not Use default / Override toggles", () => {
+  const pagePath = fileURLToPath(
+    new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)
+  )
+  const src = readFileSync(pagePath, "utf8")
+
+  assert.ok(!src.includes("function FieldOverride"), "do not hide price/capacity behind FieldOverride")
+  assert.ok(!src.includes("{!inheriting && children}"), "inputs must stay visible while inheriting")
+  assert.ok(src.includes("function NightNumberField"), "price/capacity use the always-visible field")
+  assert.ok(src.includes('label="Price"'))
+  assert.ok(src.includes('label="Capacity"'))
+  assert.ok(src.includes('hint="0 = unlimited"'))
+  assert.ok(src.includes("inheritIfMatchesTemplate"), "typing a number is the override")
+  assert.ok(src.includes("inherit_price: inheritIfMatchesTemplate"))
+  assert.ok(src.includes("inherit_quantity: inheritIfMatchesTemplate"))
+
+  const inheritToggles = src.match(/<InheritToggle/g) ?? []
+  assert.equal(inheritToggles.length, 1, "only hours keep Use default / Override")
+  assert.ok(src.includes("inheriting={draft.inherit_times}"))
+  assert.ok(src.includes("Use default"))
+  assert.ok(src.includes("Override"))
+  assert.ok(src.includes("On sale"))
+  assert.ok(!src.includes("\u2014"), "night editor still has an em dash")
 })
 
 test("custom times survive, and is_closed is always explicit", () => {

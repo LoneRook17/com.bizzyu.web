@@ -13,6 +13,7 @@ import {
   fmtNightDate,
   fmtQuantity,
   fmtWindow,
+  inheritIfMatchesTemplate,
   nightChips,
   nightIsEditable,
   programHref,
@@ -35,8 +36,8 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The per-night override editor (D-F10.2).
  *
- * ONE night departs from the program template here — price, capacity, hours,
- * or closed entirely — without restating the program and without evicting the
+ * ONE night departs from the program template here: price, capacity, hours,
+ * or closed entirely, without restating the program and without evicting the
  * night from series-wide edits.
  *
  * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id stamps
@@ -46,11 +47,11 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
  * override endpoints instead, and a night that HAS been customized elsewhere
  * is read-only here (nightIsEditable) rather than silently written to.
  *
- * INHERIT IS A REAL STATE, not "same value as the template". Every field can
- * be pinned or released, and releasing sends null so the night tracks the
- * template again the next time it moves. Rendering a released field as the
- * template's current number and saving that would freeze the night at today's
- * price — the bug this whole draft model exists to prevent.
+ * Price and capacity are always editable. Typing a different number pins that
+ * night; matching the program default (or Reset) sends null so the night
+ * tracks the template again. Hours still use an explicit Use default / Override
+ * control. Saving the template's current number as a value would freeze the
+ * night at today's price the next time the program moves.
  */
 export default function DoorAccessNightPage({
   params,
@@ -93,7 +94,7 @@ export default function DoorAccessNightPage({
     load()
   }, [load])
 
-  /** Adopt whatever the server says the night is now — never the local guess. */
+  /** Adopt whatever the server says the night is now. Never the local guess. */
   const adopt = (result: { night: DoorAccessNight; restamp_error: string | null }) => {
     setNight(result.night)
     if (program) setDraft(draftFromNight(result.night, program))
@@ -202,20 +203,20 @@ export default function DoorAccessNightPage({
         }
       />
 
-      {/* Why this night can't be edited here — stated, never a dead form. */}
+      {/* Why this night can't be edited here. Stated, never a dead form. */}
       {!nightIsEditable(night) && (
         <Notice tone="warning">
           {night.status === "cancelled"
             ? "This night is cancelled. Cancelled nights can't be re-priced."
-            : "This night was edited directly as an event, so it no longer follows the program. Change it on its event page — edits made here wouldn't show up there."}
+            : "This night was edited directly as an event, so it no longer follows the program. Change it on its event page. Edits made here wouldn't show up there."}
         </Notice>
       )}
 
-      {/* Unstamped is not an error state — overrides key off the DATE, which is
+      {/* Unstamped is not an error state. Overrides key off the DATE, which is
           what lets a host price a holiday weeks before the night exists. */}
       {editable && !night.is_stamped && (
         <Notice tone="info">
-          This night hasn&apos;t been generated yet. You can still price it — the settings apply
+          This night hasn&apos;t been generated yet. You can still price it. The settings apply
           automatically when it&apos;s created.
         </Notice>
       )}
@@ -241,8 +242,8 @@ export default function DoorAccessNightPage({
 
       {editable && draftHasOverrides(draft) && (
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          This night differs from the program defaults. Anything set to{" "}
-          <span className="font-medium">Use default</span> keeps following the program.
+          This night differs from the program defaults. Reset a field to follow the program
+          again.
         </p>
       )}
     </>
@@ -284,7 +285,7 @@ function Notice({
   )
 }
 
-/** Inherit ⇄ override switch. The same control for every field, so "Use default" always means null. */
+/** Hours-only inherit switch. Price and capacity edit in place; this stays for the time window. */
 function InheritToggle({
   inheriting,
   onChange,
@@ -414,7 +415,7 @@ function TiersCard({
       <CardHeader>
         <CardTitle>Tiers this night</CardTitle>
         <span className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          Program defaults unless overridden
+          Change a number to set it for this night only
         </span>
       </CardHeader>
       <CardContent className="pt-0">
@@ -426,6 +427,9 @@ function TiersCard({
           <div className="flex flex-col divide-y divide-neutral-100 dark:divide-neutral-800">
             {draft.tiers.map((tier, index) => {
               const source = night.tiers.find((t) => t.tier_key === tier.tier_key)
+              const templatePrice = source?.template_price_usd ?? null
+              const templateQuantity = source?.template_quantity ?? null
+              const fieldEditable = editable && !tier.is_disabled
               return (
                 <div key={tier.tier_key} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -434,8 +438,8 @@ function TiersCard({
                         {source?.name || tier.tier_key}
                       </p>
                       <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                        Default {usdPrice(source?.template_price_usd ?? null)} ·{" "}
-                        {fmtQuantity(source?.template_quantity ?? 0)}
+                        Program default {usdPrice(templatePrice)} ·{" "}
+                        {fmtQuantity(templateQuantity ?? 0)}
                       </p>
                     </div>
                     <Button
@@ -449,46 +453,60 @@ function TiersCard({
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <FieldOverride
+                    <NightNumberField
                       label="Price"
                       inheriting={tier.inherit_price}
-                      onInherit={(inherit) => patch(index, { inherit_price: inherit })}
-                      editable={editable && !tier.is_disabled}
+                      editable={fieldEditable}
+                      onReset={() =>
+                        patch(index, {
+                          price_usd: templatePrice,
+                          inherit_price: true,
+                        })
+                      }
                     >
                       <Input
                         type="number"
                         min={0}
                         step="0.01"
                         value={tier.price_usd ?? ""}
-                        disabled={!editable || tier.is_disabled}
-                        onChange={(e) =>
+                        disabled={!fieldEditable}
+                        onChange={(e) => {
+                          const price_usd = e.target.value === "" ? null : Number(e.target.value)
                           patch(index, {
-                            price_usd: e.target.value === "" ? null : Number(e.target.value),
+                            price_usd,
+                            inherit_price: inheritIfMatchesTemplate(price_usd, templatePrice),
                           })
-                        }
+                        }}
                       />
-                    </FieldOverride>
+                    </NightNumberField>
 
-                    <FieldOverride
+                    <NightNumberField
                       label="Capacity"
                       hint="0 = unlimited"
                       inheriting={tier.inherit_quantity}
-                      onInherit={(inherit) => patch(index, { inherit_quantity: inherit })}
-                      editable={editable && !tier.is_disabled}
+                      editable={fieldEditable}
+                      onReset={() =>
+                        patch(index, {
+                          quantity: templateQuantity,
+                          inherit_quantity: true,
+                        })
+                      }
                     >
                       <Input
                         type="number"
                         min={0}
                         step="1"
                         value={tier.quantity ?? ""}
-                        disabled={!editable || tier.is_disabled}
-                        onChange={(e) =>
+                        disabled={!fieldEditable}
+                        onChange={(e) => {
+                          const quantity = e.target.value === "" ? null : Number(e.target.value)
                           patch(index, {
-                            quantity: e.target.value === "" ? null : Number(e.target.value),
+                            quantity,
+                            inherit_quantity: inheritIfMatchesTemplate(quantity, templateQuantity),
                           })
-                        }
+                        }}
                       />
-                    </FieldOverride>
+                    </NightNumberField>
                   </div>
                 </div>
               )
@@ -500,19 +518,20 @@ function TiersCard({
   )
 }
 
-function FieldOverride({
+/** Always-visible number field. Editing is the override; Reset returns to the program. */
+function NightNumberField({
   label,
   hint,
   inheriting,
-  onInherit,
   editable,
+  onReset,
   children,
 }: {
   label: string
   hint?: string
   inheriting: boolean
-  onInherit: (inherit: boolean) => void
   editable: boolean
+  onReset: () => void
   children: React.ReactNode
 }) {
   return (
@@ -524,9 +543,19 @@ function FieldOverride({
             <span className="ml-1.5 font-normal text-neutral-400 dark:text-neutral-500">{hint}</span>
           )}
         </span>
-        <InheritToggle inheriting={inheriting} onChange={onInherit} disabled={!editable} />
+        {inheriting ? (
+          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">Program default</span>
+        ) : editable ? (
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+          >
+            Reset
+          </button>
+        ) : null}
       </div>
-      {!inheriting && children}
+      {children}
     </div>
   )
 }

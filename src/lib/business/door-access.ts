@@ -871,10 +871,23 @@ export interface NightDraft {
 }
 
 /**
+ * Typing a price or capacity is the override. Matching the program default
+ * again releases the pin (null on save) so the night keeps tracking the
+ * template. Empty or non-finite values stay overridden so validation can
+ * catch them instead of quietly inheriting.
+ */
+export function inheritIfMatchesTemplate(
+  value: number | null,
+  template: number | null | undefined
+): boolean {
+  return value != null && Number.isFinite(value) && value === template
+}
+
+/**
  * Seed a draft from the night the server returned.
  *
- * A tier is "inheriting" when its effective value still equals the template's
- * — the server's is_overridden covers the tier as a whole, but price and
+ * A tier is "inheriting" when its effective value still equals the template's.
+ * The server's is_overridden covers the tier as a whole, but price and
  * quantity override independently, so each is compared on its own.
  */
 export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgram): NightDraft {
@@ -885,9 +898,9 @@ export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgra
     is_closed: night.is_closed,
     tiers: night.tiers.map((tier) => ({
       tier_key: tier.tier_key,
-      inherit_price: tier.price_usd === tier.template_price_usd,
+      inherit_price: inheritIfMatchesTemplate(tier.price_usd, tier.template_price_usd),
       price_usd: tier.price_usd,
-      inherit_quantity: tier.quantity === tier.template_quantity,
+      inherit_quantity: inheritIfMatchesTemplate(tier.quantity, tier.template_quantity),
       quantity: tier.quantity,
       is_disabled: tier.is_disabled,
     })),
