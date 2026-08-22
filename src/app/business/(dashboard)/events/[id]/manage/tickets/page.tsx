@@ -226,7 +226,7 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
       return
     }
     if (editing.valid_from && editing.valid_until && editing.valid_from >= editing.valid_until) {
-      setSaveError('"Valid from" must be before "valid until"')
+      setSaveError('"From" must be before "Until"')
       return
     }
     setSaving(true)

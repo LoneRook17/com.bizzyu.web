@@ -156,7 +156,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           const from = tier.valid_from_day_offset * 1440 + toMinutes(tier.valid_from_time)
           const until = tier.valid_until_day_offset * 1440 + toMinutes(tier.valid_until_time)
           if (from >= until) {
-            errs.tickets = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends on “the day after”)`
+            errs.tickets = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
             break
           }
         }
@@ -542,7 +542,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Tickets</CardTitle>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-              Every night gets a fresh set of these tickets. Sales and scan windows are relative to each night.
+              Every night gets a fresh set of these tickets.
             </p>
           </CardHeader>
           <CardContent className="pt-0">

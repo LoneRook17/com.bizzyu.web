@@ -113,7 +113,6 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
   const [tiers, setTiers] = useState<RecurringTierRow[]>([
     { ...EMPTY_RECURRING_TIER, name: "Cover" },
   ])
-  const [notifyFollowers, setNotifyFollowers] = useState(false)
   const [promotionEnabled, setPromotionEnabled] = useState(false)
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">("percent")
   const [promotionValueInput, setPromotionValueInput] = useState("")
@@ -195,7 +194,8 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
       template_tickets: templateTiers,
       // V5 REDEMPTION — not sent: services derives camera_tap from the
       // program's kind and discards anything a client posts here.
-      notify_followers_on_publish: notifyFollowers,
+      // Weekly access create does not announce to followers.
+      notify_followers_on_publish: false,
       promotion_enabled: false,
     }
 
@@ -252,7 +252,7 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
         const from = tier.valid_from_day_offset * 1440 + toMinutes(tier.valid_from_time)
         const until = tier.valid_until_day_offset * 1440 + toMinutes(tier.valid_until_time)
         if (from >= until) {
-          errs.tiers = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends on “the day after”)`
+          errs.tiers = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
           break
         }
       }
@@ -654,26 +654,6 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
               scanner" let a host configure a program to demand tooling its own
               pitch says it doesn't need. The server now derives camera + tap from
               program_kind, so there is nothing left to ask. */}
-
-          <Card>
-            <CardHeader className="flex-col items-start gap-1">
-              <CardTitle>Notify followers</CardTitle>
-              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Saved onto each night. You can announce any single night from its page.
-              </p>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <label className="flex w-fit cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={notifyFollowers}
-                  onChange={(e) => setNotifyFollowers(e.target.checked)}
-                  className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
-                />
-                <span className="text-sm text-neutral-700 dark:text-neutral-300">Announce to venue followers</span>
-              </label>
-            </CardContent>
-          </Card>
 
           <Card>
             <CardHeader className="flex-col items-start gap-1">
