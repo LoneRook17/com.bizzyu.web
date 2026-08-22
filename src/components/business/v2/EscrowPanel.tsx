@@ -16,7 +16,7 @@
 //               the existing Stripe onboarding CTA (same POST the settings
 //               StripeConnectCard uses)
 //   processing  a claim is on its way to the bank ("Payment processing")
-//   paid        everything claimed — quiet confirmation + history
+//   paid        everything claimed. Quiet confirmation + shared EscrowHistory.
 //
 // ONE NUMBER (amendment A4): escrow credits settle immediately, so there is
 // no available/pending split anywhere in this component.
@@ -30,19 +30,14 @@ import {
   deriveEscrowPanelState,
   escrowHeroCents,
   centsUsd,
-  signedCentsUsd,
-  fmtEntryTimestamp,
-  entryLabel,
-  entryStatusBadge,
-  visibleEscrowEntries,
   type EscrowPanelData,
   type EscrowPanelState,
-  type EscrowLedgerEntry,
 } from "@/lib/business/escrow"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Badge } from "@/components/business/v2/ui/badge"
+import EscrowHistory from "@/components/business/v2/EscrowHistory"
 
 /** The existing onboarding CTA — byte-identical flow to the settings
  *  StripeConnectCard: POST the onboard link, then hand the browser to Stripe. */
@@ -72,52 +67,6 @@ function ConnectStripeButton() {
           : (<>Connect Stripe to claim it <ArrowUpRight /></>)}
       </Button>
       {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
-    </div>
-  )
-}
-
-function LedgerRow({ entry, withBorder }: { entry: EscrowLedgerEntry; withBorder: boolean }) {
-  const label = entryLabel(entry)
-  const badge = entryStatusBadge(entry)
-  return (
-    <div className={cn("flex items-center gap-3 px-5 py-3", withBorder && "border-t border-neutral-100 dark:border-neutral-800")}>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">{label.title}</span>
-          {badge && <Badge variant={badge.variant} size="sm">{badge.label}</Badge>}
-        </span>
-        <span className="block truncate text-[13px] text-neutral-500 dark:text-neutral-400">
-          {label.reference ? `${label.reference} · ` : ""}{fmtEntryTimestamp(entry.created_at)}
-        </span>
-      </span>
-      <span className={cn(
-        "shrink-0 text-sm font-semibold tabular-nums",
-        entry.amount_cents > 0 ? "text-green-600 dark:text-green-400" : "text-neutral-900 dark:text-neutral-100",
-      )}>
-        {signedCentsUsd(entry.amount_cents)}
-      </span>
-    </div>
-  )
-}
-
-function Ledger({ entries }: { entries: EscrowLedgerEntry[] }) {
-  const [expanded, setExpanded] = useState(false)
-  if (entries.length === 0) return null
-  const { rows, hiddenCount } = visibleEscrowEntries(entries, expanded)
-  return (
-    <div className="border-t border-neutral-100 dark:border-neutral-800">
-      <p className="px-5 pt-3.5 text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-        History
-      </p>
-      {rows.map((e, i) => <LedgerRow key={e.id} entry={e} withBorder={i > 0} />)}
-      {hiddenCount > 0 && (
-        <button
-          onClick={() => setExpanded(true)}
-          className="w-full cursor-pointer border-t border-neutral-100 px-5 py-3 text-left text-[13px] font-semibold text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-neutral-900 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-100"
-        >
-          Show all {entries.length} entries
-        </button>
-      )}
     </div>
   )
 }
@@ -238,7 +187,7 @@ function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant;
         )}
       </div>
 
-      <Ledger entries={data.summary.entries} />
+      <EscrowHistory entries={data.summary.entries} />
     </Card>
   )
 }
