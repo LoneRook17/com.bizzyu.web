@@ -328,7 +328,7 @@ test("inheritIfMatchesTemplate treats editing as the override", () => {
   )
 })
 
-test("night ticket editor matches Manage sales and stays on the night", () => {
+test("night ticket editor matches Manage Tickets and stays on the night", () => {
   const pagePath = fileURLToPath(
     new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)
   )
@@ -348,11 +348,11 @@ test("night ticket editor matches Manage sales and stays on the night", () => {
   assert.ok(!/href=\{?[`'"]\/business\/events/.test(src), "do not link off the night to event edit")
   assert.ok(src.includes("nightIsEditable"), "customized nights stay read-only here")
   assert.ok(!src.includes("function NightNumberField"), "price/capacity no longer use the simplified field")
-  assert.ok(!src.includes("function TiersCard"), "replace Tiers this night with Manage sales cards")
+  assert.ok(!src.includes("function TiersCard"), "replace Tiers this night with Manage Tickets cards")
 
-  assert.ok(editor.includes("ManageSalesTickets"), "stamped nights reuse the Manage sales editor")
+  assert.ok(editor.includes("ManageSalesTickets"), "stamped nights reuse the Manage Tickets editor")
   assert.ok(editor.includes("/business/events/${eventId}/tickets") || manage.includes("/business/events/${eventId}/tickets"))
-  assert.ok(manage.includes("ScanWindowSection"), "scan window must be the Manage sales control")
+  assert.ok(manage.includes("ScanWindowSection"), "scan window must be the Manage Tickets control")
   const scanSrc = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/events/ScanWindowSection.tsx", import.meta.url)),
     "utf8"
@@ -361,10 +361,11 @@ test("night ticket editor matches Manage sales and stays on the night", () => {
   assert.ok(scanSrc.includes("Optional. For early entry"))
   assert.ok(manage.includes("StockAlertsFields"), "stock alerts stay on the ticket editor")
   assert.ok(manage.includes("Mark sold out"))
+  assert.ok(manage.includes('aria-label="Drag to reorder"'))
   assert.ok(manage.includes("Hide"))
   assert.ok(manage.includes("Save changes"))
   assert.ok(manage.includes("Quantity (0 = unlimited)"))
-  assert.ok(manage.includes("Max per person"))
+  assert.ok(manage.includes("Max per person (0 = unlimited)"))
   assert.ok(manage.includes("Price (USD)"))
 
   assert.ok(editor.includes("OVERRIDE_TICKET_FORM_FIELDS"), "unstamped nights keep the same card")

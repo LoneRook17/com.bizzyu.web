@@ -13,7 +13,7 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
       header={({ editing, addButton }) => (
         <ManageSubheader
           eventId={id}
-          title="Manage sales"
+          title="Manage Tickets"
           actions={!editing ? addButton : undefined}
         />
       )}

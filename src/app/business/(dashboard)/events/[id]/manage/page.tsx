@@ -153,11 +153,11 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   ]
 
   // Event Setup — the things you configure before the doors open. "Manage
-  // sales" is the tickets page, which owns tiers, the group sellout toggle and
+  // Tickets" is the tickets page, which owns tiers, the group sellout toggle and
   // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
   const setupTiles: Tile[] = [
     { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
-    { href: `${base}/tickets`, icon: Ticket, title: "Manage sales", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
+    { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
     { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
   ]
 
