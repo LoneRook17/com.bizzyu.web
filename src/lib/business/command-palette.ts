@@ -1,4 +1,4 @@
-import { canAccessPayouts, type BusinessRole } from "./payouts-access"
+import { canAccessPayouts, type BusinessRole } from "./payouts-access.ts"
 
 export type PaletteItemKind = "page" | "event" | "deal"
 
