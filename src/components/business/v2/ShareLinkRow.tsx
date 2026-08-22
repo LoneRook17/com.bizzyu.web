@@ -59,6 +59,7 @@ export default function ShareLinkRow({
   url,
   title,
   label = "Event link",
+  description,
   variant = "card",
   className,
 }: {
@@ -67,6 +68,8 @@ export default function ShareLinkRow({
   /** Share-sheet title (the event/night name). */
   title: string
   label?: string
+  /** Optional second line under the label (e.g. "Every upcoming night"). */
+  description?: string
   variant?: ShareLinkVariant
   className?: string
 }) {
@@ -108,6 +111,9 @@ export default function ShareLinkRow({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{label}</p>
+        {description && (
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{description}</p>
+        )}
         <p className="truncate font-mono text-xs text-neutral-500 dark:text-neutral-400" title={url}>{url}</p>
       </div>
       <button
