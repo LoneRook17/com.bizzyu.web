@@ -27,6 +27,9 @@ export const ANALYTICS_ACCESS_ACTIVE_SECTION = `Active ${ANALYTICS_ACCESS_TAB_LA
 
 export const ANALYTICS_ACCESS_PAST_SECTION = `Past ${ANALYTICS_ACCESS_TAB_LABEL}`
 
+/** First tile on the Weekly Access analytics list (nights, not one-off events). */
+export const ANALYTICS_ACCESS_TOTAL_LABEL = "Total nights"
+
 export const ANALYTICS_HELP_INTRO =
   `Track your performance across events, deals, and ${ANALYTICS_ACCESS_TAB_LABEL}.`
 
@@ -44,6 +47,7 @@ export const ANALYTICS_HOST_COPY = [
   ANALYTICS_ACCESS_EMPTY_DESCRIPTION,
   ANALYTICS_ACCESS_ACTIVE_SECTION,
   ANALYTICS_ACCESS_PAST_SECTION,
+  ANALYTICS_ACCESS_TOTAL_LABEL,
   ANALYTICS_HELP_INTRO,
   ANALYTICS_HELP_TABS,
   ANALYTICS_HELP_REVENUE_FAQ,

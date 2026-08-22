@@ -496,6 +496,12 @@ export interface EventOverviewItem {
   revenue: number
   checkin_rate: number
   door_sales_count: number
+  /**
+   * Same pink flag as EventListItem. Weekly Cover nights are real events
+   * rows with `'door_access'`; one-off events are `'event'` (or omitted on
+   * older overview payloads). Analytics buckets on this, then event id.
+   */
+  access_kind?: "event" | "door_access" | null
 }
 
 export interface EventsOverview {
