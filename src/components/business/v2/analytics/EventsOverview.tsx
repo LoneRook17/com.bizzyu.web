@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ChevronDown, CalendarDays } from "lucide-react"
 import type { EventsOverview, EventOverviewItem, EventAnalytics } from "@/lib/business/types"
+import { promoterDisplayName } from "@/lib/business/promoter-display-name"
 import { apiClient } from "@/lib/business/api-client"
 import { usd } from "@/lib/v2/utils"
 import { cn } from "@/lib/v2/utils"
@@ -158,7 +159,7 @@ function EventDetail({ data }: { data: EventAnalytics }) {
             <tbody>
               {data.trackingLinks.map((link) => (
                 <tr key={link.tracking_link_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
-                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{link.promoter_name}</td>
+                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{promoterDisplayName(link)}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.clicks}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.sales_count}</td>
                   <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd((link.commission_cents ?? 0) / 100)}</td>

@@ -389,6 +389,8 @@ export interface EventAnalytics {
   tierBreakdown: { ticket_id: number; tier_name: string; sold: number; revenue: number }[]
   trackingLinks: {
     tracking_link_id: number
+    // Legacy column. New rows persist "" on purpose; Name must fall back
+    // through other identity fields (see promoterDisplayName).
     promoter_name: string
     code: string
     sales_count: number
@@ -396,6 +398,14 @@ export interface EventAnalytics {
     // Combined pending+paid commission cents for this promoter on this event.
     // Excludes clawed_back. New 2026-05-12 (May 2026 promoter rework).
     commission_cents: number
+    // Optional extras the insights payload may already send. Absent or ""
+    // is treated as missing by promoterDisplayName.
+    display_name?: string | null
+    full_name?: string | null
+    first_name?: string | null
+    last_name?: string | null
+    email?: string | null
+    promo_code?: string | null
   }[]
   revenue: {
     // The "Revenue" tile reads this - now matches the Stripe payout (net of
