@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
 import { fetchVenuePublicData } from "@/lib/venuePublic"
 import VenuePageClient from "./VenuePageClient"
 
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // §8 — the fallback description follows what the page actually shows now.
   const description =
     data?.venue?.description ||
-    `Check out events, door access, and deals at ${venueName} on Bizzy.`
+    `Check out events, ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, and deals at ${venueName} on Bizzy.`
 
   return {
     title: `${venueName} | Bizzy`,

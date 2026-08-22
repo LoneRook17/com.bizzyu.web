@@ -6,13 +6,19 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
+  coalesceVenuePhotoUrl,
   eventIdSeeds,
   eventMatchesVenue,
+  formatAccessPrice,
+  formatNightChipLabel,
+  groupWeeklyAccessNights,
   lookaheadIds,
   mergeVenueEvents,
+  resolveVenueEventImageUrl,
   shouldListOnVenuePage,
   toVenueEvent,
   VENUE_EVENT_LOOKAHEAD,
+  weeklyAccessPriceLines,
   type VenueEvent,
 } from "./venuePublic.ts"
 
@@ -28,6 +34,7 @@ function event(extra: Partial<VenueEvent> = {}): VenueEvent {
     access_kind: "event",
     status: "published",
     venue_id: 990198,
+    tickets: [],
     ...extra,
   }
 }
@@ -56,6 +63,7 @@ test("toVenueEvent maps /ui/events lowest_price onto min_ticket_price", () => {
   assert.equal(row.min_ticket_price, "10.00")
   assert.equal(row.access_kind, "door_access")
   assert.equal(row.status, "draft")
+  assert.deepEqual(row.tickets, [])
 })
 
 test("toVenueEvent drops a row with no id or name", () => {
@@ -125,4 +133,156 @@ test("the venue page loads through fetchVenuePublicData, not the venue list alon
     !/fetch\(`\$\{API_URL\}\/ui\/venues\/venue/.test(page),
     "page.tsx still fetches the venue endpoint inline; it must go through fetchVenuePublicData",
   )
+})
+
+const DUNGEON = {
+  id: 990198,
+  venuePhotoUrl: "https://cdn.example/dungeon.jpg",
+  photo_url: null as string | null,
+}
+
+test("empty flyer falls back to venuePhotoUrl, then photo_url", () => {
+  assert.equal(
+    resolveVenueEventImageUrl({ flyer_image_url: null, venue_id: 990198 }, DUNGEON),
+    "https://cdn.example/dungeon.jpg",
+  )
+  assert.equal(
+    resolveVenueEventImageUrl({ flyer_image_url: "", venue_id: 990198 }, DUNGEON),
+    "https://cdn.example/dungeon.jpg",
+  )
+  assert.equal(
+    resolveVenueEventImageUrl(
+      { flyer_image_url: null, venue_id: 990198 },
+      { id: 990198, venuePhotoUrl: null, photo_url: "https://cdn.example/photo-url.jpg" },
+    ),
+    "https://cdn.example/photo-url.jpg",
+  )
+  assert.equal(
+    coalesceVenuePhotoUrl({ venuePhotoUrl: null, photo_url: "https://cdn.example/photo-url.jpg" }),
+    "https://cdn.example/photo-url.jpg",
+  )
+})
+
+test("a program flyer wins over the venue photo", () => {
+  assert.equal(
+    resolveVenueEventImageUrl(
+      { flyer_image_url: "https://cdn.example/cover.jpg", venue_id: 990198 },
+      DUNGEON,
+    ),
+    "https://cdn.example/cover.jpg",
+  )
+})
+
+test("no flyer and no venue photo stays empty so the icon tile can stand in", () => {
+  assert.equal(
+    resolveVenueEventImageUrl(
+      { flyer_image_url: null, venue_id: 990198 },
+      { id: 990198, venuePhotoUrl: null, photo_url: null },
+    ),
+    null,
+  )
+})
+
+test("venue page says Weekly Access, has no em dash in the walk-up line, and wires the flyer fallback", () => {
+  const src = join(process.cwd(), "src")
+  const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
+  const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
+  assert.ok(client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "section heading must use the Weekly Access label")
+  assert.ok(!client.includes('title="Door Access"'), "section heading still says Door Access")
+  assert.ok(client.includes("weekly access"), "badge must say weekly access")
+  assert.ok(!client.includes("door access ${"), "badge still says door access")
+  assert.ok(
+    client.includes("Pay the cover before you go and walk up. Scan with any phone camera at the door."),
+    "walk-up copy is missing or still uses an em dash",
+  )
+  assert.ok(!client.includes("walk up —"), "walk-up copy still has an em dash")
+  assert.ok(client.includes("resolveVenueEventImageUrl"), "Weekly Access cards must resolve flyer then venue photo")
+  assert.ok(
+    page.includes("WEEKLY_ACCESS_SECTION_LABEL"),
+    "fallback meta description must say weekly access, not door access",
+  )
+  assert.ok(!page.includes("door access"), "meta description still says door access")
+})
+
+function coverNight(eventId: number, start: string, extra: Partial<VenueEvent> = {}): VenueEvent {
+  return event({
+    event_id: eventId,
+    name: "Weekly Cover",
+    start_date_time: start,
+    access_kind: "door_access",
+    status: "draft",
+    flyer_image_url: null,
+    min_ticket_price: "5.00",
+    ...extra,
+  })
+}
+
+test("groupWeeklyAccessNights collapses same-name nights into one program", () => {
+  const nights = [
+    coverNight(621, "2026-08-24 21:00:00"),
+    coverNight(623, "2026-08-26 21:00:00"),
+    coverNight(625, "2026-08-28 21:00:00"),
+  ]
+  const groups = groupWeeklyAccessNights(nights)
+  assert.equal(groups.length, 1)
+  assert.deepEqual(
+    groups[0].map((n) => n.event_id),
+    [621, 623, 625],
+  )
+})
+
+test("groupWeeklyAccessNights keeps separate series apart", () => {
+  const groups = groupWeeklyAccessNights([
+    coverNight(1, "2026-08-24 21:00:00", { recurring_series_id: 10 }),
+    coverNight(2, "2026-08-25 21:00:00", { recurring_series_id: 11, name: "Late Cover" }),
+    coverNight(3, "2026-08-26 21:00:00", { recurring_series_id: 10 }),
+  ])
+  assert.equal(groups.length, 2)
+  assert.deepEqual(
+    groups[0].map((n) => n.event_id),
+    [1, 3],
+  )
+  assert.deepEqual(
+    groups[1].map((n) => n.event_id),
+    [2],
+  )
+})
+
+test("night chips are weekday + day, never timezone-shifted", () => {
+  assert.equal(formatNightChipLabel("2026-08-24 21:00:00"), "Mon 24")
+  assert.equal(formatNightChipLabel("2026-08-26 21:00:00"), "Wed 26")
+  assert.equal(formatNightChipLabel("2026-08-28 21:00:00"), "Fri 28")
+})
+
+test("one tier or only a min price reads Cover $5; several tiers list names", () => {
+  assert.equal(formatAccessPrice(5), "$5")
+  assert.deepEqual(
+    weeklyAccessPriceLines([coverNight(621, "2026-08-24 21:00:00")]),
+    ["Cover $5"],
+  )
+  assert.deepEqual(
+    weeklyAccessPriceLines([
+      coverNight(621, "2026-08-24 21:00:00", {
+        min_ticket_price: null,
+        tickets: [
+          { name: "Cover", price_usd: 5 },
+          { name: "Line skip", price_usd: 15 },
+        ],
+      }),
+    ]),
+    ["Cover $5", "Line skip $15"],
+  )
+})
+
+test("venue Weekly Access is one program card with night chips, not a picker", () => {
+  const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
+  assert.ok(client.includes("WeeklyAccessProgramCard"), "must render one program card")
+  assert.ok(client.includes("groupWeeklyAccessNights"), "nights must group into programs")
+  assert.ok(client.includes("formatNightChipLabel"), "upcoming nights are chips")
+  assert.ok(client.includes("weeklyAccessPriceLines"), "card must show Cover or real tiers")
+  assert.ok(client.includes("Get access"), "CTA stays Get access")
+  assert.ok(client.includes("checkout/${selected.event_id}"), "Get access must checkout the selected night")
+  assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
+  assert.ok(!client.includes('type="date"'), "do not ship a calendar date input")
+  assert.ok(!client.includes("<select"), "do not ship a dropdown")
 })
