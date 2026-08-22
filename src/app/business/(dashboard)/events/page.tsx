@@ -49,7 +49,7 @@ import {
  * event row → its manage page. Nothing was rebuilt; the entry points moved.
  */
 export default function V2EventsPage() {
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const router = useRouter()
   const { venues, isAllVenues, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
@@ -213,9 +213,13 @@ export default function V2EventsPage() {
       {canCreate && !stripeOnboarded && !stripeBannerDismissed && (
         <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3.5">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Stripe Connect not linked</p>
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              {isPending ? "Stripe Connect not linked" : "You can post and sell now"}
+            </p>
             <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
-              To sell paid tickets, finish Stripe Connect onboarding. Free events work without it.
+              {isPending
+                ? "To sell paid tickets, finish Stripe Connect onboarding. Free events work without it."
+                : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
             </p>
             {stripeError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{stripeError}</p>}
             <Button size="sm" className="mt-2.5" disabled={stripeConnecting} onClick={handleConnectStripe}>

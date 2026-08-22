@@ -84,7 +84,7 @@ interface CreateResponse {
  */
 const DOOR_ACCESS_REDEMPTION_MODE: RedemptionMode = "camera_tap"
 
-export function DoorAccessWizard({ stripeOnboarded = true }: { stripeOnboarded?: boolean }) {
+export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: { stripeOnboarded?: boolean; isPending?: boolean }) {
   const router = useRouter()
   const { venues, selectedVenue, setSelectedVenue } = useVenue()
 
@@ -632,7 +632,9 @@ export function DoorAccessWizard({ stripeOnboarded = true }: { stripeOnboarded?:
               {errors.tiers && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tiers}</p>}
               {hasPaidTier && !stripeOnboarded && (
                 <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-                  Stripe isn&apos;t connected yet, so paid nights can&apos;t sell. Connect Stripe in Settings and they go live.
+                  {isPending
+                    ? "Stripe isn't connected yet, so paid nights can't sell. Connect Stripe in Settings and they go live."
+                    : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
                 </p>
               )}
             </CardContent>

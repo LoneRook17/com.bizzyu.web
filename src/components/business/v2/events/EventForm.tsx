@@ -469,11 +469,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
   // What actually happens when this is submitted, stated in the same terms the
   // server decides it (see the hasPaidTicket comment above). `isPending` is the
-  // approval gate; the Stripe gate is paid-only.
-  const willDraft = isPending || (hasPaidTicket && !stripeOnboarded)
-  const draftReason = isPending
-    ? "Your business is still in review, so this saves as a draft. Publish it once you're approved."
-    : "Paid tickets need Stripe Connect before the event can go live. This saves as a draft until then."
+  // only approval gate — approved businesses can publish paid events without
+  // Stripe; payments go to escrow until they connect.
+  const willDraft = isPending
+  const draftReason = "Your business is still in review, so this saves as a draft. Publish it once you're approved."
 
   // `isEditing` renders every section on one page, exactly as before 5.0.
   // Creating walks the three steps.
@@ -505,12 +504,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               {/* D-P2: "Free" never reads as "RSVP" — a free event still mints a
                   real $0 order and a scannable ticket. */}
               <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{EVENT_TYPE_HINTS[form.type]}</p>
-              {/* Stripe is no longer required to BUILD a paid event - only to
-                  publish one. Show a non-blocking nudge for paid + no Stripe. */}
-              {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
+              {/* Approved businesses can publish paid events without Stripe —
+                  payments go to escrow. Show a soft nudge, not a blocker. */}
+              {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && !isPending && (
                 <div className="mt-1.5">
                   <p className="text-xs text-amber-600 dark:text-amber-400">
-                    You can build this now and save it as a draft. Connect Stripe before a paid event can go live, free events don&apos;t need it.
+                    Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you&apos;re ready and we send what you&apos;ve earned.
                   </p>
                   <button
                     type="button"

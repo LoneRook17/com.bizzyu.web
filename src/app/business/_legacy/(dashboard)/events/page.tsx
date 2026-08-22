@@ -14,7 +14,7 @@ import VenueSelectModal from "@/components/business/dashboard/VenueSelectModal"
 import type { EventListItem, BusinessProfile } from "@/lib/business/types"
 
 export default function EventsPage() {
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const router = useRouter()
   const { venues, isAllVenues, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
@@ -112,9 +112,13 @@ export default function EventsPage() {
       {canCreate && !stripeOnboarded && !stripeBannerDismissed && (
         <div className="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 flex items-start justify-between gap-3">
           <div className="flex-1">
-            <p className="text-sm font-medium text-yellow-800">Stripe Connect not linked</p>
+            <p className="text-sm font-medium text-yellow-800">
+              {isPending ? "Stripe Connect not linked" : "You can post and sell now"}
+            </p>
             <p className="text-xs text-yellow-700 mt-0.5">
-              To create paid events, complete Stripe Connect onboarding. Free events can be created without Stripe.
+              {isPending
+                ? "To create paid events, complete Stripe Connect onboarding. Free events can be created without Stripe."
+                : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
             </p>
             {stripeError && (
               <p className="text-xs text-red-600 mt-2">{stripeError}</p>

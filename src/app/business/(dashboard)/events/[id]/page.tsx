@@ -199,7 +199,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
               <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
                 {isPending
                   ? "It goes live once Bizzy approves your business. You can keep editing in the meantime."
-                  : "Publish it when you're ready. Paid events need Stripe Connect first, free events don't."}
+                  : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
               </p>
               {publishError && (
                 <p className="mt-2 text-xs text-red-600 dark:text-red-400">{publishError}</p>
