@@ -171,14 +171,23 @@ function ticketIdCount(tiers: VenueAccessTier[]): number {
   return tiers.filter((tier) => tier.ticket_id != null).length
 }
 
-/** Prefer the list that actually has checkout ticket ids when both sides have tiers. */
+/** Longer list wins. Same length prefers more checkout ticket ids. */
 function pickRicherTiers(a: VenueAccessTier[], b: VenueAccessTier[]): VenueAccessTier[] {
   if (b.length === 0) return a
   if (a.length === 0) return b
-  const aIds = ticketIdCount(a)
-  const bIds = ticketIdCount(b)
-  if (aIds > bIds && a.length >= b.length) return a
-  return b
+  if (b.length !== a.length) return b.length > a.length ? b : a
+  return ticketIdCount(b) > ticketIdCount(a) ? b : a
+}
+
+function isRicherTierList(incoming: VenueAccessTier[], current: VenueAccessTier[]): boolean {
+  return pickRicherTiers(current, incoming) === incoming && incoming !== current
+}
+
+/** Single Cover (or blank name) is the venue / min-price fallback, not a full program. */
+export function isCoverOnlyFallback(tiers: VenueAccessTier[]): boolean {
+  if (tiers.length !== 1) return false
+  const name = tiers[0].name.trim().toLowerCase()
+  return name === "cover" || name === ""
 }
 
 /** Shared program prices may copy names across nights. Those ids belong to the source night. */
@@ -318,7 +327,8 @@ export function coverTierFromTemplate(tiers: VenueAccessTier[]): VenueAccessTier
 }
 
 /**
- * Night tickets, then that night's template, then the full program tier list.
+ * Richest of night tickets, that night's template, and the program tier list.
+ * A 1-item Cover list is not complete when checkout/program has more tickets.
  * min_ticket_price is a Cover fallback only when no tier list exists.
  * Never collapse Cover + Skip the Line to Cover-only because a min price is set.
  */
@@ -326,9 +336,13 @@ export function resolveNightTiers(
   night: Pick<VenueEvent, "min_ticket_price" | "tickets" | "template_tickets">,
   programTiers: VenueAccessTier[] = [],
 ): VenueAccessTier[] {
-  if (night.tickets.length > 0) return night.tickets
-  if ((night.template_tickets?.length ?? 0) > 0) return night.template_tickets ?? []
-  if (programTiers.length > 0) return programTiers
+  const fromNight = night.tickets
+  const best = richestTierList([fromNight, night.template_tickets ?? [], programTiers])
+  if (best.length > 0) {
+    // Same-length night tickets win so ?ticket_id= stays this night's tickets.id.
+    if (fromNight.length === best.length) return fromNight
+    return best
+  }
   if (night.min_ticket_price != null && night.min_ticket_price !== "") {
     const n = Number(night.min_ticket_price)
     if (Number.isFinite(n)) return [{ name: "Cover", price_usd: n }]
@@ -741,11 +755,21 @@ function needsPriceEnrichment(event: VenueEvent): boolean {
   )
 }
 
-/** 2+ named tiers on a night, but this night's own tickets.id is still missing. */
-function needsTicketIdEnrichment(event: VenueEvent): boolean {
+/**
+ * Weekly Cover nights hydrate from checkout unless we already have 2+
+ * named tiers each with tickets.id. A 1-item Cover list is not complete.
+ */
+export function needsWeeklyAccessTierEnrichment(event: VenueEvent): boolean {
   if (event.access_kind !== "door_access") return false
-  if (event.tickets.length < 2) return false
-  return event.tickets.some((tier) => tier.ticket_id == null)
+  if (event.tickets.length < 2) return true
+  if (event.tickets.some((tier) => tier.ticket_id == null)) return true
+  if (isCoverOnlyFallback(event.tickets)) return true
+  return false
+}
+
+/** Door-access nights missing prices, a second tier, or tickets.id. */
+function needsTicketIdEnrichment(event: VenueEvent): boolean {
+  return needsWeeklyAccessTierEnrichment(event)
 }
 
 function withResolvedTiers(event: VenueEvent, tickets: VenueAccessTier[]): VenueEvent {
@@ -780,13 +804,13 @@ async function fillMissingTicketIds(
         if (
           mapped &&
           mapped.event_id === event.event_id &&
-          ticketIdCount(mapped.tickets) > 0
+          isRicherTierList(mapped.tickets, event.tickets)
         ) {
           return withResolvedTiers(event, mapped.tickets)
         }
       }
       const tickets = await fetchCheckoutTicketTiers(event.event_id, checkoutBase)
-      if (ticketIdCount(tickets) === 0) return null
+      if (!isRicherTierList(tickets, event.tickets)) return null
       return withResolvedTiers(event, tickets)
     }),
   )
@@ -803,7 +827,9 @@ async function enrichWeeklyAccessTiers(
   events: VenueEvent[],
   checkoutBase?: string,
 ): Promise<VenueEvent[]> {
-  const need = events.filter(needsPriceEnrichment)
+  const need = events.filter(
+    (event) => needsPriceEnrichment(event) || needsWeeklyAccessTierEnrichment(event),
+  )
   if (need.length === 0) {
     return fillMissingTicketIds(base, events, checkoutBase)
   }
@@ -814,6 +840,11 @@ async function enrichWeeklyAccessTiers(
       if (!raw || typeof raw !== "object") return null
       const mapped = toVenueEvent(eventPayload(raw))
       if (!mapped || mapped.event_id !== event.event_id) return null
+      if (event.access_kind === "door_access") {
+        const tickets = pickRicherTiers(event.tickets, mapped.tickets)
+        if (tickets.length > 0) return withResolvedTiers(event, tickets)
+        return mapped.min_ticket_price != null ? mapped : null
+      }
       return mapped.tickets.length > 0 || mapped.min_ticket_price != null ? mapped : null
     }),
   )
@@ -821,7 +852,7 @@ async function enrichWeeklyAccessTiers(
   let merged = mergeVenueEvents(events, extras.filter((e): e is VenueEvent => e != null))
 
   const stillNeed = merged.filter(
-    (event) => event.access_kind === "door_access" && needsPriceEnrichment(event),
+    (event) => event.access_kind === "door_access" && needsWeeklyAccessTierEnrichment(event),
   )
   const seriesIds = [
     ...new Set(
@@ -836,15 +867,18 @@ async function enrichWeeklyAccessTiers(
   const templateBySeries = new Map(templates.filter(([, tiers]) => tiers.length > 0))
   if (templateBySeries.size > 0) {
     merged = merged.map((event) => {
-      if (event.tickets.length > 0) return event
       const tiers = event.recurring_series_id != null ? templateBySeries.get(event.recurring_series_id) : undefined
       if (!tiers?.length) return event
-      return { ...event, template_tickets: event.template_tickets?.length ? event.template_tickets : tiers }
+      const template = pickRicherTiers(event.template_tickets ?? [], tiers)
+      if ((event.template_tickets?.length ?? 0) >= template.length && (event.template_tickets?.length ?? 0) > 0) {
+        return event
+      }
+      return { ...event, template_tickets: template }
     })
   }
 
   const htmlNeed = merged.filter(
-    (event) => needsPriceEnrichment(event) || needsTicketIdEnrichment(event),
+    (event) => needsPriceEnrichment(event) || needsWeeklyAccessTierEnrichment(event),
   )
   if (htmlNeed.length > 0) {
     const fromHtml = await Promise.all(
