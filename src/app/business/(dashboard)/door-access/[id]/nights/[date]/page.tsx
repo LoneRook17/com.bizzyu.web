@@ -12,6 +12,7 @@ import {
   draftFromNight,
   draftHasOverrides,
   fetchDoorAccessNight,
+  nightDraftIsDirty,
   fmtNightDate,
   fmtWindow,
   fromTimeInput,
@@ -31,6 +32,7 @@ import {
   type NightOverrideResult,
 } from "@/lib/business/door-access"
 import { cn } from "@/lib/v2/utils"
+import { NightLeaveGuard } from "@/components/business/v2/door-access/NightLeaveGuard"
 import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -50,9 +52,10 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
  * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id and
  * PUT /business/events/:id/tickets stamp series_customized_at and detach the
  * night from the program. Save night writes door_access_tier_overrides
- * (hours + ticket price/qty). Core restamp copies those onto tickets.id.
- * Ticket rows on this page draft only. A night that HAS been customized
- * elsewhere is read-only here (nightIsEditable).
+ * (hours, ticket price/qty, hide, sold_out, sort_order). Core restamp copies
+ * those onto tickets.id. Ticket rows on this page draft only. Leaving without
+ * Save night prompts (beforeunload + in-app confirm). A night that HAS been
+ * customized elsewhere is read-only here (nightIsEditable).
  *
  * Hours are always visible. Matching the program window (or Reset to program
  * default) sends null so the night tracks the template. Closed this night is
@@ -70,6 +73,7 @@ export default function DoorAccessNightPage({
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [night, setNight] = useState<DoorAccessNight | null>(null)
   const [draft, setDraft] = useState<NightDraft | null>(null)
+  const [baseline, setBaseline] = useState<NightDraft | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -87,7 +91,9 @@ export default function DoorAccessNightPage({
       const data = await fetchDoorAccessNight(programId, date)
       setProgram(data.program)
       setNight(data.night)
-      setDraft(draftFromNight(data.night, data.program))
+      const next = draftFromNight(data.night, data.program)
+      setDraft(next)
+      setBaseline(next)
     } catch {
       setError("Could not load this night.")
     } finally {
@@ -102,7 +108,10 @@ export default function DoorAccessNightPage({
   /** Adopt whatever the server says the night is now. Never the local guess. */
   const adopt = (result: { night: DoorAccessNight }) => {
     setNight(result.night)
-    if (program) setDraft(draftFromNight(result.night, program))
+    if (!program) return
+    const next = draftFromNight(result.night, program)
+    setDraft(next)
+    setBaseline(next)
   }
 
   const showSaveOutcome = (result: NightOverrideResult, liveNotice: string) => {
@@ -178,9 +187,11 @@ export default function DoorAccessNightPage({
 
   const editable = canEdit && nightIsEditable(night)
   const chips = nightChips(night)
+  const dirty = !!(draft && baseline && nightDraftIsDirty(draft, baseline))
 
   return (
     <>
+      <NightLeaveGuard dirty={dirty} />
       <BackLink programId={programId} />
 
       <PageHeader
