@@ -22,10 +22,12 @@ import {
   entryLabel,
   entryStatusBadge,
   visibleEscrowEntries,
+  groupEscrowEntriesByEvent,
   isEscrowDemoScenario,
   fetchEscrowPanelData,
   ESCROW_DEMO_FIXTURES,
   ESCROW_ENTRIES_COLLAPSED,
+  ESCROW_UNGROUPED_EVENT_NAME,
   type EscrowLedgerEntry,
   type EscrowSummary,
 } from "./escrow.ts"
@@ -39,6 +41,8 @@ function entry(overrides: Partial<EscrowLedgerEntry>): EscrowLedgerEntry {
     reference_type: "order",
     reference_id: 9931,
     created_at: "2026-08-20 19:04:11",
+    event_id: null,
+    event_name: null,
     ...overrides,
   }
 }
@@ -80,6 +84,27 @@ test("normalizeEscrowEntry coerces amounts and preserves signs", () => {
   assert.equal(e.id, 7)
   assert.equal(e.amount_cents, -1750)
   assert.equal(e.reference_id, 9942)
+  assert.equal(e.event_id, null)
+  assert.equal(e.event_name, null)
+})
+
+test("normalizeEscrowEntry keeps flat event identity and nested event objects", () => {
+  const flat = normalizeEscrowEntry({
+    id: 1,
+    amount_cents: 500,
+    event_id: "88",
+    event_name: "  Rumble  ",
+  } as unknown as Partial<EscrowLedgerEntry>)
+  assert.equal(flat.event_id, 88)
+  assert.equal(flat.event_name, "Rumble")
+
+  const nested = normalizeEscrowEntry({
+    id: 2,
+    amount_cents: 500,
+    event: { id: "88", name: "Rumble" },
+  } as unknown as Partial<EscrowLedgerEntry> & { event: { id: string; name: string } })
+  assert.equal(nested.event_id, 88)
+  assert.equal(nested.event_name, "Rumble")
 })
 
 // ── State machine ───────────────────────────────────────────────────────────
@@ -202,6 +227,41 @@ test("visibleEscrowEntries collapses long ledgers and reports the hidden count",
 test("short ledgers never show an expander", () => {
   const few = [entry({}), entry({ id: 2 })]
   assert.deepEqual(visibleEscrowEntries(few, false), { rows: few, hiddenCount: 0 })
+})
+
+test("groupEscrowEntriesByEvent groups two Rumble sales and totals the shown rows", () => {
+  const rows = [
+    entry({ id: 2, amount_cents: 500, reference_id: 1398, event_id: 9, event_name: "Rumble" }),
+    entry({ id: 1, amount_cents: 500, reference_id: 1397, event_id: 9, event_name: "Rumble" }),
+  ]
+  const groups = groupEscrowEntriesByEvent(rows)
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].eventName, "Rumble")
+  assert.equal(groups[0].eventId, 9)
+  assert.equal(groups[0].totalCents, 1000)
+  assert.deepEqual(groups[0].entries.map((e) => e.reference_id), [1398, 1397])
+})
+
+test("groupEscrowEntriesByEvent keeps events separate and never uses a business name", () => {
+  const rows = [
+    entry({ id: 3, amount_cents: 500, event_id: 9, event_name: "Rumble" }),
+    entry({ id: 2, amount_cents: 750, event_id: 10, event_name: "Late Night" }),
+    entry({ id: 1, entry_type: "withdrawal", amount_cents: -1250, reference_type: "payout", event_id: null, event_name: null }),
+  ]
+  const groups = groupEscrowEntriesByEvent(rows)
+  assert.deepEqual(groups.map((g) => g.eventName), ["Rumble", "Late Night", ESCROW_UNGROUPED_EVENT_NAME])
+  assert.deepEqual(groups.map((g) => g.totalCents), [500, 750, -1250])
+  assert.ok(!groups.some((g) => /escrow test/i.test(g.eventName)))
+})
+
+test("groupEscrowEntriesByEvent prefers event_id over a missing name, then fills the name", () => {
+  const groups = groupEscrowEntriesByEvent([
+    entry({ id: 2, event_id: 9, event_name: null }),
+    entry({ id: 1, event_id: 9, event_name: "Rumble" }),
+  ])
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].eventName, "Rumble")
+  assert.equal(groups[0].entries.length, 2)
 })
 
 // ── Fixtures + the stub seam ────────────────────────────────────────────────

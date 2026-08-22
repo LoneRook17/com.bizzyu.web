@@ -56,6 +56,12 @@ export interface EscrowLedgerEntry {
   reference_id: number | null
   /** "YYYY-MM-DD HH:MM:SS", US/Eastern (platform DATETIME convention). */
   created_at: string
+  /**
+   * Event the sale belongs to. Optional on the §7 wire; present when services
+   * joins the order. History groups by this, never by business name.
+   */
+  event_id: number | null
+  event_name: string | null
 }
 
 export interface EscrowSummary {
@@ -82,7 +88,30 @@ function num(v: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback
 }
 
-export function normalizeEscrowEntry(raw: Partial<EscrowLedgerEntry>): EscrowLedgerEntry {
+function strOrNull(v: unknown): string | null {
+  if (typeof v !== "string") return null
+  const s = v.trim()
+  return s.length ? s : null
+}
+
+/** Read event identity from a ledger row. Services may send it flat
+ *  (`event_name`) or nested (`event: { id, name }`). Never invent a name
+ *  from the business. */
+function eventFromRaw(raw: Partial<EscrowLedgerEntry> & { event?: unknown }): {
+  event_id: number | null
+  event_name: string | null
+} {
+  const nested = raw.event && typeof raw.event === "object" ? (raw.event as { id?: unknown; event_id?: unknown; name?: unknown }) : null
+  const nestedId = nested?.id ?? nested?.event_id
+  const eventId = raw.event_id ?? nestedId
+  return {
+    event_id: eventId == null ? null : num(eventId),
+    event_name: strOrNull(raw.event_name) ?? strOrNull(nested?.name),
+  }
+}
+
+export function normalizeEscrowEntry(raw: Partial<EscrowLedgerEntry> & { event?: unknown }): EscrowLedgerEntry {
+  const event = eventFromRaw(raw)
   return {
     id: num(raw.id),
     entry_type: (raw.entry_type ?? "adjustment") as EscrowEntryType,
@@ -91,6 +120,8 @@ export function normalizeEscrowEntry(raw: Partial<EscrowLedgerEntry>): EscrowLed
     reference_type: raw.reference_type ?? null,
     reference_id: raw.reference_id == null ? null : num(raw.reference_id),
     created_at: raw.created_at ?? "",
+    event_id: event.event_id,
+    event_name: event.event_name,
   }
 }
 
@@ -221,6 +252,58 @@ export function visibleEscrowEntries(
   }
 }
 
+/** One event's slice of the history list. `totalCents` is the sum of the
+ *  already-shown row amounts in this group (display organization, not a
+ *  new balance). */
+export interface EscrowEventGroup {
+  key: string
+  eventId: number | null
+  eventName: string
+  totalCents: number
+  entries: EscrowLedgerEntry[]
+}
+
+/** Fallback when a row has no event identity (payouts, fees, older wires).
+ *  Deliberately not the business name. */
+export const ESCROW_UNGROUPED_EVENT_NAME = "Other"
+
+/**
+ * Group ledger rows by event, preserving first-seen order (newest first on
+ * the §7 list). Rows that share an event_id stay together even if the name
+ * is missing; name-only rows group by that name. Ungrouped rows land in
+ * Other, never under the business.
+ */
+export function groupEscrowEntriesByEvent(entries: EscrowLedgerEntry[]): EscrowEventGroup[] {
+  const groups = new Map<string, EscrowEventGroup>()
+  const order: string[] = []
+  for (const entry of entries) {
+    const name = entry.event_name?.trim() || null
+    const key =
+      entry.event_id != null
+        ? `id:${entry.event_id}`
+        : name
+          ? `name:${name}`
+          : "other"
+    let group = groups.get(key)
+    if (!group) {
+      group = {
+        key,
+        eventId: entry.event_id,
+        eventName: name ?? (entry.event_id != null ? `Event #${entry.event_id}` : ESCROW_UNGROUPED_EVENT_NAME),
+        totalCents: 0,
+        entries: [],
+      }
+      groups.set(key, group)
+      order.push(key)
+    } else if (!group.eventName || group.eventName.startsWith("Event #")) {
+      if (name) group.eventName = name
+    }
+    group.entries.push(entry)
+    group.totalCents += entry.amount_cents
+  }
+  return order.map((key) => groups.get(key)!)
+}
+
 // ── Demo fixtures ───────────────────────────────────────────────────────────
 // Entirely fictional businesses, orders, and amounts. The claimable number
 // mirrors the contract §7 example ($423.50) so the stub is recognizably "the
@@ -230,13 +313,19 @@ export function visibleEscrowEntries(
 export type EscrowDemoScenario = "zero" | "claimable" | "processing" | "paid" | "long"
 
 const EARNINGS: EscrowLedgerEntry[] = [
-  { id: 5, entry_type: "earning", amount_cents: 12600, status: "settled", reference_type: "order", reference_id: 9975, created_at: "2026-08-19 22:41:07" },
-  { id: 4, entry_type: "reversal", amount_cents: -1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-16 10:12:55" },
-  { id: 3, entry_type: "earning", amount_cents: 8750, status: "settled", reference_type: "order", reference_id: 9968, created_at: "2026-08-15 21:33:20" },
-  { id: 2, entry_type: "earning", amount_cents: 1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-14 20:05:44" },
-  { id: 1, entry_type: "earning", amount_cents: 21000, status: "settled", reference_type: "order", reference_id: 9931, created_at: "2026-08-14 19:04:11" },
+  { id: 5, entry_type: "earning", amount_cents: 12600, status: "settled", reference_type: "order", reference_id: 9975, created_at: "2026-08-19 22:41:07", event_id: 101, event_name: "Late Night" },
+  { id: 4, entry_type: "reversal", amount_cents: -1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-16 10:12:55", event_id: 102, event_name: "Alumni Mixer" },
+  { id: 3, entry_type: "earning", amount_cents: 8750, status: "settled", reference_type: "order", reference_id: 9968, created_at: "2026-08-15 21:33:20", event_id: 101, event_name: "Late Night" },
+  { id: 2, entry_type: "earning", amount_cents: 1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-14 20:05:44", event_id: 102, event_name: "Alumni Mixer" },
+  { id: 1, entry_type: "earning", amount_cents: 21000, status: "settled", reference_type: "order", reference_id: 9931, created_at: "2026-08-14 19:04:11", event_id: 102, event_name: "Alumni Mixer" },
 ]
 const EARNINGS_TOTAL = 42350
+
+const LONG_EVENTS = [
+  { id: 201, name: "Late Night" },
+  { id: 202, name: "Alumni Mixer" },
+  { id: 203, name: "Trivia Hour" },
+] as const
 
 /** ~30 rows of steady fictional sales for the layout-stress scenario. */
 function longEntries(): { entries: EscrowLedgerEntry[]; total: number } {
@@ -247,6 +336,7 @@ function longEntries(): { entries: EscrowLedgerEntry[]; total: number } {
     const day = 28 - i // Aug 28 back to Aug 1
     const amount = i % 9 === 4 ? -2250 : 4500 + (i % 5) * 1375
     const type: EscrowEntryType = amount < 0 ? "reversal" : "earning"
+    const event = LONG_EVENTS[i % LONG_EVENTS.length]
     entries.push({
       id: id--,
       entry_type: type,
@@ -255,6 +345,8 @@ function longEntries(): { entries: EscrowLedgerEntry[]; total: number } {
       reference_type: "order",
       reference_id: 88000 + i * 7,
       created_at: `2026-08-${String(day).padStart(2, "0")} ${String(18 + (i % 5)).padStart(2, "0")}:${String(10 + (i % 47)).padStart(2, "0")}:00`,
+      event_id: event.id,
+      event_name: event.name,
     })
     total += amount
   }
@@ -279,7 +371,7 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
       pending_cents: 0,
       currency: "usd",
       entries: [
-        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "pending", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02" },
+        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "pending", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null },
         ...EARNINGS,
       ],
     },
@@ -292,7 +384,7 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
       pending_cents: 0,
       currency: "usd",
       entries: [
-        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "settled", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02" },
+        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "settled", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null },
         ...EARNINGS,
       ],
     },
