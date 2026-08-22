@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { fetchVenuePublicData } from "@/lib/venuePublic"
 import VenuePageClient from "./VenuePageClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
@@ -23,15 +24,7 @@ interface PageProps {
 }
 
 async function getVenueData(venueId: string) {
-  try {
-    const res = await fetch(`${API_URL}/ui/venues/venue/${venueId}`, {
-      cache: "no-store",
-    })
-    if (!res.ok) return null
-    return res.json()
-  } catch {
-    return null
-  }
+  return fetchVenuePublicData(venueId, API_URL)
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

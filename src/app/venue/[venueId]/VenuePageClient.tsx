@@ -3,72 +3,16 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
+import { fetchVenuePublicData, type VenueData } from "@/lib/venuePublic"
 
 // How often the board silently re-fetches so newly-added events / tickets /
 // line skips appear on the mounted screen without a manual reload.
 const POLL_INTERVAL_MS = 25000
 
-// Shape matches GET /ui/venues/venue/:venueId (com.bizzyu.services
-// src/routes/venues.ts) - note the venue object is camelCase (venuePhotoUrl),
-// not snake_case.
-interface VenueData {
-  venue: {
-    id: number
-    name: string
-    address: string
-    description: string | null
-    venuePhotoUrl: string | null
-    website: string | null
-    instagram: string | null
-  }
-  business: {
-    business_id: number
-    name: string
-    logo_image_url: string | null
-    instagram: string | null
-    website: string | null
-  }
-  events: Array<{
-    event_id: number
-    name: string
-    start_date_time: string
-    end_date_time: string
-    venue_name: string
-    flyer_image_url: string | null
-    min_ticket_price: number | string | null
-    // V5 REDEMPTION §8 — which SECTION this row belongs in. Door-access nights
-    // are events rows (core stamps one per occurrence), so they have always
-    // arrived in this same array, mixed in among ordinary events and rendered
-    // identically. Optional: a services build that predates the column omits it,
-    // and 'event' is both the column default and the safe reading.
-    access_kind?: "event" | "door_access" | null
-  }>
-  deals: Array<{
-    id: number
-    deal_title: string
-    description: string | null
-    deal_image_path: string | null
-    deal_category: string
-    deal_type: string
-  }>
-  // §8 — STILL RETURNED BY THE API, deliberately NOT RENDERED on this public
-  // page. The endpoint keeps sending it (the business-side legacy list and the
-  // app both read it, and neither is in scope here), so the field stays typed
-  // rather than deleted — removing it would just make the next reader think the
-  // server stopped sending it. Nothing below destructures it.
-  line_skips: Array<{
-    id: number
-    date: string
-    start_time: string
-    end_time: string
-    price_cents: number
-    capacity: number | null
-    tickets_sold: number
-    status: string
-    line_skip_name: string
-    line_skip_description: string | null
-  }>
-}
+// Shape matches fetchVenuePublicData (GET /ui/venues/venue/:venueId plus
+// GET /ui/events and GET /ui/events/:id). The venue object is camelCase
+// (venuePhotoUrl), not snake_case. access_kind is optional: a services build
+// that predates the column omits it, and 'event' is the safe reading.
 
 interface VenuePageClientProps {
   venueId: string
@@ -312,10 +256,8 @@ export default function VenuePageClient({
       if (inFlight.current) return
       inFlight.current = true
       try {
-        const r = await fetch(`${getApiBaseUrl()}/ui/venues/venue/${venueId}`, {
-          cache: "no-store",
-        })
-        if (r.ok) setData(await r.json())
+        const next = await fetchVenuePublicData(venueId, getApiBaseUrl())
+        if (next) setData(next)
       } catch {
         // keep last-good data
       } finally {
