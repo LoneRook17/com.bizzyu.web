@@ -6,10 +6,13 @@ import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
 import {
   eventCalendarDate,
+  eventFromPrice,
   fetchVenuePublicData,
   formatNightChipLabel,
   groupWeeklyAccessNights,
+  mergeVenueEvents,
   nightChipPrice,
+  programTemplateTiers,
   resolveVenueEventImageUrl,
   weeklyAccessPriceLines,
   type VenueData,
@@ -185,7 +188,6 @@ function ListingCard({
   today,
   checkoutBaseUrl,
   ctaLabel,
-  priceLabel,
   imageUrl,
 }: {
   event: VenueData["events"][number]
@@ -193,10 +195,9 @@ function ListingCard({
   today: boolean
   checkoutBaseUrl: string
   ctaLabel: string
-  priceLabel: (price: number) => string
   imageUrl?: string | null
 }) {
-  const price = event.min_ticket_price !== null ? Number(event.min_ticket_price) : null
+  const fromPrice = eventFromPrice(event)
   const cardImage = imageUrl || event.flyer_image_url
   return (
     // §9 — the per-night link. `event_id` is THIS night's own events row, so a
@@ -234,12 +235,12 @@ function ListingCard({
           {formatEventDate(event.start_date_time)} · {formatEventTime(event.start_date_time)}
         </p>
         <div className="mt-4 flex items-center justify-between">
-          {price !== null ? (
+          {fromPrice ? (
             // The pink PRICE PILL. An event prints its price as bare text; a
             // door-access night prints it in a pill, because "$10 cover" is the
             // whole product and the number is what a student is scanning for.
             <p className="text-2xl font-extrabold" style={{ color: theme.accent }}>
-              {priceLabel(price)}
+              {fromPrice}
             </p>
           ) : (
             <span />
@@ -285,7 +286,8 @@ function WeeklyAccessProgramCard({
     nights.find((night) => night.event_id === (selectedId ?? todayNight?.event_id ?? first.event_id)) ?? first
   const flyerNight = nights.find((night) => night.flyer_image_url) ?? selected
   const cardImage = resolveVenueEventImageUrl(flyerNight, venue)
-  const prices = weeklyAccessPriceLines(nights)
+  const template = programTemplateTiers(nights)
+  const prices = weeklyAccessPriceLines(nights, template)
   const selectedIsToday =
     todayKey != null && eventCalendarDate(selected.start_date_time) === todayKey
 
@@ -332,7 +334,7 @@ function WeeklyAccessProgramCard({
       <div className="mt-3 flex flex-wrap gap-2.5" role="group" aria-label="Upcoming nights">
         {nights.map((night) => {
           const active = night.event_id === selected.event_id
-          const price = nightChipPrice(night)
+          const price = nightChipPrice(night, template)
           return (
             <button
               key={night.event_id}
@@ -388,8 +390,12 @@ export default function VenuePageClient({
       if (inFlight.current) return
       inFlight.current = true
       try {
-        const next = await fetchVenuePublicData(venueId, getApiBaseUrl())
-        if (next) setData(next)
+        const next = await fetchVenuePublicData(venueId, getApiBaseUrl(), checkoutBaseUrl)
+        if (next) {
+          setData((prev) =>
+            prev ? { ...next, events: mergeVenueEvents(prev.events, next.events) } : next,
+          )
+        }
       } catch {
         // keep last-good data
       } finally {
@@ -397,7 +403,7 @@ export default function VenuePageClient({
       }
     }, POLL_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [venueId])
+  }, [venueId, checkoutBaseUrl])
 
   if (!data) {
     return (
@@ -467,13 +473,11 @@ export default function VenuePageClient({
       {/* Page-scoped animations (globals.css is intentionally untouched) */}
       <style>{`
         @keyframes vpRise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes vpHeroZoom { from { transform: scale(1); } to { transform: scale(1.08); } }
         @keyframes vpFloat { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, -25px); } }
         .vp-rise { animation: vpRise 0.6s cubic-bezier(0.21, 0.65, 0.36, 1) both; }
-        .vp-hero-img { animation: vpHeroZoom 24s ease-in-out infinite alternate; }
         .vp-blob { animation: vpFloat 14s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .vp-rise, .vp-hero-img, .vp-blob { animation: none; }
+          .vp-rise, .vp-blob { animation: none; }
         }
       `}</style>
 
@@ -513,46 +517,69 @@ export default function VenuePageClient({
         </div>
       </header>
 
-      {/* Hero */}
-      <div className="relative w-full overflow-hidden">
-        {heroImage ? (
-          <div className="relative h-[320px] w-full sm:h-[400px] md:h-[460px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={heroImage} alt={venue.name} className="vp-hero-img h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/55 to-black/20" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0f]/60 via-transparent to-transparent" />
-          </div>
-        ) : (
-          <div className="relative h-64 w-full overflow-hidden bg-[#0d0d14] sm:h-80">
-            <div className="vp-blob absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#05EB54]/15 blur-3xl" />
-            <div className="vp-blob absolute right-0 top-10 h-80 w-80 rounded-full bg-[#05EB54]/10 blur-3xl" style={{ animationDelay: "-7s" }} />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] to-transparent" />
-          </div>
-        )}
-
-        <div className="absolute inset-x-0 bottom-0 px-5 pb-8">
-          <div className="vp-rise mx-auto max-w-5xl">
-            <div className="min-w-0">
-              {/* Venue name only - the parent business is often a legal name
-                  (e.g. "XXX LLC") customers shouldn't see. */}
-              <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">
-                {venue.name}
-              </h1>
-              {mapsUrl && (
-                <a
-                  href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-gray-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-white/15 hover:text-white"
-                >
-                  <svg className="h-4 w-4 shrink-0 text-[#05EB54]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span className="truncate">{venue.address}</span>
-                </a>
-              )}
+      {/* Header: full venue photo (contain, not a cover crop), identity beside/below. */}
+      <div className="vp-rise mx-auto max-w-5xl px-5 pt-6">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+          {heroImage ? (
+            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:flex-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={heroImage} alt={venue.name} className="h-full w-full object-contain" />
             </div>
+          ) : (
+            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:flex-1">
+              <div className="vp-blob absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#05EB54]/15 blur-3xl" />
+              <div className="vp-blob absolute right-0 top-10 h-80 w-80 rounded-full bg-[#05EB54]/10 blur-3xl" style={{ animationDelay: "-7s" }} />
+            </div>
+          )}
+          <div className="flex min-w-0 shrink-0 flex-col gap-3 lg:w-[280px]">
+            {business.logo_image_url ? (
+              <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[#141420] ring-1 ring-white/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={business.logo_image_url} alt="" className="h-full w-full object-contain" />
+              </div>
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#141420] text-2xl font-extrabold text-[#05EB54] ring-1 ring-white/10">
+                {venue.name.slice(0, 1)}
+              </div>
+            )}
+            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">
+              {venue.name}
+            </h1>
+            {mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-gray-300 transition hover:text-white"
+              >
+                <svg className="h-4 w-4 shrink-0 text-[#05EB54]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="truncate">{venue.address}</span>
+              </a>
+            ) : venue.address ? (
+              <p className="text-sm font-medium text-gray-300">{venue.address}</p>
+            ) : null}
+            {eventRows.length > 0 ? (
+              <a
+                href="#events"
+                className="inline-flex w-fit items-center justify-center rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-5 py-2.5 text-sm font-extrabold text-black shadow-lg shadow-[#05EB54]/25 transition hover:brightness-110"
+              >
+                Get tickets
+              </a>
+            ) : doorAccessRows.length > 0 ? (
+              <a
+                href="#door-access"
+                className="inline-flex w-fit items-center justify-center rounded-full px-5 py-2.5 text-sm font-extrabold text-black shadow-lg transition hover:brightness-110"
+                style={{
+                  backgroundImage: `linear-gradient(to bottom right, ${DOOR_ACCESS_THEME.accentDeep}, ${DOOR_ACCESS_THEME.accent})`,
+                  boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
+                }}
+              >
+                Get access
+              </a>
+            ) : null}
           </div>
         </div>
       </div>
@@ -616,33 +643,41 @@ export default function VenuePageClient({
                 <h2 className="text-lg font-extrabold tracking-tight text-[#05EB54]">Happening today</h2>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {todayEvents.map((e) => (
-                  <a
-                    key={`te-${e.event_id}`}
-                    href="#events"
-                    className="inline-flex items-center gap-2 rounded-full border border-[#05EB54]/40 bg-[#05EB54]/10 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#05EB54]/20"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#05EB54]" />
-                    {e.name}
-                  </a>
-                ))}
+                {todayEvents.map((e) => {
+                  const fromPrice = eventFromPrice(e)
+                  return (
+                    <a
+                      key={`te-${e.event_id}`}
+                      href="#events"
+                      className="inline-flex items-center gap-2 rounded-full border border-[#05EB54]/40 bg-[#05EB54]/10 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#05EB54]/20"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#05EB54]" />
+                      {e.name}
+                      {fromPrice ? <span className="text-[#05EB54]">{fromPrice}</span> : null}
+                    </a>
+                  )
+                })}
                 {/* §8 — a door-access night gets a PINK dot here, so the
                     callout that pulls tonight to the top still distinguishes the
                     two products instead of flattening them. */}
-                {todayDoorAccess.map((e) => (
-                  <a
-                    key={`tda-${e.event_id}`}
-                    href="#door-access"
-                    className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-bold text-white transition"
-                    style={{
-                      borderColor: `${DOOR_ACCESS_THEME.accent}66`,
-                      backgroundColor: `${DOOR_ACCESS_THEME.accent}1A`,
-                    }}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: DOOR_ACCESS_THEME.accent }} />
-                    {e.name}
-                  </a>
-                ))}
+                {todayDoorAccess.map((e) => {
+                  const fromPrice = eventFromPrice(e)
+                  return (
+                    <a
+                      key={`tda-${e.event_id}`}
+                      href="#door-access"
+                      className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-bold text-white transition"
+                      style={{
+                        borderColor: `${DOOR_ACCESS_THEME.accent}66`,
+                        backgroundColor: `${DOOR_ACCESS_THEME.accent}1A`,
+                      }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: DOOR_ACCESS_THEME.accent }} />
+                      {e.name}
+                      {fromPrice ? <span style={{ color: DOOR_ACCESS_THEME.accent }}>{fromPrice}</span> : null}
+                    </a>
+                  )
+                })}
               </div>
             </div>
           </section>
@@ -672,7 +707,6 @@ export default function VenuePageClient({
                   today={isEventToday(event)}
                   checkoutBaseUrl={checkoutBaseUrl}
                   ctaLabel="Get tickets"
-                  priceLabel={(price) => (price === 0 ? "Free" : `From $${price.toFixed(2)}`)}
                 />
               ))}
             </div>

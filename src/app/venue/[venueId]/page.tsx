@@ -25,7 +25,7 @@ interface PageProps {
 }
 
 async function getVenueData(venueId: string) {
-  return fetchVenuePublicData(venueId, API_URL)
+  return fetchVenuePublicData(venueId, API_URL, CHECKOUT_BASE_URL)
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
