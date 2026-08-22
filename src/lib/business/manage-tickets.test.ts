@@ -57,5 +57,6 @@ test("shared ticket editor keeps sold-out toggle and drag handle", () => {
   assert.ok(ticketsPage.includes("ManageSalesTickets"), "event Manage Tickets uses the shared editor")
   assert.ok(editor.includes("TicketEditForm"), "Weekly Cover night edit keeps the shared ticket card")
   assert.ok(!editor.includes("<ManageSalesTickets"), "night page must not PUT /business/events/:id/tickets")
-  assert.ok(editor.includes("allowReorder={false}"), "night override cannot store ticket order")
+  assert.ok(editor.includes("allowReorder={editable}"), "night tickets drag like Manage Tickets, as drafts")
+  assert.ok(editor.includes("soldOut: true"), "night tickets keep Mark sold out as a draft")
 })

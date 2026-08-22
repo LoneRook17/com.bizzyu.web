@@ -1,12 +1,14 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import type { TicketTier } from "@/lib/business/types"
 import {
   applyOverrideTicketForm,
   nightTierTicketType,
   parseOverrideTicketNumbers,
+  reorderNightTiers,
   toggleNightTierDisabled,
+  toggleNightTierSoldOut,
   updateDoorAccessProgram,
   NIGHT_TICKET_APPLY_LABEL,
   NIGHT_TICKET_DRAFT_HINT,
@@ -28,9 +30,9 @@ import {
 } from "@/components/business/v2/events/ManageSalesTickets"
 
 /**
- * Night override can persist price, quantity, and is_disabled only. Name and
- * type stay visible so the card matches Manage Tickets; fields the API cannot
- * store are omitted instead of rendered as dead controls.
+ * Night override drafts price, quantity, hide (is_disabled), sold out, and
+ * sort_order. Name and type stay visible so the card matches Manage Tickets;
+ * fields the API cannot store (scan window, max per person) are omitted.
  *
  * Edits here draft into the night. Save night on the page is the only write
  * to door_access_tier_overrides. Do not PUT /business/events/:id/tickets.
@@ -96,8 +98,20 @@ function nightTierToTicket(
     max_per_person: tier.max_per_person,
     ticket_type: nightTierTicketType(tier, program),
     is_hidden: draftTier?.is_disabled ?? tier.is_disabled,
-    force_sold_out: false,
+    force_sold_out: draftTier?.sold_out ?? tier.sold_out,
   }
+}
+
+function ticketsFromDraft(
+  night: DoorAccessNight,
+  draft: NightDraft,
+  program: DoorAccessProgram
+): TicketTier[] {
+  return draft.tiers.flatMap((draftTier) => {
+    const index = night.tiers.findIndex((t) => t.tier_key === draftTier.tier_key)
+    if (index < 0) return []
+    return [nightTierToTicket(night.tiers[index], draft, program, index)]
+  })
 }
 
 function formFromNightTier(
@@ -112,6 +126,13 @@ function formFromNightTier(
 function tierIndex(night: DoorAccessNight, ticketId: number | undefined): number {
   if (!ticketId) return -1
   return ticketId - 1
+}
+
+function tierKeysFromTickets(night: DoorAccessNight, tickets: TicketTier[]): string[] {
+  return tickets.flatMap((ticket) => {
+    const source = night.tiers[tierIndex(night, ticket.ticket_id)]
+    return source ? [source.tier_key] : []
+  })
 }
 
 export function NightTicketsEditor({
@@ -164,6 +185,8 @@ function NightOverrideTickets({
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editing, setEditing] = useState<TicketFormState | null>(null)
   const [saveError, setSaveError] = useState("")
+  const [liveTickets, setLiveTickets] = useState<TicketTier[] | null>(null)
+  const liveTicketsRef = useRef<TicketTier[] | null>(null)
 
   const [alertState, setAlertState] = useState<StockAlertsState>({
     enabled: !!program.lowstock_alerts_enabled,
@@ -175,7 +198,11 @@ function NightOverrideTickets({
   const [alertsError, setAlertsError] = useState("")
   const [alertsSaved, setAlertsSaved] = useState(false)
 
-  const tickets = night.tiers.map((tier, index) => nightTierToTicket(tier, draft, program, index))
+  const derivedTickets = useMemo(
+    () => ticketsFromDraft(night, draft, program),
+    [night, draft, program]
+  )
+  const tickets = liveTickets ?? derivedTickets
   const active = tickets.filter((t) => !t.is_hidden)
   const hidden = tickets.filter((t) => t.is_hidden)
 
@@ -214,6 +241,39 @@ function NightOverrideTickets({
     }
   }
 
+  const handleToggleSoldOut = (ticket: TicketTier) => {
+    const index = tierIndex(night, ticket.ticket_id)
+    const source = night.tiers[index]
+    if (!source) return
+    const next = toggleNightTierSoldOut(draft, source.tier_key)
+    setDraft(next)
+    if (editingKey === source.tier_key) {
+      setEditing(formFromNightTier(source, next, program, index))
+    }
+  }
+
+  const handleReorder = (section: "active" | "hidden", next: TicketTier[]) => {
+    const others = tickets.filter((t) => (section === "active" ? t.is_hidden : !t.is_hidden))
+    const ordered = section === "active" ? [...next, ...others] : [...others, ...next]
+    liveTicketsRef.current = ordered
+    setLiveTickets(ordered)
+  }
+
+  const handleDragStart = () => {
+    liveTicketsRef.current = tickets
+    setLiveTickets(tickets)
+  }
+
+  const handleDragEnd = () => {
+    const ordered = liveTicketsRef.current
+    liveTicketsRef.current = null
+    setLiveTickets(null)
+    if (!ordered) return
+    const keys = tierKeysFromTickets(night, ordered)
+    if (keys.join("\0") === draft.tiers.map((t) => t.tier_key).join("\0")) return
+    setDraft(reorderNightTiers(draft, keys))
+  }
+
   const saveAlerts = async () => {
     const { value, error } = lowstockInputToStored(alertState.thresholdType, alertState.thresholdInput)
     if (error) {
@@ -235,7 +295,7 @@ function NightOverrideTickets({
   }
 
   const actions = editable
-    ? { edit: true, soldOut: false, hide: true }
+    ? { edit: true, soldOut: true, hide: true }
     : { edit: false, soldOut: false, hide: false }
 
   const startEdit = (t: TicketTier) => {
@@ -274,13 +334,13 @@ function NightOverrideTickets({
         title="Active tickets"
         section="active"
         tickets={active}
-        allowReorder={false}
-        onReorder={() => {}}
-        onDragStart={() => {}}
-        onDragEnd={() => {}}
+        allowReorder={editable}
+        onReorder={handleReorder}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         onEdit={startEdit}
         onToggleHidden={handleToggleHidden}
-        onToggleSoldOut={() => {}}
+        onToggleSoldOut={handleToggleSoldOut}
         toggling={null}
         emptyText="This program has no tiers."
         actions={actions}
@@ -291,13 +351,13 @@ function NightOverrideTickets({
           title="Hidden tickets"
           section="hidden"
           tickets={hidden}
-          allowReorder={false}
-          onReorder={() => {}}
-          onDragStart={() => {}}
-          onDragEnd={() => {}}
+          allowReorder={editable}
+          onReorder={handleReorder}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
           onEdit={startEdit}
           onToggleHidden={handleToggleHidden}
-          onToggleSoldOut={() => {}}
+          onToggleSoldOut={handleToggleSoldOut}
           toggling={null}
           note="Hidden tickets cannot be purchased. Existing ticket holders can still scan in."
           dimmed

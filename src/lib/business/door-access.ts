@@ -149,6 +149,11 @@ export interface DoorAccessNightTier {
   max_per_person: number
   sort_order: number
   is_disabled: boolean
+  /**
+   * Night-level sold out. Hydrated from `sold_out` or legacy `force_sold_out`
+   * when services echoes it. Missing on older payloads; default false.
+   */
+  sold_out: boolean
   is_overridden: boolean
   template_price_usd: number
   template_quantity: number
@@ -213,7 +218,26 @@ export const NIGHT_SAVE_NOT_LIVE =
 
 export const TIMES_ONLY_HAS_SALES = "times_only_has_sales"
 
-/** A sparse night patch. Omit = leave alone. null = go back to inheriting. */
+export const NIGHT_UNSAVED_TITLE = "Unsaved changes"
+
+export const NIGHT_UNSAVED_BODY =
+  "Leave this night without saving? Hours, tickets, sold out, and order stay drafts until you Save night."
+
+export const NIGHT_UNSAVED_LEAVE = "Leave"
+
+/**
+ * A sparse night patch. Omit = leave alone. null = go back to inheriting.
+ *
+ * PUT /business/door-access/:id/nights/:date already accepts start_time,
+ * end_time, is_closed, and per-tier price_usd / quantity / is_disabled.
+ * This client also sends sold_out and sort_order on each tier so a host can
+ * mark Cover sold out and drag Skip above Cover as drafts, then commit on
+ * Save night.
+ *
+ * Services follow-up: persist those two keys on door_access_tier_overrides
+ * (and restamp them onto tickets). Older services builds drop unknown tier
+ * fields. Do not strip them here or the night UI becomes a silent no-op.
+ */
 export interface NightOverridePayload {
   start_time?: string | null
   end_time?: string | null
@@ -223,6 +247,8 @@ export interface NightOverridePayload {
     price_usd?: number | null
     quantity?: number | null
     is_disabled?: boolean
+    sold_out?: boolean
+    sort_order?: number
   }>
 }
 
@@ -371,6 +397,7 @@ export function normalizeNightTier(raw: Record<string, unknown>): DoorAccessNigh
     max_per_person: num(raw.max_per_person),
     sort_order: num(raw.sort_order),
     is_disabled: bool(raw.is_disabled),
+    sold_out: bool(raw.sold_out) || bool(raw.force_sold_out),
     is_overridden: bool(raw.is_overridden),
     template_price_usd: num(raw.template_price_usd),
     template_quantity: num(raw.template_quantity),
@@ -885,6 +912,8 @@ export interface NightTierDraft {
   inherit_quantity: boolean
   quantity: number | null
   is_disabled: boolean
+  sold_out: boolean
+  sort_order: number
 }
 
 export interface NightDraft {
@@ -978,13 +1007,15 @@ export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgra
     start_time: night.start_time,
     end_time: night.end_time,
     is_closed: night.is_closed,
-    tiers: night.tiers.map((tier) => ({
+    tiers: night.tiers.map((tier, index) => ({
       tier_key: tier.tier_key,
       inherit_price: inheritIfMatchesTemplate(tier.price_usd, tier.template_price_usd),
       price_usd: tier.price_usd,
       inherit_quantity: inheritIfMatchesTemplate(tier.quantity, tier.template_quantity),
       quantity: tier.quantity,
       is_disabled: tier.is_disabled,
+      sold_out: tier.sold_out,
+      sort_order: Number.isFinite(tier.sort_order) ? tier.sort_order : index,
     })),
   }
 }
@@ -994,20 +1025,21 @@ export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgra
  *
  * Always explicit: every override-capable field is sent either as a value or
  * as null. The endpoint treats null as "inherit" and upserts, so a save is
- * idempotent and the draft alone determines the outcome — no dirty tracking,
- * and no way for a stale flag to leave an override behind after the host
- * cleared it.
+ * idempotent and the draft alone determines the outcome. Unsaved-changes
+ * dirty is UI-only (leave prompts). It does not change what we PUT.
  */
 export function buildNightOverridePayload(draft: NightDraft): NightOverridePayload {
   return {
     start_time: draft.inherit_times ? null : draft.start_time,
     end_time: draft.inherit_times ? null : draft.end_time,
     is_closed: draft.is_closed,
-    tiers: draft.tiers.map((tier) => ({
+    tiers: draft.tiers.map((tier, index) => ({
       tier_key: tier.tier_key,
       price_usd: tier.inherit_price ? null : tier.price_usd,
       quantity: tier.inherit_quantity ? null : tier.quantity,
       is_disabled: tier.is_disabled,
+      sold_out: tier.sold_out,
+      sort_order: Number.isFinite(tier.sort_order) ? tier.sort_order : index,
     })),
   }
 }
@@ -1015,7 +1047,14 @@ export function buildNightOverridePayload(draft: NightDraft): NightOverridePaylo
 /** Does this draft still say anything the template doesn't? Drives "Reset". */
 export function draftHasOverrides(draft: NightDraft): boolean {
   if (!draft.inherit_times || draft.is_closed) return true
-  return draft.tiers.some((t) => !t.inherit_price || !t.inherit_quantity || t.is_disabled)
+  return draft.tiers.some(
+    (t, i) =>
+      !t.inherit_price ||
+      !t.inherit_quantity ||
+      t.is_disabled ||
+      t.sold_out ||
+      t.sort_order !== i
+  )
 }
 
 /**
@@ -1152,6 +1191,60 @@ export function toggleNightTierDisabled(draft: NightDraft, tierKey: string): Nig
       tier.tier_key === tierKey ? { ...tier, is_disabled: !tier.is_disabled } : tier
     ),
   }
+}
+
+export function toggleNightTierSoldOut(draft: NightDraft, tierKey: string): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey ? { ...tier, sold_out: !tier.sold_out } : tier
+    ),
+  }
+}
+
+/**
+ * Apply a Manage Tickets-style drag reorder as a night draft. sort_order is
+ * the 0-based buyer order we PUT. Missing keys stay at the end so a partial
+ * list cannot drop a tier.
+ */
+export function reorderNightTiers(draft: NightDraft, orderedKeys: string[]): NightDraft {
+  const byKey = new Map(draft.tiers.map((tier) => [tier.tier_key, tier]))
+  const next: NightTierDraft[] = []
+  for (const key of orderedKeys) {
+    const tier = byKey.get(key)
+    if (!tier) continue
+    next.push(tier)
+    byKey.delete(key)
+  }
+  for (const leftover of byKey.values()) next.push(leftover)
+  return {
+    ...draft,
+    tiers: next.map((tier, index) => ({ ...tier, sort_order: index })),
+  }
+}
+
+function nightDraftFingerprint(draft: NightDraft): string {
+  return JSON.stringify({
+    inherit_times: draft.inherit_times,
+    start_time: toTimeInput(draft.start_time),
+    end_time: toTimeInput(draft.end_time),
+    is_closed: draft.is_closed,
+    tiers: draft.tiers.map((tier) => ({
+      tier_key: tier.tier_key,
+      inherit_price: tier.inherit_price,
+      price_usd: tier.price_usd,
+      inherit_quantity: tier.inherit_quantity,
+      quantity: tier.quantity,
+      is_disabled: tier.is_disabled,
+      sold_out: !!tier.sold_out,
+      sort_order: tier.sort_order,
+    })),
+  })
+}
+
+/** True when the night page has drafts that Save night has not committed. */
+export function nightDraftIsDirty(current: NightDraft, baseline: NightDraft): boolean {
+  return nightDraftFingerprint(current) !== nightDraftFingerprint(baseline)
 }
 
 export function parseOverrideTicketNumbers(

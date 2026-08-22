@@ -58,6 +58,9 @@ import {
   nightTierTicketType,
   applyOverrideTicketForm,
   toggleNightTierDisabled,
+  toggleNightTierSoldOut,
+  reorderNightTiers,
+  nightDraftIsDirty,
   parseOverrideTicketNumbers,
   nightSaveFeedback,
   nightGuestPricesNotLive,
@@ -66,6 +69,9 @@ import {
   NIGHT_TICKET_DRAFT_HINT,
   NIGHT_SAVE_LIVE,
   NIGHT_SAVE_NOT_LIVE,
+  NIGHT_UNSAVED_BODY,
+  NIGHT_UNSAVED_LEAVE,
+  NIGHT_UNSAVED_TITLE,
   TIMES_ONLY_HAS_SALES,
   programHref,
   programEditHref,
@@ -119,6 +125,7 @@ function night(overrides: Partial<DoorAccessNight> = {}): DoorAccessNight {
         max_per_person: 2,
         sort_order: 0,
         is_disabled: false,
+        sold_out: false,
         is_overridden: false,
         template_price_usd: 10,
         template_quantity: 0,
@@ -132,6 +139,7 @@ function night(overrides: Partial<DoorAccessNight> = {}): DoorAccessNight {
         max_per_person: 1,
         sort_order: 1,
         is_disabled: false,
+        sold_out: false,
         is_overridden: false,
         template_price_usd: 20,
         template_quantity: 50,
@@ -243,8 +251,22 @@ test("an inherited field serializes as null, not as the template's value", () =>
   assert.equal(payload.start_time, null)
   assert.equal(payload.end_time, null)
   assert.deepEqual(payload.tiers, [
-    { tier_key: "cover", price_usd: null, quantity: null, is_disabled: false },
-    { tier_key: "skip", price_usd: null, quantity: null, is_disabled: false },
+    {
+      tier_key: "cover",
+      price_usd: null,
+      quantity: null,
+      is_disabled: false,
+      sold_out: false,
+      sort_order: 0,
+    },
+    {
+      tier_key: "skip",
+      price_usd: null,
+      quantity: null,
+      is_disabled: false,
+      sold_out: false,
+      sort_order: 1,
+    },
   ])
 })
 
@@ -363,7 +385,25 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   assert.ok(editor.includes("NIGHT_TICKET_DRAFT_HINT"), "inline edit must say it drafts until Save night")
   assert.ok(editor.includes("updateDoorAccessProgram"), "stock alerts persist on the program, not the event")
   assert.ok(editor.includes("scan_window: false"), "omit scan window when the override cannot store it")
-  assert.ok(editor.includes("soldOut: false"), "omit mark sold out when the override cannot store it")
+  assert.ok(editor.includes("soldOut: true"), "sold out drafts into NightDraft like Manage Tickets")
+  assert.ok(editor.includes("allowReorder={editable}"), "drag-to-reorder drafts until Save night")
+  assert.ok(editor.includes("toggleNightTierSoldOut"), "sold out must not be a silent no-op")
+  assert.ok(editor.includes("reorderNightTiers"), "drop writes sort_order into the night draft")
+  assert.ok(!editor.includes("allowReorder={false}"), "do not hide the drag handle on night tickets")
+  assert.ok(!editor.includes("/tickets/reorder"), "do not PUT event ticket reorder from this page")
+
+  const leavePath = fileURLToPath(
+    new URL("../../components/business/v2/door-access/NightLeaveGuard.tsx", import.meta.url)
+  )
+  const leave = readFileSync(leavePath, "utf8")
+  assert.ok(src.includes("NightLeaveGuard"), "dirty night must prompt before leaving")
+  assert.ok(src.includes("nightDraftIsDirty"), "Save night clears dirty by adopting the server night")
+  assert.ok(leave.includes("beforeunload"), "browser close/refresh must prompt")
+  assert.ok(leave.includes("ConfirmDialog"), "back link and sidebar use an in-app confirm")
+  assert.ok(leave.includes("NIGHT_UNSAVED_TITLE"))
+  assert.ok(!NIGHT_UNSAVED_BODY.includes("\u2014") && !NIGHT_UNSAVED_TITLE.includes("\u2014"))
+  assert.ok(!leave.includes("\u2014"), "leave prompt still has an em dash")
+  assert.equal(NIGHT_UNSAVED_LEAVE, "Leave")
 
   assert.equal(NIGHT_TICKET_APPLY_LABEL, "Apply to night")
   assert.equal(
@@ -426,6 +466,13 @@ test("draftHasOverrides drives the Reset affordance", () => {
     draftHasOverrides({
       ...clean,
       tiers: [{ ...clean.tiers[0], inherit_price: false }, clean.tiers[1]],
+    }),
+    true
+  )
+  assert.equal(
+    draftHasOverrides({
+      ...clean,
+      tiers: [{ ...clean.tiers[0], sold_out: true }, clean.tiers[1]],
     }),
     true
   )
@@ -525,6 +572,66 @@ test("restamp_error and times_only_has_sales mean Saved is not live", () => {
   assert.ok(page.includes("nightSaveFeedback"), "page must use the not-live helper")
   assert.ok(page.includes("restampWarning && !notice"), "do not show Saved beside a restamp miss")
   assert.ok(page.includes("!restampWarning"), "success banner stays off when prices are not live")
+})
+
+test("dirty is true after a price edit and Save night clears it", () => {
+  const baseline = draftFromNight(night(), program())
+  const edited = applyOverrideTicketForm(baseline, "cover", 15, 0, 10, 0)
+  assert.equal(nightDraftIsDirty(edited, baseline), true)
+
+  const hours = applyNightHours(baseline, "21:00:00", "01:00:00", "22:00:00", "02:00:00")
+  assert.equal(nightDraftIsDirty(hours, baseline), true)
+  assert.equal(nightDraftIsDirty({ ...baseline, is_closed: true }, baseline), true)
+  assert.equal(nightDraftIsDirty(toggleNightTierDisabled(baseline, "cover"), baseline), true)
+  assert.equal(nightDraftIsDirty(toggleNightTierSoldOut(baseline, "cover"), baseline), true)
+  assert.equal(nightDraftIsDirty(reorderNightTiers(baseline, ["skip", "cover"]), baseline), true)
+
+  // Save night adopts the server night and that snapshot becomes the baseline.
+  const savedNight = night({
+    has_override: true,
+    tiers: [
+      { ...night().tiers[0], price_usd: 15, is_overridden: true, template_price_usd: 10 },
+      night().tiers[1],
+    ],
+  })
+  const saved = draftFromNight(savedNight, program())
+  assert.equal(nightDraftIsDirty(saved, saved), false)
+  assert.equal(nightDraftIsDirty(edited, saved), false)
+})
+
+test("sold out and drag order go on the override payload", () => {
+  const sold = toggleNightTierSoldOut(draftFromNight(night(), program()), "cover")
+  const reordered = reorderNightTiers(sold, ["skip", "cover"])
+  const payload = buildNightOverridePayload(reordered)
+
+  assert.deepEqual(
+    payload.tiers?.map((t) => t.tier_key),
+    ["skip", "cover"]
+  )
+  assert.equal(payload.tiers?.[0].sort_order, 0)
+  assert.equal(payload.tiers?.[0].sold_out, false)
+  assert.equal(payload.tiers?.[1].tier_key, "cover")
+  assert.equal(payload.tiers?.[1].sold_out, true)
+  assert.equal(payload.tiers?.[1].sort_order, 1)
+  assert.ok("sold_out" in (payload.tiers?.[0] ?? {}))
+  assert.ok("sort_order" in (payload.tiers?.[0] ?? {}))
+
+  const editor = readFileSync(
+    fileURLToPath(
+      new URL("../../components/business/v2/door-access/NightTicketsEditor.tsx", import.meta.url)
+    ),
+    "utf8"
+  )
+  assert.ok(editor.includes("Mark sold out") || editor.includes("soldOut: true"))
+  assert.ok(editor.includes("allowReorder={editable}"))
+  assert.ok(editor.includes("aria-label=\"Drag to reorder\"") === false, "handle lives on TicketRow")
+  const row = readFileSync(
+    fileURLToPath(
+      new URL("../../components/business/v2/events/ManageSalesTickets.tsx", import.meta.url)
+    ),
+    "utf8"
+  )
+  assert.ok(row.includes('aria-label="Drag to reorder"'))
 })
 
 test("override ticket form pins price and quantity independently", () => {
@@ -713,6 +820,13 @@ test("normalizeNightTier keeps the template values the editor compares against",
   assert.equal(t.template_price_usd, 10)
   assert.equal(t.is_overridden, true)
   assert.equal(t.is_disabled, false)
+  assert.equal(t.sold_out, false)
+})
+
+test("normalizeNightTier reads sold_out or force_sold_out", () => {
+  assert.equal(normalizeNightTier({ tier_key: "cover", sold_out: 1 }).sold_out, true)
+  assert.equal(normalizeNightTier({ tier_key: "cover", force_sold_out: true }).sold_out, true)
+  assert.equal(normalizeNightTier({ tier_key: "cover" }).sold_out, false)
 })
 
 // ── 4. presentation + D-P5 vocabulary ───────────────────────────────────────
@@ -994,6 +1108,7 @@ test("product copy no longer says Weekly Access (renamed to Weekly Cover)", () =
     "../../app/business/(dashboard)/door-access/[id]/edit/page.tsx",
     "../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx",
     "../../components/business/v2/door-access/NightTicketsEditor.tsx",
+    "../../components/business/v2/door-access/NightLeaveGuard.tsx",
     "../../components/business/v2/events/ManageSalesTickets.tsx",
     "../../app/business/(dashboard)/help/content.ts",
     "../../app/business/(dashboard)/analytics/page.tsx",
