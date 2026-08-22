@@ -15,11 +15,15 @@ import {
   lookaheadIds,
   mergeVenueEvents,
   nightChipPrice,
+  parseCheckoutTicketTiers,
+  programTemplateTiers,
   resolveVenueEventImageUrl,
   shouldListOnVenuePage,
   toVenueEvent,
   VENUE_EVENT_LOOKAHEAD,
   weeklyAccessPriceLines,
+  applySharedProgramPrices,
+  eventFromPrice,
   type VenueEvent,
 } from "./venuePublic.ts"
 
@@ -256,10 +260,10 @@ test("night chips are weekday + day, never timezone-shifted", () => {
 })
 
 test("night chip price uses that night's min cover, From when tiers", () => {
-  assert.equal(nightChipPrice(coverNight(621, "2026-08-24 21:00:00")), "$5")
+  assert.equal(nightChipPrice(coverNight(621, "2026-08-24 21:00:00")), "Cover $5")
   assert.equal(
     nightChipPrice(coverNight(623, "2026-08-26 21:00:00", { min_ticket_price: "10.00" })),
-    "$10",
+    "Cover $10",
   )
   assert.equal(
     nightChipPrice(
@@ -276,6 +280,65 @@ test("night chip price uses that night's min cover, From when tiers", () => {
   assert.equal(
     nightChipPrice(coverNight(626, "2026-08-29 21:00:00", { min_ticket_price: null, tickets: [] })),
     "",
+  )
+})
+
+test("a $5 cover night renders $5 on the chip when min_ticket_price is null", () => {
+  assert.equal(
+    nightChipPrice({
+      min_ticket_price: null,
+      tickets: [{ name: "Cover", price_usd: 5 }],
+    }),
+    "Cover $5",
+  )
+  assert.match(
+    nightChipPrice({
+      min_ticket_price: null,
+      tickets: [{ name: "Cover", price_usd: 5 }],
+    }),
+    /\$5/,
+  )
+  assert.equal(
+    nightChipPrice({ min_ticket_price: null, tickets: [] }, [{ name: "Cover", price_usd: 5 }]),
+    "Cover $5",
+  )
+})
+
+test("program template Cover fills nights that shipped with a null min price", () => {
+  const nights = [
+    coverNight(621, "2026-08-24 21:00:00", { min_ticket_price: null, tickets: [] }),
+    coverNight(623, "2026-08-26 21:00:00", {
+      min_ticket_price: null,
+      tickets: [{ name: "Cover", price_usd: 5 }],
+    }),
+    coverNight(625, "2026-08-28 21:00:00", { min_ticket_price: null, tickets: [] }),
+  ]
+  const filled = applySharedProgramPrices(nights)
+  assert.equal(nightChipPrice(filled[0], programTemplateTiers(filled)), "Cover $5")
+  assert.equal(nightChipPrice(filled[2], programTemplateTiers(filled)), "Cover $5")
+  assert.deepEqual(weeklyAccessPriceLines(filled), ["Cover $5"])
+})
+
+test("parseCheckoutTicketTiers reads Cover $5 off the Laravel checkout card", () => {
+  const html = `
+    <div class="ticket-card bg-surface rounded-2xl"
+      data-ticket-id="670"
+      data-price="5.00">
+      <h4 class="font-bold text-white text-lg">Cover</h4>
+      <p class="text-xl font-bold text-white">$5.00</p>
+    </div>
+  `
+  assert.deepEqual(parseCheckoutTicketTiers(html), [{ name: "Cover", price_usd: 5 }])
+})
+
+test("Rumble / happening-today row is From $5 when we have a price", () => {
+  assert.equal(eventFromPrice(event({ min_ticket_price: "5.00", tickets: [] })), "From $5")
+  assert.equal(
+    eventFromPrice({
+      min_ticket_price: null,
+      tickets: [{ name: "General Admission", price_usd: 5 }],
+    }),
+    "From $5",
   )
 })
 
@@ -314,6 +377,26 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
   assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
   assert.ok(!client.includes('type="date"'), "do not ship a calendar date input")
   assert.ok(!client.includes("<select"), "do not ship a dropdown")
+})
+
+test("happening today rows print From $5 and the header shows the full venue photo", () => {
+  const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
+  assert.ok(client.includes("eventFromPrice"), "Happening today / event rows must resolve From $5")
+  const heroStart = client.indexOf("Header: full venue photo")
+  const heroEnd = client.indexOf('className="mx-auto max-w-5xl px-5 pb-24"')
+  assert.ok(heroStart >= 0 && heroEnd > heroStart, "venue header block must exist")
+  const hero = client.slice(heroStart, heroEnd)
+  assert.ok(hero.includes("aspect-[16/9]"), "header photo must be a wide contain frame")
+  assert.ok(hero.includes("object-contain"), "full venue photo must show, not a cover crop")
+  assert.ok(!hero.includes("object-cover"), "header must not crop the venue photo")
+  assert.ok(!hero.includes("absolute inset-x-0 bottom-0"), "identity must not sit on top of the photo")
+  assert.ok(hero.includes("Get tickets"), "Get tickets sits beside or below the photo")
+  assert.ok(!hero.includes("—"), "header must not use an em dash")
+  const page = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/page.tsx"), "utf8")
+  assert.ok(
+    page.includes("CHECKOUT_BASE_URL"),
+    "server fetch must pass the checkout base so draft Cover nights can resolve $5",
+  )
 })
 
 test("venue event and Weekly Access flyers are full portrait frames, not wide crops", () => {
