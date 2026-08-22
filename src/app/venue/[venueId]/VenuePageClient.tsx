@@ -64,6 +64,10 @@ function formatEventTime(dateStr: string) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 }
 
+function pricedCtaLabel(label: string, price: string): string {
+  return price ? `${label} · ${price}` : label
+}
+
 /**
  * V5 REDEMPTION §8 — the two product treatments this page renders.
  *
@@ -113,7 +117,7 @@ function FlyerFrame({
     <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#0d0d14]">
       {src ? (
         /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={src} alt={alt} className="h-full w-full object-contain" />
+        <img src={src} alt={alt} className="absolute inset-0 h-full w-full object-contain object-center" />
       ) : (
         <div className="flex h-full w-full items-center justify-center">
           <svg
@@ -287,7 +291,7 @@ function WeeklyAccessProgramCard({
   const flyerNight = nights.find((night) => night.flyer_image_url) ?? selected
   const cardImage = resolveVenueEventImageUrl(flyerNight, venue)
   const template = programTemplateTiers(nights)
-  const prices = weeklyAccessPriceLines(nights, template)
+  const prices = weeklyAccessPriceLines([selected], template)
   const selectedIsToday =
     todayKey != null && eventCalendarDate(selected.start_date_time) === todayKey
 
@@ -460,6 +464,12 @@ export default function VenuePageClient({
   const todayEvents = todayKey ? eventRows.filter(isEventToday) : []
   const todayDoorAccess = todayKey ? doorAccessRows.filter(isEventToday) : []
   const hasToday = todayEvents.length > 0 || todayDoorAccess.length > 0
+  const accessTemplate = programTemplateTiers(doorAccessRows)
+  const headerEventPrice = eventFromPrice(todayEvents[0] ?? eventRows[0] ?? { min_ticket_price: null, tickets: [] })
+  const headerAccessPrice = nightChipPrice(
+    todayDoorAccess[0] ?? doorAccessRows[0] ?? { min_ticket_price: null, tickets: [] },
+    accessTemplate,
+  )
 
   // Lead an events-less venue with its Door Access nights: when there is nothing
   // on the calendar but the venue runs a weekly door, hide the empty "Events"
@@ -500,7 +510,7 @@ export default function VenuePageClient({
               href="#events"
               className="hidden shrink-0 rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-extrabold text-black shadow-lg shadow-[#05EB54]/25 transition hover:brightness-110 active:scale-[0.97] sm:inline-block"
             >
-              Get tickets
+              {pricedCtaLabel("Get tickets", headerEventPrice)}
             </a>
           ) : doorAccessRows.length > 0 ? (
             <a
@@ -511,7 +521,7 @@ export default function VenuePageClient({
                 boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
               }}
             >
-              Get access
+              {pricedCtaLabel("Get access", headerAccessPrice)}
             </a>
           ) : null}
         </div>
@@ -521,12 +531,12 @@ export default function VenuePageClient({
       <div className="vp-rise mx-auto max-w-5xl px-5 pt-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
           {heroImage ? (
-            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:flex-1">
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:max-w-md lg:flex-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroImage} alt={venue.name} className="h-full w-full object-contain" />
+              <img src={heroImage} alt={venue.name} className="absolute inset-0 h-full w-full object-contain object-center" />
             </div>
           ) : (
-            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:flex-1">
+            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:max-w-md lg:flex-1">
               <div className="vp-blob absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#05EB54]/15 blur-3xl" />
               <div className="vp-blob absolute right-0 top-10 h-80 w-80 rounded-full bg-[#05EB54]/10 blur-3xl" style={{ animationDelay: "-7s" }} />
             </div>
@@ -566,7 +576,7 @@ export default function VenuePageClient({
                 href="#events"
                 className="inline-flex w-fit items-center justify-center rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-5 py-2.5 text-sm font-extrabold text-black shadow-lg shadow-[#05EB54]/25 transition hover:brightness-110"
               >
-                Get tickets
+                {pricedCtaLabel("Get tickets", headerEventPrice)}
               </a>
             ) : doorAccessRows.length > 0 ? (
               <a
@@ -577,7 +587,7 @@ export default function VenuePageClient({
                   boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
                 }}
               >
-                Get access
+                {pricedCtaLabel("Get access", headerAccessPrice)}
               </a>
             ) : null}
           </div>
@@ -661,7 +671,7 @@ export default function VenuePageClient({
                     callout that pulls tonight to the top still distinguishes the
                     two products instead of flattening them. */}
                 {todayDoorAccess.map((e) => {
-                  const fromPrice = eventFromPrice(e)
+                  const coverPrice = nightChipPrice(e, accessTemplate)
                   return (
                     <a
                       key={`tda-${e.event_id}`}
@@ -674,7 +684,7 @@ export default function VenuePageClient({
                     >
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: DOOR_ACCESS_THEME.accent }} />
                       {e.name}
-                      {fromPrice ? <span style={{ color: DOOR_ACCESS_THEME.accent }}>{fromPrice}</span> : null}
+                      {coverPrice ? <span style={{ color: DOOR_ACCESS_THEME.accent }}>{coverPrice}</span> : null}
                     </a>
                   )
                 })}
@@ -707,6 +717,7 @@ export default function VenuePageClient({
                   today={isEventToday(event)}
                   checkoutBaseUrl={checkoutBaseUrl}
                   ctaLabel="Get tickets"
+                  imageUrl={resolveVenueEventImageUrl(event, venue)}
                 />
               ))}
             </div>

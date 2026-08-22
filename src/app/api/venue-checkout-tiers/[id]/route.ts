@@ -1,0 +1,32 @@
+import { NextResponse } from "next/server"
+import { parseCheckoutTicketTiers } from "@/lib/venuePublic"
+
+const CHECKOUT_BASE =
+  process.env.CHECKOUT_REDIRECT_BASE_URL ||
+  process.env.LARAVEL_CHECKOUT_BASE_URL ||
+  "https://bizzy-deals.com"
+
+/**
+ * Same-origin Cover / ticket prices for the public venue page.
+ * Draft Weekly Cover nights have no min_ticket_price on GET /ui/events/:id;
+ * the Laravel checkout HTML is the public source that still prints Cover $5.
+ */
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  if (!/^\d+$/.test(id)) {
+    return NextResponse.json({ tickets: [] }, { status: 400 })
+  }
+  try {
+    const res = await fetch(`${CHECKOUT_BASE.replace(/\/$/, "")}/checkout/${id}`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return NextResponse.json({ tickets: [] })
+    const tickets = parseCheckoutTicketTiers(await res.text())
+    return NextResponse.json({ tickets })
+  } catch {
+    return NextResponse.json({ tickets: [] })
+  }
+}

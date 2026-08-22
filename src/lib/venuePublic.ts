@@ -97,8 +97,15 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
   const accessKind =
     access === "door_access" || access === "event" ? access : null
 
-  const price =
-    row.min_ticket_price ?? row.lowest_price ?? null
+  const price = firstUsdAmount(
+    row.min_ticket_price,
+    row.lowest_price,
+    row.lowest_price_usd,
+    row.price_usd,
+    row.amount,
+    centsToUsd(row.price_cents),
+    centsToUsd(row.amount_cents),
+  )
 
   const seriesRaw = row.recurring_series_id ?? row.series_id
   const seriesId = seriesRaw == null || seriesRaw === "" ? null : Number(seriesRaw)
@@ -110,7 +117,7 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
     end_date_time: typeof row.end_date_time === "string" ? row.end_date_time : "",
     venue_name: typeof row.venue_name === "string" ? row.venue_name : "",
     flyer_image_url: typeof row.flyer_image_url === "string" ? row.flyer_image_url : null,
-    min_ticket_price: price as number | string | null,
+    min_ticket_price: price,
     access_kind: accessKind,
     status: typeof row.status === "string" ? row.status : null,
     venue_id: row.venue_id == null ? null : Number(row.venue_id),
@@ -159,6 +166,35 @@ function pickRicherEvent(a: VenueEvent, b: VenueEvent): VenueEvent {
   }
 }
 
+export function parseUsdAmount(raw: unknown): number | null {
+  if (raw == null || raw === "") return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+function centsToUsd(raw: unknown): number | null {
+  const cents = parseUsdAmount(raw)
+  return cents == null ? null : cents / 100
+}
+
+function firstUsdAmount(...candidates: unknown[]): number | string | null {
+  for (const raw of candidates) {
+    if (raw == null || raw === "") continue
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw
+    if (typeof raw === "string" && raw.trim() !== "") return raw
+  }
+  return null
+}
+
+/** Ticket / cover dollars from the field names public payloads actually use. */
+export function parseTierPriceUsd(tier: Record<string, unknown>): number | null {
+  const usd = parseUsdAmount(
+    tier.price_usd ?? tier.price ?? tier.lowest_price ?? tier.lowest_price_usd ?? tier.amount,
+  )
+  if (usd != null) return usd
+  return centsToUsd(tier.price_cents ?? tier.amount_cents)
+}
+
 export function parseVenueAccessTiers(raw: unknown): VenueAccessTier[] {
   let rows = raw
   if (typeof rows === "string") {
@@ -175,8 +211,8 @@ export function parseVenueAccessTiers(raw: unknown): VenueAccessTier[] {
     .map((tier) => {
       const name =
         typeof tier.name === "string" && tier.name.trim() ? tier.name.trim() : "Cover"
-      const price = Number(tier.price_usd ?? tier.price ?? tier.lowest_price ?? 0)
-      return { name, price_usd: Number.isFinite(price) ? price : 0 }
+      const price = parseTierPriceUsd(tier)
+      return { name, price_usd: price ?? 0 }
     })
 }
 
@@ -344,23 +380,77 @@ export function applySharedProgramPrices(events: VenueEvent[]): VenueEvent[] {
   return events.map((event) => byId.get(event.event_id) ?? event)
 }
 
-/** Ticket cards on the Laravel checkout HTML (draft Weekly Cover nights). */
+/** Same-origin reader for Laravel checkout cards (browser poll cannot CORS). */
+export const VENUE_CHECKOUT_TIERS_PATH = "/api/venue-checkout-tiers"
+
+export function venueCheckoutTiersUrl(eventId: number): string {
+  return `${VENUE_CHECKOUT_TIERS_PATH}/${eventId}`
+}
+
+function parseTiersFromCheckoutJson(raw: unknown): VenueAccessTier[] {
+  if (!raw || typeof raw !== "object") return []
+  const row = raw as Record<string, unknown>
+  return parseVenueAccessTiers(row.tickets ?? row.tiers)
+}
+
+/**
+ * Ticket cards on the Laravel checkout HTML (draft Weekly Cover nights).
+ * Matches a ticket-card whether `data-price` sits on the same tag or just
+ * after it. CSS `.ticket-card {` rules do not count.
+ */
 export function parseCheckoutTicketTiers(html: string): VenueAccessTier[] {
   if (!html) return []
   const tiers: VenueAccessTier[] = []
+  const tagRe = /<div\b[^>]*\bticket-card\b[^>]*>/gi
+  let tag: RegExpExecArray | null
+  while ((tag = tagRe.exec(html))) {
+    const nearby = html.slice(tag.index, tag.index + 2500)
+    const priceMatch = /data-price="([^"]+)"/.exec(tag[0]) ?? /data-price="([^"]+)"/.exec(nearby)
+    if (!priceMatch) continue
+    const price = Number(priceMatch[1])
+    if (!Number.isFinite(price)) continue
+    const nameMatch = /<h4[^>]*>\s*([^<]+?)\s*<\/h4>/i.exec(nearby)
+    const name = nameMatch?.[1].trim() || "Cover"
+    if (name.toLowerCase() === "order summary") continue
+    tiers.push({ name, price_usd: price })
+  }
+  if (tiers.length > 0) return tiers
   const cardRe =
     /class="[^"]*ticket-card[^"]*"[\s\S]*?data-price="([^"]+)"[\s\S]*?<h4[^>]*>\s*([^<]+?)\s*<\/h4>/gi
   let match: RegExpExecArray | null
   while ((match = cardRe.exec(html))) {
     const price = Number(match[1])
     const name = match[2].trim() || "Cover"
+    if (name.toLowerCase() === "order summary") continue
     if (Number.isFinite(price)) tiers.push({ name, price_usd: price })
   }
   if (tiers.length > 0) return tiers
   const priceMatch = /data-price="([^"]+)"/.exec(html)
-  if (priceMatch && /<h4[^>]*>\s*Cover\s*<\/h4>/i.test(html)) {
+  const coverMatch = /<h4[^>]*>\s*([^<]+?)\s*<\/h4>/i.exec(html)
+  if (priceMatch && coverMatch) {
     const price = Number(priceMatch[1])
-    if (Number.isFinite(price)) return [{ name: "Cover", price_usd: price }]
+    const name = coverMatch[1].trim() || "Cover"
+    if (Number.isFinite(price) && name.toLowerCase() !== "order summary") {
+      return [{ name, price_usd: price }]
+    }
+  }
+  return []
+}
+
+async function fetchCheckoutTicketTiers(
+  eventId: number,
+  checkoutBase?: string,
+): Promise<VenueAccessTier[]> {
+  if (typeof window !== "undefined") {
+    const fromApi = parseTiersFromCheckoutJson(await fetchJson(venueCheckoutTiersUrl(eventId)))
+    if (fromApi.length > 0) return fromApi
+  }
+  if (checkoutBase) {
+    const html = await fetchText(`${checkoutBase.replace(/\/$/, "")}/checkout/${eventId}`)
+    if (html) {
+      const parsed = parseCheckoutTicketTiers(html)
+      if (parsed.length > 0) return parsed
+    }
   }
   return []
 }
@@ -570,18 +660,36 @@ async function fetchProgramTemplateTiers(
   return []
 }
 
+function needsPriceEnrichment(event: VenueEvent): boolean {
+  return (
+    event.tickets.length === 0 &&
+    (event.min_ticket_price == null || event.min_ticket_price === "") &&
+    (event.template_tickets?.length ?? 0) === 0
+  )
+}
+
+function withResolvedTiers(event: VenueEvent, tickets: VenueAccessTier[]): VenueEvent {
+  const min = Math.min(...finitePrices(tickets))
+  return {
+    ...event,
+    tickets,
+    template_tickets: event.template_tickets?.length ? event.template_tickets : tickets,
+    min_ticket_price:
+      event.min_ticket_price != null && event.min_ticket_price !== ""
+        ? event.min_ticket_price
+        : Number.isFinite(min)
+          ? min
+          : event.min_ticket_price,
+  }
+}
+
 /** Checkout JSON, program template, then Laravel checkout HTML for draft nights. */
 async function enrichWeeklyAccessTiers(
   base: string,
   events: VenueEvent[],
   checkoutBase?: string,
 ): Promise<VenueEvent[]> {
-  const need = events.filter(
-    (event) =>
-      event.access_kind === "door_access" &&
-      event.tickets.length === 0 &&
-      (event.min_ticket_price == null || event.min_ticket_price === ""),
-  )
+  const need = events.filter(needsPriceEnrichment)
   if (need.length === 0) return events
 
   const extras = await Promise.all(
@@ -597,10 +705,7 @@ async function enrichWeeklyAccessTiers(
   let merged = mergeVenueEvents(events, extras.filter((e): e is VenueEvent => e != null))
 
   const stillNeed = merged.filter(
-    (event) =>
-      event.access_kind === "door_access" &&
-      event.tickets.length === 0 &&
-      (event.min_ticket_price == null || event.min_ticket_price === ""),
+    (event) => event.access_kind === "door_access" && needsPriceEnrichment(event),
   )
   const seriesIds = [
     ...new Set(
@@ -622,22 +727,13 @@ async function enrichWeeklyAccessTiers(
     })
   }
 
-  const htmlNeed = merged.filter(
-    (event) =>
-      event.access_kind === "door_access" &&
-      event.tickets.length === 0 &&
-      (event.min_ticket_price == null || event.min_ticket_price === "") &&
-      (event.template_tickets?.length ?? 0) === 0,
-  )
-  if (checkoutBase && htmlNeed.length > 0) {
-    const checkoutRoot = checkoutBase.replace(/\/$/, "")
+  const htmlNeed = merged.filter(needsPriceEnrichment)
+  if (htmlNeed.length > 0) {
     const fromHtml = await Promise.all(
       htmlNeed.map(async (event) => {
-        const html = await fetchText(`${checkoutRoot}/checkout/${event.event_id}`)
-        if (!html) return null
-        const tickets = parseCheckoutTicketTiers(html)
+        const tickets = await fetchCheckoutTicketTiers(event.event_id, checkoutBase)
         if (tickets.length === 0) return null
-        return { ...event, tickets, template_tickets: tickets, min_ticket_price: Math.min(...finitePrices(tickets)) }
+        return withResolvedTiers(event, tickets)
       }),
     )
     merged = mergeVenueEvents(
