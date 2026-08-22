@@ -12,7 +12,6 @@ import {
   formatNightChipLabel,
   groupWeeklyAccessNights,
   mergeVenueEvents,
-  nightChipPrice,
   programTemplateTiers,
   resolveNightTiers,
   resolveVenueEventImageUrl,
@@ -265,7 +264,7 @@ function ListingCard({
 
 /**
  * One Weekly Cover program: flyer (or venue photo), title, every real
- * tier as a chip, date chips under the card. Get access checks out the
+ * tier as a chip, date-only chips under the card. Select Door Tickets checks out the
  * selected night only. A tier chip adds ?ticket_id= so Laravel can
  * preselect that ticket. No dropdown, no calendar.
  */
@@ -298,7 +297,7 @@ function WeeklyAccessProgramCard({
 
   return (
     <div>
-      <div className="overflow-hidden rounded-3xl border border-[#1e1e2e] bg-[#141420] lg:grid lg:grid-cols-[minmax(15rem,22rem)_minmax(0,1fr)]">
+      <div className="overflow-hidden rounded-3xl bg-[#141420] shadow-[0_18px_45px_-30px_rgba(0,0,0,0.8)] ring-1 ring-white/10 lg:grid lg:grid-cols-[minmax(15rem,22rem)_minmax(0,1fr)]">
         <div className="relative flex items-center justify-center bg-[#0d0d14] p-4 sm:p-5">
           <div className="relative aspect-[4/5] w-full max-w-[22rem] overflow-hidden rounded-2xl bg-black/30">
             {cardImage ? (
@@ -341,12 +340,7 @@ function WeeklyAccessProgramCard({
                 <a
                   key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
                   href={venueNightCheckoutHref(checkoutBaseUrl, selected.event_id, tier.ticket_id)}
-                  className="inline-flex min-h-11 min-w-[5.5rem] flex-1 items-center justify-center rounded-2xl border-2 px-4 py-2.5 text-[15px] font-bold leading-snug transition"
-                  style={{
-                    backgroundColor: "transparent",
-                    borderColor: theme.accent,
-                    color: theme.accent,
-                  }}
+                  className="inline-flex min-h-11 min-w-[5.5rem] flex-1 items-center justify-center rounded-2xl bg-white/[0.07] px-4 py-2.5 text-[15px] font-bold leading-snug text-white transition hover:bg-white/[0.12]"
                 >
                   {formatAccessTierLabel(tier)}
                 </a>
@@ -369,7 +363,7 @@ function WeeklyAccessProgramCard({
                 backgroundImage: `linear-gradient(to bottom right, ${theme.accentDeep}, ${theme.accent})`,
               }}
             >
-              Get access
+              Select Door Tickets
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
               </svg>
@@ -380,25 +374,22 @@ function WeeklyAccessProgramCard({
       <div className="mt-3 flex flex-wrap gap-2.5" role="group" aria-label="Upcoming nights">
         {nights.map((night) => {
           const active = night.event_id === selected.event_id
-          const price = nightChipPrice(night, template)
           return (
             <button
               key={night.event_id}
               type="button"
               onClick={() => setSelectedId(night.event_id)}
-              className="inline-flex min-h-11 min-w-[5.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl border-2 px-4 py-2.5 text-[15px] font-bold leading-snug transition"
+              className="inline-flex min-h-11 min-w-[5.5rem] items-center justify-center rounded-2xl px-4 py-2.5 text-[15px] font-bold leading-snug transition"
               style={
                 active
-                  ? { backgroundColor: theme.accent, borderColor: theme.accent, color: "#000" }
+                  ? { backgroundColor: theme.accent, color: "#000" }
                   : {
-                      backgroundColor: "transparent",
-                      borderColor: theme.accent,
-                      color: theme.accent,
+                      backgroundColor: "#1c1c29",
+                      color: "#f4f4f5",
                     }
               }
             >
               <span>{formatNightChipLabel(night.start_date_time)}</span>
-              {price ? <span className="text-sm font-extrabold">{price}</span> : null}
             </button>
           )
         })}
@@ -556,7 +547,7 @@ export default function VenuePageClient({
                 boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
               }}
             >
-              Get access
+                Door Tickets
             </a>
           ) : null}
         </div>
@@ -620,7 +611,7 @@ export default function VenuePageClient({
                   boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
                 }}
               >
-                Get access
+              Door Tickets
               </a>
             ) : null}
           </div>
@@ -765,7 +756,7 @@ export default function VenuePageClient({
             section, which is the honest render. Only the Events section carries a
             placeholder, because a venue with neither must not paint a blank page.
 
-            One program card per series. Date chips pick the night; Get access
+            One program card per series. Date chips pick the night; Select Door Tickets
             checks out that night only. */}
         {weeklyAccessPrograms.length > 0 && (
           <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
