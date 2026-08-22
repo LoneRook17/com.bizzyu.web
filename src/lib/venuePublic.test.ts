@@ -240,7 +240,7 @@ test("no flyer and no venue photo stays empty so the icon tile can stand in", ()
   )
 })
 
-test("venue page says Weekly Access, has no em dash in the walk-up line, and wires the flyer fallback", () => {
+test("venue page gives Weekly Access a full-width contained image treatment", () => {
   const src = join(process.cwd(), "src")
   const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
   const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
@@ -249,11 +249,14 @@ test("venue page says Weekly Access, has no em dash in the walk-up line, and wir
   assert.ok(client.includes("weekly access"), "badge must say weekly access")
   assert.ok(!client.includes("door access ${"), "badge still says door access")
   assert.ok(
-    client.includes("Pay the cover before you go and walk up. Scan with any phone camera at the door."),
-    "walk-up copy is missing or still uses an em dash",
+    client.includes("Scan with any phone camera at the door."),
+    "door scan note is missing from the venue description area",
   )
-  assert.ok(!client.includes("walk up —"), "walk-up copy still has an em dash")
   assert.ok(client.includes("resolveVenueEventImageUrl"), "Weekly Access cards must resolve flyer then venue photo")
+  assert.ok(client.includes("aspect-[4/5]"), "Weekly Access image needs a natural portrait frame")
+  assert.ok(client.includes("object-contain object-center"), "Weekly Access image must not be stretched or cropped")
+  assert.ok(!client.includes("pricedCtaLabel"), "top-level venue CTAs must not include prices")
+  assert.ok(!client.includes("business.logo_image_url"), "venue page must not show the business logo")
   assert.ok(
     page.includes("WEEKLY_ACCESS_SECTION_LABEL"),
     "fallback meta description must say weekly access, not door access",
