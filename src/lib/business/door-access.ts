@@ -11,8 +11,8 @@
 //
 // D-P5 VOCABULARY SPLIT, enforced by the label constants below:
 //   - Hosts creating one see "Weekly Cover".
-//   - Host list rows and section headers read WEEKLY ACCESS.
-//   - Students see "Door Access": a consumer string, never rendered here.
+//   - Host list rows, section headers, and the public venue page read
+//     WEEKLY ACCESS. No user-facing surface says "Door Access".
 // The API path, program_kind and every response field stay `door_access`.
 // These are DISPLAY strings only and must not be used to rename a contract.
 //

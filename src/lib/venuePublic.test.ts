@@ -6,10 +6,12 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
+  coalesceVenuePhotoUrl,
   eventIdSeeds,
   eventMatchesVenue,
   lookaheadIds,
   mergeVenueEvents,
+  resolveVenueEventImageUrl,
   shouldListOnVenuePage,
   toVenueEvent,
   VENUE_EVENT_LOOKAHEAD,
@@ -125,4 +127,73 @@ test("the venue page loads through fetchVenuePublicData, not the venue list alon
     !/fetch\(`\$\{API_URL\}\/ui\/venues\/venue/.test(page),
     "page.tsx still fetches the venue endpoint inline; it must go through fetchVenuePublicData",
   )
+})
+
+const DUNGEON = {
+  id: 990198,
+  venuePhotoUrl: "https://cdn.example/dungeon.jpg",
+  photo_url: null as string | null,
+}
+
+test("empty flyer falls back to venuePhotoUrl, then photo_url", () => {
+  assert.equal(
+    resolveVenueEventImageUrl({ flyer_image_url: null, venue_id: 990198 }, DUNGEON),
+    "https://cdn.example/dungeon.jpg",
+  )
+  assert.equal(
+    resolveVenueEventImageUrl({ flyer_image_url: "", venue_id: 990198 }, DUNGEON),
+    "https://cdn.example/dungeon.jpg",
+  )
+  assert.equal(
+    resolveVenueEventImageUrl(
+      { flyer_image_url: null, venue_id: 990198 },
+      { id: 990198, venuePhotoUrl: null, photo_url: "https://cdn.example/photo-url.jpg" },
+    ),
+    "https://cdn.example/photo-url.jpg",
+  )
+  assert.equal(
+    coalesceVenuePhotoUrl({ venuePhotoUrl: null, photo_url: "https://cdn.example/photo-url.jpg" }),
+    "https://cdn.example/photo-url.jpg",
+  )
+})
+
+test("a program flyer wins over the venue photo", () => {
+  assert.equal(
+    resolveVenueEventImageUrl(
+      { flyer_image_url: "https://cdn.example/cover.jpg", venue_id: 990198 },
+      DUNGEON,
+    ),
+    "https://cdn.example/cover.jpg",
+  )
+})
+
+test("no flyer and no venue photo stays empty so the icon tile can stand in", () => {
+  assert.equal(
+    resolveVenueEventImageUrl(
+      { flyer_image_url: null, venue_id: 990198 },
+      { id: 990198, venuePhotoUrl: null, photo_url: null },
+    ),
+    null,
+  )
+})
+
+test("venue page says Weekly Access, has no em dash in the walk-up line, and wires the flyer fallback", () => {
+  const src = join(process.cwd(), "src")
+  const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
+  const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
+  assert.ok(client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "section heading must use the Weekly Access label")
+  assert.ok(!client.includes('title="Door Access"'), "section heading still says Door Access")
+  assert.ok(client.includes("weekly access"), "badge must say weekly access")
+  assert.ok(!client.includes("door access ${"), "badge still says door access")
+  assert.ok(
+    client.includes("Pay the cover before you go and walk up. Scan with any phone camera at the door."),
+    "walk-up copy is missing or still uses an em dash",
+  )
+  assert.ok(!client.includes("walk up —"), "walk-up copy still has an em dash")
+  assert.ok(client.includes("resolveVenueEventImageUrl"), "Weekly Access cards must resolve flyer then venue photo")
+  assert.ok(
+    page.includes("WEEKLY_ACCESS_SECTION_LABEL"),
+    "fallback meta description must say weekly access, not door access",
+  )
+  assert.ok(!page.includes("door access"), "meta description still says door access")
 })

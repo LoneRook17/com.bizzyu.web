@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
-import { fetchVenuePublicData, type VenueData } from "@/lib/venuePublic"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
+import { fetchVenuePublicData, resolveVenueEventImageUrl, type VenueData } from "@/lib/venuePublic"
 
 // How often the board silently re-fetches so newly-added events / tickets /
 // line skips appear on the mounted screen without a manual reload.
@@ -135,6 +136,7 @@ function ListingCard({
   checkoutBaseUrl,
   ctaLabel,
   priceLabel,
+  imageUrl,
 }: {
   event: VenueData["events"][number]
   theme: SectionTheme
@@ -142,8 +144,10 @@ function ListingCard({
   checkoutBaseUrl: string
   ctaLabel: string
   priceLabel: (price: number) => string
+  imageUrl?: string | null
 }) {
   const price = event.min_ticket_price !== null ? Number(event.min_ticket_price) : null
+  const cardImage = imageUrl || event.flyer_image_url
   return (
     // §9 — the per-night link. `event_id` is THIS night's own events row, so a
     // Thursday and a Friday of the same program get different URLs and land on
@@ -161,10 +165,10 @@ function ListingCard({
       }
     >
       <div className="relative h-48 w-full overflow-hidden bg-[#0d0d14]">
-        {event.flyer_image_url ? (
+        {cardImage ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={event.flyer_image_url}
+            src={cardImage}
             alt={event.name}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
@@ -303,7 +307,7 @@ export default function VenuePageClient({
 
   const stats = [
     eventRows.length > 0 && `${eventRows.length} upcoming ${eventRows.length === 1 ? "event" : "events"}`,
-    doorAccessRows.length > 0 && `${doorAccessRows.length} door access ${doorAccessRows.length === 1 ? "night" : "nights"}`,
+    doorAccessRows.length > 0 && `${doorAccessRows.length} weekly access ${doorAccessRows.length === 1 ? "night" : "nights"}`,
     deals.length > 0 && `${deals.length} ${deals.length === 1 ? "deal" : "deals"}`,
   ].filter(Boolean) as string[]
 
@@ -564,9 +568,9 @@ export default function VenuePageClient({
             page: you buy Thursday, not "Thursdays". */}
         {doorAccessRows.length > 0 && (
           <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
-            <SectionHeader title="Door Access" count={doorAccessRows.length} theme={DOOR_ACCESS_THEME} />
+            <SectionHeader title={WEEKLY_ACCESS_SECTION_LABEL} count={doorAccessRows.length} theme={DOOR_ACCESS_THEME} />
             <p className="-mt-3 mb-5 text-sm text-gray-400">
-              Pay the cover before you go and walk up — scanned with any phone camera at the door.
+              Pay the cover before you go and walk up. Scan with any phone camera at the door.
             </p>
             <div className="grid gap-5 md:grid-cols-2">
               {orderedDoorAccess.map((event) => (
@@ -577,6 +581,7 @@ export default function VenuePageClient({
                   today={isEventToday(event)}
                   checkoutBaseUrl={checkoutBaseUrl}
                   ctaLabel="Get access"
+                  imageUrl={resolveVenueEventImageUrl(event, venue)}
                   // A cover charge is one flat number, not a "from" range — the
                   // tiers under it (cover / skip / VIP) are ways in, not seat
                   // classes, so leading with "From" would misdescribe it.

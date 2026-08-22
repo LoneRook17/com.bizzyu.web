@@ -1,3 +1,5 @@
+import { resolveProgramImageUrl } from "./business/door-access.ts"
+
 // Public /venue/:id board data.
 //
 // GET /ui/venues/venue/:id is the page's original source. On current services
@@ -34,6 +36,8 @@ export interface VenueData {
     address: string
     description: string | null
     venuePhotoUrl: string | null
+    /** Snake_case alias some venue payloads still send. Prefer venuePhotoUrl. */
+    photo_url?: string | null
     website: string | null
     instagram: string | null
   }
@@ -134,6 +138,39 @@ function pickRicherEvent(a: VenueEvent, b: VenueEvent): VenueEvent {
   }
 }
 
+function nonemptyPhotoUrl(v: string | null | undefined): string | null {
+  if (typeof v !== "string") return null
+  const trimmed = v.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/** Venue photo from either camelCase or snake_case on the public payload. */
+export function coalesceVenuePhotoUrl(venue: {
+  venuePhotoUrl?: string | null
+  photo_url?: string | null
+}): string | null {
+  return nonemptyPhotoUrl(venue.venuePhotoUrl) ?? nonemptyPhotoUrl(venue.photo_url)
+}
+
+/**
+ * Weekly Access card image: program flyer first, then the venue photo.
+ * Reuses the same fallback helper the host dashboard already uses.
+ */
+export function resolveVenueEventImageUrl(
+  event: Pick<VenueEvent, "flyer_image_url" | "venue_id">,
+  venue: { id: number; venuePhotoUrl?: string | null; photo_url?: string | null },
+): string | null {
+  const venuePhoto = coalesceVenuePhotoUrl(venue)
+  return resolveProgramImageUrl(
+    {
+      flyer_image_url: event.flyer_image_url,
+      photo_url: venuePhoto,
+      venue_id: event.venue_id ?? venue.id,
+    },
+    [{ id: venue.id, photo_url: venuePhoto }],
+  )
+}
+
 export function lookaheadIds(seed: number, count = VENUE_EVENT_LOOKAHEAD): number[] {
   if (!Number.isFinite(seed) || seed <= 0 || count <= 0) return []
   return Array.from({ length: count }, (_, i) => seed + i + 1)
@@ -206,6 +243,10 @@ export async function fetchVenuePublicData(
 
   return {
     ...venue,
+    venue: {
+      ...venue.venue,
+      venuePhotoUrl: coalesceVenuePhotoUrl(venue.venue),
+    },
     events: mergeVenueEvents(listed, forVenue, details.filter((e): e is VenueEvent => e != null)),
     deals: Array.isArray(venue.deals) ? venue.deals : [],
     line_skips: Array.isArray(venue.line_skips) ? venue.line_skips : [],

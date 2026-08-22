@@ -756,8 +756,8 @@ test("D-P5: host surfaces never render the student string", () => {
   assert.equal(WEEKLY_ACCESS_TYPE_LABEL, "WEEKLY ACCESS")
   assert.equal(EVENT_TYPE_LABEL, "EVENT")
   assert.equal(WEEKLY_ACCESS_CREATION_LABEL, "Weekly Cover")
-  // "Door Access" is the CONSUMER name. It is the API path and the
-  // program_kind, but it must not appear on a host-facing label.
+  // "Door Access" is the API path and program_kind only. User-facing
+  // copy on every surface, including the public venue page, is Weekly Access.
   for (const label of [WEEKLY_ACCESS_TYPE_LABEL, EVENT_TYPE_LABEL, WEEKLY_ACCESS_CREATION_LABEL]) {
     assert.ok(!/door access/i.test(label), `${label} leaks the student vocabulary`)
   }
