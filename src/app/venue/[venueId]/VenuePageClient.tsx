@@ -64,10 +64,6 @@ function formatEventTime(dateStr: string) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 }
 
-function pricedCtaLabel(label: string, price: string): string {
-  return price ? `${label} · ${price}` : label
-}
-
 /**
  * V5 REDEMPTION §8 — the two product treatments this page renders.
  *
@@ -297,19 +293,39 @@ function WeeklyAccessProgramCard({
 
   return (
     <div>
-      <div className="overflow-hidden rounded-3xl border border-[#1e1e2e] bg-[#141420]">
-        <FlyerFrame src={cardImage} alt={first.name} accent={theme.accent}>
-          {selectedIsToday && (
-            <span
-              className="absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide text-black shadow-lg"
-              style={{ backgroundColor: theme.accent }}
-            >
-              Today
-            </span>
-          )}
-        </FlyerFrame>
-        <div className="p-5">
-          <h3 className="text-xl font-extrabold leading-snug text-white">{first.name}</h3>
+      <div className="overflow-hidden rounded-3xl border border-[#1e1e2e] bg-[#141420] lg:grid lg:grid-cols-[minmax(15rem,22rem)_minmax(0,1fr)]">
+        <div className="relative flex items-center justify-center bg-[#0d0d14] p-4 sm:p-5">
+          <div className="relative aspect-[4/5] w-full max-w-[22rem] overflow-hidden rounded-2xl bg-black/30">
+            {cardImage ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={cardImage} alt={first.name} className="h-full w-full object-contain object-center" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <svg
+                  className="h-10 w-10"
+                  style={{ color: `${theme.accent}66` }}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                </svg>
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#141420]/65 via-transparent to-transparent" />
+            {selectedIsToday && (
+              <span
+                className="absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide text-black shadow-lg"
+                style={{ backgroundColor: theme.accent }}
+              >
+                Today
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex min-h-full flex-col p-5 sm:p-7">
+          <h3 className="text-2xl font-extrabold leading-snug text-white">{first.name}</h3>
           {prices.length > 0 && (
             <div className="mt-3 flex flex-col gap-1">
               {prices.map((line) => (
@@ -319,7 +335,7 @@ function WeeklyAccessProgramCard({
               ))}
             </div>
           )}
-          <div className="mt-4 flex justify-end">
+          <div className="mt-6 flex lg:mt-auto">
             <a
               href={`${checkoutBaseUrl}/checkout/${selected.event_id}`}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-extrabold text-black transition hover:brightness-110"
@@ -464,13 +480,6 @@ export default function VenuePageClient({
   const todayEvents = todayKey ? eventRows.filter(isEventToday) : []
   const todayDoorAccess = todayKey ? doorAccessRows.filter(isEventToday) : []
   const hasToday = todayEvents.length > 0 || todayDoorAccess.length > 0
-  const accessTemplate = programTemplateTiers(doorAccessRows)
-  const headerEventPrice = eventFromPrice(todayEvents[0] ?? eventRows[0] ?? { min_ticket_price: null, tickets: [] })
-  const headerAccessPrice = nightChipPrice(
-    todayDoorAccess[0] ?? doorAccessRows[0] ?? { min_ticket_price: null, tickets: [] },
-    accessTemplate,
-  )
-
   // Lead an events-less venue with its Door Access nights: when there is nothing
   // on the calendar but the venue runs a weekly door, hide the empty "Events"
   // placeholder so "Door Access" becomes the first section. Same rule the page
@@ -510,7 +519,7 @@ export default function VenuePageClient({
               href="#events"
               className="hidden shrink-0 rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-extrabold text-black shadow-lg shadow-[#05EB54]/25 transition hover:brightness-110 active:scale-[0.97] sm:inline-block"
             >
-              {pricedCtaLabel("Get tickets", headerEventPrice)}
+              Get tickets
             </a>
           ) : doorAccessRows.length > 0 ? (
             <a
@@ -521,7 +530,7 @@ export default function VenuePageClient({
                 boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
               }}
             >
-              {pricedCtaLabel("Get access", headerAccessPrice)}
+              Get access
             </a>
           ) : null}
         </div>
@@ -550,16 +559,6 @@ export default function VenuePageClient({
         )}
         <div className="relative z-10 mx-auto flex min-h-[34rem] max-w-5xl items-end px-5 py-10 sm:min-h-[38rem] sm:py-12">
           <div className="flex min-w-0 max-w-xl flex-col gap-3">
-            {business.logo_image_url ? (
-              <div className="h-16 w-16 overflow-hidden rounded-2xl bg-[#141420] ring-1 ring-white/10">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={business.logo_image_url} alt="" className="h-full w-full object-contain" />
-              </div>
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#141420] text-2xl font-extrabold text-[#05EB54] ring-1 ring-white/10">
-                {venue.name.slice(0, 1)}
-              </div>
-            )}
             <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-5xl">
               {venue.name}
             </h1>
@@ -584,7 +583,7 @@ export default function VenuePageClient({
                 href="#events"
                 className="inline-flex w-fit items-center justify-center rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-5 py-2.5 text-sm font-extrabold text-black shadow-lg shadow-[#05EB54]/25 transition hover:brightness-110"
               >
-                {pricedCtaLabel("Get tickets", headerEventPrice)}
+                Get tickets
               </a>
             ) : doorAccessRows.length > 0 ? (
               <a
@@ -595,7 +594,7 @@ export default function VenuePageClient({
                   boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
                 }}
               >
-                {pricedCtaLabel("Get access", headerAccessPrice)}
+                Get access
               </a>
             ) : null}
           </div>
@@ -607,6 +606,14 @@ export default function VenuePageClient({
         <div className="vp-rise mt-7 flex flex-col gap-5" style={{ animationDelay: "0.12s" }}>
           {venue.description && (
             <p className="max-w-3xl text-lg leading-relaxed text-gray-300">{venue.description}</p>
+          )}
+          {doorAccessRows.length > 0 && (
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
+              <svg className="h-4 w-4 shrink-0 text-[#FF3ED1]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Scan with any phone camera at the door.
+            </p>
           )}
           <div className="flex flex-wrap items-center gap-2.5">
             {stats.map((s) => (
@@ -662,7 +669,6 @@ export default function VenuePageClient({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {todayEvents.map((e) => {
-                  const fromPrice = eventFromPrice(e)
                   return (
                     <a
                       key={`te-${e.event_id}`}
@@ -671,7 +677,6 @@ export default function VenuePageClient({
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-[#05EB54]" />
                       {e.name}
-                      {fromPrice ? <span className="text-[#05EB54]">{fromPrice}</span> : null}
                     </a>
                   )
                 })}
@@ -679,7 +684,6 @@ export default function VenuePageClient({
                     callout that pulls tonight to the top still distinguishes the
                     two products instead of flattening them. */}
                 {todayDoorAccess.map((e) => {
-                  const coverPrice = nightChipPrice(e, accessTemplate)
                   return (
                     <a
                       key={`tda-${e.event_id}`}
@@ -692,7 +696,6 @@ export default function VenuePageClient({
                     >
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: DOOR_ACCESS_THEME.accent }} />
                       {e.name}
-                      {coverPrice ? <span style={{ color: DOOR_ACCESS_THEME.accent }}>{coverPrice}</span> : null}
                     </a>
                   )
                 })}
@@ -749,10 +752,7 @@ export default function VenuePageClient({
         {weeklyAccessPrograms.length > 0 && (
           <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
             <SectionHeader title={WEEKLY_ACCESS_SECTION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
-            <p className="-mt-3 mb-5 text-sm text-gray-400">
-              Pay the cover before you go and walk up. Scan with any phone camera at the door.
-            </p>
-            <div className="grid gap-8 md:grid-cols-2">
+            <div className={`grid gap-8 ${weeklyAccessPrograms.length > 1 ? "md:grid-cols-2" : ""}`}>
               {weeklyAccessPrograms.map((nights) => (
                 <WeeklyAccessProgramCard
                   key={nights[0].recurring_series_id ?? nights[0].event_id}

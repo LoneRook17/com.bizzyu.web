@@ -240,7 +240,7 @@ test("no flyer and no venue photo stays empty so the icon tile can stand in", ()
   )
 })
 
-test("venue page says Weekly Access, has no em dash in the walk-up line, and wires the flyer fallback", () => {
+test("venue page gives Weekly Access a full-width contained image treatment", () => {
   const src = join(process.cwd(), "src")
   const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
   const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
@@ -249,11 +249,14 @@ test("venue page says Weekly Access, has no em dash in the walk-up line, and wir
   assert.ok(client.includes("weekly access"), "badge must say weekly access")
   assert.ok(!client.includes("door access ${"), "badge still says door access")
   assert.ok(
-    client.includes("Pay the cover before you go and walk up. Scan with any phone camera at the door."),
-    "walk-up copy is missing or still uses an em dash",
+    client.includes("Scan with any phone camera at the door."),
+    "door scan note is missing from the venue description area",
   )
-  assert.ok(!client.includes("walk up —"), "walk-up copy still has an em dash")
   assert.ok(client.includes("resolveVenueEventImageUrl"), "Weekly Access cards must resolve flyer then venue photo")
+  assert.ok(client.includes("aspect-[4/5]"), "Weekly Access image needs a natural portrait frame")
+  assert.ok(client.includes("object-contain object-center"), "Weekly Access image must not be stretched or cropped")
+  assert.ok(!client.includes("pricedCtaLabel"), "top-level venue CTAs must not include prices")
+  assert.ok(!client.includes("business.logo_image_url"), "venue page must not show the business logo")
   assert.ok(
     page.includes("WEEKLY_ACCESS_SECTION_LABEL"),
     "fallback meta description must say weekly access, not door access",
@@ -478,24 +481,26 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
   assert.ok(!client.includes("<select"), "do not ship a dropdown")
 })
 
-test("happening today rows print From $5 and the header shows the full venue photo", () => {
+test("top venue CTAs and happening-today pills omit price while the hero contains its photo", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("eventFromPrice"), "Happening today / event rows must resolve From $5")
-  assert.ok(client.includes("pricedCtaLabel"), "Get tickets / Get access must include the night price")
-  assert.ok(client.includes('pricedCtaLabel("Get tickets", headerEventPrice)'), "header Get tickets must show From $N")
-  const heroStart = client.indexOf("Header: photo sizes itself")
+  assert.ok(client.includes("eventFromPrice"), "event cards must retain their pricing")
+  assert.ok(!client.includes("pricedCtaLabel"), "Get tickets / Get access must not include a price")
+  assert.ok(!client.includes("headerEventPrice"), "header must not resolve event prices")
+  assert.ok(!client.includes("headerAccessPrice"), "header must not resolve cover prices")
+  const todayStart = client.indexOf("{hasToday && (")
+  const todayEnd = client.indexOf("SECTION ONE: Events")
+  assert.ok(todayStart >= 0 && todayEnd > todayStart, "happening-today section must exist")
+  const today = client.slice(todayStart, todayEnd)
+  assert.ok(!today.includes("fromPrice"), "event pills must not show From $N")
+  assert.ok(!today.includes("coverPrice"), "access pills must not show Cover $N")
+  const heroStart = client.indexOf("Full-bleed venue hero")
   const heroEnd = client.indexOf('className="mx-auto max-w-5xl px-5 pb-24"')
   assert.ok(heroStart >= 0 && heroEnd > heroStart, "venue header block must exist")
   const hero = client.slice(heroStart, heroEnd)
-  const photoBlock = hero.slice(hero.indexOf("{heroImage"), hero.indexOf("business.logo_image_url"))
-  assert.ok(photoBlock.includes("h-auto w-full"), "hero img must size to the photo, not a crop box")
-  assert.ok(!photoBlock.includes("aspect-[16/9]"), "header must not use a wide 16:9 crop box")
-  assert.ok(!photoBlock.includes("overflow-hidden"), "header photo frame must not clip the flyer")
-  assert.ok(!photoBlock.includes("h-[320px]"), "header must not use a fixed-height crop")
   assert.ok(hero.includes("object-contain"), "full venue photo must show, not a cover crop")
   assert.ok(!hero.includes("object-cover"), "header must not crop the venue photo")
-  assert.ok(!hero.includes("absolute inset-x-0 bottom-0"), "identity must not sit on top of the photo")
   assert.ok(hero.includes("Get tickets"), "Get tickets sits beside or below the photo")
+  assert.ok(!hero.includes("business.logo_image_url"), "venue identity must not show the business logo")
   assert.ok(!hero.includes("—"), "header must not use an em dash")
   const page = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/page.tsx"), "utf8")
   assert.ok(
