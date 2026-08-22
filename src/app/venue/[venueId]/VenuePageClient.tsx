@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
@@ -9,6 +9,7 @@ import {
   fetchVenuePublicData,
   formatNightChipLabel,
   groupWeeklyAccessNights,
+  nightChipPrice,
   resolveVenueEventImageUrl,
   weeklyAccessPriceLines,
   type VenueData,
@@ -89,6 +90,46 @@ const DOOR_ACCESS_THEME = {
 } as const
 
 type SectionTheme = typeof EVENT_THEME | typeof DOOR_ACCESS_THEME
+
+/**
+ * Portrait flyer frame (4:5). object-contain so the full poster shows; the
+ * box is tall enough that a contained flyer is not a tiny letterboxed strip.
+ */
+function FlyerFrame({
+  src,
+  alt,
+  accent,
+  children,
+}: {
+  src?: string | null
+  alt: string
+  accent: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#0d0d14]">
+      {src ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img src={src} alt={alt} className="h-full w-full object-contain" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <svg
+            className="h-10 w-10"
+            style={{ color: `${accent}66` }}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+          </svg>
+        </div>
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
+      {children}
+    </div>
+  )
+}
 
 /** Big calendar-leaf date chip overlaid on event flyers. */
 function DateChip({ dateStr, theme }: { dateStr: string; theme: SectionTheme }) {
@@ -173,29 +214,7 @@ function ListingCard({
           : undefined
       }
     >
-      <div className="relative h-48 w-full overflow-hidden bg-[#0d0d14]">
-        {cardImage ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={cardImage}
-            alt={event.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <svg
-              className="h-10 w-10"
-              style={{ color: `${theme.accent}66` }}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-            </svg>
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
+      <FlyerFrame src={cardImage} alt={event.name} accent={theme.accent}>
         <DateChip dateStr={event.start_date_time} theme={theme} />
         {today && (
           <span
@@ -205,7 +224,7 @@ function ListingCard({
             Today
           </span>
         )}
-      </div>
+      </FlyerFrame>
       <div className="p-5">
         <h3 className="text-xl font-extrabold leading-snug text-white">{event.name}</h3>
         <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-[#fbbf24]">
@@ -273,25 +292,7 @@ function WeeklyAccessProgramCard({
   return (
     <div>
       <div className="overflow-hidden rounded-3xl border border-[#1e1e2e] bg-[#141420]">
-        <div className="relative h-48 w-full overflow-hidden bg-[#0d0d14]">
-          {cardImage ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={cardImage} alt={first.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <svg
-                className="h-10 w-10"
-                style={{ color: `${theme.accent}66` }}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-              </svg>
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
+        <FlyerFrame src={cardImage} alt={first.name} accent={theme.accent}>
           {selectedIsToday && (
             <span
               className="absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide text-black shadow-lg"
@@ -300,7 +301,7 @@ function WeeklyAccessProgramCard({
               Today
             </span>
           )}
-        </div>
+        </FlyerFrame>
         <div className="p-5">
           <h3 className="text-xl font-extrabold leading-snug text-white">{first.name}</h3>
           {prices.length > 0 && (
@@ -328,26 +329,28 @@ function WeeklyAccessProgramCard({
           </div>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Upcoming nights">
+      <div className="mt-3 flex flex-wrap gap-2.5" role="group" aria-label="Upcoming nights">
         {nights.map((night) => {
           const active = night.event_id === selected.event_id
+          const price = nightChipPrice(night)
           return (
             <button
               key={night.event_id}
               type="button"
               onClick={() => setSelectedId(night.event_id)}
-              className="rounded-full px-3.5 py-1.5 text-sm font-bold transition"
+              className="inline-flex min-h-11 min-w-[5.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl border-2 px-4 py-2.5 text-[15px] font-bold leading-snug transition"
               style={
                 active
-                  ? { backgroundColor: theme.accent, color: "#000" }
+                  ? { backgroundColor: theme.accent, borderColor: theme.accent, color: "#000" }
                   : {
-                      backgroundColor: `${theme.accent}1A`,
+                      backgroundColor: "transparent",
+                      borderColor: theme.accent,
                       color: theme.accent,
-                      boxShadow: `inset 0 0 0 1px ${theme.accent}66`,
                     }
               }
             >
-              {formatNightChipLabel(night.start_date_time)}
+              <span>{formatNightChipLabel(night.start_date_time)}</span>
+              {price ? <span className="text-sm font-extrabold">{price}</span> : null}
             </button>
           )
         })}
