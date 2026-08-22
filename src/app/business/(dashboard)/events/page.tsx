@@ -281,7 +281,7 @@ export default function V2EventsPage() {
           }
           action={
             canCreate && (effectiveType === "access" || tab === "upcoming") ? (
-              <Button onClick={handleCreate}><Plus /> Create</Button>
+              <Button variant={effectiveType === "access" ? "access" : "primary"} onClick={handleCreate}><Plus /> Create</Button>
             ) : undefined
           }
         />

@@ -1,5 +1,6 @@
 "use client"
 
+import { useProductCheckboxClass } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Input, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 
@@ -39,6 +40,7 @@ export function StockAlertsFields({
 }: StockAlertsFieldsProps) {
   const typeId = `${idPrefix}lowstock_threshold_type`
   const valueId = `${idPrefix}lowstock_threshold_value`
+  const checkboxClass = useProductCheckboxClass()
 
   return (
     <>
@@ -47,7 +49,7 @@ export function StockAlertsFields({
           type="checkbox"
           checked={enabled}
           onChange={(e) => onEnabledChange(e.target.checked)}
-          className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+          className={checkboxClass}
         />
         <span className="text-sm text-neutral-700 dark:text-neutral-300">Notify me when a ticket tier sells out</span>
       </label>
@@ -94,7 +96,7 @@ export function StockAlertsFields({
               type="checkbox"
               checked={notifyTeam}
               onChange={(e) => onNotifyTeamChange(e.target.checked)}
-              className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+              className={checkboxClass}
             />
             <span className="text-sm text-neutral-700 dark:text-neutral-300">Also notify business team</span>
           </label>

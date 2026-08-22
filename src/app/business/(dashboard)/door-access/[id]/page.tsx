@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
   ACCESS_ACCENT,
+  ACCESS_BUTTON_VARIANT,
   DEFAULT_NIGHT_PREVIEW_COUNT,
   DEFAULT_SERIES_LOOKAHEAD_DAYS,
   easternToday,
@@ -144,7 +145,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           .join(" · ")}
         actions={
           canEdit ? (
-            <Button asChild>
+            <Button asChild variant={ACCESS_BUTTON_VARIANT}>
               <Link href={programEditHref(programId)}>
                 <Pencil className="size-4" /> {EDIT_PROGRAM_LABEL}
               </Link>

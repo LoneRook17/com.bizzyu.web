@@ -39,6 +39,10 @@ export const EVENT_TYPE_LABEL = "EVENT"
 /** The accent pair. Green = named event, magenta = access (F9 / D-P5). */
 export const EVENT_ACCENT = "#05EB54"
 export const ACCESS_ACCENT = "#FF3ED1"
+/** Gradient partner for ACCESS_ACCENT — same pair as checkout / venue Weekly Cover. */
+export const ACCESS_ACCENT_DEEP = "#D10EA3"
+/** v2 Button variant for Weekly Cover primary CTAs. */
+export const ACCESS_BUTTON_VARIANT = "access" as const
 
 // ── F11 program page copy (no em dashes in host-facing strings) ─────────────
 
