@@ -8,12 +8,15 @@ import {
   eventCalendarDate,
   eventFromPrice,
   fetchVenuePublicData,
+  formatAccessTierLabel,
   formatNightChipLabel,
   groupWeeklyAccessNights,
   mergeVenueEvents,
   nightChipPrice,
   programTemplateTiers,
+  resolveNightTiers,
   resolveVenueEventImageUrl,
+  venueNightCheckoutHref,
   weeklyAccessPriceLines,
   type VenueData,
   type VenueEvent,
@@ -262,8 +265,9 @@ function ListingCard({
 
 /**
  * One Weekly Access program: flyer (or venue photo), title, Cover $5 or
- * named tiers, date chips under the card. Get access checks out the
- * selected night only. No dropdown, no calendar.
+ * named tier chips, date chips under the card. Get access checks out the
+ * selected night only. A 2+ tier chip adds ?ticket_id= so Laravel can
+ * preselect that ticket. No dropdown, no calendar.
  */
 function WeeklyAccessProgramCard({
   nights,
@@ -288,6 +292,7 @@ function WeeklyAccessProgramCard({
   const cardImage = resolveVenueEventImageUrl(flyerNight, venue)
   const template = programTemplateTiers(nights)
   const prices = weeklyAccessPriceLines([selected], template)
+  const tiers = resolveNightTiers(selected, template)
   const selectedIsToday =
     todayKey != null && eventCalendarDate(selected.start_date_time) === todayKey
 
@@ -326,7 +331,24 @@ function WeeklyAccessProgramCard({
         </div>
         <div className="flex min-h-full flex-col p-5 sm:p-7">
           <h3 className="text-2xl font-extrabold leading-snug text-white">{first.name}</h3>
-          {prices.length > 0 && (
+          {tiers.length > 1 ? (
+            <div className="mt-3 flex flex-wrap gap-2.5" role="group" aria-label="Ticket types">
+              {tiers.map((tier) => (
+                <a
+                  key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
+                  href={venueNightCheckoutHref(checkoutBaseUrl, selected.event_id, tier.ticket_id)}
+                  className="inline-flex min-h-11 min-w-[5.5rem] items-center justify-center rounded-2xl border-2 px-4 py-2.5 text-[15px] font-bold leading-snug transition"
+                  style={{
+                    backgroundColor: "transparent",
+                    borderColor: theme.accent,
+                    color: theme.accent,
+                  }}
+                >
+                  {formatAccessTierLabel(tier)}
+                </a>
+              ))}
+            </div>
+          ) : prices.length > 0 ? (
             <div className="mt-3 flex flex-col gap-1">
               {prices.map((line) => (
                 <p key={line} className="text-2xl font-extrabold" style={{ color: theme.accent }}>
@@ -334,10 +356,10 @@ function WeeklyAccessProgramCard({
                 </p>
               ))}
             </div>
-          )}
+          ) : null}
           <div className="mt-6 flex lg:mt-auto">
             <a
-              href={`${checkoutBaseUrl}/checkout/${selected.event_id}`}
+              href={venueNightCheckoutHref(checkoutBaseUrl, selected.event_id)}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-extrabold text-black transition hover:brightness-110"
               style={{
                 backgroundImage: `linear-gradient(to bottom right, ${theme.accentDeep}, ${theme.accent})`,
