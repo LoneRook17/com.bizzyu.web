@@ -48,14 +48,9 @@ export default function CreateFunnelPage() {
   return (
     <RequireVenue>
       <div className="flex max-w-3xl flex-col gap-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-            What are you setting up?
-          </h1>
-          <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
-            Pick the one that fits — you can run both side by side.
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+          What are you setting up?
+        </h1>
 
         <ChoiceCard
           href="/business/events/new"
@@ -63,11 +58,12 @@ export default function CreateFunnelPage() {
           accent={EVENT_ACCENT}
           icon={PartyPopper}
           title="An event"
-          blurb="One night with a name — a show, a party, a mixer. Sell tickets or let people in free."
+          blurb="One night with a name: a show, a party, a mixer. Sell tickets or let people in free."
           bullets={[
             "Pick a date and time",
             "As many ticket tiers as you want",
             "Optional weekly repeat",
+            "Scan with the in-app Bizzy scanner",
           ]}
         />
 
@@ -77,11 +73,12 @@ export default function CreateFunnelPage() {
           accent={ACCESS_ACCENT}
           icon={DoorOpen}
           title={WEEKLY_ACCESS_CREATION_LABEL}
+          tag="Low Maintenance Option"
           blurb="Your regular nights, sold ahead. Set your prices once and they run every week."
           bullets={[
             "Pick the nights it runs",
-            "Cover, line skip, VIP — price them all",
-            "No staff setup — scan with any phone camera",
+            "Cover, line skip, VIP. Price them all.",
+            "No staff setup. Scan with any phone camera.",
           ]}
         />
       </div>
@@ -95,6 +92,7 @@ function ChoiceCard({
   accent,
   icon: Icon,
   title,
+  tag,
   blurb,
   bullets,
 }: {
@@ -103,6 +101,7 @@ function ChoiceCard({
   accent: string
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
   title: string
+  tag?: string
   blurb: string
   bullets: string[]
 }) {
@@ -110,7 +109,7 @@ function ChoiceCard({
     <Link
       href={href}
       // Accents are runtime hex (F9's green/magenta pair), so the tinted
-      // border and chip come through style — Tailwind can't build a class
+      // border and chip come through style. Tailwind cannot build a class
       // from a variable.
       style={{ borderColor: `${accent}59` }}
       className="group flex flex-col rounded-2xl border bg-white p-6 transition-shadow hover:shadow-md dark:bg-neutral-900"
@@ -131,7 +130,14 @@ function ChoiceCard({
         <ChevronRight className="size-5 shrink-0 text-neutral-400 transition-transform group-hover:translate-x-0.5 dark:text-neutral-500" />
       </div>
 
-      <h2 className="mt-5 text-xl font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
+      <div className="mt-5 flex items-center gap-2">
+        <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
+        {tag && (
+          <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+            {tag}
+          </span>
+        )}
+      </div>
       <p className="mt-1.5 text-[14px] leading-relaxed text-neutral-600 dark:text-neutral-400">{blurb}</p>
 
       <ul className="mt-5 flex flex-col gap-2">

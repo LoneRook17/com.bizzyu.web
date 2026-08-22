@@ -10,9 +10,9 @@
 // schedule, nothing else.
 //
 // D-P5 VOCABULARY SPLIT, enforced by the label constants below:
-//   - Hosts creating one see "Weekly Cover / Skip the Line".
+//   - Hosts creating one see "Weekly Cover".
 //   - Host list rows and section headers read WEEKLY ACCESS.
-//   - Students see "Door Access" — a consumer string, never rendered here.
+//   - Students see "Door Access": a consumer string, never rendered here.
 // The API path, program_kind and every response field stay `door_access`.
 // These are DISPLAY strings only and must not be used to rename a contract.
 //
@@ -37,11 +37,9 @@ export const EVENT_TYPE_LABEL = "EVENT"
 export const WEEKLY_ACCESS_SECTION_LABEL = "Weekly Access"
 
 /**
- * The creation-flow name (D-P5). Both halves of the product in one string:
- * hosts recognise "cover" and "skip the line", and neither alone describes a
- * program that is usually both.
+ * The creation-flow name (D-P5). Matches Flutter create_choice_page.dart.
  */
-export const WEEKLY_ACCESS_CREATION_LABEL = "Weekly Cover / Skip the Line"
+export const WEEKLY_ACCESS_CREATION_LABEL = "Weekly Cover"
 
 /** The accent pair. Green = named event, magenta = access (F9 / D-P5). */
 export const EVENT_ACCENT = "#05EB54"
