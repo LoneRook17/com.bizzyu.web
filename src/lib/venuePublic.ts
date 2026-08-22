@@ -122,9 +122,9 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
     status: typeof row.status === "string" ? row.status : null,
     venue_id: row.venue_id == null ? null : Number(row.venue_id),
     recurring_series_id: seriesId != null && Number.isFinite(seriesId) ? seriesId : null,
-    tickets: parseVenueAccessTiers(row.tickets ?? row.ticket_tiers),
+    tickets: parseVenueAccessTiers(row.tickets ?? row.ticket_tiers ?? row.tiers),
     template_tickets: parseVenueAccessTiers(
-      row.template_tickets ?? row.program_tickets ?? row.program_template_tickets,
+      row.template_tickets ?? row.program_tickets ?? row.program_template_tickets ?? row.tiers,
     ),
   }
 }
@@ -625,6 +625,7 @@ function eventPayload(raw: unknown): Record<string, unknown> {
     nested && typeof nested === "object" ? { ...(nested as Record<string, unknown>) } : { ...row }
   if (!base.tickets && Array.isArray(row.tickets)) base.tickets = row.tickets
   if (!base.ticket_tiers && Array.isArray(row.ticket_tiers)) base.ticket_tiers = row.ticket_tiers
+  if (!base.tiers && Array.isArray(row.tiers)) base.tiers = row.tiers
   if (!base.template_tickets && Array.isArray(row.template_tickets)) {
     base.template_tickets = row.template_tickets
   }

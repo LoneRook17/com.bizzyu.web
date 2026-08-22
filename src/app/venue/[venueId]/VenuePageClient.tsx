@@ -99,8 +99,8 @@ const DOOR_ACCESS_THEME = {
 type SectionTheme = typeof EVENT_THEME | typeof DOOR_ACCESS_THEME
 
 /**
- * Portrait flyer frame (4:5). object-contain so the full poster shows; the
- * box is tall enough that a contained flyer is not a tiny letterboxed strip.
+ * Flyer / venue photo. The IMAGE sets the frame height (h-auto), so a parent
+ * overflow-hidden + aspect box cannot crop a portrait flyer to a chin.
  */
 function FlyerFrame({
   src,
@@ -114,12 +114,12 @@ function FlyerFrame({
   children?: ReactNode
 }) {
   return (
-    <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#0d0d14]">
+    <div className="relative w-full bg-[#0d0d14]">
       {src ? (
         /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={src} alt={alt} className="absolute inset-0 h-full w-full object-contain object-center" />
+        <img src={src} alt={alt} className="block h-auto w-full object-contain object-center" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center">
+        <div className="flex aspect-[4/5] w-full items-center justify-center">
           <svg
             className="h-10 w-10"
             style={{ color: `${accent}66` }}
@@ -132,7 +132,7 @@ function FlyerFrame({
           </svg>
         </div>
       )}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
       {children}
     </div>
   )
@@ -527,16 +527,16 @@ export default function VenuePageClient({
         </div>
       </header>
 
-      {/* Header: full venue photo (contain, not a cover crop), identity beside/below. */}
+      {/* Header: photo sizes itself (h-auto). No aspect crop box, no overflow clip. */}
       <div className="vp-rise mx-auto max-w-5xl px-5 pt-6">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {heroImage ? (
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:max-w-md lg:flex-1">
+            <div className="w-full min-w-0 rounded-3xl bg-[#0d0d14] lg:max-w-md">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={heroImage} alt={venue.name} className="absolute inset-0 h-full w-full object-contain object-center" />
+              <img src={heroImage} alt={venue.name} className="block h-auto w-full rounded-3xl object-contain object-center" />
             </div>
           ) : (
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl bg-[#0d0d14] lg:max-w-md lg:flex-1">
+            <div className="relative aspect-[4/5] w-full rounded-3xl bg-[#0d0d14] lg:max-w-md">
               <div className="vp-blob absolute -left-20 top-0 h-72 w-72 rounded-full bg-[#05EB54]/15 blur-3xl" />
               <div className="vp-blob absolute right-0 top-10 h-80 w-80 rounded-full bg-[#05EB54]/10 blur-3xl" style={{ animationDelay: "-7s" }} />
             </div>

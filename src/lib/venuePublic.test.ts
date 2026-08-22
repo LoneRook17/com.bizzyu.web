@@ -75,6 +75,18 @@ test("toVenueEvent maps /ui/events lowest_price onto min_ticket_price", () => {
   assert.deepEqual(row.tickets, [])
 })
 
+test("toVenueEvent maps a Cover tier from tickets / tiers when min_ticket_price is null", () => {
+  const fromTiers = toVenueEvent({
+    event_id: 621,
+    name: "Weekly Cover",
+    access_kind: "door_access",
+    min_ticket_price: null,
+    tiers: [{ name: "Cover", price_usd: 5 }],
+  })
+  assert.deepEqual(fromTiers?.tickets, [{ name: "Cover", price_usd: 5 }])
+  assert.equal(nightChipPrice(fromTiers!), "Cover $5")
+})
+
 test("toVenueEvent keeps amount / price_cents / lowest_price_usd when min_ticket_price is absent", () => {
   const fromUsd = toVenueEvent({
     event_id: 621,
@@ -471,12 +483,15 @@ test("happening today rows print From $5 and the header shows the full venue pho
   assert.ok(client.includes("eventFromPrice"), "Happening today / event rows must resolve From $5")
   assert.ok(client.includes("pricedCtaLabel"), "Get tickets / Get access must include the night price")
   assert.ok(client.includes('pricedCtaLabel("Get tickets", headerEventPrice)'), "header Get tickets must show From $N")
-  const heroStart = client.indexOf("Header: full venue photo")
+  const heroStart = client.indexOf("Header: photo sizes itself")
   const heroEnd = client.indexOf('className="mx-auto max-w-5xl px-5 pb-24"')
   assert.ok(heroStart >= 0 && heroEnd > heroStart, "venue header block must exist")
   const hero = client.slice(heroStart, heroEnd)
-  assert.ok(hero.includes("aspect-[4/5]"), "header photo must be a portrait letterbox")
-  assert.ok(!hero.includes("aspect-[16/9]"), "header must not use a wide 16:9 crop box")
+  const photoBlock = hero.slice(hero.indexOf("{heroImage"), hero.indexOf("business.logo_image_url"))
+  assert.ok(photoBlock.includes("h-auto w-full"), "hero img must size to the photo, not a crop box")
+  assert.ok(!photoBlock.includes("aspect-[16/9]"), "header must not use a wide 16:9 crop box")
+  assert.ok(!photoBlock.includes("overflow-hidden"), "header photo frame must not clip the flyer")
+  assert.ok(!photoBlock.includes("h-[320px]"), "header must not use a fixed-height crop")
   assert.ok(hero.includes("object-contain"), "full venue photo must show, not a cover crop")
   assert.ok(!hero.includes("object-cover"), "header must not crop the venue photo")
   assert.ok(!hero.includes("absolute inset-x-0 bottom-0"), "identity must not sit on top of the photo")
@@ -492,17 +507,18 @@ test("happening today rows print From $5 and the header shows the full venue pho
 test("venue event and Weekly Access flyers are full portrait frames, not wide crops", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("FlyerFrame"), "event and Weekly Access cards share a flyer frame")
-  assert.ok(client.includes("aspect-[4/5]"), "flyer box must be a portrait rectangle")
   assert.ok(client.includes("object-contain"), "full flyer must show, not a cover crop")
   assert.ok(
-    client.includes("h-full w-full object-contain"),
-    "full flyer must show, not a cover crop",
+    client.includes("h-auto w-full object-contain"),
+    "flyer img must size to the photo, not fill a crop box",
   )
   assert.ok(!client.includes("relative h-48 w-full"), "flyer box must not be a short wide strip")
   const frameStart = client.indexOf("function FlyerFrame")
   const frameEnd = client.indexOf("function DateChip")
   assert.ok(frameStart >= 0 && frameEnd > frameStart, "FlyerFrame must sit above DateChip")
   const frame = client.slice(frameStart, frameEnd)
+  assert.ok(frame.includes("h-auto w-full"), "FlyerFrame must grow with the photo")
+  assert.ok(!frame.includes("overflow-hidden"), "FlyerFrame must not clip the flyer")
   assert.ok(frame.includes("object-contain"), "FlyerFrame image must contain")
   assert.ok(!frame.includes("object-cover"), "FlyerFrame must not crop with object-cover")
 })
