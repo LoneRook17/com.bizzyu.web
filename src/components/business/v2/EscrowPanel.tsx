@@ -15,7 +15,9 @@
 //   claimable   money is waiting and Stripe isn't connected — hero number +
 //               the existing Stripe onboarding CTA (same POST the settings
 //               StripeConnectCard uses)
-//   processing  a claim is on its way to the bank ("Payment processing")
+//   ready       onboarded, balance held, no withdrawal/transfer yet. Honest
+//               hold-until-sent copy. Never "on the way to your bank".
+//   processing  a pending withdrawal or in-flight Transfer ("Payment processing")
 //   paid        everything claimed. Quiet confirmation + shared EscrowHistory.
 //
 // ONE NUMBER (amendment A4): escrow credits settle immediately, so there is
@@ -23,16 +25,18 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { ArrowUpRight, CheckCircle2, Clock, Landmark, Loader2 } from "lucide-react"
+import { ArrowUpRight, CheckCircle2, Clock, Landmark, Loader2, Send } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import {
   fetchEscrowPanelData,
   deriveEscrowPanelState,
   escrowHeroCents,
   centsUsd,
+  isEscrowDemoScenario,
   type EscrowPanelData,
   type EscrowPanelState,
 } from "@/lib/business/escrow"
+import { completeProfileStripeOnboardOnce } from "@/lib/business/stripe-onboard-complete"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -96,6 +100,7 @@ const VARIANT_SIZING: Record<EscrowPanelVariant, { pad: string; iconBox: string;
  *  panel visually leads the page. Paid stays quiet; compact stays neutral. */
 const HERO_STATE_BORDER: Record<Exclude<EscrowPanelState, "empty">, string> = {
   claimable: "border-green-200 dark:border-green-900/70",
+  ready: "border-green-200 dark:border-green-900/70",
   processing: "border-blue-200 dark:border-blue-900/70",
   paid: "",
 }
@@ -105,6 +110,12 @@ const STATE_HEADER: Record<Exclude<EscrowPanelState, "empty">, { icon: React.Ele
     icon: Landmark,
     tint: "bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400",
     label: "Held for you by Bizzy",
+  },
+  ready: {
+    icon: Send,
+    tint: "bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400",
+    label: "Ready to send",
+    badge: { variant: "info", text: "Held" },
   },
   processing: {
     icon: Clock,
@@ -120,18 +131,45 @@ const STATE_HEADER: Record<Exclude<EscrowPanelState, "empty">, { icon: React.Ele
   },
 }
 
-function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant; className?: string }) {
+function EscrowPanelInner({
+  variant,
+  className,
+  refreshToken = 0,
+}: {
+  variant: EscrowPanelVariant
+  className?: string
+  refreshToken?: number
+}) {
   const searchParams = useSearchParams()
   const demoScenario = searchParams.get("escrow_demo")
   const [data, setData] = useState<EscrowPanelData | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    fetchEscrowPanelData({ demoScenario }).then((d) => {
-      if (!cancelled) setData(d)
-    })
+    ;(async () => {
+      const first = await fetchEscrowPanelData({ demoScenario })
+      if (cancelled) return
+      setData(first)
+
+      // Payments compact only: if Stripe is already onboarded, POST complete
+      // so services can run the escrow claim. Home hero does not kick this.
+      // Demo fixtures never touch the network.
+      const shouldClaim =
+        variant === "compact" &&
+        !isEscrowDemoScenario(demoScenario) &&
+        first?.stripeOnboarded === true
+      if (!shouldClaim) return
+      try {
+        await completeProfileStripeOnboardOnce()
+      } catch {
+        return
+      }
+      if (cancelled) return
+      const second = await fetchEscrowPanelData({ demoScenario })
+      if (!cancelled) setData(second)
+    })()
     return () => { cancelled = true }
-  }, [demoScenario])
+  }, [demoScenario, variant, refreshToken])
 
   if (!data) return null
   const state = deriveEscrowPanelState(data.summary, data.stripeOnboarded)
@@ -158,6 +196,9 @@ function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant;
           {state === "claimable" && (
             <span className={cn("ml-2 font-medium text-neutral-500 dark:text-neutral-400", sizing.heroSuffix)}>waiting for you</span>
           )}
+          {state === "ready" && (
+            <span className={cn("ml-2 font-medium text-neutral-500 dark:text-neutral-400", sizing.heroSuffix)}>ready to send</span>
+          )}
         </p>
 
         {state === "claimable" && (
@@ -170,6 +211,13 @@ function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant;
             </p>
             <div className="mt-4"><ConnectStripeButton /></div>
           </>
+        )}
+
+        {state === "ready" && (
+          <p className="mt-2 max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
+            Stripe is connected. This balance is held until it is sent. It is not on the way
+            to your bank yet.
+          </p>
         )}
 
         {state === "processing" && (
@@ -197,10 +245,19 @@ function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant;
  *  — no wrapper, no margins — when there is no escrow history, so pages that
  *  mount it are unchanged for businesses without escrow. `className` rides on
  *  the card root and disappears with it. */
-export default function EscrowPanel({ variant = "hero", className }: { variant?: EscrowPanelVariant; className?: string }) {
+export default function EscrowPanel({
+  variant = "hero",
+  className,
+  refreshToken,
+}: {
+  variant?: EscrowPanelVariant
+  className?: string
+  /** Settings increment this after onboard/complete so the panel re-reads the ledger. */
+  refreshToken?: number
+}) {
   return (
     <Suspense fallback={null}>
-      <EscrowPanelInner variant={variant} className={className} />
+      <EscrowPanelInner variant={variant} className={className} refreshToken={refreshToken} />
     </Suspense>
   )
 }

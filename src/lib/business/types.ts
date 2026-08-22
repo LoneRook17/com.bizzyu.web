@@ -783,6 +783,9 @@ export interface BusinessProfile {
   stripe_connect_onboarded: boolean
   /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
   stripe_reconnect_required?: boolean
+  /** Live Connect flags when the profile read includes them. Absent on older deploys. */
+  charges_enabled?: boolean
+  payouts_enabled?: boolean
   created_at: string
 }
 

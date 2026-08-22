@@ -1,8 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ArrowUpRight, CheckCircle2, Loader2, TriangleAlert } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
+import {
+  completeProfileStripeOnboardOnce,
+  resetProfileStripeOnboardComplete,
+} from "@/lib/business/stripe-onboard-complete"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 
@@ -148,21 +152,24 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
 /** Shown when the user returns from Stripe onboarding. Verifies status. */
 export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
   const [status, setStatus] = useState<"verifying" | "success" | "incomplete">("verifying")
-  const [checked, setChecked] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
 
-  const verify = async () => {
-    try {
-      const data = await apiClient.post<{ onboarded: boolean }>("/business/profile/stripe-onboard/complete")
-      setStatus(data.onboarded ? "success" : "incomplete")
-      if (data.onboarded) onComplete()
-    } catch {
-      setStatus("incomplete")
-    } finally {
-      setChecked(true)
-    }
-  }
-
-  if (!checked) verify()
+  useEffect(() => {
+    let cancelled = false
+    setStatus("verifying")
+    completeProfileStripeOnboardOnce()
+      .then((data) => {
+        if (cancelled) return
+        setStatus(data.onboarded ? "success" : "incomplete")
+        if (data.onboarded) onCompleteRef.current()
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("incomplete")
+      })
+    return () => { cancelled = true }
+  }, [attempt])
 
   if (status === "verifying") {
     return (
@@ -184,7 +191,10 @@ export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
     <div className="mb-4 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
       <p>Stripe onboarding isn&apos;t finished yet. Some steps may still be required.</p>
       <button
-        onClick={() => { setChecked(false); setStatus("verifying") }}
+        onClick={() => {
+          resetProfileStripeOnboardComplete()
+          setAttempt((n) => n + 1)
+        }}
         className="mt-1.5 cursor-pointer text-[13px] font-semibold text-[#05EB54] hover:underline"
       >
         Check again
