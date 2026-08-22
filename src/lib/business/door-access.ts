@@ -539,6 +539,12 @@ export function toTimeInput(value: string | null | undefined): string {
   return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`
 }
 
+/** "21:00" from `<input type="time">` → "21:00:00" for the night draft. */
+export function fromTimeInput(value: string): string {
+  const hhmm = toTimeInput(value)
+  return hhmm ? `${hhmm}:00` : ""
+}
+
 // ── Pure formatting ─────────────────────────────────────────────────────────
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -884,6 +890,58 @@ export function inheritIfMatchesTemplate(
 }
 
 /**
+ * Typing a door hour is the override. Matching the program window again
+ * releases the pin (null on save) so the night keeps tracking the template.
+ * Empty or unparseable times stay overridden so validation can catch them
+ * instead of quietly inheriting.
+ */
+export function inheritIfMatchesTimes(
+  start: string,
+  end: string,
+  templateStart: string,
+  templateEnd: string
+): boolean {
+  const startInput = toTimeInput(start)
+  const endInput = toTimeInput(end)
+  return (
+    startInput !== "" &&
+    endInput !== "" &&
+    startInput === toTimeInput(templateStart) &&
+    endInput === toTimeInput(templateEnd)
+  )
+}
+
+/** Apply an hours edit. Matching the program window un-pins both times. */
+export function applyNightHours(
+  draft: NightDraft,
+  startTime: string,
+  endTime: string,
+  templateStart: string,
+  templateEnd: string
+): NightDraft {
+  return {
+    ...draft,
+    start_time: startTime,
+    end_time: endTime,
+    inherit_times: inheritIfMatchesTimes(startTime, endTime, templateStart, templateEnd),
+  }
+}
+
+/** Quiet Reset: put both times back on the program window. */
+export function resetNightHours(
+  draft: NightDraft,
+  templateStart: string,
+  templateEnd: string
+): NightDraft {
+  return {
+    ...draft,
+    start_time: templateStart,
+    end_time: templateEnd,
+    inherit_times: true,
+  }
+}
+
+/**
  * Seed a draft from the night the server returned.
  *
  * A tier is "inheriting" when its effective value still equals the template's.
@@ -892,7 +950,12 @@ export function inheritIfMatchesTemplate(
  */
 export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgram): NightDraft {
   return {
-    inherit_times: night.start_time === program.start_time && night.end_time === program.end_time,
+    inherit_times: inheritIfMatchesTimes(
+      night.start_time,
+      night.end_time,
+      program.start_time,
+      program.end_time
+    ),
     start_time: night.start_time,
     end_time: night.end_time,
     is_closed: night.is_closed,

@@ -49,6 +49,9 @@ import {
   buildNightHoursPayload,
   draftHasOverrides,
   inheritIfMatchesTemplate,
+  inheritIfMatchesTimes,
+  applyNightHours,
+  resetNightHours,
   validateNightDraft,
   nightIsEditable,
   nightHasEventTickets,
@@ -61,6 +64,7 @@ import {
   nightHref,
   resolveProgramImageUrl,
   toTimeInput,
+  fromTimeInput,
   WEEKLY_ACCESS_TYPE_LABEL,
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_CREATION_LABEL,
@@ -271,6 +275,33 @@ test("clearing an override in the draft sends null, undoing the pin", () => {
   assert.equal(payload.tiers?.[0].price_usd, null)
 })
 
+test("inheritIfMatchesTimes treats editing hours as the override", () => {
+  assert.equal(inheritIfMatchesTimes("22:00:00", "02:00:00", "22:00:00", "02:00:00"), true)
+  assert.equal(
+    inheritIfMatchesTimes("22:00", "02:00", "22:00:00", "02:00:00"),
+    true,
+    "HH:MM matches HH:MM:SS"
+  )
+  assert.equal(inheritIfMatchesTimes("21:00:00", "02:00:00", "22:00:00", "02:00:00"), false)
+  assert.equal(inheritIfMatchesTimes("", "02:00:00", "22:00:00", "02:00:00"), false)
+  assert.equal(inheritIfMatchesTimes("nonsense", "02:00:00", "22:00:00", "02:00:00"), false)
+
+  const draft = draftFromNight(night(), program())
+  const next = applyNightHours(draft, "21:00:00", "01:00:00", program().start_time, program().end_time)
+  assert.equal(next.inherit_times, false)
+  assert.equal(buildNightOverridePayload(next).start_time, "21:00:00")
+  assert.equal(buildNightHoursPayload(next).end_time, "01:00:00")
+
+  const matched = applyNightHours(next, "22:00:00", "02:00:00", program().start_time, program().end_time)
+  assert.equal(matched.inherit_times, true)
+  assert.equal(buildNightOverridePayload(matched).start_time, null)
+
+  const reset = resetNightHours(next, program().start_time, program().end_time)
+  assert.equal(reset.inherit_times, true)
+  assert.equal(reset.start_time, "22:00:00")
+  assert.equal(buildNightOverridePayload(reset).start_time, null)
+})
+
 test("inheritIfMatchesTemplate treats editing as the override", () => {
   assert.equal(inheritIfMatchesTemplate(10, 10), true)
   assert.equal(inheritIfMatchesTemplate(15, 10), false)
@@ -340,11 +371,16 @@ test("night ticket editor matches Manage sales and stays on the night", () => {
   assert.ok(editor.includes("scan_window: false"), "omit scan window when the override cannot store it")
   assert.ok(editor.includes("soldOut: false"), "omit mark sold out when the override cannot store it")
 
-  const inheritToggles = src.match(/<InheritToggle/g) ?? []
-  assert.equal(inheritToggles.length, 1, "only hours keep Use default / Override")
-  assert.ok(src.includes("inheriting={draft.inherit_times}"))
-  assert.ok(src.includes("Use default"))
-  assert.ok(src.includes("Override"))
+  assert.ok(!src.includes("function InheritToggle"), "hours dropped Use default / Override")
+  assert.ok(!src.includes("Use default"))
+  assert.ok(!src.includes(">Override<") && !src.includes("Override</"))
+  assert.ok(src.includes("Reset to program default"), "hours reset matches the price Reset pattern")
+  assert.ok(src.includes('type="time"'), "hour inputs stay visible")
+  assert.ok(src.includes("applyNightHours"), "typing a time is the override")
+  assert.ok(src.includes("Closed this night"))
+  assert.ok(src.includes("@radix-ui/react-switch"), "closed is a real switch, not a grey button")
+  assert.ok(src.includes('aria-label="Closed this night"'))
+  assert.ok(!src.includes("On sale"), "do not bring back On sale ticket toggles on the night page")
   assert.ok(!src.includes("\u2014"), "night editor still has an em dash")
   assert.ok(!editor.includes("\u2014"), "ticket editor still has an em dash")
   assert.ok(!/Weekly Access|weekly access|WEEKLY ACCESS/.test(editor.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")))
@@ -954,6 +990,13 @@ test("toTimeInput trims a wall-clock string for the time input", () => {
   assert.equal(toTimeInput("9:05"), "09:05")
   assert.equal(toTimeInput(""), "")
   assert.equal(toTimeInput(null), "")
+})
+
+test("fromTimeInput pads a time field back to HH:MM:SS", () => {
+  assert.equal(fromTimeInput("21:00"), "21:00:00")
+  assert.equal(fromTimeInput("9:05"), "09:05:00")
+  assert.equal(fromTimeInput("21:00:00"), "21:00:00")
+  assert.equal(fromTimeInput(""), "")
 })
 
 // ── D2-C: the row's at-a-glance numbers ─────────────────────────────────────
