@@ -128,12 +128,10 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
   )
 
   const hasPaidTicket = type === "Ticketed" && tiers.some((t) => (parseFloat(t.priceInput) || 0) > 0)
-  const promoToggleDisabled = !hasPaidTicket || !stripeOnboarded
+  const promoToggleDisabled = !hasPaidTicket
   const promoDisabledReason = !hasPaidTicket
     ? "Add a paid ticket to enable the promoter program."
-    : !stripeOnboarded
-      ? "Connect Stripe to enable the promoter program."
-      : ""
+    : ""
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
@@ -451,21 +449,15 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
                 <option value="Ticketed">Ticketed</option>
                 <option value="Free">Free</option>
               </Select>
-              {type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
-                isPending ? (
-                  <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                    Without Stripe connected, nights are created as drafts. Connect Stripe (in Settings) and they can go live.
+              {type === "Ticketed" && hasPaidTicket && !stripeOnboarded && !isPending && (
+                <div className="mt-1.5">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    Connect Stripe to receive payments instantly
                   </p>
-                ) : (
-                  <div className="mt-1.5">
-                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                      Connect Stripe to receive payments instantly
-                    </p>
-                    <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                      You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
-                    </p>
-                  </div>
-                )
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
+                  </p>
+                </div>
               )}
             </div>
             <div className="flex items-end pb-2">
@@ -662,7 +654,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Stock alerts</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a night&apos;s ticket tier sells out — and optionally before it does.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a night&apos;s ticket tier sells out, and optionally before it does.</p>
           </CardHeader>
           <CardContent className="pt-0">
             <label className="flex cursor-pointer items-center gap-2">
