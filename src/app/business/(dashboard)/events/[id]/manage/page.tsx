@@ -5,11 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
+  Camera, ListChecks, Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-links"
+import { ACCESS_ACCENT } from "@/lib/business/door-access"
 import type { EventDetail } from "@/lib/business/types"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
@@ -122,10 +123,33 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // moved this predicate into public-links so Door Access nights apply it too.
   const isLive = isPubliclyLinkable(event.status)
 
+  // V5 REDEMPTION §5 — the door surface follows the event's KIND, not a stored
+  // preference. A door-access night sells a pass redeemed by camera + tap, so
+  // handing its host a scanner credential offers tooling the server will now
+  // REFUSE at the door (services utils/redemptionGuard): the scan endpoints
+  // reject a door-access pass with "Door Access passes are scanned with the
+  // camera at the door". Surfacing a scanner here would be advertising a
+  // dead end. Check-in history is kind-agnostic — both kinds redeem, both log.
+  const isDoorAccess = event.access_kind === "door_access"
+
   // At the Door — everything you touch on the night itself.
   const atTheDoorTiles: Tile[] = [
-    { href: `${base}/scanner`, icon: QrCode, title: "Scan", subtitle: "Scanner access and QR codes", show: true },
-    { href: `${base}/checkins`, icon: CircleCheck, title: "Check-in history", subtitle: "Attendee scan status", show: true },
+    {
+      href: `${base}/scanner`,
+      icon: QrCode,
+      title: "Scan",
+      subtitle: "Scanner access and QR codes",
+      show: !isDoorAccess,
+    },
+    {
+      href: `${base}/checkins`,
+      icon: CircleCheck,
+      title: isDoorAccess ? "Redemption list" : "Check-in history",
+      subtitle: isDoorAccess
+        ? "Guests scan with any phone camera — check names off here"
+        : "Attendee scan status",
+      show: true,
+    },
   ]
 
   // Event Setup — the things you configure before the doors open. "Manage
@@ -164,8 +188,16 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           </div>
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">{fmtDate(event.start_date_time)} · {event.venue_name}</p>
         </div>
+        {/* §5 — same branch as the tiles below. The header CTA is the loudest
+            affordance on the page; pointing a door-access host at a scanner the
+            endpoints will refuse is the single most misleading thing this page
+            could do on the night. */}
         <Button variant="secondary" asChild>
-          <Link href={`/business/events/${id}/manage/scanner`}><ScanLine /> Open scanner</Link>
+          {isDoorAccess ? (
+            <Link href={`/business/events/${id}/manage/checkins`}><ListChecks /> Open redemption list</Link>
+          ) : (
+            <Link href={`/business/events/${id}/manage/scanner`}><ScanLine /> Open scanner</Link>
+          )}
         </Button>
       </div>
 
@@ -182,12 +214,41 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           Owners used to fall back to the (broken) email-invite path because the
           dashboard had no way to hand out a scan credential; this is that way.
           Email invite is demoted to the "Managers & co-hosts" tile below. */}
-      <DoorCodeCard
-        eventId={id}
-        eventName={event.name}
-        isLive={isLive}
-        canManage={canEdit}
-      />
+      {/* §5 — a door code is a SCANNER credential: it puts a staffer on the
+          native scanner for the night. On a door-access night that scanner now
+          refuses the very passes being sold, so the card is withheld rather than
+          issuing a credential to a door that can't use it. */}
+      {!isDoorAccess && (
+        <DoorCodeCard
+          eventId={id}
+          eventName={event.name}
+          isLive={isLive}
+          canManage={canEdit}
+        />
+      )}
+
+      {/* §5 — the camera reminder, the app's counterpart copy. A door-access
+          host's staff need to know the phone camera IS the scanner; without this
+          the page reads as though check-in tooling is simply missing. */}
+      {isDoorAccess && (
+        <Card className="flex items-start gap-3 p-4">
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg"
+            style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
+          >
+            <Camera className="size-4.5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+              Guests scan with any phone camera
+            </p>
+            <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+              No scanner and no app setup at the door — open the redemption list and
+              check names off as people arrive.
+            </p>
+          </div>
+        </Card>
+      )}
 
       {/* 2 — At the Door */}
       <ManageSection

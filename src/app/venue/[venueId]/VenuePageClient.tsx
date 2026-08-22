@@ -36,6 +36,12 @@ interface VenueData {
     venue_name: string
     flyer_image_url: string | null
     min_ticket_price: number | string | null
+    // V5 REDEMPTION §8 — which SECTION this row belongs in. Door-access nights
+    // are events rows (core stamps one per occurrence), so they have always
+    // arrived in this same array, mixed in among ordinary events and rendered
+    // identically. Optional: a services build that predates the column omits it,
+    // and 'event' is both the column default and the safe reading.
+    access_kind?: "event" | "door_access" | null
   }>
   deals: Array<{
     id: number
@@ -45,6 +51,11 @@ interface VenueData {
     deal_category: string
     deal_type: string
   }>
+  // §8 — STILL RETURNED BY THE API, deliberately NOT RENDERED on this public
+  // page. The endpoint keeps sending it (the business-side legacy list and the
+  // app both read it, and neither is in scope here), so the field stays typed
+  // rather than deleted — removing it would just make the next reader think the
+  // server stopped sending it. Nothing below destructures it.
   line_skips: Array<{
     id: number
     date: string
@@ -62,15 +73,19 @@ interface VenueData {
 interface VenuePageClientProps {
   venueId: string
   initialData: VenueData | null
-  highlightLineSkip?: string
   // Base for the Laravel event checkout (dev: http://3.80.143.224,
   // prod: https://bizzy-deals.com). Resolved server-side in page.tsx.
+  //
+  // §9 — this is the consumer end of the SAME per-night links D2-D built for the
+  // dashboard. `web/src/lib/business/public-links.ts` hands a host
+  // `bizzyu.com/event/:id/checkout`, which meta-refreshes to
+  // `{CHECKOUT_REDIRECT_BASE_URL}/checkout/:id`; this page links the second URL
+  // directly because it is already served from the web app and has no reason to
+  // bounce through the interstitial. Both resolve to Laravel
+  // PublicController::checkout, which filters on neither access_kind nor status —
+  // so a door-access night's own night checkout is reachable here exactly as an
+  // event's is, and it is the SAME page, now themed pink (§10).
   checkoutBaseUrl: string
-}
-
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr + "T00:00:00")
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 }
 
 /** YYYY-MM-DD in the viewer's local timezone - for "is this happening today?" */
@@ -79,14 +94,6 @@ function localDateKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0")
   const day = String(d.getDate()).padStart(2, "0")
   return `${y}-${m}-${day}`
-}
-
-function formatTime(timeStr: string) {
-  const [h, m] = timeStr.split(":")
-  const hour = parseInt(h)
-  const ampm = hour >= 12 ? "PM" : "AM"
-  const h12 = hour % 12 || 12
-  return `${h12}:${m} ${ampm}`
 }
 
 function formatEventDate(dateStr: string) {
@@ -99,44 +106,188 @@ function formatEventTime(dateStr: string) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 }
 
-function formatPrice(cents: number) {
-  if (cents === 0) return "Free"
-  return `$${(cents / 100).toFixed(2)}`
-}
+/**
+ * V5 REDEMPTION §8 — the two product treatments this page renders.
+ *
+ * A venue sells two different things and the listing used to mix them: an
+ * ordinary event and a Door Access night arrived in the same array, rendered in
+ * the same green card, under one "Upcoming Events" header. A student scanning
+ * the page could not tell "Thursday, $10 cover, walk up any time" apart from
+ * "one show, one door time, buy a ticket" — and after buying, the checkout they
+ * landed on (§10) told them nothing either.
+ *
+ * Pink is #FF3ED1 — the SAME accent the dashboard exports as ACCESS_ACCENT and
+ * the app uses for Weekly Cover. One colour for one product, everywhere it is
+ * shown, so recognition carries from the app card to this page to checkout.
+ */
+const EVENT_THEME = {
+  accent: "#05EB54",
+  /** The section bar's gradient partner — the existing brand green ramp. */
+  accentDeep: "#2ECB4E",
+  /** Tailwind can't build arbitrary rgba() from a var, so shadows are literal. */
+  hoverShadow: "hover:shadow-[0_24px_60px_-20px_rgba(5,235,84,0.35)]",
+} as const
+
+const DOOR_ACCESS_THEME = {
+  accent: "#FF3ED1",
+  accentDeep: "#D10EA3",
+  hoverShadow: "hover:shadow-[0_24px_60px_-20px_rgba(255,62,209,0.35)]",
+} as const
+
+type SectionTheme = typeof EVENT_THEME | typeof DOOR_ACCESS_THEME
 
 /** Big calendar-leaf date chip overlaid on event flyers. */
-function DateChip({ dateStr }: { dateStr: string }) {
+function DateChip({ dateStr, theme }: { dateStr: string; theme: SectionTheme }) {
   const d = new Date(dateStr)
   const mon = d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()
   const day = d.getDate()
   return (
     <div className="absolute left-4 top-4 w-14 overflow-hidden rounded-xl bg-black/75 text-center shadow-lg ring-1 ring-white/15 backdrop-blur-sm">
-      <p className="bg-[#05EB54] py-0.5 text-[10px] font-extrabold tracking-widest text-black">{mon}</p>
+      <p
+        className="py-0.5 text-[10px] font-extrabold tracking-widest text-black"
+        style={{ backgroundColor: theme.accent }}
+      >
+        {mon}
+      </p>
       <p className="py-1 text-xl font-extrabold leading-none text-white">{day}</p>
     </div>
   )
 }
 
-/** Section header with the brand accent bar + count badge. */
-function SectionHeader({ title, count }: { title: string; count?: number }) {
+/** Section header with the product accent bar + count badge. */
+function SectionHeader({ title, count, theme }: { title: string; count?: number; theme: SectionTheme }) {
   return (
     <div className="mb-5 flex items-center gap-3">
-      <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-[#2ECB4E] to-[#05EB54]" />
+      <span
+        className="h-6 w-1.5 rounded-full"
+        style={{ backgroundImage: `linear-gradient(to bottom, ${theme.accentDeep}, ${theme.accent})` }}
+      />
       <h2 className="text-2xl font-extrabold tracking-tight text-white">{title}</h2>
       {typeof count === "number" && count > 0 && (
-        <span className="rounded-full bg-[#05EB54]/15 px-2.5 py-0.5 text-sm font-bold text-[#05EB54]">{count}</span>
+        <span
+          className="rounded-full px-2.5 py-0.5 text-sm font-bold"
+          style={{ backgroundColor: `${theme.accent}26`, color: theme.accent }}
+        >
+          {count}
+        </span>
       )}
     </div>
+  )
+}
+
+/**
+ * ONE listing card, themed by product.
+ *
+ * Extracted rather than duplicated per section on purpose: the two sections
+ * differ in colour and three strings, and a copy-pasted second card would drift
+ * the moment either one is touched. §9's guarantee — that every listed night
+ * links to its OWN night checkout — is a single `href` here, so it cannot be
+ * true for one section and quietly false for the other.
+ */
+function ListingCard({
+  event,
+  theme,
+  today,
+  checkoutBaseUrl,
+  ctaLabel,
+  priceLabel,
+}: {
+  event: VenueData["events"][number]
+  theme: SectionTheme
+  today: boolean
+  checkoutBaseUrl: string
+  ctaLabel: string
+  priceLabel: (price: number) => string
+}) {
+  const price = event.min_ticket_price !== null ? Number(event.min_ticket_price) : null
+  return (
+    // §9 — the per-night link. `event_id` is THIS night's own events row, so a
+    // Thursday and a Friday of the same program get different URLs and land on
+    // their own checkout. External href, not a Next route: event checkout is
+    // served by Laravel.
+    <a
+      href={`${checkoutBaseUrl}/checkout/${event.event_id}`}
+      className={`group overflow-hidden rounded-3xl border bg-[#141420] transition-all duration-300 ${
+        today ? "ring-2" : `border-[#1e1e2e] hover:-translate-y-1 ${theme.hoverShadow}`
+      }`}
+      style={
+        today
+          ? { borderColor: theme.accent, boxShadow: `0 0 0 2px ${theme.accent}66` }
+          : undefined
+      }
+    >
+      <div className="relative h-48 w-full overflow-hidden bg-[#0d0d14]">
+        {event.flyer_image_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={event.flyer_image_url}
+            alt={event.name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <svg
+              className="h-10 w-10"
+              style={{ color: `${theme.accent}66` }}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+            </svg>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
+        <DateChip dateStr={event.start_date_time} theme={theme} />
+        {today && (
+          <span
+            className="absolute right-3 top-3 z-10 rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide text-black shadow-lg"
+            style={{ backgroundColor: theme.accent }}
+          >
+            Today
+          </span>
+        )}
+      </div>
+      <div className="p-5">
+        <h3 className="text-xl font-extrabold leading-snug text-white">{event.name}</h3>
+        <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-[#fbbf24]">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {formatEventDate(event.start_date_time)} · {formatEventTime(event.start_date_time)}
+        </p>
+        <div className="mt-4 flex items-center justify-between">
+          {price !== null ? (
+            // The pink PRICE PILL. An event prints its price as bare text; a
+            // door-access night prints it in a pill, because "$10 cover" is the
+            // whole product and the number is what a student is scanning for.
+            <p className="text-2xl font-extrabold" style={{ color: theme.accent }}>
+              {priceLabel(price)}
+            </p>
+          ) : (
+            <span />
+          )}
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-extrabold transition group-hover:text-black"
+            style={{ backgroundColor: `${theme.accent}26`, color: theme.accent }}
+          >
+            {ctaLabel}
+            <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
+            </svg>
+          </span>
+        </div>
+      </div>
+    </a>
   )
 }
 
 export default function VenuePageClient({
   venueId,
   initialData,
-  highlightLineSkip,
   checkoutBaseUrl,
 }: VenuePageClientProps) {
-  const lineSkipRef = useRef<HTMLDivElement>(null)
   const [data, setData] = useState<VenueData | null>(initialData)
   // Mobile-only affordances (open-in-app pill); the page doubles as an
   // in-bar sign board on big screens, which shouldn't get app nags.
@@ -152,13 +303,6 @@ export default function VenuePageClient({
   useEffect(() => {
     setTodayKey(localDateKey(new Date()))
   }, [])
-
-  // Scroll a shared line skip into view (deep link ?line_skip=<id>).
-  useEffect(() => {
-    if (highlightLineSkip && lineSkipRef.current) {
-      lineSkipRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
-    }
-  }, [highlightLineSkip])
 
   // Live poll: silently swap in fresh data; keep last-good on error so the
   // sign never flashes an empty/error state.
@@ -195,7 +339,11 @@ export default function VenuePageClient({
     )
   }
 
-  const { venue, business, events, deals, line_skips } = data
+  // §8 — line_skips is deliberately NOT destructured. The API still returns it;
+  // this public page no longer renders it (F15 moves the product onto Door
+  // Access). The business-side legacy list is untouched and reads the same field
+  // from the same endpoint.
+  const { venue, business, events, deals } = data
   // Venue photo only - the business logo is intentionally not used on this page.
   const heroImage = venue.venuePhotoUrl
   const resolvedInstagram = venue.instagram || business.instagram
@@ -204,9 +352,16 @@ export default function VenuePageClient({
     ? `https://maps.google.com/?q=${encodeURIComponent(`${venue.name}, ${venue.address}`)}`
     : null
 
+  // §8 — THE SPLIT. One array in, two lists out, on the one field that says what
+  // each row IS. Order is preserved inside each list (the API already sorts by
+  // start time), so a section reads chronologically exactly as the mixed list did.
+  const isDoorAccessRow = (e: VenueData["events"][number]) => e.access_kind === "door_access"
+  const eventRows = events.filter((e) => !isDoorAccessRow(e))
+  const doorAccessRows = events.filter(isDoorAccessRow)
+
   const stats = [
-    events.length > 0 && `${events.length} upcoming ${events.length === 1 ? "event" : "events"}`,
-    line_skips.length > 0 && `${line_skips.length} line ${line_skips.length === 1 ? "skip" : "skips"}`,
+    eventRows.length > 0 && `${eventRows.length} upcoming ${eventRows.length === 1 ? "event" : "events"}`,
+    doorAccessRows.length > 0 && `${doorAccessRows.length} door access ${doorAccessRows.length === 1 ? "night" : "nights"}`,
     deals.length > 0 && `${deals.length} ${deals.length === 1 ? "deal" : "deals"}`,
   ].filter(Boolean) as string[]
 
@@ -215,24 +370,23 @@ export default function VenuePageClient({
   // on the server render and light up after hydration.
   const isEventToday = (e: { start_date_time: string }) =>
     todayKey !== null && localDateKey(new Date(e.start_date_time)) === todayKey
-  const isLsToday = (ls: { date: string }) =>
-    todayKey !== null && ls.date.slice(0, 10) === todayKey
 
-  const orderedEvents = todayKey
-    ? [...events.filter(isEventToday), ...events.filter((e) => !isEventToday(e))]
-    : events
-  const orderedLineSkips = todayKey
-    ? [...line_skips.filter(isLsToday), ...line_skips.filter((ls) => !isLsToday(ls))]
-    : line_skips
-  const todayEvents = todayKey ? events.filter(isEventToday) : []
-  const todayLineSkips = todayKey ? line_skips.filter(isLsToday) : []
-  const hasToday = todayEvents.length > 0 || todayLineSkips.length > 0
+  /** Today's rows first, everything else after — applied per section. */
+  const todayFirst = (rows: VenueData["events"]) =>
+    todayKey ? [...rows.filter(isEventToday), ...rows.filter((e) => !isEventToday(e))] : rows
 
-  // Lead an events-less venue with its line skips: when there's nothing on the
-  // calendar but line skips exist, hide the empty "Upcoming Events" placeholder
-  // so "Skip the Line" becomes the first section. A venue with neither events
-  // nor line skips still shows the placeholder so the page isn't blank.
-  const showEventsSection = events.length > 0 || line_skips.length === 0
+  const orderedEvents = todayFirst(eventRows)
+  const orderedDoorAccess = todayFirst(doorAccessRows)
+  const todayEvents = todayKey ? eventRows.filter(isEventToday) : []
+  const todayDoorAccess = todayKey ? doorAccessRows.filter(isEventToday) : []
+  const hasToday = todayEvents.length > 0 || todayDoorAccess.length > 0
+
+  // Lead an events-less venue with its Door Access nights: when there is nothing
+  // on the calendar but the venue runs a weekly door, hide the empty "Events"
+  // placeholder so "Door Access" becomes the first section. Same rule the page
+  // already applied to line skips — the product under it changed, not the rule.
+  // A venue with neither still shows the placeholder so the page isn't blank.
+  const showEventsSection = eventRows.length > 0 || doorAccessRows.length === 0
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white font-[family-name:var(--font-fira)]">
@@ -260,14 +414,28 @@ export default function VenuePageClient({
             <p className="truncate text-base font-bold leading-tight text-white">{venue.name}</p>
             {venue.address && <p className="truncate text-xs text-gray-400">{venue.address}</p>}
           </div>
-          {events.length > 0 && (
+          {/* §8 — the sticky CTA names whichever product this venue actually
+              sells. A door-only venue used to get "Get tickets" pointing at an
+              empty events anchor. */}
+          {eventRows.length > 0 ? (
             <a
               href="#events"
               className="hidden shrink-0 rounded-full bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-extrabold text-black shadow-lg shadow-[#05EB54]/25 transition hover:brightness-110 active:scale-[0.97] sm:inline-block"
             >
               Get tickets
             </a>
-          )}
+          ) : doorAccessRows.length > 0 ? (
+            <a
+              href="#door-access"
+              className="hidden shrink-0 rounded-full px-4 py-2 text-sm font-extrabold text-black shadow-lg transition hover:brightness-110 active:scale-[0.97] sm:inline-block"
+              style={{
+                backgroundImage: `linear-gradient(to bottom right, ${DOOR_ACCESS_THEME.accentDeep}, ${DOOR_ACCESS_THEME.accent})`,
+                boxShadow: `0 10px 15px -3px ${DOOR_ACCESS_THEME.accent}40`,
+              }}
+            >
+              Get access
+            </a>
+          ) : null}
         </div>
       </header>
 
@@ -384,14 +552,21 @@ export default function VenuePageClient({
                     {e.name}
                   </a>
                 ))}
-                {todayLineSkips.map((ls) => (
+                {/* §8 — a door-access night gets a PINK dot here, so the
+                    callout that pulls tonight to the top still distinguishes the
+                    two products instead of flattening them. */}
+                {todayDoorAccess.map((e) => (
                   <a
-                    key={`tls-${ls.id}`}
-                    href="#lineskips"
-                    className="inline-flex items-center gap-2 rounded-full border border-[#05EB54]/40 bg-[#05EB54]/10 px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#05EB54]/20"
+                    key={`tda-${e.event_id}`}
+                    href="#door-access"
+                    className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-bold text-white transition"
+                    style={{
+                      borderColor: `${DOOR_ACCESS_THEME.accent}66`,
+                      backgroundColor: `${DOOR_ACCESS_THEME.accent}1A`,
+                    }}
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#fbbf24]" />
-                    {ls.line_skip_name}
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: DOOR_ACCESS_THEME.accent }} />
+                    {e.name}
                   </a>
                 ))}
               </div>
@@ -399,12 +574,13 @@ export default function VenuePageClient({
           </section>
         )}
 
-        {/* Upcoming Events (hidden when the venue has no events but does have
-            line skips - see showEventsSection). */}
+        {/* §8 — SECTION ONE: Events, green. Hidden when the venue has nothing on
+            the calendar but does run Door Access (see showEventsSection), so a
+            door-only venue leads with the product it actually sells. */}
         {showEventsSection && (
         <section id="events" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.2s" }}>
-          <SectionHeader title="Upcoming Events" count={events.length} />
-          {events.length === 0 ? (
+          <SectionHeader title="Events" count={eventRows.length} theme={EVENT_THEME} />
+          {eventRows.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-[#1e1e2e] bg-[#141420]/60 px-6 py-14 text-center">
               <svg className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -414,139 +590,57 @@ export default function VenuePageClient({
             </div>
           ) : (
             <div className="grid gap-5 md:grid-cols-2">
-              {orderedEvents.map((event) => {
-                const price = event.min_ticket_price !== null ? Number(event.min_ticket_price) : null
-                const today = isEventToday(event)
-                return (
-                  // Event checkout lives on the Laravel app, not Vercel (no
-                  // event page here yet) - external link, not a Next route.
-                  <a
-                    key={event.event_id}
-                    href={`${checkoutBaseUrl}/checkout/${event.event_id}`}
-                    className={`group overflow-hidden rounded-3xl border bg-[#141420] transition-all duration-300 ${
-                      today
-                        ? "border-[#05EB54] ring-2 ring-[#05EB54]/40"
-                        : "border-[#1e1e2e] hover:-translate-y-1 hover:border-[#05EB54]/60 hover:shadow-[0_24px_60px_-20px_rgba(5,235,84,0.35)]"
-                    }`}
-                  >
-                    <div className="relative h-48 w-full overflow-hidden bg-[#0d0d14]">
-                      {event.flyer_image_url ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={event.flyer_image_url}
-                          alt={event.name}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <svg className="h-10 w-10 text-[#05EB54]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                          </svg>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#141420] via-transparent to-transparent" />
-                      <DateChip dateStr={event.start_date_time} />
-                      {today && (
-                        <span className="absolute right-3 top-3 z-10 rounded-full bg-[#05EB54] px-3 py-1 text-xs font-black uppercase tracking-wide text-black shadow-lg">
-                          Today
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-5">
-                      <h3 className="text-xl font-extrabold leading-snug text-white">{event.name}</h3>
-                      <p className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-[#fbbf24]">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        {formatEventDate(event.start_date_time)} · {formatEventTime(event.start_date_time)}
-                      </p>
-                      <div className="mt-4 flex items-center justify-between">
-                        {price !== null ? (
-                          <p className="text-2xl font-extrabold text-[#05EB54]">
-                            {price === 0 ? "Free" : `From $${price.toFixed(2)}`}
-                          </p>
-                        ) : (
-                          <span />
-                        )}
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#05EB54]/15 px-4 py-2 text-sm font-extrabold text-[#05EB54] transition group-hover:bg-[#05EB54] group-hover:text-black">
-                          Get tickets
-                          <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
-                          </svg>
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                )
-              })}
+              {orderedEvents.map((event) => (
+                <ListingCard
+                  key={event.event_id}
+                  event={event}
+                  theme={EVENT_THEME}
+                  today={isEventToday(event)}
+                  checkoutBaseUrl={checkoutBaseUrl}
+                  ctaLabel="Get tickets"
+                  priceLabel={(price) => (price === 0 ? "Free" : `From $${price.toFixed(2)}`)}
+                />
+              ))}
             </div>
           )}
         </section>
         )}
 
-        {/* Line Skips */}
-        {line_skips.length > 0 && (
-          <section id="lineskips" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }} ref={lineSkipRef}>
-            <SectionHeader title="Skip the Line" count={line_skips.length} />
+        {/* §8 — SECTION TWO: Door Access, pink. Its own labeled section rather
+            than pink cards mixed into the events grid: a weekly door and a
+            one-night show are different purchases with different expectations
+            (walk up any time vs. a door time you can miss), and a student
+            skimming for "what's the cover tonight" should find one list, not
+            hunt for pink cards among green ones.
+
+            NO empty state — a venue that runs no door program simply has no such
+            section, which is the honest render. Only the Events section carries a
+            placeholder, because a venue with neither must not paint a blank page.
+
+            §9 — every night here links to ITS OWN night checkout, via the same
+            per-night URL D2-D built. There is no program-level "buy" on this
+            page: you buy Thursday, not "Thursdays". */}
+        {doorAccessRows.length > 0 && (
+          <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
+            <SectionHeader title="Door Access" count={doorAccessRows.length} theme={DOOR_ACCESS_THEME} />
+            <p className="-mt-3 mb-5 text-sm text-gray-400">
+              Pay the cover before you go and walk up — scanned with any phone camera at the door.
+            </p>
             <div className="grid gap-5 md:grid-cols-2">
-              {orderedLineSkips.map((ls) => {
-                const today = isLsToday(ls)
-                const isHighlighted = highlightLineSkip === String(ls.id) || today
-                // Sold out is the ONLY availability fact a customer may learn here.
-                // No remaining count, no percentage, no progress bar — see the ruling
-                // at the top of src/lib/lineskip/availability.ts. The server keeps
-                // sending capacity/tickets_sold; this surface just stops rendering it.
-                const soldOut = ls.capacity !== null && ls.tickets_sold >= ls.capacity
-
-                return (
-                  <Link
-                    key={ls.id}
-                    href={soldOut ? "#" : `/lineskip/${venue.id}`}
-                    aria-disabled={soldOut}
-                    className={`group block rounded-3xl border bg-[#141420] p-6 transition-all duration-300 ${
-                      isHighlighted
-                        ? "border-[#05EB54] ring-2 ring-[#05EB54]/40"
-                        : "border-[#1e1e2e] hover:-translate-y-1 hover:border-[#05EB54]/60 hover:shadow-[0_24px_60px_-20px_rgba(5,235,84,0.35)]"
-                    } ${soldOut ? "pointer-events-none opacity-60" : ""}`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#fbbf24]/15 text-[#fbbf24]">
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M13 2L4.094 12.688c-.391.469-.063 1.187.547 1.187H10l-1 8.125 8.906-10.688c.391-.469.063-1.187-.547-1.187H14l-1-8.125z" />
-                        </svg>
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-extrabold text-white">{ls.line_skip_name}</h3>
-                          {today && (
-                            <span className="rounded-full bg-[#05EB54] px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-black">Today</span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-sm font-semibold text-[#fbbf24]">
-                          {formatDate(ls.date)} · {formatTime(ls.start_time)} &ndash; {formatTime(ls.end_time)}
-                        </p>
-                        {ls.line_skip_description && (
-                          <p className="mt-1 line-clamp-2 text-sm text-gray-400">{ls.line_skip_description}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-2xl font-extrabold text-[#05EB54]">{formatPrice(ls.price_cents)}</span>
-                      {soldOut ? (
-                        <span className="rounded-full bg-white/5 px-4 py-2 text-sm font-bold text-gray-400">Sold out</span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#05EB54]/15 px-4 py-2 text-sm font-extrabold text-[#05EB54] transition group-hover:bg-[#05EB54] group-hover:text-black">
-                          Skip the line
-                          <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5-5 5M6 12h12" />
-                          </svg>
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                )
-              })}
+              {orderedDoorAccess.map((event) => (
+                <ListingCard
+                  key={event.event_id}
+                  event={event}
+                  theme={DOOR_ACCESS_THEME}
+                  today={isEventToday(event)}
+                  checkoutBaseUrl={checkoutBaseUrl}
+                  ctaLabel="Get access"
+                  // A cover charge is one flat number, not a "from" range — the
+                  // tiers under it (cover / skip / VIP) are ways in, not seat
+                  // classes, so leading with "From" would misdescribe it.
+                  priceLabel={(price) => (price === 0 ? "Free" : `$${price.toFixed(2)}`)}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -554,7 +648,9 @@ export default function VenuePageClient({
         {/* Deals */}
         {deals.length > 0 && (
           <section className="vp-rise mt-12" style={{ animationDelay: "0.36s" }}>
-            <SectionHeader title="Deals" count={deals.length} />
+            {/* Deals are a third product and keep the brand green — the pink
+                is reserved for Door Access, so it stays a signal. */}
+            <SectionHeader title="Deals" count={deals.length} theme={EVENT_THEME} />
             <div className="grid gap-5 md:grid-cols-2">
               {deals.map((deal) => (
                 // Same-domain navigation to the /deal/:id web interstitial — NOT

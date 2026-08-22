@@ -13,6 +13,12 @@ const CHECKOUT_BASE_URL =
 
 interface PageProps {
   params: Promise<{ venueId: string }>
+  // V5 REDEMPTION §8 — `?line_skip=<id>` is still ACCEPTED and still parsed. The
+  // public page no longer renders a line-skip section (F15 moves that product
+  // onto Door Access), but shared links carrying the param are in the wild — in
+  // Messages threads, in promoter posts — and an unknown search param must not
+  // 404 or warn. It is read here and ignored; the page it lands on is the venue
+  // page, which is where the visitor wanted to be either way.
   searchParams: Promise<{ line_skip?: string }>
 }
 
@@ -32,7 +38,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { venueId } = await params
   const data = await getVenueData(venueId)
   const venueName = data?.venue?.name || "Venue"
-  const description = data?.venue?.description || `Check out events, line skips, and deals at ${venueName} on Bizzy.`
+  // §8 — the fallback description follows what the page actually shows now.
+  const description =
+    data?.venue?.description ||
+    `Check out events, door access, and deals at ${venueName} on Bizzy.`
 
   return {
     title: `${venueName} | Bizzy`,
@@ -64,14 +73,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function VenuePage({ params, searchParams }: PageProps) {
   const { venueId } = await params
-  const { line_skip } = await searchParams
+  // Awaited and discarded — see the PageProps note. Next requires the promise be
+  // consumed; the value is deliberately unused.
+  await searchParams
   const data = await getVenueData(venueId)
 
   return (
     <VenuePageClient
       venueId={venueId}
       initialData={data}
-      highlightLineSkip={line_skip}
       checkoutBaseUrl={CHECKOUT_BASE_URL}
     />
   )
