@@ -169,7 +169,7 @@ export function RangePicker({
 // ── Small shared pieces ──────────────────────────────────────────────────────
 
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—"
+  if (!iso) return "-"
   // Plain calendar date — the server already localized to US/Eastern.
   const [y, m, d] = iso.split("-").map(Number)
   if (!y || !m || !d) return iso
@@ -472,7 +472,7 @@ export function InTransitBanner({ cents }: { cents: number }) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm text-neutral-700 dark:text-neutral-300">
             <span className="font-medium text-neutral-900 dark:text-neutral-100">On its way to your bank</span>
-            <span className="hidden text-neutral-500 dark:text-neutral-400 sm:inline"> — collected, not yet deposited</span>
+            <span className="hidden text-neutral-500 dark:text-neutral-400 sm:inline"> (collected, not yet deposited)</span>
           </p>
         </div>
         <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-900 dark:text-neutral-100">{money(cents)}</span>
@@ -482,7 +482,7 @@ export function InTransitBanner({ cents }: { cents: number }) {
         <div className="border-t border-blue-100 bg-blue-50/40 px-4 py-3 text-xs leading-relaxed text-neutral-600 dark:border-blue-950 dark:bg-blue-950/20 dark:text-neutral-400">
           This is money already collected from buyers that Stripe hasn&apos;t deposited into your bank yet. It moves on
           Stripe&apos;s normal payout schedule (typically 2 business days) and will appear as a new deposit below once it
-          lands — at which point you&apos;ll be able to reconcile it here to the exact tickets inside it.
+          lands, at which point you&apos;ll be able to reconcile it here to the exact tickets inside it.
         </div>
       )}
     </Card>
@@ -513,11 +513,11 @@ function TiesBanner({ recon }: { recon: Reconciliation }) {
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
       <div>
         <p className="font-semibold text-red-800 dark:text-red-300">
-          Doesn&apos;t tie to the Stripe deposit — off by {money(Math.abs(t.deltaCents))}
+          Doesn&apos;t tie to the Stripe deposit (off by {money(Math.abs(t.deltaCents))})
         </p>
         <p className="mt-0.5 text-red-700 dark:text-red-400">
           The tickets and refunds we resolved sum to {money(recon.computed_total_cents)}, but Stripe deposited{" "}
-          {money(recon.amount_cents)}. This usually means a sale is still settling — don&apos;t book against this figure
+          {money(recon.amount_cents)}. This usually means a sale is still settling. Don&apos;t book against this figure
           until it resolves.
         </p>
       </div>
@@ -563,7 +563,7 @@ function ReconEventGroup({ event }: { event: Reconciliation["events"][number] })
     <>
       <tr className="border-t border-neutral-100 bg-neutral-50/60 dark:border-neutral-800 dark:bg-neutral-800/30">
         <td className={cn(TD, "font-semibold text-neutral-900 dark:text-neutral-100")}>
-          {event.name ?? "—"}
+          {event.name ?? "-"}
           {event.date && <span className="ml-2 text-xs font-normal text-neutral-400 dark:text-neutral-500">{fmtDate(event.date)}</span>}
         </td>
         <td className={TD_R} />
@@ -648,23 +648,23 @@ function DetailsTable({ rows }: { rows: ReconOrderRow[] }) {
         <tbody>
           {rows.map((o, i) => (
             <tr key={`${o.order_id ?? "row"}-${i}`} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800">
-              <td className={TD_R}>{o.order_id ?? "—"}</td>
-              <td className={TD}>{o.sale_date ?? "—"}</td>
-              <td className={TD}>{o.event ?? "—"}</td>
-              <td className={TD}>{o.ticket_tier ?? "—"}</td>
+              <td className={TD_R}>{o.order_id ?? "-"}</td>
+              <td className={TD}>{o.sale_date ?? "-"}</td>
+              <td className={TD}>{o.event ?? "-"}</td>
+              <td className={TD}>{o.ticket_tier ?? "-"}</td>
               <td className={TD_R}>{o.quantity}</td>
               <td className={cn(TD_R, "font-semibold")}>{money(o.amount_cents)}</td>
               <td className={TD}>
                 {o.is_door_sale ? (
                   <Badge variant="neutral" size="sm">Door</Badge>
                 ) : (
-                  <span className="text-neutral-400 dark:text-neutral-500">—</span>
+                  <span className="text-neutral-400 dark:text-neutral-500">-</span>
                 )}
               </td>
               <td className={TD}><StatusChip status={o.payout_status} /></td>
-              <td className={TD}>{o.payout_date ? fmtDate(o.payout_date) : "—"}</td>
-              <td className={TD_MONO}>{o.stripe_payout_id ?? "—"}</td>
-              <td className={TD_MONO}>{o.stripe_payment_intent_id ?? "—"}</td>
+              <td className={TD}>{o.payout_date ? fmtDate(o.payout_date) : "-"}</td>
+              <td className={TD_MONO}>{o.stripe_payout_id ?? "-"}</td>
+              <td className={TD_MONO}>{o.stripe_payment_intent_id ?? "-"}</td>
               {withCommission && <td className={TD_R}>{money(o.promoter_commission_cents)}</td>}
             </tr>
           ))}
@@ -929,7 +929,7 @@ export function ReconcileEmpty() {
     <EmptyState
       icon={Banknote}
       title="No deposits in this range"
-      description="Once you make sales and Stripe deposits them, each payout appears here — broken down to the exact tickets and refunds inside it. Try widening the date range."
+      description="Once you make sales and Stripe deposits them, each payout appears here, broken down to the exact tickets and refunds inside it. Try widening the date range."
     />
   )
 }
@@ -1002,7 +1002,7 @@ export default function ReconcileView({
         <EmptyState icon={Banknote} title={venueEmpty.title} description={venueEmpty.description} />
       ) : hasAny ? (
         <p className="px-1 text-sm text-neutral-500 dark:text-neutral-400">
-          No individual deposits landed in this range yet — check back once Stripe deposits your collected sales.
+          No individual deposits landed in this range yet. Check back once Stripe deposits your collected sales.
         </p>
       ) : (
         <ReconcileEmpty />

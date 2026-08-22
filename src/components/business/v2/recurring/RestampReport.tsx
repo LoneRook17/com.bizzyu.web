@@ -55,7 +55,7 @@ export function RestampReport({
       <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/40">
         <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
         <div className="text-sm text-amber-800 dark:text-amber-300">
-          <p className="font-semibold">Template saved — occurrence updates pending.</p>
+          <p className="font-semibold">Template saved. Occurrence updates pending.</p>
           <p className="mt-0.5">
             Your changes are saved, but the scheduled nights couldn&apos;t be updated just now. They&apos;ll be
             brought up to date automatically, or you can retry by saving again.
@@ -136,7 +136,7 @@ export function RestampReport({
               {removedWithSales.length > 0 && (
                 <li>
                   {plural(removedWithSales.length, "night")} kept live because {removedWithSales.length === 1 ? "it has" : "they have"}{" "}
-                  ticket sales — manage {removedWithSales.length === 1 ? "it" : "them"} from{" "}
+                  ticket sales. Manage {removedWithSales.length === 1 ? "it" : "them"} from{" "}
                   {removedWithSales.length === 1 ? "its" : "their"} event page:{" "}
                   <NightLinks ids={removedWithSales} dateByEventId={dateByEventId} />
                 </li>

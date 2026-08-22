@@ -195,7 +195,7 @@ test("fmtEntryTimestamp renders ET wall time without Date() re-interpretation", 
 
 test("fmtEntryTimestamp falls back to the raw string on malformed input", () => {
   assert.equal(fmtEntryTimestamp("not a date"), "not a date")
-  assert.equal(fmtEntryTimestamp(""), "—")
+  assert.equal(fmtEntryTimestamp(""), "-")
 })
 
 test("entryLabel maps types and order references", () => {

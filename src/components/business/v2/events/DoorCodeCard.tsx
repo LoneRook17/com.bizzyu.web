@@ -53,7 +53,7 @@ function shareMessage(eventName: string, code: string) {
   return [
     `Door code for ${eventName}: ${code}`,
     ``,
-    `Scan tickets tonight — no account needed:`,
+    `Scan tickets tonight (no account needed):`,
     `1. Download Bizzy (App Store / Google Play)`,
     `2. Open the app, tap "Scan Tickets" on the login screen`,
     `3. Enter code ${code}`,
@@ -223,8 +223,8 @@ export function DoorCodeCard({
               {error
                 ? error
                 : isLive
-                ? "Your door code is being created — refresh in a moment. Staff will use it to scan tickets with no account."
-                : "A 6-digit door code is created automatically when this event goes live. Share it with your door staff so they can scan tickets — no account needed."}
+                ? "Your door code is being created. Refresh in a moment. Staff will use it to scan tickets with no account."
+                : "A 6-digit door code is created automatically when this event goes live. Share it with your door staff so they can scan tickets (no account needed)."}
             </p>
           </div>
         </div>
@@ -244,7 +244,7 @@ export function DoorCodeCard({
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Door code</h2>
               <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-                Hand a staffer entry scanning tonight — no account needed.
+                Hand a staffer entry scanning tonight (no account needed).
               </p>
             </div>
           </div>
@@ -317,9 +317,9 @@ export function DoorCodeCard({
               <KeyRound className="size-3.5 text-[#05EB54]" /> How your staff use it
             </p>
             <ol className="mt-2 space-y-1 text-[13px] text-neutral-600 dark:text-neutral-400">
-              <li>1. Download the Bizzy app — <span className="font-medium">no account needed</span>.</li>
+              <li>1. Download the Bizzy app (<span className="font-medium">no account needed</span>).</li>
               <li>2. On the login screen, tap <span className="font-medium">“Scan Tickets”</span>.</li>
-              <li>3. Type the code <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">{code}</span> — they’re scanning.</li>
+              <li>3. Type the code <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">{code}</span>. They’re scanning.</li>
             </ol>
             <p className="mt-2 text-[12px] text-neutral-400 dark:text-neutral-500">
               The code dies with the event. Rotate it any time to cut off access.
@@ -335,7 +335,7 @@ export function DoorCodeCard({
             <DialogTitle>Rotate door code?</DialogTitle>
             <DialogDescription>
               A new code is generated. <span className="font-medium text-neutral-700 dark:text-neutral-300">The old code
-              stops working immediately</span> — anyone using it will need the new one.
+              stops working immediately</span>. Anyone using it will need the new one.
             </DialogDescription>
           </DialogHeader>
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
@@ -354,7 +354,7 @@ export function DoorCodeCard({
           <DialogHeader>
             <DialogTitle>Label this code</DialogTitle>
             <DialogDescription>
-              A note for you — who or where this code is for. It’s your audit trail if you ever need to trace a scan.
+              A note for you: who or where this code is for. It’s your audit trail if you ever need to trace a scan.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={saveLabel} className="space-y-3">

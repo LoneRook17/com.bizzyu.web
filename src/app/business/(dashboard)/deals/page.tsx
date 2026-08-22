@@ -189,7 +189,7 @@ function DealsContent() {
   const [reactivateNotice, setReactivateNotice] = useState("")
   // Engagement stats join by deal_id, fetched SEPARATELY from the deals list so
   // rows render immediately and never jank while stats load. null map =
-  // endpoint not deployed yet (404) → columns quietly show "—".
+  // endpoint not deployed yet (404) → columns quietly show "-".
   const [statsByDeal, setStatsByDeal] = useState<Map<number, DealStatRow>>(new Map())
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsUnavailable, setStatsUnavailable] = useState(false)
@@ -256,7 +256,7 @@ function DealsContent() {
         setStatsByDeal(indexStatsByDeal(resp))
       }
     } catch {
-      // A real failure shouldn't break the deals list — degrade to "—".
+      // A real failure shouldn't break the deals list — degrade to "-".
       setStatsUnavailable(true)
       setStatsByDeal(new Map())
     } finally {

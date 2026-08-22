@@ -196,7 +196,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
  *  in the viewer's zone. Falls back to the raw string on anything malformed. */
 export function fmtEntryTimestamp(s: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s)
-  if (!m) return s || "—"
+  if (!m) return s || "-"
   const [, y, mo, d, hh, mi] = m
   const month = MONTHS[Number(mo) - 1]
   if (!month) return s

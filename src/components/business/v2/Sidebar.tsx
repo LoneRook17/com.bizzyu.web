@@ -238,7 +238,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <AvatarFallback className="bg-[#E8EDFF] text-[#3A5BD9] dark:bg-[#1e2747] dark:text-[#8da6f5]">{initials(user?.full_name)}</AvatarFallback>
           </Avatar>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{user?.full_name ?? "—"}</span>
+            <span className="block truncate text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{user?.full_name ?? "-"}</span>
             <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</span>
           </span>
         </Link>
