@@ -14,6 +14,8 @@ import {
   formatDays,
   programHref,
   redemptionModeLabel,
+  toTimeInput,
+  updateDoorAccessProgram,
   usdPrice,
   type DoorAccessProgram,
   type RedemptionMode,
@@ -25,11 +27,17 @@ import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { EventStepNav } from "@/components/business/v2/events/EventStepNav"
 import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
-import { commissionInputToStored, lowstockInputToStored } from "@/components/business/v2/events/EventForm"
+import {
+  commissionInputToStored,
+  commissionValueToInput,
+  lowstockInputToStored,
+  lowstockValueToInput,
+} from "@/components/business/v2/events/EventForm"
 import { ISO_DAYS, upcomingScheduleDates, scheduleSentence } from "@/components/business/v2/recurring/schedule"
 import {
   RecurringTierEditor,
   EMPTY_RECURRING_TIER,
+  templateToTierRows,
   tierRowsToTemplate,
   type RecurringTierRow,
 } from "@/components/business/v2/recurring/RecurringTierEditor"
@@ -42,7 +50,8 @@ import {
  * feel like one flow with a fork rather than two dashboards:
  *
  *   POST /business/door-access/validate-step   step 1 + step 2 pre-flight
- *   POST /business/door-access                 the whole draft, committed once
+ *   POST /business/door-access                 create: the whole draft, committed once
+ *   PUT  /business/door-access/:id             edit: the same template fields, for this program
  *
  * The pre-flight matters: `validate-step` runs the EXACT rules the create path
  * will run, so "Next" is authoritative instead of a client-side guess the
@@ -86,9 +95,30 @@ interface CreateResponse {
  */
 const DOOR_ACCESS_REDEMPTION_MODE: RedemptionMode = "camera_tap"
 
-export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: { stripeOnboarded?: boolean; isPending?: boolean }) {
+function seedTiers(program?: DoorAccessProgram): RecurringTierRow[] {
+  if (!program?.template_tickets.length) {
+    return [{ ...EMPTY_RECURRING_TIER, name: "Cover" }]
+  }
+  return templateToTierRows(program.template_tickets)
+}
+
+export function DoorAccessWizard({
+  mode = "create",
+  programId,
+  initialData,
+  stripeOnboarded = true,
+  isPending = false,
+}: {
+  mode?: "create" | "edit"
+  programId?: number
+  initialData?: DoorAccessProgram
+  stripeOnboarded?: boolean
+  isPending?: boolean
+}) {
   const router = useRouter()
+  const isEdit = mode === "edit"
   const { venues, selectedVenue, setSelectedVenue } = useVenue()
+  const backHref = isEdit && programId ? programHref(programId) : "/business/create"
 
   const todayStr = new Date().toLocaleDateString("en-CA")
 
@@ -96,30 +126,36 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
   const [furthest, setFurthest] = useState(0)
 
   // ── Step 1: details ──────────────────────────────────────────────────────
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [venueId, setVenueId] = useState<number | null>(null)
-  const [venueName, setVenueName] = useState("")
-  const [venueAddress, setVenueAddress] = useState("")
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([])
-  const [dateRangeStart, setDateRangeStart] = useState(todayStr)
-  const [dateRangeEnd, setDateRangeEnd] = useState("")
-  const [startTime, setStartTime] = useState("21:00")
-  const [endTime, setEndTime] = useState("02:00")
-  const [is21Plus, setIs21Plus] = useState(false)
-  const [flyerImageUrl, setFlyerImageUrl] = useState("")
+  const [name, setName] = useState(initialData?.name ?? "")
+  const [description, setDescription] = useState(initialData?.description ?? "")
+  const [venueId, setVenueId] = useState<number | null>(initialData?.venue_id ?? null)
+  const [venueName, setVenueName] = useState(initialData?.venue_name ?? "")
+  const [venueAddress, setVenueAddress] = useState(initialData?.venue_address ?? "")
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(initialData?.days_of_week ?? [])
+  const [dateRangeStart, setDateRangeStart] = useState(initialData?.date_range_start || todayStr)
+  const [dateRangeEnd, setDateRangeEnd] = useState(initialData?.date_range_end ?? "")
+  const [startTime, setStartTime] = useState(toTimeInput(initialData?.start_time) || "21:00")
+  const [endTime, setEndTime] = useState(toTimeInput(initialData?.end_time) || "02:00")
+  const [is21Plus, setIs21Plus] = useState(!!initialData?.is_21_plus)
+  const [flyerImageUrl, setFlyerImageUrl] = useState(initialData?.flyer_image_url ?? "")
 
   // ── Step 2: access & pricing ─────────────────────────────────────────────
-  const [tiers, setTiers] = useState<RecurringTierRow[]>([
-    { ...EMPTY_RECURRING_TIER, name: "Cover" },
-  ])
-  const [promotionEnabled, setPromotionEnabled] = useState(false)
-  const [commissionType, setCommissionType] = useState<"percent" | "fixed">("percent")
-  const [promotionValueInput, setPromotionValueInput] = useState("")
-  const [lowstockEnabled, setLowstockEnabled] = useState(false)
-  const [lowstockType, setLowstockType] = useState<"percent" | "count">("percent")
-  const [lowstockValueInput, setLowstockValueInput] = useState("")
-  const [lowstockNotifyTeam, setLowstockNotifyTeam] = useState(false)
+  const [tiers, setTiers] = useState<RecurringTierRow[]>(() => seedTiers(initialData))
+  const [promotionEnabled, setPromotionEnabled] = useState(!!initialData?.promotion_enabled)
+  const [commissionType, setCommissionType] = useState<"percent" | "fixed">(
+    initialData?.promotion_commission_type ?? "percent"
+  )
+  const [promotionValueInput, setPromotionValueInput] = useState(
+    commissionValueToInput(initialData?.promotion_commission_type ?? "percent", initialData?.promotion_commission_value)
+  )
+  const [lowstockEnabled, setLowstockEnabled] = useState(!!initialData?.lowstock_alerts_enabled)
+  const [lowstockType, setLowstockType] = useState<"percent" | "count">(
+    initialData?.lowstock_threshold_type ?? "percent"
+  )
+  const [lowstockValueInput, setLowstockValueInput] = useState(
+    lowstockValueToInput(initialData?.lowstock_threshold_value)
+  )
+  const [lowstockNotifyTeam, setLowstockNotifyTeam] = useState(!!initialData?.lowstock_notify_business_team)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
@@ -129,16 +165,20 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
   // A create that landed but whose first generation didn't. The program EXISTS
   // — navigating away silently would leave the host wondering where tonight
   // went, so the outcome is stated and they choose when to move on.
-  const [generationNotice, setGenerationNotice] = useState<{ id: number; message: string } | null>(null)
+  const [generationNotice, setGenerationNotice] = useState<{
+    id: number
+    message: string
+    kind: "created" | "updated"
+  } | null>(null)
 
-  // Default to the globally-selected venue, like EventForm and SeriesForm.
+  // Create only: default to the globally-selected venue, like EventForm and SeriesForm.
   useEffect(() => {
-    if (selectedVenue && venueId == null) {
+    if (!isEdit && selectedVenue && venueId == null) {
       setVenueId(selectedVenue.id)
       setVenueName(selectedVenue.name)
       setVenueAddress(selectedVenue.address || "")
     }
-  }, [selectedVenue, venueId])
+  }, [selectedVenue, isEdit, venueId])
 
   const currentVenue = venues.find((v) => v.id === venueId) ?? null
 
@@ -282,6 +322,7 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
     try {
       await apiClient.post("/business/door-access/validate-step", {
         step: stepNumber,
+        ...(isEdit && programId != null ? { program_id: programId } : {}),
         ...(stepNumber === 1 ? detailsPayload() : salesPayload()),
       })
       return true
@@ -318,17 +359,29 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
     setSubmitting(true)
     setServerError("")
     try {
+      const body = {
+        ...detailsPayload(),
+        ...salesPayload(),
+        flyer_image_url: flyerImageUrl || null,
+      }
+
+      if (isEdit && programId != null) {
+        const data = await updateDoorAccessProgram(programId, body)
+        if (data.restamp_error) {
+          setGenerationNotice({ id: programId, message: data.restamp_error, kind: "updated" })
+          return
+        }
+        router.push(programHref(programId))
+        return
+      }
+
       const data = await apiClient.post<CreateResponse>(
         "/business/door-access",
-        applySaveAsDraftFlag({
-          ...detailsPayload(),
-          ...salesPayload(),
-          flyer_image_url: flyerImageUrl || null,
-        }, saveAsDraft),
+        applySaveAsDraftFlag(body, saveAsDraft),
       )
       const id = Number(data.program?.id)
       if (data.generation_error && !saveAsDraft) {
-        setGenerationNotice({ id, message: data.generation_error })
+        setGenerationNotice({ id, message: data.generation_error, kind: "created" })
         return
       }
       router.push(programHref(id))
@@ -342,18 +395,23 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
   const errClass = "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/30"
 
   if (generationNotice) {
+    const saved = generationNotice.kind === "updated"
     return (
       <div className="flex max-w-3xl flex-col gap-5">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-            Program created
+            {saved ? "Program saved" : "Program created"}
           </h1>
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
-            &ldquo;{name.trim()}&rdquo; is live and selling on {scheduleSentence(daysOfWeek).toLowerCase()}.
+            {saved
+              ? "The template is saved. Upcoming nights that still follow it will pick up the new defaults."
+              : `\u201c${name.trim()}\u201d is live and selling on ${scheduleSentence(daysOfWeek).toLowerCase()}.`}
           </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
-          <p className="font-semibold">Tonight&apos;s nights aren&apos;t on the schedule yet</p>
+          <p className="font-semibold">
+            {saved ? "Upcoming nights could not be restamped just now" : "Tonight's nights aren't on the schedule yet"}
+          </p>
           <p className="mt-0.5">{generationNotice.message}</p>
         </div>
         <div>
@@ -368,7 +426,7 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
   return (
     <div className="flex max-w-3xl flex-col gap-5">
       <Link
-        href="/business/create"
+        href={backHref}
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
       >
         <ArrowLeft className="size-3.5" /> Back
@@ -376,10 +434,12 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
 
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          {WEEKLY_ACCESS_CREATION_LABEL}
+          {isEdit ? "Edit program" : WEEKLY_ACCESS_CREATION_LABEL}
         </h1>
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
-          Set your nights and prices once — every night is created for you and sells ahead.
+          {isEdit
+            ? "Change the name, nights, door hours, default prices, and flyer. Every night that still follows this program picks up the new defaults."
+            : "Set your nights and prices once. Every night is created for you and sells ahead."}
         </p>
       </div>
 
@@ -846,19 +906,25 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
           <div
             className={cn(
               "rounded-xl border px-4 py-3 text-sm",
-              willDraft
+              !isEdit && willDraft
                 ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                 : undefined,
             )}
-            style={willDraft ? undefined : { borderColor: `${ACCESS_ACCENT}59`, backgroundColor: `${ACCESS_ACCENT}0f` }}
+            style={!isEdit && willDraft ? undefined : { borderColor: `${ACCESS_ACCENT}59`, backgroundColor: `${ACCESS_ACCENT}0f` }}
           >
-            <p className={cn("font-semibold", !willDraft && "text-neutral-900 dark:text-neutral-100")}>
-              {willDraft ? "Your business is still in review" : "This goes live right away"}
+            <p className={cn("font-semibold", (isEdit || !willDraft) && "text-neutral-900 dark:text-neutral-100")}>
+              {isEdit
+                ? "This updates the whole program"
+                : willDraft
+                  ? "Your business is still in review"
+                  : "This goes live right away"}
             </p>
-            <p className={cn("mt-0.5", willDraft ? undefined : "text-neutral-600 dark:text-neutral-400")}>
-              {willDraft
-                ? "Publishing may stay a draft until you're approved. You can also save as a draft on purpose."
-                : "Each night is created on your schedule and starts selling. To change a single night's price or close one, open the program afterwards."}
+            <p className={cn("mt-0.5", isEdit || !willDraft ? "text-neutral-600 dark:text-neutral-400" : undefined)}>
+              {isEdit
+                ? "Name, nights, door hours, default prices, and flyer apply to every night that still follows this program. A night you already customized keeps its own price and hours."
+                : willDraft
+                  ? "Publishing may stay a draft until you're approved. You can also save as a draft on purpose."
+                  : "Each night is created on your schedule and starts selling. To change a single night's price or close one, open the program afterwards."}
             </p>
           </div>
         </>
@@ -877,7 +943,7 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
           </Button>
         ) : (
           <Button variant="secondary" size="lg" asChild>
-            <Link href="/business/create">Cancel</Link>
+            <Link href={backHref}>Cancel</Link>
           </Button>
         )}
 
@@ -885,6 +951,11 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
           <Button size="lg" onClick={handleNext} disabled={checking}>
             {checking && <Loader2 className="animate-spin" />}
             Next
+          </Button>
+        ) : isEdit ? (
+          <Button size="lg" onClick={() => handlePublish(false)} disabled={submitting}>
+            {submitting && <Loader2 className="animate-spin" />}
+            Save program
           </Button>
         ) : (
           <div className="flex flex-wrap items-center justify-end gap-3">
