@@ -3,17 +3,20 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
-import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
+import { WEEKLY_ACCESS_CREATION_LABEL } from "@/lib/business/door-access"
 import {
   eventCalendarDate,
   eventFromPrice,
   fetchVenuePublicData,
+  formatAccessTierLabel,
   formatNightChipLabel,
   groupWeeklyAccessNights,
   mergeVenueEvents,
   nightChipPrice,
   programTemplateTiers,
+  resolveNightTiers,
   resolveVenueEventImageUrl,
+  venueNightCheckoutHref,
   weeklyAccessPriceLines,
   type VenueData,
   type VenueEvent,
@@ -261,9 +264,10 @@ function ListingCard({
 }
 
 /**
- * One Weekly Access program: flyer (or venue photo), title, Cover $5 or
- * named tiers, date chips under the card. Get access checks out the
- * selected night only. No dropdown, no calendar.
+ * One Weekly Cover program: flyer (or venue photo), title, Cover $5 or
+ * named tier chips, date chips under the card. Get access checks out the
+ * selected night only. A 2+ tier chip adds ?ticket_id= so Laravel can
+ * preselect that ticket. No dropdown, no calendar.
  */
 function WeeklyAccessProgramCard({
   nights,
@@ -288,6 +292,7 @@ function WeeklyAccessProgramCard({
   const cardImage = resolveVenueEventImageUrl(flyerNight, venue)
   const template = programTemplateTiers(nights)
   const prices = weeklyAccessPriceLines([selected], template)
+  const tiers = resolveNightTiers(selected, template)
   const selectedIsToday =
     todayKey != null && eventCalendarDate(selected.start_date_time) === todayKey
 
@@ -326,7 +331,24 @@ function WeeklyAccessProgramCard({
         </div>
         <div className="flex min-h-full flex-col p-5 sm:p-7">
           <h3 className="text-2xl font-extrabold leading-snug text-white">{first.name}</h3>
-          {prices.length > 0 && (
+          {tiers.length > 1 ? (
+            <div className="mt-3 flex flex-wrap gap-2.5" role="group" aria-label="Ticket types">
+              {tiers.map((tier) => (
+                <a
+                  key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
+                  href={venueNightCheckoutHref(checkoutBaseUrl, selected.event_id, tier.ticket_id)}
+                  className="inline-flex min-h-11 min-w-[5.5rem] items-center justify-center rounded-2xl border-2 px-4 py-2.5 text-[15px] font-bold leading-snug transition"
+                  style={{
+                    backgroundColor: "transparent",
+                    borderColor: theme.accent,
+                    color: theme.accent,
+                  }}
+                >
+                  {formatAccessTierLabel(tier)}
+                </a>
+              ))}
+            </div>
+          ) : prices.length > 0 ? (
             <div className="mt-3 flex flex-col gap-1">
               {prices.map((line) => (
                 <p key={line} className="text-2xl font-extrabold" style={{ color: theme.accent }}>
@@ -334,10 +356,10 @@ function WeeklyAccessProgramCard({
                 </p>
               ))}
             </div>
-          )}
+          ) : null}
           <div className="mt-6 flex lg:mt-auto">
             <a
-              href={`${checkoutBaseUrl}/checkout/${selected.event_id}`}
+              href={venueNightCheckoutHref(checkoutBaseUrl, selected.event_id)}
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-extrabold text-black transition hover:brightness-110"
               style={{
                 backgroundImage: `linear-gradient(to bottom right, ${theme.accentDeep}, ${theme.accent})`,
@@ -462,7 +484,7 @@ export default function VenuePageClient({
 
   const stats = [
     eventRows.length > 0 && `${eventRows.length} upcoming ${eventRows.length === 1 ? "event" : "events"}`,
-    doorAccessRows.length > 0 && `${doorAccessRows.length} weekly access ${doorAccessRows.length === 1 ? "night" : "nights"}`,
+    doorAccessRows.length > 0 && `${doorAccessRows.length} weekly cover ${doorAccessRows.length === 1 ? "night" : "nights"}`,
     deals.length > 0 && `${deals.length} ${deals.length === 1 ? "deal" : "deals"}`,
   ].filter(Boolean) as string[]
 
@@ -751,7 +773,7 @@ export default function VenuePageClient({
             checks out that night only. */}
         {weeklyAccessPrograms.length > 0 && (
           <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
-            <SectionHeader title={WEEKLY_ACCESS_SECTION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
+            <SectionHeader title={WEEKLY_ACCESS_CREATION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
             <div className={`grid gap-8 ${weeklyAccessPrograms.length > 1 ? "md:grid-cols-2" : ""}`}>
               {weeklyAccessPrograms.map((nights) => (
                 <WeeklyAccessProgramCard

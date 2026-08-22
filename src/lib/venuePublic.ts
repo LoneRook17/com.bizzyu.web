@@ -19,6 +19,8 @@ const LIVE_ONE_OFF_STATUSES = new Set(["published", "approved", "active"])
 export interface VenueAccessTier {
   name: string
   price_usd: number
+  /** tickets.id for this night. Needed so a tier chip can preselect checkout. */
+  ticket_id?: number
 }
 
 export interface VenueEvent {
@@ -160,10 +162,28 @@ function pickRicherEvent(a: VenueEvent, b: VenueEvent): VenueEvent {
     status: b.status ?? a.status,
     venue_id: b.venue_id ?? a.venue_id,
     recurring_series_id: b.recurring_series_id ?? a.recurring_series_id,
-    tickets: b.tickets.length > 0 ? b.tickets : a.tickets,
-    template_tickets:
-      (b.template_tickets?.length ?? 0) > 0 ? b.template_tickets : a.template_tickets,
+    tickets: pickRicherTiers(a.tickets, b.tickets),
+    template_tickets: pickRicherTiers(a.template_tickets ?? [], b.template_tickets ?? []),
   }
+}
+
+function ticketIdCount(tiers: VenueAccessTier[]): number {
+  return tiers.filter((tier) => tier.ticket_id != null).length
+}
+
+/** Prefer the list that actually has checkout ticket ids when both sides have tiers. */
+function pickRicherTiers(a: VenueAccessTier[], b: VenueAccessTier[]): VenueAccessTier[] {
+  if (b.length === 0) return a
+  if (a.length === 0) return b
+  const aIds = ticketIdCount(a)
+  const bIds = ticketIdCount(b)
+  if (aIds > bIds && a.length >= b.length) return a
+  return b
+}
+
+/** Shared program prices may copy names across nights. Those ids belong to the source night. */
+function withoutTicketIds(tiers: VenueAccessTier[]): VenueAccessTier[] {
+  return tiers.map((tier) => ({ name: tier.name, price_usd: tier.price_usd }))
 }
 
 export function parseUsdAmount(raw: unknown): number | null {
@@ -195,6 +215,24 @@ export function parseTierPriceUsd(tier: Record<string, unknown>): number | null 
   return centsToUsd(tier.price_cents ?? tier.amount_cents)
 }
 
+/** tickets.id from the public event / checkout payload. Never invent a name. */
+export function parseTicketId(tier: Record<string, unknown> | unknown): number | undefined {
+  if (!tier || typeof tier !== "object") return parseTicketIdValue(tier)
+  const row = tier as Record<string, unknown>
+  return parseTicketIdValue(row.ticket_id ?? row.ticketId ?? row.id)
+}
+
+function parseTicketIdValue(raw: unknown): number | undefined {
+  if (raw == null || raw === "") return undefined
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) return undefined
+  return n
+}
+
+function accessTier(name: string, priceUsd: number, ticketId?: number): VenueAccessTier {
+  return ticketId != null ? { name, price_usd: priceUsd, ticket_id: ticketId } : { name, price_usd: priceUsd }
+}
+
 export function parseVenueAccessTiers(raw: unknown): VenueAccessTier[] {
   let rows = raw
   if (typeof rows === "string") {
@@ -212,7 +250,7 @@ export function parseVenueAccessTiers(raw: unknown): VenueAccessTier[] {
       const name =
         typeof tier.name === "string" && tier.name.trim() ? tier.name.trim() : "Cover"
       const price = parseTierPriceUsd(tier)
-      return { name, price_usd: price ?? 0 }
+      return accessTier(name, price ?? 0, parseTicketId(tier))
     })
 }
 
@@ -239,6 +277,30 @@ export function formatAccessPrice(n: number): string {
   if (!Number.isFinite(n)) return ""
   if (n === 0) return "Free"
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`
+}
+
+/** "Cover $5" / "Skip the Line $10" from the payload name. Do not invent names. */
+export function formatAccessTierLabel(tier: VenueAccessTier): string {
+  const formatted = formatAccessPrice(Number(tier.price_usd))
+  if (!formatted) return ""
+  const name = tier.name.trim() || "Cover"
+  return name.toLowerCase() === "cover" ? `Cover ${formatted}` : `${name} ${formatted}`
+}
+
+/**
+ * Laravel checkout preselect. Sibling core reads this exact query name.
+ * Example: /checkout/621?ticket_id=678
+ */
+export const VENUE_CHECKOUT_TICKET_PARAM = "ticket_id"
+
+export function venueNightCheckoutHref(
+  checkoutBaseUrl: string,
+  eventId: number,
+  ticketId?: number | null,
+): string {
+  const base = `${checkoutBaseUrl.replace(/\/$/, "")}/checkout/${eventId}`
+  const id = ticketId == null ? undefined : parseTicketIdValue(ticketId)
+  return id != null ? `${base}?${VENUE_CHECKOUT_TICKET_PARAM}=${id}` : base
 }
 
 function finitePrices(tiers: VenueAccessTier[]): number[] {
@@ -336,16 +398,7 @@ export function weeklyAccessPriceLines(
   const template = programTiers.length > 0 ? programTiers : programTemplateTiers(nights)
   const withTiers = nights.find((night) => resolveNightTiers(night, template).length > 0)
   const tiers = withTiers ? resolveNightTiers(withTiers, template) : template
-  if (tiers.length > 1) {
-    return tiers.map((tier) => `${tier.name} ${formatAccessPrice(tier.price_usd)}`.trim())
-  }
-  if (tiers.length === 1) {
-    const formatted = formatAccessPrice(tiers[0].price_usd)
-    if (!formatted) return []
-    const name = tiers[0].name.trim() || "Cover"
-    return name.toLowerCase() === "cover" ? [`Cover ${formatted}`] : [`${name} ${formatted}`]
-  }
-  return []
+  return tiers.map(formatAccessTierLabel).filter(Boolean)
 }
 
 /** Copy a program Cover onto nights that still have no price. */
@@ -367,7 +420,7 @@ export function applySharedProgramPrices(events: VenueEvent[]): VenueEvent[] {
       const min = Math.min(...finitePrices(resolved))
       byId.set(night.event_id, {
         ...current,
-        tickets: current.tickets.length > 0 ? current.tickets : resolved,
+        tickets: current.tickets.length > 0 ? current.tickets : withoutTicketIds(resolved),
         min_ticket_price:
           current.min_ticket_price != null && current.min_ticket_price !== ""
             ? current.min_ticket_price
@@ -398,6 +451,10 @@ function parseTiersFromCheckoutJson(raw: unknown): VenueAccessTier[] {
  * Matches a ticket-card whether `data-price` sits on the same tag or just
  * after it. CSS `.ticket-card {` rules do not count.
  */
+function ticketIdFromCheckoutHtml(chunk: string): number | undefined {
+  return parseTicketIdValue(/data-ticket-id="([^"]+)"/.exec(chunk)?.[1])
+}
+
 export function parseCheckoutTicketTiers(html: string): VenueAccessTier[] {
   if (!html) return []
   const tiers: VenueAccessTier[] = []
@@ -412,7 +469,7 @@ export function parseCheckoutTicketTiers(html: string): VenueAccessTier[] {
     const nameMatch = /<h4[^>]*>\s*([^<]+?)\s*<\/h4>/i.exec(nearby)
     const name = nameMatch?.[1].trim() || "Cover"
     if (name.toLowerCase() === "order summary") continue
-    tiers.push({ name, price_usd: price })
+    tiers.push(accessTier(name, price, ticketIdFromCheckoutHtml(tag[0]) ?? ticketIdFromCheckoutHtml(nearby)))
   }
   if (tiers.length > 0) return tiers
   const cardRe =
@@ -422,7 +479,9 @@ export function parseCheckoutTicketTiers(html: string): VenueAccessTier[] {
     const price = Number(match[1])
     const name = match[2].trim() || "Cover"
     if (name.toLowerCase() === "order summary") continue
-    if (Number.isFinite(price)) tiers.push({ name, price_usd: price })
+    if (Number.isFinite(price)) {
+      tiers.push(accessTier(name, price, ticketIdFromCheckoutHtml(match[0])))
+    }
   }
   if (tiers.length > 0) return tiers
   const priceMatch = /data-price="([^"]+)"/.exec(html)
@@ -431,7 +490,7 @@ export function parseCheckoutTicketTiers(html: string): VenueAccessTier[] {
     const price = Number(priceMatch[1])
     const name = coverMatch[1].trim() || "Cover"
     if (Number.isFinite(price) && name.toLowerCase() !== "order summary") {
-      return [{ name, price_usd: price }]
+      return [accessTier(name, price, ticketIdFromCheckoutHtml(html))]
     }
   }
   return []
@@ -604,6 +663,7 @@ export async function fetchVenuePublicData(
   let events = mergeVenueEvents(listed, forVenue, details.filter((e): e is VenueEvent => e != null))
   events = await enrichWeeklyAccessTiers(base, events, checkoutBase)
   events = applySharedProgramPrices(events)
+  events = await fillMissingTicketIds(base, events, checkoutBase)
 
   return {
     ...venue,
@@ -669,6 +729,13 @@ function needsPriceEnrichment(event: VenueEvent): boolean {
   )
 }
 
+/** 2+ named tiers on a night, but this night's own tickets.id is still missing. */
+function needsTicketIdEnrichment(event: VenueEvent): boolean {
+  if (event.access_kind !== "door_access") return false
+  if (event.tickets.length < 2) return false
+  return event.tickets.some((tier) => tier.ticket_id == null)
+}
+
 function withResolvedTiers(event: VenueEvent, tickets: VenueAccessTier[]): VenueEvent {
   const min = Math.min(...finitePrices(tickets))
   return {
@@ -684,6 +751,40 @@ function withResolvedTiers(event: VenueEvent, tickets: VenueAccessTier[]): Venue
   }
 }
 
+/** Checkout JSON, then Laravel checkout HTML, for nights missing prices or ticket ids. */
+async function fillMissingTicketIds(
+  base: string,
+  events: VenueEvent[],
+  checkoutBase?: string,
+): Promise<VenueEvent[]> {
+  const need = events.filter(needsTicketIdEnrichment)
+  if (need.length === 0) return events
+
+  const extras = await Promise.all(
+    need.map(async (event) => {
+      const raw = await fetchJson(`${base}/checkout/event/${event.event_id}`)
+      if (raw && typeof raw === "object") {
+        const mapped = toVenueEvent(eventPayload(raw))
+        if (
+          mapped &&
+          mapped.event_id === event.event_id &&
+          ticketIdCount(mapped.tickets) > 0
+        ) {
+          return withResolvedTiers(event, mapped.tickets)
+        }
+      }
+      const tickets = await fetchCheckoutTicketTiers(event.event_id, checkoutBase)
+      if (ticketIdCount(tickets) === 0) return null
+      return withResolvedTiers(event, tickets)
+    }),
+  )
+
+  return mergeVenueEvents(
+    events,
+    extras.filter((e): e is VenueEvent => e != null),
+  )
+}
+
 /** Checkout JSON, program template, then Laravel checkout HTML for draft nights. */
 async function enrichWeeklyAccessTiers(
   base: string,
@@ -691,7 +792,9 @@ async function enrichWeeklyAccessTiers(
   checkoutBase?: string,
 ): Promise<VenueEvent[]> {
   const need = events.filter(needsPriceEnrichment)
-  if (need.length === 0) return events
+  if (need.length === 0) {
+    return fillMissingTicketIds(base, events, checkoutBase)
+  }
 
   const extras = await Promise.all(
     need.map(async (event) => {
@@ -728,7 +831,9 @@ async function enrichWeeklyAccessTiers(
     })
   }
 
-  const htmlNeed = merged.filter(needsPriceEnrichment)
+  const htmlNeed = merged.filter(
+    (event) => needsPriceEnrichment(event) || needsTicketIdEnrichment(event),
+  )
   if (htmlNeed.length > 0) {
     const fromHtml = await Promise.all(
       htmlNeed.map(async (event) => {

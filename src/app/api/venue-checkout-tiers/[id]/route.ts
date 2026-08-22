@@ -7,9 +7,10 @@ const CHECKOUT_BASE =
   "https://bizzy-deals.com"
 
 /**
- * Same-origin Cover / ticket prices for the public venue page.
+ * Same-origin Cover / ticket prices (and tickets.id) for the public venue page.
  * Draft Weekly Cover nights have no min_ticket_price on GET /ui/events/:id;
- * the Laravel checkout HTML is the public source that still prints Cover $5.
+ * the Laravel checkout HTML is the public source that still prints Cover $5
+ * and data-ticket-id, which the venue page needs for ?ticket_id= preselect.
  */
 export async function GET(
   _req: Request,

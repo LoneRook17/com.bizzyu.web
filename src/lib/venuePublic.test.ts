@@ -17,14 +17,17 @@ import {
   nightChipPrice,
   parseCheckoutTicketTiers,
   parseTierPriceUsd,
+  parseTicketId,
   parseVenueAccessTiers,
   programTemplateTiers,
   resolveVenueEventImageUrl,
   shouldListOnVenuePage,
   toVenueEvent,
+  VENUE_CHECKOUT_TICKET_PARAM,
   VENUE_CHECKOUT_TIERS_PATH,
   VENUE_EVENT_LOOKAHEAD,
   venueCheckoutTiersUrl,
+  venueNightCheckoutHref,
   weeklyAccessPriceLines,
   applySharedProgramPrices,
   eventFromPrice,
@@ -85,6 +88,19 @@ test("toVenueEvent maps a Cover tier from tickets / tiers when min_ticket_price 
   })
   assert.deepEqual(fromTiers?.tickets, [{ name: "Cover", price_usd: 5 }])
   assert.equal(nightChipPrice(fromTiers!), "Cover $5")
+  const withIds = toVenueEvent({
+    event_id: 621,
+    name: "Weekly Cover",
+    access_kind: "door_access",
+    tickets: [
+      { ticket_id: 678, name: "Cover", price_usd: 5 },
+      { ticket_id: 679, name: "Skip the Line", price_usd: 10 },
+    ],
+  })
+  assert.deepEqual(withIds?.tickets, [
+    { name: "Cover", price_usd: 5, ticket_id: 678 },
+    { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+  ])
 })
 
 test("toVenueEvent keeps amount / price_cents / lowest_price_usd when min_ticket_price is absent", () => {
@@ -121,6 +137,39 @@ test("parseVenueAccessTiers reads price, amount, and price_cents", () => {
   assert.deepEqual(parseVenueAccessTiers([{ name: "Cover", price_cents: 500 }]), [
     { name: "Cover", price_usd: 5 },
   ])
+})
+
+test("parseVenueAccessTiers keeps tickets.id from ticket_id, ticketId, or id", () => {
+  assert.equal(parseTicketId({ ticket_id: 678 }), 678)
+  assert.equal(parseTicketId({ ticketId: "679" }), 679)
+  assert.equal(parseTicketId({ id: 682 }), 682)
+  assert.equal(parseTicketId({ ticket_id: 0 }), undefined)
+  assert.deepEqual(
+    parseVenueAccessTiers([
+      { ticket_id: 678, name: "Cover", price_usd: 5 },
+      { id: 679, name: "Skip the Line", price: 10 },
+    ]),
+    [
+      { name: "Cover", price_usd: 5, ticket_id: 678 },
+      { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+    ],
+  )
+})
+
+test("venueNightCheckoutHref uses ?ticket_id= and omits it when there is no id", () => {
+  assert.equal(VENUE_CHECKOUT_TICKET_PARAM, "ticket_id")
+  assert.equal(
+    venueNightCheckoutHref("https://dev.bizzy-deals.com", 621, 678),
+    "https://dev.bizzy-deals.com/checkout/621?ticket_id=678",
+  )
+  assert.equal(
+    venueNightCheckoutHref("https://dev.bizzy-deals.com/", 621),
+    "https://dev.bizzy-deals.com/checkout/621",
+  )
+  assert.equal(
+    venueNightCheckoutHref("https://dev.bizzy-deals.com", 621, null),
+    "https://dev.bizzy-deals.com/checkout/621",
+  )
 })
 
 test("toVenueEvent drops a row with no id or name", () => {
@@ -244,9 +293,11 @@ test("venue page gives Weekly Access a full-width contained image treatment", ()
   const src = join(process.cwd(), "src")
   const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
   const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "section heading must use the Weekly Access label")
+  assert.ok(client.includes("WEEKLY_ACCESS_CREATION_LABEL"), "section heading must use the Weekly Cover label")
+  assert.ok(!client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "section heading must not say Weekly Access")
   assert.ok(!client.includes('title="Door Access"'), "section heading still says Door Access")
-  assert.ok(client.includes("weekly access"), "badge must say weekly access")
+  assert.ok(client.includes("weekly cover"), "badge must say weekly cover")
+  assert.ok(!client.includes("weekly access"), "badge must not say weekly access")
   assert.ok(!client.includes("door access ${"), "badge still says door access")
   assert.ok(
     client.includes("Scan with any phone camera at the door."),
@@ -258,9 +309,10 @@ test("venue page gives Weekly Access a full-width contained image treatment", ()
   assert.ok(!client.includes("pricedCtaLabel"), "top-level venue CTAs must not include prices")
   assert.ok(!client.includes("business.logo_image_url"), "venue page must not show the business logo")
   assert.ok(
-    page.includes("WEEKLY_ACCESS_SECTION_LABEL"),
-    "fallback meta description must say weekly access, not door access",
+    page.includes("WEEKLY_ACCESS_CREATION_LABEL"),
+    "fallback meta description must say weekly cover, not door access",
   )
+  assert.ok(!page.includes("WEEKLY_ACCESS_SECTION_LABEL"), "meta description must not say Weekly Access")
   assert.ok(!page.includes("door access"), "meta description still says door access")
 })
 
@@ -374,6 +426,27 @@ test("program template Cover fills nights that shipped with a null min price", (
   assert.deepEqual(weeklyAccessPriceLines(filled), ["Cover $5"])
 })
 
+test("applySharedProgramPrices copies Cover names but not another night's ticket_id", () => {
+  const nights = [
+    coverNight(621, "2026-08-24 21:00:00", {
+      min_ticket_price: null,
+      tickets: [],
+    }),
+    coverNight(623, "2026-08-26 21:00:00", {
+      min_ticket_price: null,
+      tickets: [
+        { name: "Cover", price_usd: 5, ticket_id: 678 },
+        { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+      ],
+    }),
+  ]
+  const filled = applySharedProgramPrices(nights)
+  assert.deepEqual(filled[0].tickets, [{ name: "Cover", price_usd: 5 }])
+  assert.equal(filled[0].tickets[0].ticket_id, undefined)
+  assert.equal(filled[1].tickets[0].ticket_id, 678)
+  assert.equal(filled[1].tickets[1].ticket_id, 679)
+})
+
 test("parseCheckoutTicketTiers reads Cover $5 off the Laravel checkout card", () => {
   const html = `
     <div class="ticket-card bg-surface rounded-2xl"
@@ -383,7 +456,9 @@ test("parseCheckoutTicketTiers reads Cover $5 off the Laravel checkout card", ()
       <p class="text-xl font-bold text-white">$5.00</p>
     </div>
   `
-  assert.deepEqual(parseCheckoutTicketTiers(html), [{ name: "Cover", price_usd: 5 }])
+  assert.deepEqual(parseCheckoutTicketTiers(html), [
+    { name: "Cover", price_usd: 5, ticket_id: 670 },
+  ])
 })
 
 test("parseCheckoutTicketTiers reads a distant General Admission h4 after data-price", () => {
@@ -396,7 +471,9 @@ test("parseCheckoutTicketTiers reads a distant General Admission h4 after data-p
       <h4 class="font-bold text-white text-lg">General Admission</h4>
     </div>
   `
-  assert.deepEqual(parseCheckoutTicketTiers(html), [{ name: "General Admission", price_usd: 5 }])
+  assert.deepEqual(parseCheckoutTicketTiers(html), [
+    { name: "General Admission", price_usd: 5, ticket_id: 669 },
+  ])
 })
 
 test("parseCheckoutTicketTiers ignores CSS .ticket-card rules and still finds Cover $5", () => {
@@ -412,7 +489,28 @@ test("parseCheckoutTicketTiers ignores CSS .ticket-card rules and still finds Co
     </div>
     <h4 class="text-sm font-semibold text-gray-400 mb-3">Order Summary</h4>
   `
-  assert.deepEqual(parseCheckoutTicketTiers(html), [{ name: "Cover", price_usd: 5 }])
+  assert.deepEqual(parseCheckoutTicketTiers(html), [
+    { name: "Cover", price_usd: 5, ticket_id: 670 },
+  ])
+})
+
+test("parseCheckoutTicketTiers keeps both Cover and Skip the Line ticket ids", () => {
+  const html = `
+    <div class="ticket-card bg-surface rounded-2xl"
+      data-ticket-id="678"
+      data-price="5.00">
+      <h4 class="font-bold text-white text-lg">Cover</h4>
+    </div>
+    <div class="ticket-card bg-surface rounded-2xl"
+      data-ticket-id="679"
+      data-price="10.00">
+      <h4 class="font-bold text-white text-lg">Skip the Line</h4>
+    </div>
+  `
+  assert.deepEqual(parseCheckoutTicketTiers(html), [
+    { name: "Cover", price_usd: 5, ticket_id: 678 },
+    { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+  ])
 })
 
 test("venue checkout tiers path is the same-origin Cover $5 reader", () => {
@@ -458,6 +556,18 @@ test("one tier or only a min price reads Cover $5; several tiers list names", ()
     ]),
     ["Cover $5", "Line skip $15"],
   )
+  assert.deepEqual(
+    weeklyAccessPriceLines([
+      coverNight(621, "2026-08-24 21:00:00", {
+        min_ticket_price: null,
+        tickets: [
+          { name: "Cover", price_usd: 5, ticket_id: 678 },
+          { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+        ],
+      }),
+    ]),
+    ["Cover $5", "Skip the Line $10"],
+  )
 })
 
 test("venue Weekly Access is one program card with night chips, not a picker", () => {
@@ -474,8 +584,24 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
     client.includes("weeklyAccessPriceLines([selected], template)"),
     "Weekly Cover card must show the selected night price",
   )
+  assert.ok(client.includes("resolveNightTiers"), "2+ tiers read the selected night tickets")
+  assert.ok(client.includes("tiers.length > 1"), "2+ tiers render as chips")
+  assert.ok(client.includes("formatAccessTierLabel"), "tier chips use the payload names")
+  assert.ok(client.includes("venueNightCheckoutHref"), "tier chips and Get access share the checkout href helper")
+  assert.ok(
+    client.includes("venueNightCheckoutHref(checkoutBaseUrl, selected.event_id, tier.ticket_id)"),
+    "a tier chip must preselect that ticket",
+  )
+  const cardStart = client.indexOf("function WeeklyAccessProgramCard")
+  const cardEnd = client.indexOf("export default function VenuePageClient")
+  const card = client.slice(cardStart, cardEnd)
+  const cta = card.slice(card.indexOf("mt-6 flex lg:mt-auto"))
+  assert.ok(
+    cta.includes("venueNightCheckoutHref(checkoutBaseUrl, selected.event_id)"),
+    "Get access must checkout the selected night",
+  )
+  assert.ok(!cta.includes("tier.ticket_id"), "Get access must not force a ticket_id")
   assert.ok(client.includes("Get access"), "CTA stays Get access")
-  assert.ok(client.includes("checkout/${selected.event_id}"), "Get access must checkout the selected night")
   assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
   assert.ok(!client.includes('type="date"'), "do not ship a calendar date input")
   assert.ok(!client.includes("<select"), "do not ship a dropdown")
