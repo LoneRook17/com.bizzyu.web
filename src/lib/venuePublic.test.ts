@@ -16,11 +16,15 @@ import {
   mergeVenueEvents,
   nightChipPrice,
   parseCheckoutTicketTiers,
+  parseTierPriceUsd,
+  parseVenueAccessTiers,
   programTemplateTiers,
   resolveVenueEventImageUrl,
   shouldListOnVenuePage,
   toVenueEvent,
+  VENUE_CHECKOUT_TIERS_PATH,
   VENUE_EVENT_LOOKAHEAD,
+  venueCheckoutTiersUrl,
   weeklyAccessPriceLines,
   applySharedProgramPrices,
   eventFromPrice,
@@ -69,6 +73,54 @@ test("toVenueEvent maps /ui/events lowest_price onto min_ticket_price", () => {
   assert.equal(row.access_kind, "door_access")
   assert.equal(row.status, "draft")
   assert.deepEqual(row.tickets, [])
+})
+
+test("toVenueEvent maps a Cover tier from tickets / tiers when min_ticket_price is null", () => {
+  const fromTiers = toVenueEvent({
+    event_id: 621,
+    name: "Weekly Cover",
+    access_kind: "door_access",
+    min_ticket_price: null,
+    tiers: [{ name: "Cover", price_usd: 5 }],
+  })
+  assert.deepEqual(fromTiers?.tickets, [{ name: "Cover", price_usd: 5 }])
+  assert.equal(nightChipPrice(fromTiers!), "Cover $5")
+})
+
+test("toVenueEvent keeps amount / price_cents / lowest_price_usd when min_ticket_price is absent", () => {
+  const fromUsd = toVenueEvent({
+    event_id: 621,
+    name: "Weekly Cover",
+    lowest_price_usd: 5,
+    access_kind: "door_access",
+  })
+  assert.equal(fromUsd?.min_ticket_price, 5)
+  const fromCents = toVenueEvent({
+    event_id: 622,
+    name: "Weekly Cover",
+    price_cents: 500,
+    access_kind: "door_access",
+  })
+  assert.equal(fromCents?.min_ticket_price, 5)
+  const fromAmount = toVenueEvent({
+    event_id: 623,
+    name: "Weekly Cover",
+    amount: "5.00",
+    access_kind: "door_access",
+  })
+  assert.equal(fromAmount?.min_ticket_price, "5.00")
+})
+
+test("parseVenueAccessTiers reads price, amount, and price_cents", () => {
+  assert.equal(parseTierPriceUsd({ name: "Cover", price_usd: 5 }), 5)
+  assert.equal(parseTierPriceUsd({ name: "Cover", amount: "5.00" }), 5)
+  assert.equal(parseTierPriceUsd({ name: "Cover", price_cents: 500 }), 5)
+  assert.deepEqual(parseVenueAccessTiers([{ name: "Cover", amount: 5 }]), [
+    { name: "Cover", price_usd: 5 },
+  ])
+  assert.deepEqual(parseVenueAccessTiers([{ name: "Cover", price_cents: 500 }]), [
+    { name: "Cover", price_usd: 5 },
+  ])
 })
 
 test("toVenueEvent drops a row with no id or name", () => {
@@ -331,6 +383,49 @@ test("parseCheckoutTicketTiers reads Cover $5 off the Laravel checkout card", ()
   assert.deepEqual(parseCheckoutTicketTiers(html), [{ name: "Cover", price_usd: 5 }])
 })
 
+test("parseCheckoutTicketTiers reads a distant General Admission h4 after data-price", () => {
+  const pad = "x".repeat(1100)
+  const html = `
+    <div class="ticket-card bg-surface rounded-2xl"
+         data-ticket-id="669"
+         data-price="5.00">
+      <div>${pad}</div>
+      <h4 class="font-bold text-white text-lg">General Admission</h4>
+    </div>
+  `
+  assert.deepEqual(parseCheckoutTicketTiers(html), [{ name: "General Admission", price_usd: 5 }])
+})
+
+test("parseCheckoutTicketTiers ignores CSS .ticket-card rules and still finds Cover $5", () => {
+  const html = `
+    .ticket-card { transition: border-color 0.2s ease; }
+    .ticket-card:hover { border-color: rgba(255, 62, 209, 0.5); }
+    <div class="ticket-card bg-surface rounded-2xl border border-border p-5 cursor-pointer"
+         data-ticket-id="670"
+         data-price="5.00"
+         data-fee-flat="0">
+      <h4 class="font-bold text-white text-lg">Cover</h4>
+      <p class="text-xl font-bold text-white">$5.00</p>
+    </div>
+    <h4 class="text-sm font-semibold text-gray-400 mb-3">Order Summary</h4>
+  `
+  assert.deepEqual(parseCheckoutTicketTiers(html), [{ name: "Cover", price_usd: 5 }])
+})
+
+test("venue checkout tiers path is the same-origin Cover $5 reader", () => {
+  assert.equal(VENUE_CHECKOUT_TIERS_PATH, "/api/venue-checkout-tiers")
+  assert.equal(venueCheckoutTiersUrl(621), "/api/venue-checkout-tiers/621")
+  const lib = readFileSync(join(process.cwd(), "src/lib/venuePublic.ts"), "utf8")
+  const route = readFileSync(
+    join(process.cwd(), "src/app/api/venue-checkout-tiers/[id]/route.ts"),
+    "utf8",
+  )
+  assert.ok(lib.includes("venueCheckoutTiersUrl"), "browser poll must hit the same-origin tiers route")
+  assert.ok(lib.includes("fetchCheckoutTicketTiers"), "draft nights must read checkout HTML or the proxy")
+  assert.ok(route.includes("parseCheckoutTicketTiers"), "API route must parse Laravel checkout HTML")
+  assert.ok(route.includes("/checkout/"), "API route must fetch the night checkout page")
+})
+
 test("Rumble / happening-today row is From $5 when we have a price", () => {
   assert.equal(eventFromPrice(event({ min_ticket_price: "5.00", tickets: [] })), "From $5")
   assert.equal(
@@ -372,6 +467,10 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
   assert.ok(client.includes("text-[15px]"), "chip type must be 14-16px")
   assert.ok(!client.includes("rounded-full px-3.5 py-1.5"), "chips must not be tiny pills")
   assert.ok(client.includes("weeklyAccessPriceLines"), "card must show Cover or real tiers")
+  assert.ok(
+    client.includes("weeklyAccessPriceLines([selected], template)"),
+    "Weekly Cover card must show the selected night price",
+  )
   assert.ok(client.includes("Get access"), "CTA stays Get access")
   assert.ok(client.includes("checkout/${selected.event_id}"), "Get access must checkout the selected night")
   assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
@@ -382,11 +481,17 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
 test("happening today rows print From $5 and the header shows the full venue photo", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("eventFromPrice"), "Happening today / event rows must resolve From $5")
-  const heroStart = client.indexOf("Header: full venue photo")
+  assert.ok(client.includes("pricedCtaLabel"), "Get tickets / Get access must include the night price")
+  assert.ok(client.includes('pricedCtaLabel("Get tickets", headerEventPrice)'), "header Get tickets must show From $N")
+  const heroStart = client.indexOf("Header: photo sizes itself")
   const heroEnd = client.indexOf('className="mx-auto max-w-5xl px-5 pb-24"')
   assert.ok(heroStart >= 0 && heroEnd > heroStart, "venue header block must exist")
   const hero = client.slice(heroStart, heroEnd)
-  assert.ok(hero.includes("aspect-[16/9]"), "header photo must be a wide contain frame")
+  const photoBlock = hero.slice(hero.indexOf("{heroImage"), hero.indexOf("business.logo_image_url"))
+  assert.ok(photoBlock.includes("h-auto w-full"), "hero img must size to the photo, not a crop box")
+  assert.ok(!photoBlock.includes("aspect-[16/9]"), "header must not use a wide 16:9 crop box")
+  assert.ok(!photoBlock.includes("overflow-hidden"), "header photo frame must not clip the flyer")
+  assert.ok(!photoBlock.includes("h-[320px]"), "header must not use a fixed-height crop")
   assert.ok(hero.includes("object-contain"), "full venue photo must show, not a cover crop")
   assert.ok(!hero.includes("object-cover"), "header must not crop the venue photo")
   assert.ok(!hero.includes("absolute inset-x-0 bottom-0"), "identity must not sit on top of the photo")
@@ -402,16 +507,18 @@ test("happening today rows print From $5 and the header shows the full venue pho
 test("venue event and Weekly Access flyers are full portrait frames, not wide crops", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("FlyerFrame"), "event and Weekly Access cards share a flyer frame")
-  assert.ok(client.includes("aspect-[4/5]"), "flyer box must be a portrait rectangle")
+  assert.ok(client.includes("object-contain"), "full flyer must show, not a cover crop")
   assert.ok(
-    client.includes('className="h-full w-full object-contain"'),
-    "full flyer must show, not a cover crop",
+    client.includes("h-auto w-full object-contain"),
+    "flyer img must size to the photo, not fill a crop box",
   )
   assert.ok(!client.includes("relative h-48 w-full"), "flyer box must not be a short wide strip")
   const frameStart = client.indexOf("function FlyerFrame")
   const frameEnd = client.indexOf("function DateChip")
   assert.ok(frameStart >= 0 && frameEnd > frameStart, "FlyerFrame must sit above DateChip")
   const frame = client.slice(frameStart, frameEnd)
+  assert.ok(frame.includes("h-auto w-full"), "FlyerFrame must grow with the photo")
+  assert.ok(!frame.includes("overflow-hidden"), "FlyerFrame must not clip the flyer")
   assert.ok(frame.includes("object-contain"), "FlyerFrame image must contain")
   assert.ok(!frame.includes("object-cover"), "FlyerFrame must not crop with object-cover")
 })
