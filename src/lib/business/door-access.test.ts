@@ -16,6 +16,8 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import {
   accessRowStats,
   isoWeekday,
@@ -27,6 +29,7 @@ import {
   formatDays,
   fmtNightDate,
   parseIsoDate,
+  nightDateBlock,
   fmtTime,
   fmtWindow,
   usdPrice,
@@ -35,6 +38,9 @@ import {
   programMetaLine,
   programScheduleLine,
   nightChips,
+  nightPreviewChip,
+  nightPreviewPrice,
+  visibleUpcomingNights,
   splitNights,
   easternToday,
   draftFromNight,
@@ -47,6 +53,11 @@ import {
   WEEKLY_ACCESS_TYPE_LABEL,
   WEEKLY_ACCESS_CREATION_LABEL,
   EVENT_TYPE_LABEL,
+  PROGRAM_LINK_LABEL,
+  PROGRAM_LINK_DESCRIPTION,
+  NIGHTS_HELPER_EDIT,
+  NIGHTS_HELPER_VIEW,
+  DEFAULT_NIGHT_PREVIEW_COUNT,
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
@@ -507,6 +518,74 @@ test("nightChips are additive — a night can be several things at once", () => 
     labels(night({ is_closed: true, has_override: true, is_customized: true, is_stamped: false })),
     ["Closed", "Overridden", "Customized", "Not generated yet"]
   )
+})
+
+test("nightPreviewChip only names on sale or not generated", () => {
+  assert.deepEqual(nightPreviewChip(night()), { label: "On sale", variant: "info" })
+  assert.deepEqual(nightPreviewChip(night({ is_stamped: false, event_id: null, status: null })), {
+    label: "Not generated",
+    variant: "neutral",
+  })
+  assert.equal(nightPreviewChip(night({ status: "draft" })), null)
+  assert.equal(nightPreviewChip(night({ is_closed: true })), null)
+  assert.equal(nightPreviewChip(night({ status: "cancelled" })), null)
+  // Overridden / Customized stay off the card. Those belong on the night page.
+  assert.deepEqual(nightPreviewChip(night({ has_override: true, is_customized: true })), {
+    label: "On sale",
+    variant: "info",
+  })
+})
+
+test("nightPreviewPrice leads with From and never uses an em dash", () => {
+  assert.equal(nightPreviewPrice(night()), "From $10.00")
+  assert.equal(nightPreviewPrice(night({ tiers: [] })), "No tiers on sale")
+  assert.equal(
+    nightPreviewPrice(night({ tiers: [{ ...night().tiers[0], is_disabled: true }, { ...night().tiers[1], is_disabled: true }] })),
+    "No tiers on sale"
+  )
+  assert.ok(!nightPreviewPrice(night()).includes("\u2014"))
+})
+
+test("visibleUpcomingNights defaults to the next 4, then expands", () => {
+  const dates = ["2026-08-28", "2026-08-29", "2026-09-04", "2026-09-05", "2026-09-11", "2026-09-12"]
+  const rows = dates.map((occurrence_date) => night({ occurrence_date }))
+  assert.equal(DEFAULT_NIGHT_PREVIEW_COUNT, 4)
+  assert.deepEqual(
+    visibleUpcomingNights(rows, false).map((n) => n.occurrence_date),
+    dates.slice(0, 4)
+  )
+  assert.deepEqual(
+    visibleUpcomingNights(rows, true).map((n) => n.occurrence_date),
+    dates
+  )
+})
+
+test("nightDateBlock is calendar parts, never a tz-shifted day", () => {
+  assert.deepEqual(nightDateBlock("2026-08-28"), { weekday: "Fri", month: "Aug", day: 28 })
+  assert.equal(nightDateBlock("nonsense"), null)
+})
+
+test("program page host copy has no em dashes", () => {
+  const copy = [PROGRAM_LINK_LABEL, PROGRAM_LINK_DESCRIPTION, NIGHTS_HELPER_EDIT, NIGHTS_HELPER_VIEW]
+  assert.equal(PROGRAM_LINK_LABEL, "Program link")
+  assert.equal(PROGRAM_LINK_DESCRIPTION, "Every upcoming night")
+  assert.equal(NIGHTS_HELPER_EDIT, "Tap a night to change price, capacity, or hours for that date only.")
+  for (const line of copy) {
+    assert.ok(!line.includes("\u2014"), `"${line}" still has an em dash`)
+    assert.ok(!line.includes("\u2013"), `"${line}" still has an en dash`)
+  }
+})
+
+test("the program page is look-and-open, not edit-the-series", () => {
+  const pagePath = fileURLToPath(
+    new URL("../../app/business/(dashboard)/door-access/[id]/page.tsx", import.meta.url)
+  )
+  const src = readFileSync(pagePath, "utf8")
+  assert.ok(!src.includes("\u2014"), "program page still has an em dash")
+  assert.ok(!/href=\{?[`'"][^`'"]*\/edit/.test(src), "program page grew a series-edit href")
+  assert.ok(src.includes("nightHref("), "cards must keep the existing per-night href")
+  assert.ok(src.includes("NightPreviewCard"), "nights render as preview cards")
+  assert.ok(src.includes("More nights"), "far-future nights stay behind More nights")
 })
 
 test("redemptionModeLabel names both modes in host vocabulary", () => {

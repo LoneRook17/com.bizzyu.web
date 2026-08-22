@@ -2,26 +2,35 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, CalendarDays, ChevronRight, Loader2, Zap } from "lucide-react"
+import { ArrowLeft, CalendarDays, Loader2, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   ACCESS_ACCENT,
+  DEFAULT_NIGHT_PREVIEW_COUNT,
+  DEFAULT_SERIES_LOOKAHEAD_DAYS,
   easternToday,
   fetchDoorAccessSeries,
   fmtNightDate,
   fmtQuantity,
   fmtWindow,
   formatDays,
-  nightChips,
+  NIGHTS_HELPER_EDIT,
+  NIGHTS_HELPER_VIEW,
+  nightDateBlock,
   nightHref,
+  nightPreviewChip,
+  nightPreviewPrice,
+  PROGRAM_LINK_DESCRIPTION,
+  PROGRAM_LINK_LABEL,
   redemptionModeLabel,
   splitNights,
   usdPrice,
+  visibleUpcomingNights,
   WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessNight,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
-import { nightLinkState, venuePageUrl } from "@/lib/business/public-links"
+import { venuePageUrl } from "@/lib/business/public-links"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import ShareLinkRow from "@/components/business/v2/ShareLinkRow"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -33,17 +42,13 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The Weekly Access SERIES page (F11 / D-F11.1).
  *
- * The program is the thing a host manages; a night is one row inside it. So
- * this page carries the program's terms and template tiers at the top, and the
- * schedule below — and a night is opened FROM here for its per-night
- * overrides.
+ * This screen is for looking at the program and opening ONE night. It does
+ * not edit the series: no Edit program, no change nights-of-week, no change
+ * default tiers for all nights. Those stay on create/settings elsewhere.
  *
- * THE NIGHT LIST IS THE SCHEDULE, NOT THE STAMPED ROWS. Core's generator only
- * materialises about a week ahead, so a stamped-only list would show a Friday
- * program with four nights and imply the rest don't exist. Nights the
- * generator hasn't reached yet come back with `is_stamped: false`, are marked
- * "Not generated yet", and are still openable — overrides key off the date, so
- * pricing a holiday weeks out works before the night exists.
+ * Nights render as a short strip of preview cards (next 4 upcoming). Far-future
+ * ungenerated nights stay behind More nights. A card opens the existing
+ * per-night page for price, capacity, or hours on that date only.
  */
 export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -54,9 +59,9 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const [nights, setNights] = useState<DoorAccessNight[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [lookahead, setLookahead] = useState(28)
+  const [lookahead, setLookahead] = useState(DEFAULT_SERIES_LOOKAHEAD_DAYS)
+  const [showMoreNights, setShowMoreNights] = useState(false)
 
-  // Staff read the whole series; role gates the write surfaces (D-F9.3).
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
 
   const load = useCallback(async () => {
@@ -78,7 +83,13 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   }, [load])
 
   const today = useMemo(() => easternToday(), [])
-  const { upcoming, past } = useMemo(() => splitNights(nights, today), [nights, today])
+  const { upcoming } = useMemo(() => splitNights(nights, today), [nights, today])
+  const visibleNights = useMemo(
+    () => visibleUpcomingNights(upcoming, showMoreNights),
+    [upcoming, showMoreNights]
+  )
+  const hiddenCount = Math.max(0, upcoming.length - visibleNights.length)
+  const showMoreControl = upcoming.length > DEFAULT_NIGHT_PREVIEW_COUNT || showMoreNights || program?.is_active
 
   if (loading && !program) {
     return (
@@ -125,64 +136,75 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           .join(" · ")}
       />
 
-      {/* The program-level link, first — same reasoning as the event manage
-          page, where Share Link leads: handing out the link is what a host
-          does most. `/venue/:id` is the pipeline's program-level surface (it
-          lists that venue's published upcoming nights and links each to
-          Laravel checkout), and it is the SAME URL the settings Venue page
-          section hands out — not a new public page. */}
       {program.venue_id != null && (
         <ShareLinkRow
           url={venuePageUrl(program.venue_id)}
           title={program.name || "Weekly access"}
-          label="Program link — every upcoming night"
+          label={PROGRAM_LINK_LABEL}
+          description={PROGRAM_LINK_DESCRIPTION}
         />
       )}
 
-      <ProgramTermsCard program={program} />
-
-      <TemplateTiersCard program={program} />
-
       <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Nights</h2>
-            <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-              {canEdit
-                ? "Open a night to change its price, capacity or hours for that date only."
-                : "Open a night to see what it sells."}
-            </p>
-          </div>
-          <LookaheadPicker value={lookahead} onChange={setLookahead} busy={loading} />
+        <div>
+          <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Nights</h2>
+          <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+            {canEdit ? NIGHTS_HELPER_EDIT : NIGHTS_HELPER_VIEW}
+          </p>
         </div>
 
-        {upcoming.length === 0 && past.length === 0 ? (
+        {upcoming.length === 0 ? (
           <EmptyState
             icon={CalendarDays}
-            title="No nights scheduled"
+            title="No upcoming nights"
             description="Nights come from the program's active days and date range. Check both if you expected one here."
           />
         ) : (
-          <div className="flex flex-col gap-5">
-            <NightGroup
-              heading="Upcoming"
-              nights={upcoming}
-              programId={programId}
-              programName={program.name}
-              emptyNote="No upcoming nights in this window."
-            />
-            {past.length > 0 && (
-              <NightGroup
-                heading="Past"
-                nights={past}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {visibleNights.map((night) => (
+              <NightPreviewCard
+                key={night.occurrence_date}
+                night={night}
                 programId={programId}
-                programName={program.name}
-                muted
+                flyerUrl={program.flyer_image_url}
               />
+            ))}
+          </div>
+        )}
+
+        {upcoming.length > 0 && showMoreControl && (
+          <div className="flex flex-wrap items-center gap-2">
+            {loading && <Loader2 className="size-3.5 animate-spin text-neutral-400" />}
+            {!showMoreNights ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowMoreNights(true)}
+              >
+                {hiddenCount > 0 ? `More nights (${hiddenCount})` : "More nights"}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowMoreNights(false)
+                    setLookahead(DEFAULT_SERIES_LOOKAHEAD_DAYS)
+                  }}
+                >
+                  Show fewer nights
+                </Button>
+                <LookaheadPicker value={lookahead} onChange={setLookahead} />
+              </>
             )}
           </div>
         )}
       </div>
+
+      <ProgramTermsCard program={program} />
+
+      <TemplateTiersCard program={program} />
     </>
   )
 }
@@ -199,17 +221,90 @@ function BackLink() {
   )
 }
 
-/** The program's terms — everything that applies to every night by default. */
+function NightPreviewCard({
+  night,
+  programId,
+  flyerUrl,
+}: {
+  night: DoorAccessNight
+  programId: number
+  flyerUrl: string | null
+}) {
+  const chip = nightPreviewChip(night)
+  const dateBlock = nightDateBlock(night.occurrence_date)
+  const href = nightHref(programId, night.occurrence_date)
+  const soldLabel = night.passes_sold === 1 ? "1 sold" : `${night.passes_sold.toLocaleString("en-US")} sold`
+
+  return (
+    <Link
+      href={href}
+      className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
+    >
+      <div className="relative aspect-[3/4] bg-neutral-100 dark:bg-neutral-800">
+        {flyerUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={flyerUrl}
+            alt=""
+            className="size-full object-cover"
+          />
+        ) : (
+          <DateBlock block={dateBlock} />
+        )}
+        {chip && (
+          <Badge
+            variant={chip.variant}
+            size="sm"
+            className="absolute top-2 right-2 shadow-sm"
+          >
+            {chip.label}
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col gap-0.5 p-3">
+        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+          {fmtNightDate(night.occurrence_date)}
+        </p>
+        <p className="truncate text-[13px] text-neutral-500 dark:text-neutral-400">
+          {fmtWindow(night.start_time, night.end_time) || "Hours not set"}
+        </p>
+        <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+          {nightPreviewPrice(night)}
+        </p>
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{soldLabel}</p>
+      </div>
+    </Link>
+  )
+}
+
+function DateBlock({
+  block,
+}: {
+  block: { weekday: string; month: string; day: number } | null
+}) {
+  return (
+    <div
+      className="flex size-full flex-col items-center justify-center gap-0.5"
+      style={{ backgroundColor: `${ACCESS_ACCENT}14`, color: ACCESS_ACCENT }}
+    >
+      <span className="text-[11px] font-bold uppercase tracking-[0.08em]">{block?.weekday ?? ""}</span>
+      <span className="text-3xl font-semibold tabular-nums leading-none">{block?.day ?? ""}</span>
+      <span className="text-[13px] font-medium">{block?.month ?? ""}</span>
+    </div>
+  )
+}
+
+/** Read-only facts. This page must not grow an Edit program control. */
 function ProgramTermsCard({ program }: { program: DoorAccessProgram }) {
   const facts: Array<{ label: string; value: string }> = [
-    { label: "Nights", value: formatDays(program.days_of_week) || "—" },
-    { label: "Door hours", value: fmtWindow(program.start_time, program.end_time) || "—" },
-    { label: "Venue", value: program.venue_name || "—" },
+    { label: "Nights", value: formatDays(program.days_of_week) || "Not set" },
+    { label: "Door hours", value: fmtWindow(program.start_time, program.end_time) || "Not set" },
+    { label: "Venue", value: program.venue_name || "Not set" },
     { label: "Check-in", value: redemptionModeLabel(program.redemption_mode) },
     {
       label: "Runs",
       value: program.date_range_end
-        ? `${fmtNightDate(program.date_range_start, { withYear: true })} – ${fmtNightDate(program.date_range_end, { withYear: true })}`
+        ? `${fmtNightDate(program.date_range_start, { withYear: true })} to ${fmtNightDate(program.date_range_end, { withYear: true })}`
         : `From ${fmtNightDate(program.date_range_start, { withYear: true })} · no end date`,
     },
     { label: "Age", value: program.is_21_plus ? "21+" : "All ages" },
@@ -241,11 +336,7 @@ function ProgramTermsCard({ program }: { program: DoorAccessProgram }) {
   )
 }
 
-/**
- * The template tiers — what every night sells unless that night overrides it.
- * Framed as defaults on purpose: the per-night editor is where a single date
- * departs from this, and the two must not read as competing sources of truth.
- */
+/** Read-only defaults. Per-night price and capacity live on the night page. */
 function TemplateTiersCard({ program }: { program: DoorAccessProgram }) {
   const tiers = program.template_tickets
 
@@ -296,15 +387,13 @@ function TemplateTiersCard({ program }: { program: DoorAccessProgram }) {
   )
 }
 
-/** How far ahead the schedule runs. The server clamps this at 180 days. */
+/** Hidden behind More nights. The default view is the next 4 cards. */
 function LookaheadPicker({
   value,
   onChange,
-  busy,
 }: {
   value: number
   onChange: (days: number) => void
-  busy: boolean
 }) {
   const options = [
     { days: 28, label: "4 weeks" },
@@ -313,7 +402,6 @@ function LookaheadPicker({
   ]
   return (
     <div className="flex items-center gap-1.5">
-      {busy && <Loader2 className="size-3.5 animate-spin text-neutral-400" />}
       {options.map((option) => (
         <Button
           key={option.days}
@@ -324,163 +412,6 @@ function LookaheadPicker({
           {option.label}
         </Button>
       ))}
-    </div>
-  )
-}
-
-function NightGroup({
-  heading,
-  nights,
-  programId,
-  programName,
-  muted,
-  emptyNote,
-}: {
-  heading: string
-  nights: DoorAccessNight[]
-  programId: number
-  programName: string
-  muted?: boolean
-  emptyNote?: string
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-        {heading}
-      </h3>
-      {nights.length === 0 ? (
-        emptyNote ? (
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{emptyNote}</p>
-        ) : null
-      ) : (
-        <Card className="divide-y divide-neutral-100 dark:divide-neutral-800">
-          {nights.map((night) => (
-            <NightRow
-              key={night.occurrence_date}
-              night={night}
-              programId={programId}
-              programName={programName}
-              muted={muted}
-            />
-          ))}
-        </Card>
-      )}
-    </div>
-  )
-}
-
-/**
- * DASH2-D — the share affordance for ONE night.
- *
- * A night IS an event (core stamps one `events` row per occurrence), so this
- * hands out the identical link an event's manage page does, from the same
- * builder — `bizzyu.com/event/:id/checkout`, which redirects to Laravel
- * checkout. There is no night-specific URL format and there must not be one.
- *
- * Past nights get no link: nothing left to sell.
- */
-function NightShare({
-  night,
-  programName,
-  isPast,
-}: {
-  night: DoorAccessNight
-  programName: string
-  isPast?: boolean
-}) {
-  if (isPast) return null
-
-  const state = nightLinkState(night)
-  if (state.kind === "ready") {
-    return (
-      <ShareLinkRow
-        url={state.url}
-        title={`${programName} · ${fmtNightDate(night.occurrence_date)}`}
-        variant="inline"
-      />
-    )
-  }
-
-  // No link yet — say WHY. The schedule deliberately lists nights core hasn't
-  // materialised, and a bare missing button would read as a broken row.
-  return (
-    <span className="hidden shrink-0 text-[11px] text-neutral-400 dark:text-neutral-500 sm:inline">
-      {state.kind === "not_generated" ? "Link once generated" : "Not on sale yet"}
-    </span>
-  )
-}
-
-function NightRow({
-  night,
-  programId,
-  programName,
-  muted,
-}: {
-  night: DoorAccessNight
-  programId: number
-  programName: string
-  muted?: boolean
-}) {
-  const chips = nightChips(night)
-  const priced = night.tiers.filter((t) => !t.is_disabled)
-  const lowest = priced.length > 0 ? Math.min(...priced.map((t) => t.price_usd)) : null
-
-  return (
-    // A row, not a Link: the share buttons cannot legally nest inside an
-    // anchor. The link now wraps the row's CONTENT, and the hover state moved
-    // to the container so the row still reads (and highlights) as one thing.
-    <div className="group flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-      <Link
-        href={nightHref(programId, night.occurrence_date)}
-        className="flex min-w-0 flex-1 items-center gap-4"
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={
-                muted
-                  ? "text-sm font-medium text-neutral-500 dark:text-neutral-400"
-                  : "text-sm font-semibold text-neutral-900 dark:text-neutral-100"
-              }
-            >
-              {fmtNightDate(night.occurrence_date)}
-            </span>
-            {chips.map((chip) => (
-              <Badge key={chip.label} variant={chip.variant} size="sm">
-                {chip.label}
-              </Badge>
-            ))}
-          </div>
-          <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400">
-            {[
-              fmtWindow(night.start_time, night.end_time),
-              lowest != null ? `From ${usdPrice(lowest)}` : "No tiers on sale",
-              `${priced.length} of ${night.tiers.length} tiers on sale`,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        </div>
-
-        <div className="hidden shrink-0 items-center gap-6 sm:flex">
-          <div className="text-right">
-            <p className="text-sm font-semibold text-neutral-900 tabular-nums dark:text-neutral-100">
-              {night.passes_sold.toLocaleString("en-US")}
-            </p>
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-400">passes sold</p>
-          </div>
-        </div>
-      </Link>
-
-      <NightShare night={night} programName={programName} isPast={muted} />
-
-      <Link
-        href={nightHref(programId, night.occurrence_date)}
-        aria-label={`Open ${fmtNightDate(night.occurrence_date)}`}
-        className="shrink-0"
-      >
-        <ChevronRight className="size-5 text-neutral-400 dark:text-neutral-500" />
-      </Link>
     </div>
   )
 }

@@ -45,6 +45,21 @@ export const WEEKLY_ACCESS_CREATION_LABEL = "Weekly Cover"
 export const EVENT_ACCENT = "#05EB54"
 export const ACCESS_ACCENT = "#FF3ED1"
 
+// ── F11 program page copy (no em dashes in host-facing strings) ─────────────
+
+export const PROGRAM_LINK_LABEL = "Program link"
+export const PROGRAM_LINK_DESCRIPTION = "Every upcoming night"
+
+export const NIGHTS_HELPER_EDIT =
+  "Tap a night to change price, capacity, or hours for that date only."
+export const NIGHTS_HELPER_VIEW = "Tap a night to see what it sells."
+
+/** Default strip: the next N upcoming nights, not a 4-week ledger. */
+export const DEFAULT_NIGHT_PREVIEW_COUNT = 4
+
+/** Days fetched before the host opens More nights. Server clamps at 180. */
+export const DEFAULT_SERIES_LOOKAHEAD_DAYS = 28
+
 // ── Wire shapes (services/src/services/DoorAccessProgramService.ts) ─────────
 
 export const REDEMPTION_MODES = ["native_scan", "camera_tap"] as const
@@ -499,6 +514,16 @@ export function parseIsoDate(iso: string): { y: number; m: number; d: number } |
   return { y, m, d }
 }
 
+/** Flyer fallback on a night preview card: weekday, month name, calendar day. */
+export function nightDateBlock(
+  iso: string
+): { weekday: string; month: string; day: number } | null {
+  const parts = parseIsoDate(iso)
+  if (!parts) return null
+  const weekday = DAY_NAMES[(new Date(Date.UTC(parts.y, parts.m - 1, parts.d)).getUTCDay() + 6) % 7]
+  return { weekday, month: MONTH_NAMES[parts.m - 1], day: parts.d }
+}
+
 /** "22:00:00" → "10:00 PM". Wall-clock in, wall-clock out — no zone math. */
 export function fmtTime(value: string | null | undefined): string {
   const match = /^(\d{1,2}):(\d{2})/.exec(str(value))
@@ -654,6 +679,43 @@ export function nightChips(night: DoorAccessNight): NightChip[] {
   if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
   if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
   return chips
+}
+
+/**
+ * The ONE chip on a program-page preview card.
+ *
+ * A ledger of Closed / Overridden / Customized / Not on sale yet is what made
+ * the list unreadable. Cards only say something when it changes what a host
+ * does next: buyable now, or not generated yet.
+ */
+export function nightPreviewChip(night: DoorAccessNight): NightChip | null {
+  if (!night.is_stamped || night.event_id == null) {
+    return { label: "Not generated", variant: "neutral" }
+  }
+  if (night.is_closed || night.status === "cancelled") return null
+  const status = (night.status ?? "").toLowerCase()
+  if (status === "published" || status === "approved" || status === "active") {
+    return { label: "On sale", variant: "info" }
+  }
+  return null
+}
+
+/** Lowest priced tier still on sale, or a short empty phrase. Never an em dash. */
+export function nightPreviewPrice(night: DoorAccessNight): string {
+  const priced = night.tiers.filter((t) => !t.is_disabled)
+  if (priced.length === 0) return "No tiers on sale"
+  const lowest = Math.min(...priced.map((t) => t.price_usd))
+  return `From ${usdPrice(lowest)}`
+}
+
+/** Default view is a short strip; More nights reveals the rest of the fetch. */
+export function visibleUpcomingNights<T>(
+  nights: T[],
+  expanded: boolean,
+  limit: number = DEFAULT_NIGHT_PREVIEW_COUNT
+): T[] {
+  if (expanded) return nights
+  return nights.slice(0, limit)
 }
 
 /**
