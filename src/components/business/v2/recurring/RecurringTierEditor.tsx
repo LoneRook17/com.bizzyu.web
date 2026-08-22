@@ -1,19 +1,18 @@
 "use client"
 
-import { useState } from "react"
-import { Info, Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import type { RecurringTemplateTicket } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
-import { ScanWindowToggle } from "@/components/business/v2/events/ScanWindowSection"
+import { ScanWindowExamples, ScanWindowInfo, ScanWindowToggle } from "@/components/business/v2/events/ScanWindowSection"
 import { TICKET_DESCRIPTION_MAX } from "@/components/business/v2/events/TicketTierForm"
 import { cn } from "@/lib/v2/utils"
 
 /**
  * Ticket-tier editor for a series template. Mirrors the event form's
  * TicketTierForm, except sales/scan windows are RELATIVE to each night: a
- * time of day plus "day before / night of / day after" instead of absolute
+ * time of day plus "day before / same night / next morning" instead of absolute
  * datetimes (core computes the real datetimes when it stamps each night).
  */
 
@@ -79,8 +78,8 @@ export function tierRowsToTemplate(rows: RecurringTierRow[]): RecurringTemplateT
 
 const OFFSET_OPTIONS = [
   { value: -1, label: "the day before" },
-  { value: 0, label: "the night of" },
-  { value: 1, label: "the day after" },
+  { value: 0, label: "same night" },
+  { value: 1, label: "next morning" },
   { value: 2, label: "2 days after" },
 ]
 
@@ -94,30 +93,6 @@ function OffsetSelect({ value, onChange, idPrefix }: { value: number; onChange: 
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </Select>
-  )
-}
-
-function WindowInfo() {
-  const [open, setOpen] = useState(false)
-  return (
-    <span className="relative inline-flex">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="What does the scan window do?"
-        className="inline-flex size-4 items-center justify-center rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-      >
-        <Info className="size-2.5" />
-      </button>
-      {open && (
-        <span className="absolute left-5 top-0 z-20 w-72 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-3 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400 shadow-lg">
-          <strong className="mb-1 block text-neutral-800 dark:text-neutral-200">Scan window (optional)</strong>
-          When this ticket can be <strong>scanned at the door</strong>, set relative to each night — e.g. from 9 PM
-          the night of until 2 AM the day after. Tickets can still be <strong>bought beforehand</strong>; sales close
-          when the window ends. Leave blank for no limit.
-        </span>
-      )}
-    </span>
   )
 }
 
@@ -198,8 +173,7 @@ export function RecurringTierEditor({
           </div>
 
           <ScanWindowToggle
-            label="Scan window — relative to each night"
-            info={<WindowInfo />}
+            info={<ScanWindowInfo weekly />}
             hasWindow={!!(tier.valid_from_time || tier.valid_until_time)}
             onClear={() => update(i, { valid_from_time: "", valid_until_time: "", valid_from_day_offset: 0, valid_until_day_offset: 0 })}
           >
@@ -221,9 +195,7 @@ export function RecurringTierEditor({
                 <OffsetSelect idPrefix={`until_offset_${i}`} value={tier.valid_until_day_offset} onChange={(v) => update(i, { valid_until_day_offset: v })} />
               </div>
             </div>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-              Example: doors at 9 PM &ldquo;the night of&rdquo; until 2 AM &ldquo;the day after&rdquo;. Applies to every night in the series.
-            </p>
+            <ScanWindowExamples weekly />
           </ScanWindowToggle>
 
           <div className="mt-3 flex items-center justify-between">
