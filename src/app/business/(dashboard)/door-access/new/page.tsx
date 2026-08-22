@@ -5,6 +5,7 @@ import { Lock } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import type { BusinessProfile } from "@/lib/business/types"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import RequireVenue from "@/components/business/v2/RequireVenue"
@@ -54,7 +55,7 @@ export default function NewDoorAccessProgramPage() {
       <EmptyState
         icon={Lock}
         title="You can't create here"
-        description="Only owners and managers can set up a weekly access program."
+        description={`Only owners and managers can set up a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program.`}
       />
     )
   }

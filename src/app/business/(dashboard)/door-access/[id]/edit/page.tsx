@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   fetchDoorAccessSeries,
+  WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
 import type { BusinessProfile } from "@/lib/business/types"
@@ -79,7 +80,7 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
       <EmptyState
         icon={Lock}
         title="You can't edit here"
-        description="Only owners and managers can change a weekly access program."
+        description={`Only owners and managers can change a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program.`}
       />
     )
   }
@@ -89,10 +90,10 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
       <EmptyState
         icon={Zap}
         title="Program not found"
-        description={error ?? "This weekly access program isn't available."}
+        description={error ?? `This ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program isn't available.`}
         action={
           <Button asChild variant="secondary">
-            <Link href="/business/door-access">Back to Weekly Access</Link>
+            <Link href="/business/door-access">{`Back to ${WEEKLY_ACCESS_SECTION_LABEL}`}</Link>
           </Button>
         }
       />

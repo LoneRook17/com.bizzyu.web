@@ -31,6 +31,7 @@ import {
   usdPrice,
   visibleUpcomingNights,
   WEEKLY_ACCESS_SECTION_LABEL,
+  WEEKLY_ACCESS_TYPE_LABEL,
   type DoorAccessNight,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
@@ -115,7 +116,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
         <EmptyState
           icon={Zap}
           title="Program not found"
-          description={error ?? "This weekly access program isn't available."}
+          description={error ?? `This ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program isn't available.`}
         />
       </>
     )
@@ -128,12 +129,12 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
       <PageHeader
         title={
           <span className="flex flex-wrap items-center gap-2.5">
-            {program.name || "Weekly access"}
+            {program.name || WEEKLY_ACCESS_SECTION_LABEL}
             <span
               className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.06em]"
               style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
             >
-              WEEKLY ACCESS
+              {WEEKLY_ACCESS_TYPE_LABEL}
             </span>
             {!program.is_active && <Badge variant="neutral">Ended</Badge>}
           </span>
@@ -155,7 +156,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
       {program.venue_id != null && (
         <ShareLinkRow
           url={venuePageUrl(program.venue_id)}
-          title={program.name || "Weekly access"}
+          title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
           label={PROGRAM_LINK_LABEL}
           description={PROGRAM_LINK_DESCRIPTION}
         />

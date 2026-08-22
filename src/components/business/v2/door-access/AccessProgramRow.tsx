@@ -8,6 +8,7 @@ import {
   programMetaLine,
   programScheduleLine,
   resolveProgramImageUrl,
+  WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/HostListCard"
@@ -33,7 +34,7 @@ export function AccessProgramRow({ program }: { program: DoorAccessProgramSummar
     <HostListCard
       kind="access"
       href={programHref(program.id)}
-      title={program.name || "Weekly access"}
+      title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
       meta={programMetaLine(program)}
       secondary={programScheduleLine(program)}
       chips={chips}

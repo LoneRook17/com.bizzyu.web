@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
-import { WEEKLY_ACCESS_CREATION_LABEL } from "@/lib/business/door-access"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
 import {
   eventCalendarDate,
   eventFromPrice,
@@ -484,7 +484,7 @@ export default function VenuePageClient({
 
   const stats = [
     eventRows.length > 0 && `${eventRows.length} upcoming ${eventRows.length === 1 ? "event" : "events"}`,
-    doorAccessRows.length > 0 && `${doorAccessRows.length} weekly cover ${doorAccessRows.length === 1 ? "night" : "nights"}`,
+    doorAccessRows.length > 0 && `${doorAccessRows.length} ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} ${doorAccessRows.length === 1 ? "night" : "nights"}`,
     deals.length > 0 && `${deals.length} ${deals.length === 1 ? "deal" : "deals"}`,
   ].filter(Boolean) as string[]
 
@@ -629,14 +629,6 @@ export default function VenuePageClient({
           {venue.description && (
             <p className="max-w-3xl text-lg leading-relaxed text-gray-300">{venue.description}</p>
           )}
-          {doorAccessRows.length > 0 && (
-            <p className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300">
-              <svg className="h-4 w-4 shrink-0 text-[#FF3ED1]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Scan with any phone camera at the door.
-            </p>
-          )}
           <div className="flex flex-wrap items-center gap-2.5">
             {stats.map((s) => (
               <span
@@ -773,7 +765,7 @@ export default function VenuePageClient({
             checks out that night only. */}
         {weeklyAccessPrograms.length > 0 && (
           <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
-            <SectionHeader title={WEEKLY_ACCESS_CREATION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
+            <SectionHeader title={WEEKLY_ACCESS_SECTION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
             <div className={`grid gap-8 ${weeklyAccessPrograms.length > 1 ? "md:grid-cols-2" : ""}`}>
               {weeklyAccessPrograms.map((nights) => (
                 <WeeklyAccessProgramCard

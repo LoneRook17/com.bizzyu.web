@@ -9,12 +9,11 @@
 // pipeline — this surface is the HOST's view of the template and its
 // schedule, nothing else.
 //
-// D-P5 VOCABULARY SPLIT, enforced by the label constants below:
-//   - Hosts creating one see "Weekly Cover".
-//   - Host list rows, section headers, and the public venue page read
-//     WEEKLY ACCESS. No user-facing surface says "Door Access".
-// The API path, program_kind and every response field stay `door_access`.
-// These are DISPLAY strings only and must not be used to rename a contract.
+// D-P5 VOCABULARY. User-facing copy is "Weekly Cover" (renamed from Weekly
+// Access so it matches the Flutter app). No user-facing surface says
+// "Door Access". The API path, program_kind and every response field stay
+// `door_access`. Display strings live in ./weekly-cover-label so one label
+// drives every surface. Do not use them to rename a contract.
 //
 // D-F11.1 — a program card opens the SERIES, never a single night. The night
 // is reached from inside the series page. Program-wide edits live on
@@ -28,19 +27,14 @@
 
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
-/** F9 card chip on a program row. Host vocabulary. */
-export const WEEKLY_ACCESS_TYPE_LABEL = "WEEKLY ACCESS"
+export {
+  WEEKLY_ACCESS_CREATION_LABEL,
+  WEEKLY_ACCESS_SECTION_LABEL,
+  WEEKLY_ACCESS_TYPE_LABEL,
+} from "./weekly-cover-label.ts"
 
 /** F9 card chip on a named-event row. */
 export const EVENT_TYPE_LABEL = "EVENT"
-
-/** Section/nav name. Title case — the chip above is the shouty one. */
-export const WEEKLY_ACCESS_SECTION_LABEL = "Weekly Access"
-
-/**
- * The creation-flow name (D-P5). Matches Flutter create_choice_page.dart.
- */
-export const WEEKLY_ACCESS_CREATION_LABEL = "Weekly Cover"
 
 /** The accent pair. Green = named event, magenta = access (F9 / D-P5). */
 export const EVENT_ACCENT = "#05EB54"

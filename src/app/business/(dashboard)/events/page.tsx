@@ -33,6 +33,7 @@ import { AccessProgramRow } from "@/components/business/v2/door-access/AccessPro
 import {
   fetchDoorAccessProgramsSafe,
   WEEKLY_ACCESS_CREATION_LABEL,
+  WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 
@@ -199,7 +200,7 @@ export default function V2EventsPage() {
         title="Events"
         description={
           accessEnabled
-            ? "Events and weekly access, in one place."
+            ? `Events and ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, in one place.`
             : "Create, manage, and track your events."
         }
         actions={
@@ -272,10 +273,10 @@ export default function V2EventsPage() {
       ) : isEmpty ? (
         <EmptyState
           icon={effectiveType === "access" ? Sparkles : CalendarDays}
-          title={effectiveType === "access" ? "No weekly access programs yet" : "No events yet"}
+          title={effectiveType === "access" ? `No ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs yet` : "No events yet"}
           description={
             effectiveType === "access"
-              ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs — set the nights once and each one is generated for you.`
+              ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs. Set the nights once and each one is generated for you.`
               : tab === "upcoming" ? "Create your first event to start selling tickets." : `No ${tab} events found.`
           }
           action={

@@ -1,6 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
+  EVENT_TYPE_FILTERS,
   MISSING_ROW_AGGREGATES,
   eventRowStats,
   fmtRowDate,
@@ -13,6 +14,7 @@ import {
   showsAccess,
   showsEvents,
 } from "./events-list.ts"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 import type { EventListItem, RecurringSeriesListItem } from "./types.ts"
 
 function ev(
@@ -64,6 +66,12 @@ function series(id: number, name: string, extra: Partial<RecurringSeriesListItem
     ...extra,
   }
 }
+
+test("access filter uses the shared Weekly Cover label (renamed from Weekly Access)", () => {
+  const access = EVENT_TYPE_FILTERS.find((t) => t.value === "access")
+  assert.equal(access?.label, WEEKLY_ACCESS_SECTION_LABEL)
+  assert.equal(access?.label, "Weekly Cover")
+})
 
 test("the type segment defaults to All and refuses anything it doesn't know", () => {
   assert.equal(parseEventTypeFilter(null), "all")
