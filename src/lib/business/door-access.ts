@@ -96,6 +96,12 @@ export interface DoorAccessProgramSummary {
   start_time: string
   end_time: string
   flyer_image_url: string | null
+  /**
+   * Venue photo when the program payload includes it. Older services builds
+   * omit this; display then uses the venues list. A coalesced flyer from
+   * services still arrives on flyer_image_url and wins.
+   */
+  photo_url?: string | null
   redemption_mode: RedemptionMode
   template_tickets: DoorAccessTemplateTier[]
   migrated_from_line_skip_id: number | null
@@ -284,6 +290,7 @@ export function normalizeProgramSummary(raw: Record<string, unknown>): DoorAcces
     start_time: str(raw.start_time),
     end_time: str(raw.end_time),
     flyer_image_url: raw.flyer_image_url ? str(raw.flyer_image_url) : null,
+    photo_url: raw.photo_url ? str(raw.photo_url) : null,
     redemption_mode: raw.redemption_mode === "native_scan" ? "native_scan" : "camera_tap",
     template_tickets: tiers,
     migrated_from_line_skip_id: nullableNum(raw.migrated_from_line_skip_id),
@@ -512,6 +519,37 @@ export function parseIsoDate(iso: string): { y: number; m: number; d: number } |
   const d = Number(match[3])
   if (m < 1 || m > 12 || d < 1 || d > 31) return null
   return { y, m, d }
+}
+
+/**
+ * Image for a weekly-access row or night card.
+ *
+ * flyer_image_url wins, including when services already coalesced an empty
+ * flyer to the venue photo. If flyer is still empty, use photo_url on the
+ * program, then the matching venue from auth/venues. The date-block / icon
+ * tile stays only when there is no image at all.
+ */
+export function resolveProgramImageUrl(
+  program: {
+    flyer_image_url?: string | null
+    photo_url?: string | null
+    venue_id?: number | null
+  },
+  venues?: Array<{ id: number; photo_url?: string | null }>,
+): string | null {
+  const flyer = nonemptyUrl(program.flyer_image_url)
+  if (flyer) return flyer
+  const onProgram = nonemptyUrl(program.photo_url)
+  if (onProgram) return onProgram
+  if (program.venue_id == null || !venues?.length) return null
+  const venue = venues.find((v) => v.id === program.venue_id)
+  return nonemptyUrl(venue?.photo_url)
+}
+
+function nonemptyUrl(v: string | null | undefined): string | null {
+  if (typeof v !== "string") return null
+  const trimmed = v.trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 /** Flyer fallback on a night preview card: weekday, month name, calendar day. */

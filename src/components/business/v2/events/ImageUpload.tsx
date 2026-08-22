@@ -11,13 +11,23 @@ interface ImageUploadProps {
   /** Visual aspect of the preview; flyers are portrait-ish, banners wide. */
   aspect?: "video" | "square"
   className?: string
+  /** Shown when value is empty. Not treated as an uploaded flyer. */
+  fallbackSrc?: string | null
+  fallbackCaption?: string
 }
 
 /**
  * v2-styled image uploader. Mirrors the legacy dashboard ImageUpload behaviour
  * (POST /business/upload/image, 10MB cap, image-only) with the v2 surface look.
  */
-export function ImageUpload({ value, onChange, aspect = "video", className }: ImageUploadProps) {
+export function ImageUpload({
+  value,
+  onChange,
+  aspect = "video",
+  className,
+  fallbackSrc,
+  fallbackCaption,
+}: ImageUploadProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const [dragOver, setDragOver] = useState(false)
@@ -47,6 +57,8 @@ export function ImageUpload({ value, onChange, aspect = "video", className }: Im
   }
 
   const previewClass = aspect === "square" ? "aspect-square" : "aspect-video"
+  const fallback = fallbackSrc?.trim() || ""
+  const showFallback = !value && fallback.length > 0
 
   return (
     <div className={className}>
@@ -63,6 +75,44 @@ export function ImageUpload({ value, onChange, aspect = "video", className }: Im
           >
             <X className="size-4" />
           </button>
+        </div>
+      ) : showFallback ? (
+        <div>
+          <div className="relative overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-900">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={fallback}
+              alt={fallbackCaption || "Venue photo"}
+              className="mx-auto block max-h-[520px] w-auto max-w-full object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setDragOver(true)
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragOver(false)
+                const file = e.dataTransfer.files[0]
+                if (file) handleFile(file)
+              }}
+              className={cn(
+                "absolute inset-0 flex items-end justify-end p-3 transition-colors",
+                dragOver && "bg-[#05EB54]/10"
+              )}
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm dark:bg-neutral-900/90 dark:text-neutral-200">
+                {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <ImagePlus className="size-3.5" />}
+                {uploading ? "Uploading…" : "Add a flyer"}
+              </span>
+            </button>
+          </div>
+          {fallbackCaption && (
+            <p className="mt-2 text-[13px] text-neutral-500 dark:text-neutral-400">{fallbackCaption}</p>
+          )}
         </div>
       ) : (
         <button
