@@ -320,10 +320,15 @@ test("venue event and Weekly Access flyers are full portrait frames, not wide cr
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("FlyerFrame"), "event and Weekly Access cards share a flyer frame")
   assert.ok(client.includes("aspect-[4/5]"), "flyer box must be a portrait rectangle")
-  assert.ok(client.includes("object-contain"), "full flyer must show, not a cover crop")
+  assert.ok(
+    client.includes('className="h-full w-full object-contain"'),
+    "full flyer must show, not a cover crop",
+  )
   assert.ok(!client.includes("relative h-48 w-full"), "flyer box must not be a short wide strip")
-  const flyerImg = client.match(/function FlyerFrame[\s\S]*?\n\}/)
-  assert.ok(flyerImg, "FlyerFrame must exist")
-  assert.ok(flyerImg[0].includes("object-contain"), "FlyerFrame image must contain")
-  assert.ok(!flyerImg[0].includes("object-cover"), "FlyerFrame must not crop with object-cover")
+  const frameStart = client.indexOf("function FlyerFrame")
+  const frameEnd = client.indexOf("function DateChip")
+  assert.ok(frameStart >= 0 && frameEnd > frameStart, "FlyerFrame must sit above DateChip")
+  const frame = client.slice(frameStart, frameEnd)
+  assert.ok(frame.includes("object-contain"), "FlyerFrame image must contain")
+  assert.ok(!frame.includes("object-cover"), "FlyerFrame must not crop with object-cover")
 })
