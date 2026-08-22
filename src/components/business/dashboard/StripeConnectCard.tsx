@@ -87,12 +87,12 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete, isP
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-yellow-700">
-              {isPending ? "Business Stripe Not Connected" : "You can post and sell now"}
+              {isPending ? "Business Stripe Not Connected" : "Connect Stripe to receive payments instantly"}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
               {isPending
                 ? "Connecting your business's Stripe account is required to create paid events. Ticket payments will pay into this BUSINESS account."
-                : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
+                : "You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away."}
             </p>
 
             {error && (

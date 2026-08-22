@@ -214,12 +214,12 @@ export default function V2EventsPage() {
         <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3.5">
           <div className="flex-1">
             <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-              {isPending ? "Stripe Connect not linked" : "You can post and sell now"}
+              {isPending ? "Stripe Connect not linked" : "Connect Stripe to receive payments instantly"}
             </p>
             <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
               {isPending
                 ? "To sell paid tickets, finish Stripe Connect onboarding. Free events work without it."
-                : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
+                : "You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away."}
             </p>
             {stripeError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{stripeError}</p>}
             <Button size="sm" className="mt-2.5" disabled={stripeConnecting} onClick={handleConnectStripe}>

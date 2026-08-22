@@ -631,11 +631,20 @@ export function DoorAccessWizard({ stripeOnboarded = true, isPending = false }: 
               />
               {errors.tiers && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tiers}</p>}
               {hasPaidTier && !stripeOnboarded && (
-                <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
-                  {isPending
-                    ? "Stripe isn't connected yet, so paid nights can't sell. Connect Stripe in Settings and they go live."
-                    : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
-                </p>
+                isPending ? (
+                  <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+                    Stripe isn&apos;t connected yet, so paid nights can&apos;t sell. Connect Stripe in Settings and they go live.
+                  </p>
+                ) : (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                      Connect Stripe to receive payments instantly
+                    </p>
+                    <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                      You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
+                    </p>
+                  </div>
+                )
               )}
             </CardContent>
           </Card>

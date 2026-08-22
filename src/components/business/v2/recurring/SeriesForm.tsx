@@ -452,11 +452,20 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
                 <option value="Free">Free</option>
               </Select>
               {type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
-                <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                  {isPending
-                    ? "Without Stripe connected, nights are created as drafts. Connect Stripe (in Settings) and they can go live."
-                    : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
-                </p>
+                isPending ? (
+                  <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    Without Stripe connected, nights are created as drafts. Connect Stripe (in Settings) and they can go live.
+                  </p>
+                ) : (
+                  <div className="mt-1.5">
+                    <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                      Connect Stripe to receive payments instantly
+                    </p>
+                    <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                      You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
+                    </p>
+                  </div>
+                )
               )}
             </div>
             <div className="flex items-end pb-2">

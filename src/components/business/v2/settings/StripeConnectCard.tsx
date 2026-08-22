@@ -64,14 +64,14 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
               ? "Reconnect Stripe to keep getting paid"
               : isPending
                 ? "Connect Stripe to get paid automatically"
-                : "You can post and sell now"}
+                : "Connect Stripe to receive payments instantly"}
           </p>
           <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
             {reconnectRequired
               ? "Your business Stripe account is no longer valid. Reconnect it to keep accepting ticket payments."
               : isPending
                 ? "Ticket money pays straight into your business Stripe account. Without one, sales are held by Bizzy until you connect."
-                : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
+                : "You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away."}
           </p>
           {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
         </div>
@@ -123,14 +123,14 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
                 ? "Stripe connection needs attention"
                 : isPending
                   ? "Business Stripe not connected"
-                  : "You can post and sell now"}
+                  : "Connect Stripe to receive payments instantly"}
             </p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
               {reconnectRequired
                 ? "Your business Stripe account is no longer valid. It may have been disconnected or deleted. Reconnect to keep accepting ticket payments."
                 : isPending
                   ? "Connecting your business Stripe account is required to create paid events. Ticket payments will pay into this business account."
-                  : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
+                  : "You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away."}
             </p>
             {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
             <Button onClick={handleStartOnboarding} disabled={loading} className="mt-3" size="sm">
