@@ -293,9 +293,11 @@ test("venue page gives Weekly Access a full-width contained image treatment", ()
   const src = join(process.cwd(), "src")
   const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
   const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "section heading must use the Weekly Access label")
+  assert.ok(client.includes("WEEKLY_ACCESS_CREATION_LABEL"), "section heading must use the Weekly Cover label")
+  assert.ok(!client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "section heading must not say Weekly Access")
   assert.ok(!client.includes('title="Door Access"'), "section heading still says Door Access")
-  assert.ok(client.includes("weekly access"), "badge must say weekly access")
+  assert.ok(client.includes("weekly cover"), "badge must say weekly cover")
+  assert.ok(!client.includes("weekly access"), "badge must not say weekly access")
   assert.ok(!client.includes("door access ${"), "badge still says door access")
   assert.ok(
     client.includes("Scan with any phone camera at the door."),
@@ -307,9 +309,10 @@ test("venue page gives Weekly Access a full-width contained image treatment", ()
   assert.ok(!client.includes("pricedCtaLabel"), "top-level venue CTAs must not include prices")
   assert.ok(!client.includes("business.logo_image_url"), "venue page must not show the business logo")
   assert.ok(
-    page.includes("WEEKLY_ACCESS_SECTION_LABEL"),
-    "fallback meta description must say weekly access, not door access",
+    page.includes("WEEKLY_ACCESS_CREATION_LABEL"),
+    "fallback meta description must say weekly cover, not door access",
   )
+  assert.ok(!page.includes("WEEKLY_ACCESS_SECTION_LABEL"), "meta description must not say Weekly Access")
   assert.ok(!page.includes("door access"), "meta description still says door access")
 })
 

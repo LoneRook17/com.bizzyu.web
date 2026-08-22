@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
-import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
+import { WEEKLY_ACCESS_CREATION_LABEL } from "@/lib/business/door-access"
 import {
   eventCalendarDate,
   eventFromPrice,
@@ -264,7 +264,7 @@ function ListingCard({
 }
 
 /**
- * One Weekly Access program: flyer (or venue photo), title, Cover $5 or
+ * One Weekly Cover program: flyer (or venue photo), title, Cover $5 or
  * named tier chips, date chips under the card. Get access checks out the
  * selected night only. A 2+ tier chip adds ?ticket_id= so Laravel can
  * preselect that ticket. No dropdown, no calendar.
@@ -484,7 +484,7 @@ export default function VenuePageClient({
 
   const stats = [
     eventRows.length > 0 && `${eventRows.length} upcoming ${eventRows.length === 1 ? "event" : "events"}`,
-    doorAccessRows.length > 0 && `${doorAccessRows.length} weekly access ${doorAccessRows.length === 1 ? "night" : "nights"}`,
+    doorAccessRows.length > 0 && `${doorAccessRows.length} weekly cover ${doorAccessRows.length === 1 ? "night" : "nights"}`,
     deals.length > 0 && `${deals.length} ${deals.length === 1 ? "deal" : "deals"}`,
   ].filter(Boolean) as string[]
 
@@ -773,7 +773,7 @@ export default function VenuePageClient({
             checks out that night only. */}
         {weeklyAccessPrograms.length > 0 && (
           <section id="door-access" className="vp-rise mt-12 scroll-mt-20" style={{ animationDelay: "0.28s" }}>
-            <SectionHeader title={WEEKLY_ACCESS_SECTION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
+            <SectionHeader title={WEEKLY_ACCESS_CREATION_LABEL} count={weeklyAccessPrograms.length} theme={DOOR_ACCESS_THEME} />
             <div className={`grid gap-8 ${weeklyAccessPrograms.length > 1 ? "md:grid-cols-2" : ""}`}>
               {weeklyAccessPrograms.map((nights) => (
                 <WeeklyAccessProgramCard
