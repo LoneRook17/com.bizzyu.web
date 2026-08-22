@@ -47,6 +47,10 @@ function Field({ id, label, children }: { id: string; label: string; children: R
 export default function EmailChangeForm({ currentEmail, businessId }: EmailChangeFormProps) {
   const [newEmail, setNewEmail] = useState("")
   const [password, setPassword] = useState("")
+  // Chrome will not autofill a readonly field on first paint. Unlock on focus
+  // so the owner can still type a new address and confirm their password.
+  const [newEmailLocked, setNewEmailLocked] = useState(true)
+  const [passwordLocked, setPasswordLocked] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -109,9 +113,21 @@ export default function EmailChangeForm({ currentEmail, businessId }: EmailChang
   const showsSameAddressHint = newEmail.length > 0 && isSameAddress(newEmail, currentEmail)
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    // Not a sign-in form. Login-style autocomplete tokens on the new-address
+    // and confirm-password fields are what made Chrome/Safari dump saved junk
+    // into Settings → Security. Submit still posts React state
+    // `{ new_email, password }` — visible name attributes are decoys only.
+    <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col gap-4">
       <Field id="current-email" label="Current login email">
-        <Input id="current-email" type="email" value={currentEmail} disabled readOnly />
+        <Input
+          id="current-email"
+          name="current-login-email"
+          type="email"
+          autoComplete="off"
+          value={currentEmail}
+          disabled
+          readOnly
+        />
       </Field>
 
       {pendingEmail && !success && (
@@ -121,13 +137,18 @@ export default function EmailChangeForm({ currentEmail, businessId }: EmailChang
         </div>
       )}
 
-      <Field id="new-email" label="New login email">
+      <Field id="new-login-email" label="New login email">
         <Input
-          id="new-email"
-          name="new_email"
+          id="new-login-email"
+          name="new-login-email"
           type="email"
-          autoComplete="email"
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
+          readOnly={newEmailLocked}
           value={newEmail}
+          onFocus={() => setNewEmailLocked(false)}
           onChange={(e) => {
             setNewEmail(e.target.value)
             setError("")
@@ -137,13 +158,18 @@ export default function EmailChangeForm({ currentEmail, businessId }: EmailChang
         />
       </Field>
 
-      <Field id="current-password" label="Confirm your password">
+      <Field id="confirm-login-password" label="Confirm your password">
         <Input
-          id="current-password"
-          name="password"
+          id="confirm-login-password"
+          name="confirm-login-password"
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
+          readOnly={passwordLocked}
           value={password}
+          onFocus={() => setPasswordLocked(false)}
           onChange={(e) => {
             setPassword(e.target.value)
             setError("")
