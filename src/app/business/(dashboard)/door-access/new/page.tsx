@@ -59,9 +59,11 @@ export default function NewDoorAccessProgramPage() {
     )
   }
 
+  const isPending = profile?.status === "pending" || profile?.status === "pending_approval" || profile?.status === "pending_verification"
+
   return (
     <RequireVenue>
-      <DoorAccessWizard stripeOnboarded={profile?.stripe_connect_onboarded ?? true} />
+      <DoorAccessWizard stripeOnboarded={profile?.stripe_connect_onboarded ?? true} isPending={isPending} />
     </RequireVenue>
   )
 }

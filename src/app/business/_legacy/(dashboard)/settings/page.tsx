@@ -11,7 +11,7 @@ import VenueManagementSection from "@/components/business/dashboard/VenueManagem
 import type { BusinessProfile } from "@/lib/business/types"
 
 export default function SettingsPage() {
-  const { user, business, refreshProfile } = useAuth()
+  const { user, business, refreshProfile, isPending } = useAuth()
   const role = user?.business_role
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -124,6 +124,7 @@ export default function SettingsPage() {
             fetchProfile()
             refreshProfile()
           }}
+          isPending={isPending}
         />
       </div>
 

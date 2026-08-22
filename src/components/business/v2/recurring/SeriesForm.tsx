@@ -46,9 +46,11 @@ interface SeriesFormProps {
   /** Pre-save occurrences (edit mode) — lets the post-save report label nights by date. */
   occurrences?: RecurringOccurrence[]
   stripeOnboarded?: boolean
+  /** Business is pending approval — affects copy and behavior. */
+  isPending?: boolean
 }
 
-export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stripeOnboarded = true }: SeriesFormProps) {
+export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stripeOnboarded = true, isPending = false }: SeriesFormProps) {
   const router = useRouter()
   const isEdit = mode === "edit"
   const { venues, selectedVenue, setSelectedVenue } = useVenue()
@@ -451,7 +453,9 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               </Select>
               {type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
                 <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                  Without Stripe connected, nights are created as drafts. Connect Stripe (in Settings) and they can go live.
+                  {isPending
+                    ? "Without Stripe connected, nights are created as drafts. Connect Stripe (in Settings) and they can go live."
+                    : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
                 </p>
               )}
             </div>

@@ -25,7 +25,7 @@ import {
 import StripeConnectCard from "@/components/business/v2/settings/StripeConnectCard"
 
 export default function HomeStripeConnectPrompt() {
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const mayManage = canManagePayouts(user?.business_role)
 
   const [show, setShow] = useState(false)
@@ -73,5 +73,5 @@ export default function HomeStripeConnectPrompt() {
   if (!show) return null
 
   // The settings card's own CTA and onboarding POST, in its compact size.
-  return <StripeConnectCard onboarded={false} variant="compact" />
+  return <StripeConnectCard onboarded={false} variant="compact" isPending={isPending} />
 }

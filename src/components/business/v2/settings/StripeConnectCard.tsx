@@ -17,6 +17,8 @@ interface StripeConnectCardProps {
    * and NOTHING at all once connected — Home is not a status board.
    */
   variant?: "full" | "compact"
+  /** Business is pending approval — affects copy. Approved businesses see escrow copy. */
+  isPending?: boolean
 }
 
 /**
@@ -45,7 +47,7 @@ function useStripeOnboarding() {
   return { loading, error, handleStartOnboarding }
 }
 
-export default function StripeConnectCard({ onboarded, reconnectRequired = false, onOnboardingComplete, variant = "full" }: StripeConnectCardProps) {
+export default function StripeConnectCard({ onboarded, reconnectRequired = false, onOnboardingComplete, variant = "full", isPending = false }: StripeConnectCardProps) {
   const { loading, error, handleStartOnboarding } = useStripeOnboarding()
 
   if (variant === "compact") {
@@ -58,19 +60,25 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            {reconnectRequired ? "Reconnect Stripe to keep getting paid" : "Connect Stripe to get paid automatically"}
+            {reconnectRequired
+              ? "Reconnect Stripe to keep getting paid"
+              : isPending
+                ? "Connect Stripe to get paid automatically"
+                : "You can post and sell now"}
           </p>
           <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
             {reconnectRequired
               ? "Your business Stripe account is no longer valid. Reconnect it to keep accepting ticket payments."
-              : "Ticket money pays straight into your business Stripe account. Without one, sales are held by Bizzy until you connect."}
+              : isPending
+                ? "Ticket money pays straight into your business Stripe account. Without one, sales are held by Bizzy until you connect."
+                : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
           </p>
           {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
         </div>
         <Button onClick={handleStartOnboarding} disabled={loading} size="sm" variant="secondary" className="shrink-0">
           {loading
             ? (<><Loader2 className="animate-spin" /> Setting up…</>)
-            : reconnectRequired ? "Reconnect Stripe" : "Set up Stripe"}
+            : reconnectRequired ? "Reconnect Stripe" : "Connect Stripe"}
         </Button>
       </Card>
     )
@@ -111,18 +119,24 @@ export default function StripeConnectCard({ onboarded, reconnectRequired = false
           </span>
           <div className="flex-1">
             <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-              {reconnectRequired ? "Stripe connection needs attention" : "Business Stripe not connected"}
+              {reconnectRequired
+                ? "Stripe connection needs attention"
+                : isPending
+                  ? "Business Stripe not connected"
+                  : "You can post and sell now"}
             </p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
               {reconnectRequired
                 ? "Your business Stripe account is no longer valid. It may have been disconnected or deleted. Reconnect to keep accepting ticket payments."
-                : "Connecting your business Stripe account is required to create paid events. Ticket payments will pay into this business account."}
+                : isPending
+                  ? "Connecting your business Stripe account is required to create paid events. Ticket payments will pay into this business account."
+                  : "Students pay Bizzy. If you sell, we hold your cut until you connect Stripe. Connect when you're ready and we send what you've earned."}
             </p>
             {error && <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
             <Button onClick={handleStartOnboarding} disabled={loading} className="mt-3" size="sm">
               {loading
                 ? (<><Loader2 className="animate-spin" /> Setting up…</>)
-                : reconnectRequired ? "Reconnect Stripe" : "Set up business Stripe"}
+                : reconnectRequired ? "Reconnect Stripe" : "Connect Stripe"}
             </Button>
           </div>
         </div>

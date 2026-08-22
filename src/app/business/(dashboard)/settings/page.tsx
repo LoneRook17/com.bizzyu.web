@@ -83,7 +83,7 @@ function SettingsCard({
 }
 
 function SettingsContent() {
-  const { user, business, refreshProfile } = useAuth()
+  const { user, business, refreshProfile, isPending } = useAuth()
   const role = user?.business_role
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -270,6 +270,7 @@ function SettingsContent() {
               onboarded={profile.stripe_connect_onboarded}
               reconnectRequired={profile.stripe_reconnect_required ?? false}
               onOnboardingComplete={() => { fetchProfile(); refreshProfile() }}
+              isPending={isPending}
             />
             <VenuePayoutAccountsSection />
           </div>
