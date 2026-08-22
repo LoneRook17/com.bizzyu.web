@@ -424,7 +424,7 @@ export default function VenuePageClient({
   // Access). The business-side legacy list is untouched and reads the same field
   // from the same endpoint.
   const { venue, business, events, deals } = data
-  // Venue photo only - the business logo is intentionally not used on this page.
+  // Header uses the venue photo plus an optional business logo beside the name.
   const heroImage = venue.venuePhotoUrl
   const resolvedInstagram = venue.instagram || business.instagram
   const resolvedWebsite = venue.website || business.website

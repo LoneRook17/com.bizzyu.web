@@ -632,12 +632,19 @@ async function enrichWeeklyAccessTiers(
   if (checkoutBase && htmlNeed.length > 0) {
     const checkoutRoot = checkoutBase.replace(/\/$/, "")
     const fromHtml = await Promise.all(
-      htmlNeed.map(async (event) => {
+      htmlNeed.map(async (event): Promise<VenueEvent | null> => {
         const html = await fetchText(`${checkoutRoot}/checkout/${event.event_id}`)
         if (!html) return null
         const tickets = parseCheckoutTicketTiers(html)
         if (tickets.length === 0) return null
-        return { ...event, tickets, template_tickets: tickets, min_ticket_price: Math.min(...finitePrices(tickets)) }
+        const prices = finitePrices(tickets)
+        const next: VenueEvent = {
+          ...event,
+          tickets,
+          template_tickets: tickets,
+          min_ticket_price: prices.length > 0 ? Math.min(...prices) : event.min_ticket_price,
+        }
+        return next
       }),
     )
     merged = mergeVenueEvents(
