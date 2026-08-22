@@ -31,6 +31,7 @@ import {
   weeklyAccessPriceLines,
   applySharedProgramPrices,
   eventFromPrice,
+  resolveNightTiers,
   type VenueEvent,
 } from "./venuePublic.ts"
 
@@ -439,8 +440,12 @@ test("applySharedProgramPrices copies Cover names but not another night's ticket
     }),
   ]
   const filled = applySharedProgramPrices(nights)
-  assert.deepEqual(filled[0].tickets, [{ name: "Cover", price_usd: 5 }])
+  assert.deepEqual(filled[0].tickets, [
+    { name: "Cover", price_usd: 5 },
+    { name: "Skip the Line", price_usd: 10 },
+  ])
   assert.equal(filled[0].tickets[0].ticket_id, undefined)
+  assert.equal(filled[0].tickets[1].ticket_id, undefined)
   assert.equal(filled[1].tickets[0].ticket_id, 678)
   assert.equal(filled[1].tickets[1].ticket_id, 679)
 })
@@ -568,6 +573,56 @@ test("one tier or only a min price reads Cover $5; several tiers list names", ()
   )
 })
 
+const DUNGEON_TWO_TIERS = [
+  { name: "Cover", price_usd: 5, ticket_id: 678 },
+  { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+] as const
+
+test("min_ticket_price does not collapse Cover + Skip the Line to Cover-only", () => {
+  const fri28 = coverNight(625, "2026-08-28 21:00:00", {
+    min_ticket_price: "5.00",
+    tickets: [],
+    template_tickets: [...DUNGEON_TWO_TIERS],
+  })
+  assert.deepEqual(resolveNightTiers(fri28), [...DUNGEON_TWO_TIERS])
+  assert.equal(nightChipPrice(fri28), "From $5")
+  assert.deepEqual(weeklyAccessPriceLines([fri28]), ["Cover $5", "Skip the Line $10"])
+
+  const fromProgram = coverNight(625, "2026-08-28 21:00:00", {
+    min_ticket_price: "5.00",
+    tickets: [],
+  })
+  assert.deepEqual(resolveNightTiers(fromProgram, [...DUNGEON_TWO_TIERS]), [...DUNGEON_TWO_TIERS])
+  assert.equal(nightChipPrice(fromProgram, [...DUNGEON_TWO_TIERS]), "From $5")
+  assert.deepEqual(
+    weeklyAccessPriceLines([fromProgram], [...DUNGEON_TWO_TIERS]),
+    ["Cover $5", "Skip the Line $10"],
+  )
+
+  const coverOnly = coverNight(621, "2026-08-24 21:00:00")
+  assert.deepEqual(resolveNightTiers(coverOnly), [{ name: "Cover", price_usd: 5 }])
+  assert.equal(nightChipPrice(coverOnly), "Cover $5")
+})
+
+test("Fri 28 date chip is From $5 when the program has Cover and Skip the Line", () => {
+  const nights = [
+    coverNight(621, "2026-08-24 21:00:00"),
+    coverNight(623, "2026-08-26 21:00:00"),
+    coverNight(625, "2026-08-28 21:00:00", {
+      min_ticket_price: "5.00",
+      tickets: [...DUNGEON_TWO_TIERS],
+    }),
+  ]
+  const template = programTemplateTiers(nights)
+  assert.equal(formatNightChipLabel(nights[2].start_date_time), "Fri 28")
+  assert.equal(nightChipPrice(nights[2], template), "From $5")
+  assert.deepEqual(weeklyAccessPriceLines([nights[2]], template), [
+    "Cover $5",
+    "Skip the Line $10",
+  ])
+  assert.equal(nightChipPrice(nights[0], template), "From $5")
+})
+
 test("venue Weekly Access is one program card with night chips, not a picker", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("WeeklyAccessProgramCard"), "must render one program card")
@@ -583,7 +638,9 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
     "Weekly Cover card must show the selected night price",
   )
   assert.ok(client.includes("resolveNightTiers"), "2+ tiers read the selected night tickets")
-  assert.ok(client.includes("tiers.length > 1"), "2+ tiers render as chips")
+  assert.ok(client.includes("tiers.length > 0"), "every real tier renders as a chip")
+  assert.ok(client.includes("flex-1 flex-wrap"), "tier chips fill the card's empty right side")
+  assert.ok(client.includes("min-w-[5.5rem] flex-1"), "two tiers share the chips row, no giant void")
   assert.ok(client.includes("formatAccessTierLabel"), "tier chips use the payload names")
   assert.ok(client.includes("venueNightCheckoutHref"), "tier chips and Get access share the checkout href helper")
   assert.ok(

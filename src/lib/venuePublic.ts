@@ -318,34 +318,46 @@ export function coverTierFromTemplate(tiers: VenueAccessTier[]): VenueAccessTier
 }
 
 /**
- * Night tickets, then min_ticket_price, then that night's template, then the
- * program Cover tier. Empty only when every source is missing.
+ * Night tickets, then that night's template, then the full program tier list.
+ * min_ticket_price is a Cover fallback only when no tier list exists.
+ * Never collapse Cover + Skip the Line to Cover-only because a min price is set.
  */
 export function resolveNightTiers(
   night: Pick<VenueEvent, "min_ticket_price" | "tickets" | "template_tickets">,
   programTiers: VenueAccessTier[] = [],
 ): VenueAccessTier[] {
   if (night.tickets.length > 0) return night.tickets
+  if ((night.template_tickets?.length ?? 0) > 0) return night.template_tickets ?? []
+  if (programTiers.length > 0) return programTiers
   if (night.min_ticket_price != null && night.min_ticket_price !== "") {
     const n = Number(night.min_ticket_price)
     if (Number.isFinite(n)) return [{ name: "Cover", price_usd: n }]
   }
-  if ((night.template_tickets?.length ?? 0) > 0) return night.template_tickets ?? []
-  if (programTiers.length > 0) {
-    const cover = coverTierFromTemplate(programTiers)
-    return cover ? [cover] : programTiers
-  }
   return []
 }
 
-/** Shared Cover / tier list for one Weekly Access program. */
+function richestTierList(lists: VenueAccessTier[][]): VenueAccessTier[] {
+  let best: VenueAccessTier[] = []
+  for (const list of lists) {
+    if (list.length > best.length) {
+      best = list
+      continue
+    }
+    if (list.length === best.length && ticketIdCount(list) > ticketIdCount(best)) {
+      best = list
+    }
+  }
+  return best
+}
+
+/** Shared Cover / tier list for one Weekly Cover program. */
 export function programTemplateTiers(
   nights: Array<Pick<VenueEvent, "tickets" | "template_tickets" | "min_ticket_price">>,
 ): VenueAccessTier[] {
-  const withTickets = nights.find((night) => night.tickets.length > 0)
-  if (withTickets) return withTickets.tickets
-  const withTemplate = nights.find((night) => (night.template_tickets?.length ?? 0) > 0)
-  if (withTemplate?.template_tickets?.length) return withTemplate.template_tickets
+  const fromTickets = richestTierList(nights.map((night) => night.tickets))
+  if (fromTickets.length > 0) return fromTickets
+  const fromTemplate = richestTierList(nights.map((night) => night.template_tickets ?? []))
+  if (fromTemplate.length > 0) return fromTemplate
   const priced = nights.find((night) => night.min_ticket_price != null && night.min_ticket_price !== "")
   if (priced) {
     const n = Number(priced.min_ticket_price)

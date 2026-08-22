@@ -264,9 +264,9 @@ function ListingCard({
 }
 
 /**
- * One Weekly Cover program: flyer (or venue photo), title, Cover $5 or
- * named tier chips, date chips under the card. Get access checks out the
- * selected night only. A 2+ tier chip adds ?ticket_id= so Laravel can
+ * One Weekly Cover program: flyer (or venue photo), title, every real
+ * tier as a chip, date chips under the card. Get access checks out the
+ * selected night only. A tier chip adds ?ticket_id= so Laravel can
  * preselect that ticket. No dropdown, no calendar.
  */
 function WeeklyAccessProgramCard({
@@ -331,13 +331,17 @@ function WeeklyAccessProgramCard({
         </div>
         <div className="flex min-h-full flex-col p-5 sm:p-7">
           <h3 className="text-2xl font-extrabold leading-snug text-white">{first.name}</h3>
-          {tiers.length > 1 ? (
-            <div className="mt-3 flex flex-wrap gap-2.5" role="group" aria-label="Ticket types">
+          {tiers.length > 0 ? (
+            <div
+              className="mt-3 flex flex-1 flex-wrap content-start items-start gap-2.5"
+              role="group"
+              aria-label="Ticket types"
+            >
               {tiers.map((tier) => (
                 <a
                   key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
                   href={venueNightCheckoutHref(checkoutBaseUrl, selected.event_id, tier.ticket_id)}
-                  className="inline-flex min-h-11 min-w-[5.5rem] items-center justify-center rounded-2xl border-2 px-4 py-2.5 text-[15px] font-bold leading-snug transition"
+                  className="inline-flex min-h-11 min-w-[5.5rem] flex-1 items-center justify-center rounded-2xl border-2 px-4 py-2.5 text-[15px] font-bold leading-snug transition"
                   style={{
                     backgroundColor: "transparent",
                     borderColor: theme.accent,
@@ -349,7 +353,7 @@ function WeeklyAccessProgramCard({
               ))}
             </div>
           ) : prices.length > 0 ? (
-            <div className="mt-3 flex flex-col gap-1">
+            <div className="mt-3 flex flex-1 flex-col gap-1">
               {prices.map((line) => (
                 <p key={line} className="text-2xl font-extrabold" style={{ color: theme.accent }}>
                   {line}
