@@ -689,12 +689,12 @@ test("Fri 28 date chip is From $5 when the program has Cover and Skip the Line",
   assert.equal(nightChipPrice(nights[0], template), "From $5")
 })
 
-test("venue Weekly Access is one program card with night chips, not a picker", () => {
+test("venue Weekly Cover uses date-only night chips and Door Tickets labels", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("WeeklyAccessProgramCard"), "must render one program card")
   assert.ok(client.includes("groupWeeklyAccessNights"), "nights must group into programs")
   assert.ok(client.includes("formatNightChipLabel"), "upcoming nights are chips")
-  assert.ok(client.includes("nightChipPrice"), "chips must show that night's price")
+  assert.ok(!client.includes("nightChipPrice"), "calendar chips must not show a Cover or From price")
   assert.ok(client.includes("min-h-11"), "chips must be large tap targets")
   assert.ok(client.includes("text-[15px]"), "chip type must be 14-16px")
   assert.ok(!client.includes("rounded-full px-3.5 py-1.5"), "chips must not be tiny pills")
@@ -708,7 +708,7 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
   assert.ok(client.includes("flex-1 flex-wrap"), "tier chips fill the card's empty right side")
   assert.ok(client.includes("min-w-[5.5rem] flex-1"), "two tiers share the chips row, no giant void")
   assert.ok(client.includes("formatAccessTierLabel"), "tier chips use the payload names")
-  assert.ok(client.includes("venueNightCheckoutHref"), "tier chips and Get access share the checkout href helper")
+  assert.ok(client.includes("venueNightCheckoutHref"), "tier chips and Door Tickets share the checkout href helper")
   assert.ok(
     client.includes("venueNightCheckoutHref(checkoutBaseUrl, selected.event_id, tier.ticket_id)"),
     "a tier chip must preselect that ticket",
@@ -719,10 +719,12 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
   const cta = card.slice(card.indexOf("mt-6 flex lg:mt-auto"))
   assert.ok(
     cta.includes("venueNightCheckoutHref(checkoutBaseUrl, selected.event_id)"),
-    "Get access must checkout the selected night",
+    "Select Door Tickets must checkout the selected night",
   )
-  assert.ok(!cta.includes("tier.ticket_id"), "Get access must not force a ticket_id")
-  assert.ok(client.includes("Get access"), "CTA stays Get access")
+  assert.ok(!cta.includes("tier.ticket_id"), "Select Door Tickets must not force a ticket_id")
+  assert.ok(client.includes("Door Tickets"), "door CTA must name Door Tickets")
+  assert.ok(client.includes("Select Door Tickets"), "night CTA must ask the visitor to select Door Tickets")
+  assert.ok(!client.includes("Get access"), "venue page must not use the legacy Get access label")
   assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
   assert.ok(!client.includes('type="date"'), "do not ship a calendar date input")
   assert.ok(!client.includes("<select"), "do not ship a dropdown")
@@ -731,7 +733,7 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
 test("top venue CTAs and happening-today pills omit price while the hero contains its photo", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("eventFromPrice"), "event cards must retain their pricing")
-  assert.ok(!client.includes("pricedCtaLabel"), "Get tickets / Get access must not include a price")
+  assert.ok(!client.includes("pricedCtaLabel"), "Get tickets / Door Tickets must not include a price")
   assert.ok(!client.includes("headerEventPrice"), "header must not resolve event prices")
   assert.ok(!client.includes("headerAccessPrice"), "header must not resolve cover prices")
   const todayStart = client.indexOf("{hasToday && (")
