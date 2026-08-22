@@ -17,8 +17,9 @@
 // These are DISPLAY strings only and must not be used to rename a contract.
 //
 // D-F11.1 — a program card opens the SERIES, never a single night. The night
-// is reached from inside the series page. That routing rule is why
-// programHref() and nightHref() live here rather than being inlined.
+// is reached from inside the series page. Program-wide edits live on
+// programEditHref(). That routing rule is why programHref(), programEditHref()
+// and nightHref() live here rather than being inlined.
 //
 // Everything below the fetch functions is pure so the Node built-in test
 // runner (`npm test`) can exercise it without resolving the api-client chain.
@@ -54,6 +55,9 @@ export const NIGHTS_HELPER_EDIT =
   "Tap a night to change price, capacity, or hours for that date only."
 export const NIGHTS_HELPER_VIEW = "Tap a night to see what it sells."
 
+/** Header control on the series page. Opens the dedicated template editor. */
+export const EDIT_PROGRAM_LABEL = "Edit program"
+
 /** Default strip: the next N upcoming nights, not a 4-week ledger. */
 export const DEFAULT_NIGHT_PREVIEW_COUNT = 4
 
@@ -80,6 +84,10 @@ export interface DoorAccessTemplateTier {
   ticket_type: "paid" | "free"
   is_hidden: number
   sort_order: number
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
 }
 
 /** A row from GET /business/door-access — the F9 list card's source. */
@@ -121,6 +129,12 @@ export interface DoorAccessProgram extends DoorAccessProgramSummary {
   type: "Ticketed" | "Free" | "RSVP"
   is_21_plus: boolean
   timezone: string | null
+  promotion_commission_type: "percent" | "fixed" | null
+  promotion_commission_value: number | null
+  lowstock_alerts_enabled: boolean
+  lowstock_threshold_type: "percent" | "count" | null
+  lowstock_threshold_value: number | null
+  lowstock_notify_business_team: boolean
 }
 
 /**
@@ -257,6 +271,10 @@ export function normalizeTemplateTier(raw: Record<string, unknown>): DoorAccessT
     ticket_type: raw.ticket_type === "free" ? "free" : "paid",
     is_hidden: num(raw.is_hidden),
     sort_order: num(raw.sort_order),
+    valid_from_time: raw.valid_from_time == null || raw.valid_from_time === "" ? null : str(raw.valid_from_time),
+    valid_until_time: raw.valid_until_time == null || raw.valid_until_time === "" ? null : str(raw.valid_until_time),
+    valid_from_day_offset: num(raw.valid_from_day_offset),
+    valid_until_day_offset: num(raw.valid_until_day_offset),
   }
 }
 
@@ -310,6 +328,8 @@ export function normalizeProgramSummary(raw: Record<string, unknown>): DoorAcces
 }
 
 export function normalizeProgram(raw: Record<string, unknown>): DoorAccessProgram {
+  const commissionType = raw.promotion_commission_type
+  const lowstockType = raw.lowstock_threshold_type
   return {
     ...normalizeProgramSummary(raw),
     description: raw.description == null ? null : str(raw.description),
@@ -317,6 +337,14 @@ export function normalizeProgram(raw: Record<string, unknown>): DoorAccessProgra
     type: raw.type === "Free" ? "Free" : raw.type === "RSVP" ? "RSVP" : "Ticketed",
     is_21_plus: bool(raw.is_21_plus),
     timezone: raw.timezone == null ? null : str(raw.timezone),
+    promotion_commission_type:
+      commissionType === "fixed" ? "fixed" : commissionType === "percent" ? "percent" : null,
+    promotion_commission_value: nullableNum(raw.promotion_commission_value),
+    lowstock_alerts_enabled: bool(raw.lowstock_alerts_enabled),
+    lowstock_threshold_type:
+      lowstockType === "count" ? "count" : lowstockType === "percent" ? "percent" : null,
+    lowstock_threshold_value: nullableNum(raw.lowstock_threshold_value),
+    lowstock_notify_business_team: bool(raw.lowstock_notify_business_team),
   }
 }
 
@@ -466,14 +494,55 @@ export async function clearNightOverride(
   }
 }
 
+/**
+ * A program-wide write's result. `restamp_error` is a WARNING, never a failure:
+ * the template is already committed when core's restamp is attempted.
+ */
+export interface ProgramUpdateResult {
+  program: DoorAccessProgram
+  restamp: unknown | null
+  restamp_error: string | null
+}
+
+/** PUT /business/door-access/:id — save the whole program template. */
+export async function updateDoorAccessProgram(
+  programId: number,
+  payload: Record<string, unknown>
+): Promise<ProgramUpdateResult> {
+  const api = await client()
+  const data = await api.put<{
+    program?: Record<string, unknown>
+    series?: Record<string, unknown>
+    restamp?: unknown
+    restamp_error?: string | null
+  }>(`/business/door-access/${programId}`, payload)
+  return {
+    program: normalizeProgram(data.program ?? data.series ?? {}),
+    restamp: data.restamp ?? null,
+    restamp_error: data.restamp_error ?? null,
+  }
+}
+
 // ── Routing (D-F11.1: a program card opens the SERIES, never a night) ───────
 
 export function programHref(programId: number): string {
   return `/business/door-access/${programId}`
 }
 
+/** Dedicated template editor. The series page stays view + tap a night. */
+export function programEditHref(programId: number): string {
+  return `/business/door-access/${programId}/edit`
+}
+
 export function nightHref(programId: number, date: string): string {
   return `/business/door-access/${programId}/nights/${date}`
+}
+
+/** "21:00:00" → "21:00" for `<input type="time">`. */
+export function toTimeInput(value: string | null | undefined): string {
+  const match = /^(\d{1,2}):(\d{2})/.exec(str(value))
+  if (!match) return ""
+  return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`
 }
 
 // ── Pure formatting ─────────────────────────────────────────────────────────

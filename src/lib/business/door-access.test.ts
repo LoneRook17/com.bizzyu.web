@@ -19,6 +19,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import {
+  normalizeProgram,
   accessRowStats,
   isoWeekday,
   nightsLeftThisWeek,
@@ -49,8 +50,10 @@ import {
   validateNightDraft,
   nightIsEditable,
   programHref,
+  programEditHref,
   nightHref,
   resolveProgramImageUrl,
+  toTimeInput,
   WEEKLY_ACCESS_TYPE_LABEL,
   WEEKLY_ACCESS_CREATION_LABEL,
   EVENT_TYPE_LABEL,
@@ -58,6 +61,7 @@ import {
   PROGRAM_LINK_DESCRIPTION,
   NIGHTS_HELPER_EDIT,
   NIGHTS_HELPER_VIEW,
+  EDIT_PROGRAM_LABEL,
   DEFAULT_NIGHT_PREVIEW_COUNT,
   type DoorAccessNight,
   type DoorAccessProgram,
@@ -140,6 +144,12 @@ function program(overrides: Partial<DoorAccessProgram> = {}): DoorAccessProgram 
     type: "Ticketed",
     is_21_plus: true,
     timezone: "US/Eastern",
+    promotion_commission_type: null,
+    promotion_commission_value: null,
+    lowstock_alerts_enabled: false,
+    lowstock_threshold_type: null,
+    lowstock_threshold_value: null,
+    lowstock_notify_business_team: false,
     ...overrides,
   }
 }
@@ -402,6 +412,46 @@ test("normalizeProgramSummary yields a renderable object from an empty body", ()
   assert.equal(p.next_night_date, null)
 })
 
+test("normalizeProgram loads the template fields the wizard edits", () => {
+  const p = normalizeProgram({
+    name: "Weekly Cover",
+    days_of_week: [1, 3, 5],
+    start_time: "21:00:00",
+    end_time: "02:00:00",
+    is_21_plus: 1,
+    flyer_image_url: "https://cdn.example/flyer.jpg",
+    promotion_enabled: 1,
+    promotion_commission_type: "percent",
+    promotion_commission_value: "1000",
+    lowstock_alerts_enabled: 1,
+    lowstock_threshold_type: "count",
+    lowstock_threshold_value: "20",
+    lowstock_notify_business_team: 0,
+    template_tickets: [
+      {
+        tier_key: "cover",
+        name: "Cover",
+        price_usd: "5",
+        valid_from_time: "21:00:00",
+        valid_until_time: "02:00:00",
+        valid_from_day_offset: 0,
+        valid_until_day_offset: 1,
+      },
+    ],
+  })
+  assert.equal(p.name, "Weekly Cover")
+  assert.deepEqual(p.days_of_week, [1, 3, 5])
+  assert.equal(p.start_time, "21:00:00")
+  assert.equal(p.flyer_image_url, "https://cdn.example/flyer.jpg")
+  assert.equal(p.promotion_commission_type, "percent")
+  assert.equal(p.promotion_commission_value, 1000)
+  assert.equal(p.lowstock_alerts_enabled, true)
+  assert.equal(p.lowstock_threshold_type, "count")
+  assert.equal(p.template_tickets[0].price_usd, 5)
+  assert.equal(p.template_tickets[0].tier_key, "cover")
+  assert.equal(p.template_tickets[0].valid_until_day_offset, 1)
+})
+
 test("normalizeNight coerces flags and sorts tiers", () => {
   const n = normalizeNight({
     occurrence_date: "2026-08-28T00:00:00.000Z",
@@ -650,26 +700,51 @@ test("list and program page use the flyer/venue image helper", () => {
 })
 
 test("program page host copy has no em dashes", () => {
-  const copy = [PROGRAM_LINK_LABEL, PROGRAM_LINK_DESCRIPTION, NIGHTS_HELPER_EDIT, NIGHTS_HELPER_VIEW]
+  const copy = [PROGRAM_LINK_LABEL, PROGRAM_LINK_DESCRIPTION, NIGHTS_HELPER_EDIT, NIGHTS_HELPER_VIEW, EDIT_PROGRAM_LABEL]
   assert.equal(PROGRAM_LINK_LABEL, "Program link")
   assert.equal(PROGRAM_LINK_DESCRIPTION, "Every upcoming night")
   assert.equal(NIGHTS_HELPER_EDIT, "Tap a night to change price, capacity, or hours for that date only.")
+  assert.equal(EDIT_PROGRAM_LABEL, "Edit program")
   for (const line of copy) {
     assert.ok(!line.includes("\u2014"), `"${line}" still has an em dash`)
     assert.ok(!line.includes("\u2013"), `"${line}" still has an en dash`)
   }
 })
 
-test("the program page is look-and-open, not edit-the-series", () => {
+test("the program page is look-and-open, with Edit program as a dedicated route", () => {
   const pagePath = fileURLToPath(
     new URL("../../app/business/(dashboard)/door-access/[id]/page.tsx", import.meta.url)
   )
   const src = readFileSync(pagePath, "utf8")
   assert.ok(!src.includes("\u2014"), "program page still has an em dash")
-  assert.ok(!/href=\{?[`'"][^`'"]*\/edit/.test(src), "program page grew a series-edit href")
+  assert.ok(src.includes("EDIT_PROGRAM_LABEL") || src.includes("Edit program"), "owners need a clear Edit program control")
+  assert.ok(src.includes("programEditHref("), "Edit program opens the dedicated edit route")
+  assert.ok(!src.includes("DoorAccessWizard"), "no full series editor inline on the series page")
+  assert.ok(!src.includes("toggleDay"), "night cards must not edit nights of week")
   assert.ok(src.includes("nightHref("), "cards must keep the existing per-night href")
   assert.ok(src.includes("NightPreviewCard"), "nights render as preview cards")
   assert.ok(src.includes("More nights"), "far-future nights stay behind More nights")
+  assert.ok(src.includes("resolveProgramImageUrl"), "empty flyer still shows the venue photo")
+})
+
+test("Weekly Access has a dedicated program editor, same fields as create", () => {
+  const editPath = fileURLToPath(
+    new URL("../../app/business/(dashboard)/door-access/[id]/edit/page.tsx", import.meta.url)
+  )
+  const wizardPath = fileURLToPath(
+    new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)
+  )
+  const editSrc = readFileSync(editPath, "utf8")
+  const wizardSrc = readFileSync(wizardPath, "utf8")
+  assert.ok(editSrc.includes("DoorAccessWizard"), "edit route reuses the create wizard")
+  assert.ok(editSrc.includes('mode="edit"'), "edit route runs the wizard in edit mode")
+  assert.ok(editSrc.includes("owner") && editSrc.includes("manager"), "edit is owners/managers only")
+  assert.ok(!editSrc.includes("\u2014"), "edit page still has an em dash")
+  assert.ok(wizardSrc.includes('mode === "edit"') || wizardSrc.includes("isEdit"), "wizard has an edit mode")
+  assert.ok(wizardSrc.includes("updateDoorAccessProgram"), "edit saves via PUT /business/door-access/:id")
+  assert.ok(wizardSrc.includes("Save program"), "edit CTA is Save program")
+  assert.ok(wizardSrc.includes("Edit program"), "edit heading matches the series-page control")
+  assert.ok(wizardSrc.includes("fallbackSrc={currentVenue?.photo_url ?? null}"), "edit still previews the venue photo")
 })
 
 test("redemptionModeLabel names both modes in host vocabulary", () => {
@@ -690,9 +765,18 @@ test("D-P5: host surfaces never render the student string", () => {
 
 test("D-F11.1: a program links to its SERIES, and a night hangs off that", () => {
   assert.equal(programHref(77), "/business/door-access/77")
+  assert.equal(programEditHref(77), "/business/door-access/77/edit")
   assert.equal(nightHref(77, "2026-08-28"), "/business/door-access/77/nights/2026-08-28")
   // The program href must never point at a single night.
   assert.ok(!/nights/.test(programHref(77)))
+  assert.ok(!/nights/.test(programEditHref(77)))
+})
+
+test("toTimeInput trims a wall-clock string for the time input", () => {
+  assert.equal(toTimeInput("21:00:00"), "21:00")
+  assert.equal(toTimeInput("9:05"), "09:05")
+  assert.equal(toTimeInput(""), "")
+  assert.equal(toTimeInput(null), "")
 })
 
 // ── D2-C: the row's at-a-glance numbers ─────────────────────────────────────

@@ -17,6 +17,8 @@ import { cn } from "@/lib/v2/utils"
  */
 
 export interface RecurringTierRow {
+  /** Present when editing an existing door-access template tier. */
+  tier_key?: string
   name: string
   description: string
   ticket_type: "paid" | "free"
@@ -46,6 +48,7 @@ export function templateToTierRows(template: RecurringTemplateTicket[]): Recurri
   return [...template]
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
     .map((t) => ({
+      ...(t.tier_key ? { tier_key: t.tier_key } : {}),
       name: t.name,
       description: t.description ?? "",
       ticket_type: t.ticket_type,
@@ -61,6 +64,7 @@ export function templateToTierRows(template: RecurringTemplateTicket[]): Recurri
 
 export function tierRowsToTemplate(rows: RecurringTierRow[]): RecurringTemplateTicket[] {
   return rows.map((r, i) => ({
+    ...(r.tier_key ? { tier_key: r.tier_key } : {}),
     name: r.name.trim(),
     description: r.description.trim() || null,
     price_usd: r.ticket_type === "free" ? 0 : parseFloat(r.priceInput) || 0,

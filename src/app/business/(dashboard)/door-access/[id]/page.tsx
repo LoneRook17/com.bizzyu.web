@@ -2,7 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, CalendarDays, Loader2, Zap } from "lucide-react"
+import { ArrowLeft, CalendarDays, Loader2, Pencil, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
@@ -21,8 +21,10 @@ import {
   nightHref,
   nightPreviewChip,
   nightPreviewPrice,
+  programEditHref,
   PROGRAM_LINK_DESCRIPTION,
   PROGRAM_LINK_LABEL,
+  EDIT_PROGRAM_LABEL,
   redemptionModeLabel,
   resolveProgramImageUrl,
   splitNights,
@@ -44,9 +46,10 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The Weekly Access SERIES page (F11 / D-F11.1).
  *
- * This screen is for looking at the program and opening ONE night. It does
- * not edit the series: no Edit program, no change nights-of-week, no change
- * default tiers for all nights. Those stay on create/settings elsewhere.
+ * This screen is for looking at the program and opening ONE night. Program-wide
+ * edits (nights of week, door hours, default tiers, flyer) live on
+ * /business/door-access/:id/edit, opened from Edit program in the header.
+ * Night cards stay tap-to-open. They are not a series editor.
  *
  * Nights render as a short strip of preview cards (next 4 upcoming). Far-future
  * ungenerated nights stay behind More nights. A card opens the existing
@@ -138,6 +141,15 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
         description={[program.venue_name, formatDays(program.days_of_week)]
           .filter(Boolean)
           .join(" · ")}
+        actions={
+          canEdit ? (
+            <Button asChild>
+              <Link href={programEditHref(programId)}>
+                <Pencil className="size-4" /> {EDIT_PROGRAM_LABEL}
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       {program.venue_id != null && (
@@ -298,7 +310,7 @@ function DateBlock({
   )
 }
 
-/** Read-only facts. This page must not grow an Edit program control. */
+/** Read-only facts. The editor is Edit program in the header, not here. */
 function ProgramTermsCard({ program }: { program: DoorAccessProgram }) {
   const facts: Array<{ label: string; value: string }> = [
     { label: "Nights", value: formatDays(program.days_of_week) || "Not set" },

@@ -784,6 +784,8 @@ export interface BusinessProfile {
 // A series is the schedule + occurrence template; every occurrence is a normal
 // Event row stamped by core's generator and managed from the events surface.
 export interface RecurringTemplateTicket {
+  /** Stable identity on door-access templates. Omit on create; send back on edit. */
+  tier_key?: string
   name: string
   description?: string | null
   price_usd: number
