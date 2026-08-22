@@ -291,7 +291,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isEdit
             ? "You're editing the whole series, not a single night."
-            : "Set it up once — every night becomes its own event automatically."}
+            : "Set it up once. Every night becomes its own event automatically."}
         </p>
       </div>
 
@@ -354,7 +354,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             </div>
             <div>
               <Label htmlFor="date_range_end" className="mb-1.5 block">
-                Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional — leave blank to run until you suspend it)</span>
+                Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional. Leave blank to run until you suspend it)</span>
               </Label>
               <Input
                 id="date_range_end"
@@ -390,7 +390,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               />
               {errors.end_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_time}</p>}
               <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-                Ends past midnight? No problem — it rolls into the next morning.
+                Ends past midnight? No problem. It rolls into the next morning.
               </p>
             </div>
           </div>
@@ -403,7 +403,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               <>
                 <p className="mb-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">Next nights</p>
                 {previewDates.length === 0 ? (
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No upcoming nights match this schedule — check the dates above.</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No upcoming nights match this schedule. Check the dates above.</p>
                 ) : (
                   previewDates.map((d, i) => (
                     <p key={i} className="text-xs text-neutral-600 dark:text-neutral-400">{d}</p>
@@ -557,7 +557,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <CardHeader className="flex-col items-start gap-1">
           <CardTitle>Notify followers</CardTitle>
           <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-            The notify setting is saved onto each night. Automatic weekly pushes are off for now — you can announce any
+            The notify setting is saved onto each night. Automatic weekly pushes are off for now. You can announce any
             night from its event page.
           </p>
         </CardHeader>
@@ -671,7 +671,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               <div className="mt-4 space-y-3">
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Also warn me when it&apos;s running low</p>
-                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional — leave blank to only be notified on sell-out.</p>
+                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional. Leave blank to only be notified on sell-out.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>

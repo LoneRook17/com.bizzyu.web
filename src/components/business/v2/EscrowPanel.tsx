@@ -165,7 +165,7 @@ function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant;
             <p className="mt-2 max-w-prose break-words text-sm text-neutral-600 dark:text-neutral-400">
               Ticket money{data.businessName ? (<> for <span className="font-medium text-neutral-900 dark:text-neutral-100">{data.businessName}</span></>) : null} is
               being held by Bizzy because there&apos;s no Stripe account connected yet. Claiming it
-              requires finishing Stripe onboarding — once your business Stripe account is set up,
+              requires finishing Stripe onboarding. Once your business Stripe account is set up,
               this balance is paid out to it.
             </p>
             <div className="mt-4"><ConnectStripeButton /></div>
@@ -174,15 +174,15 @@ function EscrowPanelInner({ variant, className }: { variant: EscrowPanelVariant;
 
         {state === "processing" && (
           <p className="mt-2 max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
-            Stripe is connected and this payout is on its way to your bank. No action needed —
-            it typically arrives within a few business days.
+            Stripe is connected and this payout is on its way to your bank. No action needed.
+            It typically arrives within a few business days.
           </p>
         )}
 
         {state === "paid" && (
           <p className="mt-2 max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
             Everything Bizzy held for you has been paid out to your business Stripe account.
-            New ticket sales pay out directly — nothing waits in escrow anymore.
+            New ticket sales pay out directly. Nothing waits in escrow anymore.
           </p>
         )}
       </div>

@@ -36,7 +36,7 @@ import EscrowPanel from "@/components/business/v2/EscrowPanel"
 import HomeStripeConnectPrompt from "@/components/business/v2/HomeStripeConnectPrompt"
 
 function fmtDate(s?: string | null) {
-  if (!s) return "—"
+  if (!s) return "-"
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 function fmtRelative(s: string) {
@@ -54,7 +54,7 @@ function eventBadge(status: string): { variant: "success" | "neutral" | "warning
   if (s === "draft") return { variant: "neutral", label: "Draft" }
   if (s?.includes("pending")) return { variant: "warning", label: "In review" }
   if (s === "cancelled" || s === "rejected") return { variant: "danger", label: s === "cancelled" ? "Cancelled" : "Rejected" }
-  return { variant: "neutral", label: status || "—" }
+  return { variant: "neutral", label: status || "-" }
 }
 
 function MetricTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -150,7 +150,7 @@ export default function V2HomePage() {
   const showEventsSection = sections.events
   const showLineSkipSection = sections.lineSkips
   // Line-skip money is owner/manager only (the server omits the field for
-  // staff) — `null` renders as "—" through usd(), same as event revenue does.
+  // staff) — `null` renders as "-" through usd(), same as event revenue does.
   const lineSkipRevenue =
     stats?.line_skip_revenue_cents == null ? null : stats.line_skip_revenue_cents / 100
 
@@ -304,7 +304,7 @@ export default function V2HomePage() {
             )}
             <MetricTile
               label="Next night"
-              value={nextAccessDate ? fmtDate(nextAccessDate) : "—"}
+              value={nextAccessDate ? fmtDate(nextAccessDate) : "-"}
               sub={nextAccessDate ? undefined : "None scheduled"}
             />
           </div>

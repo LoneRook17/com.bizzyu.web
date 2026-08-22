@@ -137,7 +137,7 @@ export function seriesRowStats(row: Extract<EventRow, { kind: "series" }>): {
 //
 // WHAT IS NOT DERIVABLE FROM THE LIST PAYLOADS — see MISSING_ROW_AGGREGATES.
 // Those render as an explicit pending stat, not as a zero. A zero is a claim;
-// "—" is the truth, and on a money column the difference is the whole point.
+// "-" is the truth, and on a money column the difference is the whole point.
 
 /**
  * A row's stat cell. Structurally the HostListCard `HostCardStat` — declared
@@ -205,7 +205,7 @@ function dayParts(value: string | null | undefined): { y: number; m: number; d: 
 /** "Aug 23" — the row's date cell. Year only when it isn't this one. */
 export function fmtRowDate(value: string | null | undefined, now: Date = new Date()): string {
   const parts = dayParts(value)
-  if (!parts) return "—"
+  if (!parts) return "-"
   const base = `${MONTHS[parts.m - 1]} ${parts.d}`
   return parts.y === now.getFullYear() ? base : `${base}, ${parts.y}`
 }
@@ -282,7 +282,7 @@ export function seriesRowNumbers(
     const gap = MISSING_ROW_AGGREGATES[0]
     stats.push({
       label: gap.label,
-      value: "—",
+      value: "-",
       pending: true,
       hint: `${total} nights in this series. Whole-series totals need a ${gap.needs}.`,
     })

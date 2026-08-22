@@ -94,7 +94,7 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
       <ManageSubheader
         eventId={id}
         title="Managers & co-hosts"
-        subtitle="Teammates with a Bizzy account and dashboard access — co-hosts and crew."
+        subtitle="Teammates with a Bizzy account and dashboard access (co-hosts and crew)."
         actions={<Button onClick={() => setShowAdd(true)}><Plus /> Add teammate</Button>}
       />
 
@@ -112,7 +112,7 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
             Just need someone scanning tickets tonight?
           </p>
           <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">
-            Door staff don’t need an account or an invite — share your event’s <span className="font-medium text-neutral-800 dark:text-neutral-200">door code</span> instead. Add teammates here only if they need dashboard access.
+            Door staff don’t need an account or an invite. Share your event’s <span className="font-medium text-neutral-800 dark:text-neutral-200">door code</span> instead. Add teammates here only if they need dashboard access.
           </p>
         </div>
         <ArrowRight className="mt-1 size-4 shrink-0 text-[#05EB54] transition-transform group-hover:translate-x-0.5" />
@@ -155,7 +155,7 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add a manager or co-host</DialogTitle>
-            <DialogDescription>For teammates who need dashboard access. Search for an existing Bizzy user and assign a role. (Door staff who only scan tickets don’t need this — use the door code.)</DialogDescription>
+            <DialogDescription>For teammates who need dashboard access. Search for an existing Bizzy user and assign a role. (Door staff who only scan tickets don’t need this. Use the door code.)</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

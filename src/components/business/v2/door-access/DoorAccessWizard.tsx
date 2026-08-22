@@ -643,7 +643,7 @@ export function DoorAccessWizard({
                   />
                   {errors.end_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_time}</p>}
                   <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-                    Ends past midnight? No problem — it rolls into the next morning.
+                    Ends past midnight? No problem. It rolls into the next morning.
                   </p>
                 </div>
               </div>
@@ -656,7 +656,7 @@ export function DoorAccessWizard({
                     <p className="mb-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">Next nights</p>
                     {previewDates.length === 0 ? (
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                        No upcoming nights match this schedule — check the dates above.
+                        No upcoming nights match this schedule. Check the dates above.
                       </p>
                     ) : (
                       previewDates.map((d, i) => (
@@ -673,7 +673,7 @@ export function DoorAccessWizard({
             <CardHeader className="flex-col items-start gap-1">
               <CardTitle>Flyer image</CardTitle>
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Optional — used on every night. Without one, the venue photo stands in.
+                Optional. Used on every night. Without one, the venue photo stands in.
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -694,7 +694,7 @@ export function DoorAccessWizard({
             <CardHeader className="flex-col items-start gap-1">
               <CardTitle>Access tiers</CardTitle>
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Cover, line skip, VIP — price them all. Every night gets a fresh set of these, and the numbers here are
+                Cover, line skip, VIP. Price them all. Every night gets a fresh set of these, and the numbers here are
                 per night. You can change one night&apos;s price later from the program page.
               </p>
             </CardHeader>
@@ -874,14 +874,14 @@ export function DoorAccessWizard({
           <Card>
             <CardHeader><CardTitle>Review</CardTitle></CardHeader>
             <CardContent className="space-y-3 pt-0">
-              <ReviewRow label="Program" value={name.trim() || "—"} />
-              <ReviewRow label="Venue" value={venueName.trim() || "—"} />
-              <ReviewRow label="Nights" value={formatDays(daysOfWeek) || "—"} />
+              <ReviewRow label="Program" value={name.trim() || "-"} />
+              <ReviewRow label="Venue" value={venueName.trim() || "-"} />
+              <ReviewRow label="Nights" value={formatDays(daysOfWeek) || "-"} />
               <ReviewRow
                 label="Runs"
-                value={`${dateRangeStart || "—"} → ${dateRangeEnd || "no end date"}`}
+                value={`${dateRangeStart || "-"} → ${dateRangeEnd || "no end date"}`}
               />
-              <ReviewRow label="Door window" value={`${fmtTime(startTime)} – ${fmtTime(endTime)}`} />
+              <ReviewRow label="Door window" value={`${fmtTime(startTime)} - ${fmtTime(endTime)}`} />
               {/* Shown, not chosen — the host sees what their door will do. */}
               <ReviewRow label="Check-in" value={redemptionModeLabel(DOOR_ACCESS_REDEMPTION_MODE)} />
               <ReviewRow label="Age" value={is21Plus ? "21+ only" : "All ages"} />

@@ -291,7 +291,7 @@ function SettingsContent() {
               <SettingsCard
                 icon={AtSign}
                 title="Login email"
-                description="The address you sign in with. We'll email the new address to confirm — nothing changes until you open that link."
+                description="The address you sign in with. We'll email the new address to confirm. Nothing changes until you open that link."
               >
                 <EmailChangeForm currentEmail={profile.email} businessId={profile.business_id} />
               </SettingsCard>

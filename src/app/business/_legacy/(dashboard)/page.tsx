@@ -140,7 +140,7 @@ export default function DashboardHomePage() {
   }, [venueParam])
 
   const formatCurrency = (val: number | null | undefined) => {
-    if (val == null) return "—"
+    if (val == null) return "-"
     return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
@@ -255,7 +255,7 @@ export default function DashboardHomePage() {
                         value={
                           quickStats?.next_event_date
                             ? new Date(quickStats.next_event_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                            : "—"
+                            : "-"
                         }
                       />
                     </>

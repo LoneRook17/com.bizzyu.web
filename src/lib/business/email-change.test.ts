@@ -94,7 +94,7 @@ test("unknown status falls back without leaking a blank message", () => {
 test("state success: names the address and says nothing has changed yet", () => {
   assert.equal(
     emailChangeSuccessMessage("new@business.com"),
-    "Check new@business.com to confirm — nothing changes until then."
+    "Check new@business.com to confirm. Nothing changes until then."
   )
 })
 

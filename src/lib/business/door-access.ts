@@ -653,11 +653,11 @@ export function fmtWindow(start: string, end: string): string {
   if (!a && !b) return ""
   if (!b) return a
   if (!a) return b
-  return `${a} – ${b}`
+  return `${a} - ${b}`
 }
 
 export function usdPrice(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return "—"
+  if (n == null || !Number.isFinite(n)) return "-"
   return n === 0
     ? "Free"
     : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -758,7 +758,7 @@ export function accessRowStats(
   return [
     {
       label: "sold this week",
-      value: "—",
+      value: "-",
       pending: true,
       hint: "Per-night sales live on the program page. A week-scoped passes_sold on GET /business/door-access would fill this in.",
     },

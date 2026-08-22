@@ -180,7 +180,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "p", text: "Events are one-time happenings at your venue: concerts, DJ nights, watch parties, themed nights." },
           { kind: "ul", items: [
-            "Sell tickets for paid events, or run a free event — guests still get a real, scannable ticket",
+            "Sell tickets for paid events, or run a free event. Guests still get a real, scannable ticket",
             "Customers buy tickets right from their phone in the Bizzy app",
             "You get a QR-code scanner to check people in at the door",
           ] },

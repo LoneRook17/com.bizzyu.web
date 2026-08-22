@@ -693,7 +693,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Free entry</CardTitle>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-              Guests claim a real ticket at no charge — same wallet pass, same scan at the door. Nothing to price.
+              Guests claim a real ticket at no charge. Same wallet pass, same scan at the door. Nothing to price.
             </p>
           </CardHeader>
         </Card>
@@ -839,10 +839,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <CardHeader><CardTitle>Review</CardTitle></CardHeader>
         <CardContent className="pt-0">
           <dl className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            <ReviewRow label="Name" value={form.name || "—"} />
+            <ReviewRow label="Name" value={form.name || "-"} />
             <ReviewRow label="Type" value={EVENT_TYPE_LABELS[form.type]} />
             <ReviewRow label="When" value={summariseWhen(form.start_date_time, form.end_date_time)} />
-            <ReviewRow label="Where" value={[form.venue_name, form.venue_address].filter(Boolean).join(" · ") || "—"} />
+            <ReviewRow label="Where" value={[form.venue_name, form.venue_address].filter(Boolean).join(" · ") || "-"} />
             {form.is_21_plus && <ReviewRow label="Age" value="21+" />}
             {form.type === "Ticketed" && <ReviewRow label="Tickets" value={summariseTiers(form.tickets)} />}
             {/* Still shown, no longer a decision: the host should see what the
@@ -962,7 +962,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isEditing
             ? "Update details, tickets, and settings."
-            : `Step ${step + 1} of ${EVENT_CREATE_STEPS.length} — ${EVENT_CREATE_STEPS[step].label}.`}
+            : `Step ${step + 1} of ${EVENT_CREATE_STEPS.length}. ${EVENT_CREATE_STEPS[step].label}.`}
         </p>
       </div>
 
@@ -1011,21 +1011,21 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 }
 
 function summariseWhen(start: string, end: string): string {
-  if (!start) return "—"
+  if (!start) return "-"
   const startLabel = fmtDateTime(start)
   if (!end) return startLabel
   const sameDay = start.slice(0, 10) === end.slice(0, 10)
-  return sameDay ? `${startLabel} – ${fmtTime(end)}` : `${startLabel} – ${fmtDateTime(end)}`
+  return sameDay ? `${startLabel} - ${fmtTime(end)}` : `${startLabel} - ${fmtDateTime(end)}`
 }
 
 function summariseTiers(tiers: TicketTier[]): string {
-  if (!tiers.length) return "—"
+  if (!tiers.length) return "-"
   const prices = tiers.map((t) => Number(t.price_usd) || 0)
   const min = Math.min(...prices)
   const max = Math.max(...prices)
   const count = `${tiers.length} tier${tiers.length === 1 ? "" : "s"}`
   if (max === 0) return `${count} · Free`
-  return min === max ? `${count} · $${max.toFixed(2)}` : `${count} · $${min.toFixed(2)}–$${max.toFixed(2)}`
+  return min === max ? `${count} · $${max.toFixed(2)}` : `${count} · ${min.toFixed(2)}-${max.toFixed(2)}`
 }
 
 function summariseArtwork(flyerUrl: string, template: ArtworkTemplate | null | undefined): string {

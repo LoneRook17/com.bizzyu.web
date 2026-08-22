@@ -58,7 +58,7 @@ export function StockAlertsFields({
         <div className="mt-4 space-y-3">
           <div>
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Also warn me when it&apos;s running low</p>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional — leave blank to only be notified on sell-out.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional. Leave blank to only be notified on sell-out.</p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

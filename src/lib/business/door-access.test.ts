@@ -696,7 +696,7 @@ test("fmtTime converts 24h wall-clock without touching timezones", () => {
 })
 
 test("fmtWindow drops a missing half instead of rendering a dangling dash", () => {
-  assert.equal(fmtWindow("22:00:00", "02:00:00"), "10:00 PM – 2:00 AM")
+  assert.equal(fmtWindow("22:00:00", "02:00:00"), "10:00 PM - 2:00 AM")
   assert.equal(fmtWindow("22:00:00", ""), "10:00 PM")
   assert.equal(fmtWindow("", ""), "")
 })
@@ -704,7 +704,7 @@ test("fmtWindow drops a missing half instead of rendering a dangling dash", () =
 test("usdPrice says Free rather than $0.00, and fmtQuantity says Unlimited for 0", () => {
   assert.equal(usdPrice(10), "$10.00")
   assert.equal(usdPrice(0), "Free")
-  assert.equal(usdPrice(null), "—")
+  assert.equal(usdPrice(null), "-")
   // 0 is UNLIMITED on this platform. "0 available" would read as sold out and
   // send a host hunting for capacity that was never constrained.
   assert.equal(fmtQuantity(0), "Unlimited")
@@ -727,11 +727,11 @@ test("programMetaLine drops empty segments instead of rendering blanks", () => {
 test("programScheduleLine leads with the window and singularizes one night", () => {
   assert.equal(
     programScheduleLine(program()),
-    "10:00 PM – 2:00 AM · Next: Fri, Aug 28 · 8 nights scheduled"
+    "10:00 PM - 2:00 AM · Next: Fri, Aug 28 · 8 nights scheduled"
   )
   assert.equal(
     programScheduleLine(program({ next_night_date: null, upcoming_night_count: 1 })),
-    "10:00 PM – 2:00 AM · 1 night scheduled"
+    "10:00 PM - 2:00 AM · 1 night scheduled"
   )
 })
 
@@ -1041,7 +1041,7 @@ test("this week's SOLD is stubbed — this payload has no sales in it", () => {
   const sold = stats[0]
   assert.equal(sold.label, "sold this week")
   // A dash, never a zero: "0 sold" is a claim about a week that hasn't happened.
-  assert.equal(sold.value, "—")
+  assert.equal(sold.value, "-")
   assert.equal(sold.pending, true)
   assert.match(sold.hint ?? "", /door-access/)
   // The half that IS derivable renders for real beside it.

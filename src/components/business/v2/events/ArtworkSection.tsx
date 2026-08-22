@@ -53,7 +53,7 @@ export function ArtworkSection({
           <div>
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">No flyer? Pick a template.</p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-              Bizzy draws the artwork from your venue and event details. Optional — skip it and we use Classic.
+              Bizzy draws the artwork from your venue and event details. Optional. Skip it and we use Classic.
             </p>
           </div>
 

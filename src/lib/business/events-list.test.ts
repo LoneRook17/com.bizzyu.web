@@ -231,7 +231,7 @@ test("a partial series LABELS its sums and stubs the total it cannot compute", (
   assert.equal(stats[1].label, "revenue · 1 shown")
   const pending = stats.find((s) => s.pending)
   assert.ok(pending, "the whole-series total is stubbed, not silently omitted")
-  assert.equal(pending?.value, "—", "a stub is a dash, never a zero")
+  assert.equal(pending?.value, "-", "a stub is a dash, never a zero")
   assert.match(pending?.hint ?? "", /12 nights/)
   assert.match(pending?.hint ?? "", /recurring-series/)
 })
