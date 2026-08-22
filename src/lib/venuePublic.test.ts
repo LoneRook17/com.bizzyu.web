@@ -9,11 +9,14 @@ import {
   coalesceVenuePhotoUrl,
   eventIdSeeds,
   eventMatchesVenue,
+  fetchVenuePublicData,
   formatAccessPrice,
   formatNightChipLabel,
   groupWeeklyAccessNights,
+  isCoverOnlyFallback,
   lookaheadIds,
   mergeVenueEvents,
+  needsWeeklyAccessTierEnrichment,
   nightChipPrice,
   parseCheckoutTicketTiers,
   parseTierPriceUsd,
@@ -526,6 +529,8 @@ test("venue checkout tiers path is the same-origin Cover $5 reader", () => {
   )
   assert.ok(lib.includes("venueCheckoutTiersUrl"), "browser poll must hit the same-origin tiers route")
   assert.ok(lib.includes("fetchCheckoutTicketTiers"), "draft nights must read checkout HTML or the proxy")
+  assert.ok(lib.includes("needsWeeklyAccessTierEnrichment"), "a 1-item Cover list must still hydrate from checkout")
+  assert.ok(lib.includes("tickets.length < 2"), "do not treat a 1-ticket night as complete")
   assert.ok(route.includes("parseCheckoutTicketTiers"), "API route must parse Laravel checkout HTML")
   assert.ok(route.includes("/checkout/"), "API route must fetch the night checkout page")
 })
@@ -602,6 +607,67 @@ test("min_ticket_price does not collapse Cover + Skip the Line to Cover-only", (
   const coverOnly = coverNight(621, "2026-08-24 21:00:00")
   assert.deepEqual(resolveNightTiers(coverOnly), [{ name: "Cover", price_usd: 5 }])
   assert.equal(nightChipPrice(coverOnly), "Cover $5")
+
+  const oneCoverFromApi = coverNight(621, "2026-08-24 21:00:00", {
+    min_ticket_price: "5.00",
+    tickets: [{ name: "Cover", price_usd: 5 }],
+  })
+  assert.deepEqual(resolveNightTiers(oneCoverFromApi, [...DUNGEON_TWO_TIERS]), [...DUNGEON_TWO_TIERS])
+  assert.equal(nightChipPrice(oneCoverFromApi, [...DUNGEON_TWO_TIERS]), "From $5")
+  assert.deepEqual(weeklyAccessPriceLines([oneCoverFromApi], [...DUNGEON_TWO_TIERS]), [
+    "Cover $5",
+    "Skip the Line $10",
+  ])
+})
+
+test("a 1-item Cover list is an incomplete Weekly Cover fallback", () => {
+  assert.equal(isCoverOnlyFallback([{ name: "Cover", price_usd: 5 }]), true)
+  assert.equal(isCoverOnlyFallback([{ name: "Cover", price_usd: 5, ticket_id: 678 }]), true)
+  assert.equal(isCoverOnlyFallback([...DUNGEON_TWO_TIERS]), false)
+  assert.equal(
+    needsWeeklyAccessTierEnrichment(
+      coverNight(621, "2026-08-24 21:00:00", {
+        tickets: [{ name: "Cover", price_usd: 5 }],
+      }),
+    ),
+    true,
+  )
+  assert.equal(
+    needsWeeklyAccessTierEnrichment(
+      coverNight(621, "2026-08-24 21:00:00", {
+        min_ticket_price: "5.00",
+        tickets: [],
+      }),
+    ),
+    true,
+  )
+  assert.equal(
+    needsWeeklyAccessTierEnrichment(
+      coverNight(625, "2026-08-28 21:00:00", {
+        tickets: [...DUNGEON_TWO_TIERS],
+      }),
+    ),
+    false,
+  )
+  assert.equal(
+    needsWeeklyAccessTierEnrichment(
+      event({
+        tickets: [{ name: "General Admission", price_usd: 5 }],
+      }),
+    ),
+    false,
+  )
+})
+
+test("mergeVenueEvents keeps Cover + Skip the Line over a single Cover with an id", () => {
+  const oneCover = coverNight(621, "2026-08-24 21:00:00", {
+    tickets: [{ name: "Cover", price_usd: 5, ticket_id: 678 }],
+  })
+  const twoTiers = coverNight(621, "2026-08-24 21:00:00", {
+    tickets: [...DUNGEON_TWO_TIERS],
+  })
+  assert.deepEqual(mergeVenueEvents([oneCover], [twoTiers])[0].tickets, [...DUNGEON_TWO_TIERS])
+  assert.deepEqual(mergeVenueEvents([twoTiers], [oneCover])[0].tickets, [...DUNGEON_TWO_TIERS])
 })
 
 test("Fri 28 date chip is From $5 when the program has Cover and Skip the Line", () => {
@@ -707,4 +773,213 @@ test("venue event and Weekly Access flyers are full portrait frames, not wide cr
   assert.ok(!frame.includes("overflow-hidden"), "FlyerFrame must not clip the flyer")
   assert.ok(frame.includes("object-contain"), "FlyerFrame image must contain")
   assert.ok(!frame.includes("object-cover"), "FlyerFrame must not crop with object-cover")
+})
+
+async function withFetch<T>(
+  impl: (url: string | URL | Request, init?: RequestInit) => Promise<unknown>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const original = globalThis.fetch
+  ;(globalThis as { fetch: typeof fetch }).fetch = impl as typeof fetch
+  try {
+    return await fn()
+  } finally {
+    globalThis.fetch = original
+  }
+}
+
+function jsonResponse(body: unknown, ok = true, status = ok ? 200 : 404) {
+  return {
+    ok,
+    status,
+    json: async () => body,
+    text: async () => JSON.stringify(body),
+  }
+}
+
+function textResponse(body: string, ok = true, status = ok ? 200 : 404) {
+  return {
+    ok,
+    status,
+    json: async () => {
+      throw new Error("not json")
+    },
+    text: async () => body,
+  }
+}
+
+const DUNGEON_VENUE_SHELL = {
+  venue: {
+    id: 990198,
+    name: "The Dungeon",
+    address: "123 Campus Rd",
+    description: null,
+    venuePhotoUrl: null,
+    website: null,
+    instagram: null,
+  },
+  business: {
+    business_id: 1,
+    name: "The Dungeon",
+    logo_image_url: null,
+    instagram: null,
+    website: null,
+  },
+  deals: [],
+  line_skips: [],
+}
+
+const DUNGEON_ONE_COVER_ROW = {
+  event_id: 621,
+  name: "Weekly Cover",
+  start_date_time: "2026-08-24 21:00:00",
+  end_date_time: "2026-08-25 02:00:00",
+  venue_name: "The Dungeon",
+  flyer_image_url: null,
+  min_ticket_price: "5.00",
+  access_kind: "door_access",
+  status: "draft",
+  venue_id: 990198,
+  tickets: [{ name: "Cover", price_usd: 5 }],
+}
+
+const DUNGEON_CHECKOUT_JSON_TICKETS = [
+  { ticket_id: 678, name: "Cover", price_usd: 5 },
+  { ticket_id: 679, name: "Skip the Line", price_usd: 10 },
+]
+
+const DUNGEON_CHECKOUT_HTML = `
+  <div class="ticket-card bg-surface rounded-2xl"
+    data-ticket-id="678"
+    data-price="5.00">
+    <h4 class="font-bold text-white text-lg">Cover</h4>
+  </div>
+  <div class="ticket-card bg-surface rounded-2xl"
+    data-ticket-id="679"
+    data-price="10.00">
+    <h4 class="font-bold text-white text-lg">Skip the Line</h4>
+  </div>
+`
+
+function dungeonVenueFetch(opts: {
+  checkoutJson?: unknown
+  checkoutHtml?: string
+  rumbleTickets?: unknown
+}) {
+  return async (url: string | URL | Request) => {
+    const u = String(url)
+    if (u.includes("/ui/venues/venue/")) {
+      return jsonResponse({ ...DUNGEON_VENUE_SHELL, events: [DUNGEON_ONE_COVER_ROW] })
+    }
+    if (u.endsWith("/ui/events") || u.endsWith("/ui/events/")) {
+      return jsonResponse([])
+    }
+    if (/\/ui\/events\/621(?:\?|$)/.test(u)) {
+      return jsonResponse(DUNGEON_ONE_COVER_ROW)
+    }
+    if (/\/checkout\/event\/621(?:\?|$)/.test(u)) {
+      if (opts.checkoutJson === undefined) return jsonResponse(null, false, 404)
+      return jsonResponse(opts.checkoutJson)
+    }
+    if (/\/checkout\/621(?:\?|$)/.test(u)) {
+      if (opts.checkoutHtml == null) return textResponse("", false, 404)
+      return textResponse(opts.checkoutHtml)
+    }
+    if (opts.rumbleTickets && /\/ui\/events\/620(?:\?|$)/.test(u)) {
+      return jsonResponse({
+        event_id: 620,
+        name: "Rumble",
+        start_date_time: "2026-08-22 15:55:00",
+        end_date_time: "2026-08-23 14:55:00",
+        venue_name: "The Dungeon",
+        flyer_image_url: null,
+        min_ticket_price: "5.00",
+        access_kind: "event",
+        status: "published",
+        venue_id: 990198,
+        tickets: opts.rumbleTickets,
+      })
+    }
+    return jsonResponse(null, false, 404)
+  }
+}
+
+test("venue one-Cover payload + checkout JSON Cover + Skip the Line becomes two chips with ids", async () => {
+  const data = await withFetch(
+    dungeonVenueFetch({
+      checkoutJson: {
+        event_id: 621,
+        name: "Weekly Cover",
+        access_kind: "door_access",
+        venue_id: 990198,
+        tickets: DUNGEON_CHECKOUT_JSON_TICKETS,
+      },
+    }),
+    () => fetchVenuePublicData("990198", "https://api.test", "https://checkout.test"),
+  )
+  assert.ok(data)
+  const night = data!.events.find((row) => row.event_id === 621)
+  assert.ok(night)
+  const tiers = resolveNightTiers(night!)
+  assert.deepEqual(tiers, [...DUNGEON_TWO_TIERS])
+  assert.equal(nightChipPrice(night!), "From $5")
+  assert.deepEqual(weeklyAccessPriceLines([night!]), ["Cover $5", "Skip the Line $10"])
+  assert.equal(tiers[0].ticket_id, 678)
+  assert.equal(tiers[1].ticket_id, 679)
+})
+
+test("venue one-Cover payload + checkout HTML Cover + Skip the Line becomes two chips with ids", async () => {
+  const data = await withFetch(
+    dungeonVenueFetch({
+      checkoutJson: {
+        event_id: 621,
+        name: "Weekly Cover",
+        access_kind: "door_access",
+        venue_id: 990198,
+        tickets: [{ name: "Cover", price_usd: 5 }],
+      },
+      checkoutHtml: DUNGEON_CHECKOUT_HTML,
+    }),
+    () => fetchVenuePublicData("990198", "https://api.test", "https://checkout.test"),
+  )
+  assert.ok(data)
+  const night = data!.events.find((row) => row.event_id === 621)
+  assert.ok(night)
+  const tiers = resolveNightTiers(night!)
+  assert.deepEqual(tiers, [...DUNGEON_TWO_TIERS])
+  assert.equal(nightChipPrice(night!), "From $5")
+  assert.deepEqual(weeklyAccessPriceLines([night!]), ["Cover $5", "Skip the Line $10"])
+})
+
+test("a regular one-off with one ticket is not replaced by a richer checkout list", async () => {
+  const rumble = {
+    event_id: 620,
+    name: "Rumble",
+    start_date_time: "2026-08-22 15:55:00",
+    end_date_time: "2026-08-23 14:55:00",
+    venue_name: "The Dungeon",
+    flyer_image_url: null,
+    min_ticket_price: "5.00",
+    access_kind: "event" as const,
+    status: "published",
+    venue_id: 990198,
+    tickets: [{ name: "General Admission", price_usd: 5, ticket_id: 500 }],
+  }
+  const data = await withFetch(async (url: string | URL | Request) => {
+    const u = String(url)
+    if (u.includes("/ui/venues/venue/")) {
+      return jsonResponse({ ...DUNGEON_VENUE_SHELL, events: [rumble] })
+    }
+    if (u.endsWith("/ui/events") || u.endsWith("/ui/events/")) return jsonResponse([])
+    if (/\/ui\/events\/620(?:\?|$)/.test(u)) return jsonResponse(rumble)
+    if (u.includes("/checkout/")) {
+      return textResponse(DUNGEON_CHECKOUT_HTML)
+    }
+    return jsonResponse(null, false, 404)
+  }, () => fetchVenuePublicData("990198", "https://api.test", "https://checkout.test"))
+  assert.ok(data)
+  const row = data!.events.find((event) => event.event_id === 620)
+  assert.ok(row)
+  assert.deepEqual(row!.tickets, [{ name: "General Admission", price_usd: 5, ticket_id: 500 }])
+  assert.equal(needsWeeklyAccessTierEnrichment(row!), false)
 })
