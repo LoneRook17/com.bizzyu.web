@@ -199,6 +199,23 @@ export function formatAccessPrice(n: number): string {
 }
 
 /**
+ * Price on one night chip. Uses that night's min ticket / cover, never a
+ * hardcoded 5. A single price is "$5"; two or more tiers is "From $5".
+ */
+export function nightChipPrice(night: Pick<VenueEvent, "min_ticket_price" | "tickets">): string {
+  const tierPrices = night.tickets
+    .map((tier) => Number(tier.price_usd))
+    .filter((n) => Number.isFinite(n))
+  if (tierPrices.length > 0) {
+    const formatted = formatAccessPrice(Math.min(...tierPrices))
+    if (!formatted) return ""
+    return tierPrices.length > 1 ? `From ${formatted}` : formatted
+  }
+  if (night.min_ticket_price == null || night.min_ticket_price === "") return ""
+  return formatAccessPrice(Number(night.min_ticket_price))
+}
+
+/**
  * One program card's price lines.
  * A single Cover (or only a min price) reads "Cover $5".
  * Two or more real tiers list each name + price.

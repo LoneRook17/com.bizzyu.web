@@ -14,6 +14,7 @@ import {
   groupWeeklyAccessNights,
   lookaheadIds,
   mergeVenueEvents,
+  nightChipPrice,
   resolveVenueEventImageUrl,
   shouldListOnVenuePage,
   toVenueEvent,
@@ -254,6 +255,30 @@ test("night chips are weekday + day, never timezone-shifted", () => {
   assert.equal(formatNightChipLabel("2026-08-28 21:00:00"), "Fri 28")
 })
 
+test("night chip price uses that night's min cover, From when tiers", () => {
+  assert.equal(nightChipPrice(coverNight(621, "2026-08-24 21:00:00")), "$5")
+  assert.equal(
+    nightChipPrice(coverNight(623, "2026-08-26 21:00:00", { min_ticket_price: "10.00" })),
+    "$10",
+  )
+  assert.equal(
+    nightChipPrice(
+      coverNight(625, "2026-08-28 21:00:00", {
+        min_ticket_price: null,
+        tickets: [
+          { name: "Cover", price_usd: 8 },
+          { name: "Line skip", price_usd: 15 },
+        ],
+      }),
+    ),
+    "From $8",
+  )
+  assert.equal(
+    nightChipPrice(coverNight(626, "2026-08-29 21:00:00", { min_ticket_price: null, tickets: [] })),
+    "",
+  )
+})
+
 test("one tier or only a min price reads Cover $5; several tiers list names", () => {
   assert.equal(formatAccessPrice(5), "$5")
   assert.deepEqual(
@@ -279,10 +304,26 @@ test("venue Weekly Access is one program card with night chips, not a picker", (
   assert.ok(client.includes("WeeklyAccessProgramCard"), "must render one program card")
   assert.ok(client.includes("groupWeeklyAccessNights"), "nights must group into programs")
   assert.ok(client.includes("formatNightChipLabel"), "upcoming nights are chips")
+  assert.ok(client.includes("nightChipPrice"), "chips must show that night's price")
+  assert.ok(client.includes("min-h-11"), "chips must be large tap targets")
+  assert.ok(client.includes("text-[15px]"), "chip type must be 14-16px")
+  assert.ok(!client.includes("rounded-full px-3.5 py-1.5"), "chips must not be tiny pills")
   assert.ok(client.includes("weeklyAccessPriceLines"), "card must show Cover or real tiers")
   assert.ok(client.includes("Get access"), "CTA stays Get access")
   assert.ok(client.includes("checkout/${selected.event_id}"), "Get access must checkout the selected night")
   assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
   assert.ok(!client.includes('type="date"'), "do not ship a calendar date input")
   assert.ok(!client.includes("<select"), "do not ship a dropdown")
+})
+
+test("venue event and Weekly Access flyers are full portrait frames, not wide crops", () => {
+  const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
+  assert.ok(client.includes("FlyerFrame"), "event and Weekly Access cards share a flyer frame")
+  assert.ok(client.includes("aspect-[4/5]"), "flyer box must be a portrait rectangle")
+  assert.ok(client.includes("object-contain"), "full flyer must show, not a cover crop")
+  assert.ok(!client.includes("relative h-48 w-full"), "flyer box must not be a short wide strip")
+  const flyerImg = client.match(/function FlyerFrame[\s\S]*?\n\}/)
+  assert.ok(flyerImg, "FlyerFrame must exist")
+  assert.ok(flyerImg[0].includes("object-contain"), "FlyerFrame image must contain")
+  assert.ok(!flyerImg[0].includes("object-cover"), "FlyerFrame must not crop with object-cover")
 })
