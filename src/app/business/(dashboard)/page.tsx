@@ -18,6 +18,7 @@ import { homeSections } from "@/lib/business/home-sections"
 import {
   ACCESS_ACCENT,
   WEEKLY_ACCESS_SECTION_LABEL,
+  WEEKLY_ACCESS_TYPE_LABEL,
   fetchDoorAccessProgramsSafe,
   programHref,
   type DoorAccessProgramSummary,
@@ -364,7 +365,7 @@ export default function V2HomePage() {
               ) : upcoming.length === 0 ? (
                 // D2-B's emptiness test (the interleaved list, not just events)
                 // over D2-A's destination (the funnel, not the event form).
-                <div className="p-5"><EmptyState icon={CalendarDays} title="Nothing coming up" description="Create an event or a weekly access program to start selling." action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create</Link></Button>} /></div>
+                <div className="p-5"><EmptyState icon={CalendarDays} title="Nothing coming up" description={`Create an event or a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program to start selling.`} action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create</Link></Button>} /></div>
               ) : (
                 // Interleaved (D2-6). A pink 2px spine is the whole type marker:
                 // the row shapes are otherwise identical, which is the point —
@@ -387,7 +388,7 @@ export default function V2HomePage() {
                           className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.06em]"
                           style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
                         >
-                          WEEKLY ACCESS
+                          {WEEKLY_ACCESS_TYPE_LABEL}
                         </span>
                         <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
                       </Link>

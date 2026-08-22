@@ -17,6 +17,7 @@ import {
   nightIsEditable,
   programHref,
   saveNightOverride,
+  WEEKLY_ACCESS_SECTION_LABEL,
   usdPrice,
   validateNightDraft,
   type DoorAccessNight,
@@ -178,7 +179,7 @@ export default function DoorAccessNightPage({
             ))}
           </span>
         }
-        description={`${program.name || "Weekly access"} · ${fmtWindow(night.start_time, night.end_time)}`}
+        description={`${program.name || WEEKLY_ACCESS_SECTION_LABEL} · ${fmtWindow(night.start_time, night.end_time)}`}
         actions={
           editable ? (
             <div className="flex items-center gap-2">

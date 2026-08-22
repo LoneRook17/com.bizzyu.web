@@ -55,6 +55,7 @@ import {
   resolveProgramImageUrl,
   toTimeInput,
   WEEKLY_ACCESS_TYPE_LABEL,
+  WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_CREATION_LABEL,
   EVENT_TYPE_LABEL,
   PROGRAM_LINK_LABEL,
@@ -753,14 +754,52 @@ test("redemptionModeLabel names both modes in host vocabulary", () => {
 })
 
 test("D-P5: host surfaces never render the student string", () => {
-  assert.equal(WEEKLY_ACCESS_TYPE_LABEL, "WEEKLY ACCESS")
+  assert.equal(WEEKLY_ACCESS_SECTION_LABEL, "Weekly Cover")
+  assert.equal(WEEKLY_ACCESS_TYPE_LABEL, "WEEKLY COVER")
   assert.equal(EVENT_TYPE_LABEL, "EVENT")
-  assert.equal(WEEKLY_ACCESS_CREATION_LABEL, "Weekly Cover")
-  // "Door Access" is the API path and program_kind only. User-facing
-  // copy on every surface, including the public venue page, is Weekly Access.
-  for (const label of [WEEKLY_ACCESS_TYPE_LABEL, EVENT_TYPE_LABEL, WEEKLY_ACCESS_CREATION_LABEL]) {
+  assert.equal(WEEKLY_ACCESS_CREATION_LABEL, WEEKLY_ACCESS_SECTION_LABEL)
+  // Renamed from Weekly Access. "Door Access" is the API path and
+  // program_kind only. User-facing copy is Weekly Cover.
+  for (const label of [WEEKLY_ACCESS_TYPE_LABEL, EVENT_TYPE_LABEL, WEEKLY_ACCESS_CREATION_LABEL, WEEKLY_ACCESS_SECTION_LABEL]) {
     assert.ok(!/door access/i.test(label), `${label} leaks the student vocabulary`)
   }
+})
+
+test("product copy no longer says Weekly Access (renamed to Weekly Cover)", () => {
+  const files = [
+    "../../components/business/v2/host/HostListCard.tsx",
+    "../../components/business/v2/door-access/AccessProgramRow.tsx",
+    "../../app/venue/[venueId]/VenuePageClient.tsx",
+    "../../app/venue/[venueId]/page.tsx",
+    "../../app/business/(dashboard)/page.tsx",
+    "../../app/business/(dashboard)/events/page.tsx",
+    "../../app/business/(dashboard)/create/page.tsx",
+    "../../app/business/(dashboard)/door-access/page.tsx",
+    "../../app/business/(dashboard)/door-access/new/page.tsx",
+    "../../app/business/(dashboard)/door-access/[id]/page.tsx",
+    "../../app/business/(dashboard)/door-access/[id]/edit/page.tsx",
+    "../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx",
+    "../../app/business/(dashboard)/help/content.ts",
+    "../../app/business/(dashboard)/analytics/page.tsx",
+    "./analytics-copy.ts",
+    "./events-list.ts",
+    "./weekly-cover-label.ts",
+  ]
+  for (const rel of files) {
+    const src = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+    assert.ok(
+      !/Weekly Access|weekly access|WEEKLY ACCESS/.test(code),
+      `${rel} still has Weekly Access in product copy`,
+    )
+  }
+  const card = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/host/HostListCard.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(card.includes("WEEKLY_ACCESS_TYPE_LABEL"), "list chip must use the shared type label")
 })
 
 test("D-F11.1: a program links to its SERIES, and a night hangs off that", () => {

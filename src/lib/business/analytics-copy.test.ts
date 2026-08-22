@@ -13,9 +13,9 @@ import {
 
 const BANNED = /line\s*skip|skip the line|door access/i
 
-test("Analytics tab uses the host Weekly Access name", () => {
+test("Analytics tab uses the host Weekly Cover name (renamed from Weekly Access)", () => {
   assert.equal(ANALYTICS_ACCESS_TAB_LABEL, WEEKLY_ACCESS_SECTION_LABEL)
-  assert.equal(ANALYTICS_ACCESS_TAB_LABEL, "Weekly Access")
+  assert.equal(ANALYTICS_ACCESS_TAB_LABEL, "Weekly Cover")
 })
 
 test("no host-facing Analytics copy says line skip or Door Access", () => {

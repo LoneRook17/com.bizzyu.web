@@ -1,19 +1,21 @@
 // Host-facing Analytics copy (D-P5).
 //
 // Analytics is a HOST dashboard. The old line-skip product tab is the same
-// IA as Events vs Weekly Access: hosts see Weekly Access, never
-// "line skip" / "Line skip" / "Skip the Line", and never the student
-// string "Door Access".
+// IA as Events vs Weekly Cover (renamed from Weekly Access): hosts see
+// Weekly Cover, never "line skip" / "Line skip" / "Skip the Line", and
+// never the student string "Door Access".
 //
 // Display only. Tab values (`line-skips`), API paths
 // (`/business/line-skips/analytics/...`), and response fields stay as they are.
 //
-// ANALYTICS_ACCESS_TAB_LABEL must stay equal to WEEKLY_ACCESS_SECTION_LABEL
-// in ./door-access — the test pins that. This file does not import
-// door-access.ts so `node --test` can load it without the rest of that module.
+// ANALYTICS_ACCESS_TAB_LABEL is WEEKLY_ACCESS_SECTION_LABEL. This file
+// imports the tiny label module, not door-access.ts, so `node --test` can
+// load it without the rest of that module.
+
+import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 
 /** Tab / filter label for the old line-skip product. Host vocabulary. */
-export const ANALYTICS_ACCESS_TAB_LABEL = "Weekly Access"
+export const ANALYTICS_ACCESS_TAB_LABEL = WEEKLY_ACCESS_SECTION_LABEL
 
 export const ANALYTICS_PAGE_DESCRIPTION =
   `Performance across deals, events, and ${ANALYTICS_ACCESS_TAB_LABEL}.`

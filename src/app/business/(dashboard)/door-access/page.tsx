@@ -46,7 +46,7 @@ export default function DoorAccessProgramsPage() {
     try {
       setPrograms(await fetchDoorAccessPrograms())
     } catch {
-      setError("Could not load your weekly access programs.")
+      setError(`Could not load your ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs.`)
       setPrograms([])
     } finally {
       setLoading(false)
@@ -64,7 +64,7 @@ export default function DoorAccessProgramsPage() {
     <>
       <PageHeader
         title={WEEKLY_ACCESS_SECTION_LABEL}
-        description={`${WEEKLY_ACCESS_CREATION_LABEL} — recurring door programs that sell every night they run.`}
+        description={`${WEEKLY_ACCESS_CREATION_LABEL}. Recurring door programs that sell every night they run.`}
         actions={
           canBuild ? (
             <Button asChild>
@@ -91,11 +91,11 @@ export default function DoorAccessProgramsPage() {
       ) : programs.length === 0 ? (
         <EmptyState
           icon={Sparkles}
-          title="No weekly access programs yet"
+          title={`No ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs yet`}
           description={
             canBuild
-              ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs — set the nights once and each one is generated for you.`
-              : "Your managers haven't set up a weekly access program yet."
+              ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs. Set the nights once and each one is generated for you.`
+              : `Your managers haven't set up a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program yet.`
           }
           action={
             canBuild ? (

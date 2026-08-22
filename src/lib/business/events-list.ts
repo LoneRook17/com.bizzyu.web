@@ -13,12 +13,13 @@
 // existing /business/recurring/:id page.
 
 import type { EventListItem, RecurringSeriesListItem } from "./types"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 
 /** The segment's three positions. `all` is the default — one combined list. */
 export const EVENT_TYPE_FILTERS = [
   { value: "all", label: "All" },
   { value: "events", label: "Events" },
-  { value: "access", label: "Weekly Access" },
+  { value: "access", label: WEEKLY_ACCESS_SECTION_LABEL },
 ] as const
 
 export type EventTypeFilter = (typeof EVENT_TYPE_FILTERS)[number]["value"]
