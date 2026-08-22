@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { BarChart3 } from "lucide-react"
+import { BarChart3, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { apiClient } from "@/lib/business/api-client"
@@ -24,14 +24,29 @@ import {
 import {
   ANALYTICS_ACCESS_TAB_LABEL,
   ANALYTICS_PAGE_DESCRIPTION,
+  ANALYTICS_ACCESS_ACTIVE_SECTION,
+  ANALYTICS_ACCESS_PAST_SECTION,
+  ANALYTICS_ACCESS_EMPTY_TITLE,
+  ANALYTICS_ACCESS_EMPTY_DESCRIPTION,
+  ANALYTICS_ACCESS_TOTAL_LABEL,
 } from "@/lib/business/analytics-copy"
+import {
+  bucketEventsOverview,
+  weeklyEventIdsFromNights,
+} from "@/lib/business/analytics-buckets"
+import {
+  fetchDoorAccessProgramsSafe,
+  fetchDoorAccessSeries,
+  type DoorAccessProgramSummary,
+} from "@/lib/business/door-access"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import DealsOverviewView from "@/components/business/v2/analytics/DealsOverview"
 import EventsOverviewView from "@/components/business/v2/analytics/EventsOverview"
 import LineSkipsOverviewView from "@/components/business/v2/analytics/LineSkipsOverview"
-import { AnalyticsSkeleton } from "@/components/business/v2/analytics/shared"
+import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
+import { AnalyticsSkeleton, Section } from "@/components/business/v2/analytics/shared"
 
 function ErrorState() {
   return (
@@ -108,6 +123,8 @@ function OwnerManagerView() {
 
   const [deals, setDeals] = useState<DealsOverviewType | null>(null)
   const [events, setEvents] = useState<EventsOverviewType | null>(null)
+  const [weekly, setWeekly] = useState<EventsOverviewType | null>(null)
+  const [weeklyPrograms, setWeeklyPrograms] = useState<DoorAccessProgramSummary[]>([])
   const [lineSkips, setLineSkips] = useState<LineSkipAnalyticsOverview | null>(null)
   const [dealsLoading, setDealsLoading] = useState(true)
   const [eventsLoading, setEventsLoading] = useState(true)
@@ -116,6 +133,11 @@ function OwnerManagerView() {
   const [eventsErr, setEventsErr] = useState(false)
   const [eventsForbidden, setEventsForbidden] = useState(false)
   const [lineSkipsErr, setLineSkipsErr] = useState(false)
+
+  const weeklyTabCount =
+    (weekly?.events.length ?? 0) ||
+    (lineSkips?.instances.length ?? 0) ||
+    weeklyPrograms.length
 
   // Controlled tab (LSK-23). A line-skip-only venue used to land on a blank
   // Deals tab, and defaultValue is read on the first render — before any fetch
@@ -145,7 +167,7 @@ function OwnerManagerView() {
         settled: !authLoading && !dealsLoading && !eventsLoading && !lineSkipsLoading,
         dealsCount: deals?.deals.length ?? 0,
         eventsCount: events?.events.length ?? 0,
-        lineSkipsCount: lineSkips?.instances.length ?? 0,
+        lineSkipsCount: weeklyTabCount,
         showEvents,
       },
       tabPinned,
@@ -153,7 +175,7 @@ function OwnerManagerView() {
     if (!next) return
     setTab(next)
     setTabPinned(true)
-  }, [authLoading, dealsLoading, eventsLoading, lineSkipsLoading, deals, events, lineSkips, showEvents, tabPinned])
+  }, [authLoading, dealsLoading, eventsLoading, lineSkipsLoading, deals, events, weeklyTabCount, showEvents, tabPinned])
 
   useEffect(() => {
     setDealsLoading(true)
@@ -176,11 +198,33 @@ function OwnerManagerView() {
 
     if (showEvents) {
       setEventsLoading(true)
-      apiClient
-        .get<EventsOverviewType>(`/business/insights/events/overview?_=1${venueParam}`)
-        .then(setEvents)
-        .catch((err) => {
+      setWeekly(null)
+      setWeeklyPrograms([])
+      void (async () => {
+        const programs = await fetchDoorAccessProgramsSafe()
+        setWeeklyPrograms(programs)
+        try {
+          const overview = await apiClient.get<EventsOverviewType>(
+            `/business/insights/events/overview?_=1${venueParam}`,
+          )
+          const nightIds = (
+            await Promise.all(
+              programs.map(async (program) => {
+                try {
+                  const series = await fetchDoorAccessSeries(program.id, 180)
+                  return weeklyEventIdsFromNights(series.nights)
+                } catch {
+                  return []
+                }
+              }),
+            )
+          ).flat()
+          const split = bucketEventsOverview(overview, nightIds)
+          setEvents(split.events)
+          setWeekly(split.weekly)
+        } catch (err) {
           setEvents(null)
+          setWeekly(null)
           // Three outcomes: a scope-404 (stale venue) self-heals to All venues; a
           // 403 (revenue-gated / scoped role) → calm access state; 5xx/network →
           // error wall + retry.
@@ -188,10 +232,14 @@ function OwnerManagerView() {
           if (outcome === "reset-venue") resetToAllVenues()
           else if (outcome === "forbidden") setEventsForbidden(true)
           else setEventsErr(true)
-        })
-        .finally(() => setEventsLoading(false))
+        } finally {
+          setEventsLoading(false)
+        }
+      })()
     } else {
       setEvents(null)
+      setWeekly(null)
+      setWeeklyPrograms([])
       setEventsLoading(false)
     }
 
@@ -227,7 +275,35 @@ function OwnerManagerView() {
           </TabsContent>
         )}
         <TabsContent value="line-skips">
-          {lineSkipsLoading ? <AnalyticsSkeleton /> : lineSkips ? <LineSkipsOverviewView data={lineSkips} isAllVenues={isAllVenues} /> : lineSkipsErr ? <ErrorState /> : null}
+          {lineSkipsLoading || eventsLoading ? (
+            <AnalyticsSkeleton />
+          ) : weekly && weekly.events.length > 0 ? (
+            <EventsOverviewView
+              data={weekly}
+              isAllVenues={isAllVenues}
+              copy={{
+                totalLabel: ANALYTICS_ACCESS_TOTAL_LABEL,
+                upcomingTitle: ANALYTICS_ACCESS_ACTIVE_SECTION,
+                pastTitle: ANALYTICS_ACCESS_PAST_SECTION,
+                emptyTitle: ANALYTICS_ACCESS_EMPTY_TITLE,
+                emptyDescription: ANALYTICS_ACCESS_EMPTY_DESCRIPTION,
+              }}
+            />
+          ) : lineSkips && lineSkips.instances.length > 0 ? (
+            <LineSkipsOverviewView data={lineSkips} isAllVenues={isAllVenues} />
+          ) : weeklyPrograms.length > 0 ? (
+            <Section title={ANALYTICS_ACCESS_ACTIVE_SECTION} count={weeklyPrograms.length} defaultOpen>
+              <div className="flex flex-col gap-3">
+                {weeklyPrograms.map((program) => (
+                  <AccessProgramRow key={program.id} program={program} />
+                ))}
+              </div>
+            </Section>
+          ) : lineSkipsErr ? (
+            <ErrorState />
+          ) : (
+            <EmptyState icon={Zap} title={ANALYTICS_ACCESS_EMPTY_TITLE} description={ANALYTICS_ACCESS_EMPTY_DESCRIPTION} />
+          )}
         </TabsContent>
       </Tabs>
     </>

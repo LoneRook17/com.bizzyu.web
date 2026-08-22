@@ -302,12 +302,30 @@ function EventList({
   )
 }
 
+export type EventsOverviewCopy = {
+  totalLabel: string
+  upcomingTitle: string
+  pastTitle: string
+  emptyTitle: string
+  emptyDescription: string
+}
+
+const EVENTS_COPY: EventsOverviewCopy = {
+  totalLabel: "Total events",
+  upcomingTitle: "Upcoming events",
+  pastTitle: "Past events",
+  emptyTitle: "No events yet",
+  emptyDescription: "Create an event to see analytics here.",
+}
+
 export default function EventsOverviewView({
   data,
   isAllVenues = false,
+  copy = EVENTS_COPY,
 }: {
   data: EventsOverview
   isAllVenues?: boolean
+  copy?: EventsOverviewCopy
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const now = new Date()
@@ -324,7 +342,7 @@ export default function EventsOverviewView({
   return (
     <div>
       <StatGrid cols={5}>
-        <StatTile label="Total events" value={data.total_events} />
+        <StatTile label={copy.totalLabel} value={data.total_events} />
         <StatTile label="Tickets sold" value={data.total_tickets_sold.toLocaleString()} />
         <StatTile label="Revenue" value={usd(data.total_revenue)} />
         <StatTile label="Checked in" value={data.total_checked_in.toLocaleString()} />
@@ -333,17 +351,17 @@ export default function EventsOverviewView({
 
       {data.events.length === 0 ? (
         <div className="mt-6">
-          <EmptyState icon={CalendarDays} title="No events yet" description="Create an event to see analytics here." />
+          <EmptyState icon={CalendarDays} title={copy.emptyTitle} description={copy.emptyDescription} />
         </div>
       ) : (
         <>
           {upcoming.length > 0 && (
-            <Section title="Upcoming events" count={upcoming.length} defaultOpen>
+            <Section title={copy.upcomingTitle} count={upcoming.length} defaultOpen>
               <EventList events={upcoming} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} />
             </Section>
           )}
           {past.length > 0 && (
-            <Section title="Past events" count={past.length} defaultOpen={false}>
+            <Section title={copy.pastTitle} count={past.length} defaultOpen={false}>
               <EventList events={past} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} />
             </Section>
           )}
