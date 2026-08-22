@@ -5,26 +5,26 @@ import Link from "next/link"
 import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
+  buildNightHoursPayload,
   buildNightOverridePayload,
   clearNightOverride,
   draftFromNight,
   draftHasOverrides,
   fetchDoorAccessNight,
   fmtNightDate,
-  fmtQuantity,
   fmtWindow,
-  inheritIfMatchesTemplate,
   nightChips,
+  nightHasEventTickets,
   nightIsEditable,
   programHref,
   saveNightOverride,
   WEEKLY_ACCESS_SECTION_LABEL,
-  usdPrice,
   validateNightDraft,
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
 } from "@/lib/business/door-access"
+import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
@@ -36,22 +36,21 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The per-night override editor (D-F10.2).
  *
- * ONE night departs from the program template here: price, capacity, hours,
- * or closed entirely, without restating the program and without evicting the
- * night from series-wide edits.
+ * ONE night departs from the program template here: tickets, hours, or closed,
+ * without restating the program and without evicting the night from series-wide
+ * edits.
  *
  * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id stamps
- * series_customized_at, which permanently detaches the night from the program:
- * it stops receiving template updates forever. That is the opposite of what
- * "$40 on New Year's Eve" means, so per-night money runs through the
- * override endpoints instead, and a night that HAS been customized elsewhere
+ * series_customized_at, which permanently detaches the night from the program.
+ * Ticket edits on a stamped night use /business/events/:id/tickets instead, so
+ * the night stays on the program. A night that HAS been customized elsewhere
  * is read-only here (nightIsEditable) rather than silently written to.
  *
- * Price and capacity are always editable. Typing a different number pins that
- * night; matching the program default (or Reset) sends null so the night
- * tracks the template again. Hours still use an explicit Use default / Override
- * control. Saving the template's current number as a value would freeze the
- * night at today's price the next time the program moves.
+ * Tickets use the Events → Manage sales editor. A stamped night writes through
+ * that night's event ticket APIs (name, description, scan window, hide, sold
+ * out). Unstamped nights keep the same card and persist price, quantity, and
+ * hide through the override endpoint, which is the only write path before an
+ * event exists. Hours still use Use default / Override.
  */
 export default function DoorAccessNightPage({
   params,
@@ -102,7 +101,7 @@ export default function DoorAccessNightPage({
   }
 
   const handleSave = async () => {
-    if (!draft) return
+    if (!draft || !night) return
     const problems = validateNightDraft(draft)
     if (problems.length > 0) {
       setSaveError(problems.join(" "))
@@ -113,7 +112,10 @@ export default function DoorAccessNightPage({
     setNotice(null)
     setRestampWarning(null)
     try {
-      const result = await saveNightOverride(programId, date, buildNightOverridePayload(draft))
+      const payload = nightHasEventTickets(night)
+        ? buildNightHoursPayload(draft)
+        : buildNightOverridePayload(draft)
+      const result = await saveNightOverride(programId, date, payload)
       adopt(result)
       setNotice("Saved.")
     } catch (err) {
@@ -238,7 +240,16 @@ export default function DoorAccessNightPage({
 
       <HoursCard draft={draft} setDraft={setDraft} program={program} editable={editable} />
 
-      <TiersCard draft={draft} setDraft={setDraft} night={night} editable={editable} />
+      <NightTicketsEditor
+        programId={programId}
+        date={date}
+        program={program}
+        night={night}
+        draft={draft}
+        setProgram={setProgram}
+        editable={editable}
+        onOverrideSaved={adopt}
+      />
 
       {editable && draftHasOverrides(draft) && (
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
@@ -394,168 +405,3 @@ function HoursCard({
   )
 }
 
-function TiersCard({
-  draft,
-  setDraft,
-  night,
-  editable,
-}: {
-  draft: NightDraft
-  setDraft: (d: NightDraft) => void
-  night: DoorAccessNight
-  editable: boolean
-}) {
-  const patch = (index: number, next: Partial<NightDraft["tiers"][number]>) => {
-    const tiers = draft.tiers.map((tier, i) => (i === index ? { ...tier, ...next } : tier))
-    setDraft({ ...draft, tiers })
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tiers this night</CardTitle>
-        <span className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          Change a number to set it for this night only
-        </span>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {draft.tiers.length === 0 ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            This program has no tiers.
-          </p>
-        ) : (
-          <div className="flex flex-col divide-y divide-neutral-100 dark:divide-neutral-800">
-            {draft.tiers.map((tier, index) => {
-              const source = night.tiers.find((t) => t.tier_key === tier.tier_key)
-              const templatePrice = source?.template_price_usd ?? null
-              const templateQuantity = source?.template_quantity ?? null
-              const fieldEditable = editable && !tier.is_disabled
-              return (
-                <div key={tier.tier_key} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                        {source?.name || tier.tier_key}
-                      </p>
-                      <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                        Program default {usdPrice(templatePrice)} ·{" "}
-                        {fmtQuantity(templateQuantity ?? 0)}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={tier.is_disabled ? "danger" : "secondary"}
-                      disabled={!editable}
-                      onClick={() => patch(index, { is_disabled: !tier.is_disabled })}
-                    >
-                      {tier.is_disabled ? "Off tonight" : "On sale"}
-                    </Button>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <NightNumberField
-                      label="Price"
-                      inheriting={tier.inherit_price}
-                      editable={fieldEditable}
-                      onReset={() =>
-                        patch(index, {
-                          price_usd: templatePrice,
-                          inherit_price: true,
-                        })
-                      }
-                    >
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={tier.price_usd ?? ""}
-                        disabled={!fieldEditable}
-                        onChange={(e) => {
-                          const price_usd = e.target.value === "" ? null : Number(e.target.value)
-                          patch(index, {
-                            price_usd,
-                            inherit_price: inheritIfMatchesTemplate(price_usd, templatePrice),
-                          })
-                        }}
-                      />
-                    </NightNumberField>
-
-                    <NightNumberField
-                      label="Capacity"
-                      hint="0 = unlimited"
-                      inheriting={tier.inherit_quantity}
-                      editable={fieldEditable}
-                      onReset={() =>
-                        patch(index, {
-                          quantity: templateQuantity,
-                          inherit_quantity: true,
-                        })
-                      }
-                    >
-                      <Input
-                        type="number"
-                        min={0}
-                        step="1"
-                        value={tier.quantity ?? ""}
-                        disabled={!fieldEditable}
-                        onChange={(e) => {
-                          const quantity = e.target.value === "" ? null : Number(e.target.value)
-                          patch(index, {
-                            quantity,
-                            inherit_quantity: inheritIfMatchesTemplate(quantity, templateQuantity),
-                          })
-                        }}
-                      />
-                    </NightNumberField>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-/** Always-visible number field. Editing is the override; Reset returns to the program. */
-function NightNumberField({
-  label,
-  hint,
-  inheriting,
-  editable,
-  onReset,
-  children,
-}: {
-  label: string
-  hint?: string
-  inheriting: boolean
-  editable: boolean
-  onReset: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-          {label}
-          {hint && (
-            <span className="ml-1.5 font-normal text-neutral-400 dark:text-neutral-500">{hint}</span>
-          )}
-        </span>
-        {inheriting ? (
-          <span className="text-[12px] text-neutral-400 dark:text-neutral-500">Program default</span>
-        ) : editable ? (
-          <button
-            type="button"
-            onClick={onReset}
-            className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
-          >
-            Reset
-          </button>
-        ) : null}
-      </div>
-      {children}
-    </div>
-  )
-}
