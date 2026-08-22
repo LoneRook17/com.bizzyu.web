@@ -21,6 +21,10 @@ import {
   DEFAULT_ANALYTICS_TAB,
   type AnalyticsTab,
 } from "@/lib/business/analytics-landing-tab"
+import {
+  ANALYTICS_ACCESS_TAB_LABEL,
+  ANALYTICS_PAGE_DESCRIPTION,
+} from "@/lib/business/analytics-copy"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/business/v2/ui/tabs"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
@@ -205,13 +209,13 @@ function OwnerManagerView() {
 
   return (
     <>
-      <PageHeader title="Analytics" description="Performance across deals, events, and line skips." />
+      <PageHeader title="Analytics" description={ANALYTICS_PAGE_DESCRIPTION} />
 
       <Tabs value={tab} onValueChange={selectTab}>
         <TabsList>
           <TabsTrigger value="deals">Deals</TabsTrigger>
           {showEvents && <TabsTrigger value="events">Events</TabsTrigger>}
-          <TabsTrigger value="line-skips">Line skips</TabsTrigger>
+          <TabsTrigger value="line-skips">{ANALYTICS_ACCESS_TAB_LABEL}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="deals">
