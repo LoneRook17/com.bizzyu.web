@@ -12,7 +12,7 @@ import {
   MISSING_PROGRAM_ID_TITLE,
   parseProgramPathId,
   programEditHref,
-  resolveDoorAccessProgramIdFromEvent,
+  recoverDoorAccessProgramId,
   WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
@@ -66,7 +66,7 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
         ])
         if (!cancelled) setProgram(series.program)
       } catch {
-        const resolved = await resolveDoorAccessProgramIdFromEvent(programId)
+        const resolved = await recoverDoorAccessProgramId(programId)
         if (!cancelled && resolved != null && resolved !== programId) {
           redirected = true
           router.replace(programEditHref(resolved))

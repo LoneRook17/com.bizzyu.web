@@ -26,7 +26,7 @@ import {
   programEditHref,
   programHref,
   parseProgramPathId,
-  resolveDoorAccessProgramIdFromEvent,
+  recoverDoorAccessProgramId,
   MISSING_PROGRAM_ID_DESCRIPTION,
   MISSING_PROGRAM_ID_TITLE,
   PROGRAM_LINK_DESCRIPTION,
@@ -93,10 +93,10 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
       setProgram(data.program)
       setNights(data.nights)
     } catch {
-      // Recover only when :id is a stamped night event_id. A series id that
-      // 404s (program_kind not door_access) is a services fix, not a client
-      // invention. GET /business/events/23 fails because 23 is not an event.
-      const resolved = await resolveDoorAccessProgramIdFromEvent(programId)
+      // Recover a WC night event_id, or rematch an unlisted series id to a
+      // listed GET /business/door-access program. A listed id that 404s stays
+      // "Program not found". Do not invent, and do not GET events/:id.
+      const resolved = await recoverDoorAccessProgramId(programId)
       if (resolved != null && resolved !== programId) {
         redirected = true
         router.replace(programHref(resolved))

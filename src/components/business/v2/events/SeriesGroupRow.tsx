@@ -10,6 +10,7 @@ import {
   seriesRowNumbers,
   seriesRowStats,
   type EventRow,
+  type ListedProgramRef,
 } from "@/lib/business/events-list"
 import { Button } from "@/components/business/v2/ui/button"
 import {
@@ -37,7 +38,13 @@ import { EventCard } from "./EventCard"
  * row: a night IS an event, and giving it a lesser card here would mean the
  * same event looks like two different things on two tabs of the same page.
  */
-export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series" }> }) {
+export function SeriesGroupRow({
+  row,
+  programs = [],
+}: {
+  row: Extract<EventRow, { kind: "series" }>
+  programs?: readonly ListedProgramRef[]
+}) {
   const [open, setOpen] = useState(false)
   const stats = seriesRowStats(row)
   const series = row.series
@@ -67,7 +74,7 @@ export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series
     <div className="flex flex-col gap-2">
       <HostListCard
         kind="event"
-        href={seriesRowHref(row)}
+        href={seriesRowHref(row, programs)}
         typeLabel="SERIES"
         title={row.name}
         meta={meta}
@@ -94,7 +101,7 @@ export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series
               {open ? "Hide nights" : `Show ${stats.nights} ${stats.nights === 1 ? "night" : "nights"}`}
             </Button>
             <Button variant="ghost" size="sm" asChild>
-              <Link href={seriesRowHref(row)}>Manage series</Link>
+              <Link href={seriesRowHref(row, programs)}>Manage series</Link>
             </Button>
           </>
         }
@@ -105,7 +112,7 @@ export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series
         // not as the list having suddenly grown a dozen new top-level entries.
         <div className="flex flex-col gap-2 border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
           {row.events.map((event) => (
-            <EventCard key={event.event_id} event={event} />
+            <EventCard key={event.event_id} event={event} programs={programs} />
           ))}
         </div>
       )}
