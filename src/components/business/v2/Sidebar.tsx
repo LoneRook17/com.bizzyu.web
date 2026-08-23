@@ -15,6 +15,7 @@ import { canAccessPayouts } from "@/lib/business/payouts-access"
 import { useTheme } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
+import { useCommandPalette } from "./CommandPalette"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -96,6 +97,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { venues, selectedVenue, selectedVenueId, isAllVenues, setSelectedVenue } = useVenue()
   const { resolvedTheme, setTheme } = useTheme()
   const { config } = useDashboardMode()
+  const { openSearch } = useCommandPalette()
 
   const venueName = isAllVenues ? "All venues" : selectedVenue?.name ?? business?.name ?? "Select venue"
 
@@ -166,8 +168,18 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* search */}
-      <button className="mt-2.5 flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-left shadow-sm outline-none transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800/60">
+      {/* search / command palette trigger */}
+      <button
+        type="button"
+        onClick={() => {
+          openSearch()
+          onNavigate?.()
+        }}
+        aria-label="Search"
+        aria-haspopup="dialog"
+        aria-keyshortcuts="Meta+K Control+K"
+        className="mt-2.5 flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-left shadow-sm outline-none transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800/60"
+      >
         <Search className="size-4 text-neutral-400 dark:text-neutral-500" />
         <span className="flex-1 text-sm text-neutral-500 dark:text-neutral-400">Search</span>
         <kbd className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">⌘K</kbd>
@@ -226,7 +238,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <AvatarFallback className="bg-[#E8EDFF] text-[#3A5BD9] dark:bg-[#1e2747] dark:text-[#8da6f5]">{initials(user?.full_name)}</AvatarFallback>
           </Avatar>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{user?.full_name ?? "—"}</span>
+            <span className="block truncate text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{user?.full_name ?? "-"}</span>
             <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</span>
           </span>
         </Link>

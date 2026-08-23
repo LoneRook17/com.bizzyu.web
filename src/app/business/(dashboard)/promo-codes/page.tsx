@@ -437,7 +437,7 @@ export default function UniversalPromoCodesPage() {
               />
               {showPerUserInfo && (
                 <p className="mt-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
-                  Counted per event. A customer can use this code once per event — so if it applies to several of your events, they can redeem it at each one. Your total usage limit still applies across all events combined.
+                  Counted per event. A customer can use this code once per event, so if it applies to several of your events, they can redeem it at each one. Your total usage limit still applies across all events combined.
                 </p>
               )}
             </div>
@@ -590,7 +590,7 @@ function PromoBreakdown({ state }: { state: BreakdownState | undefined }) {
                   className={`border-b border-neutral-50 dark:border-neutral-800/60 last:border-0 ${isZero ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
                 >
                   <td className="px-4 py-2">{r.event_name ?? `Event #${r.event_id}`}</td>
-                  <td className="px-4 py-2 text-xs">{r.event_date ? formatDate(r.event_date) : "—"}</td>
+                  <td className="px-4 py-2 text-xs">{r.event_date ? formatDate(r.event_date) : "-"}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{uses}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{money(rev)}</td>
                 </tr>
@@ -609,7 +609,7 @@ function PromoBreakdown({ state }: { state: BreakdownState | undefined }) {
       <p className={`mt-2 text-[11px] ${reconciles ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 dark:text-amber-400"}`}>
         {reconciles
           ? `The ${rows.length} row${rows.length === 1 ? "" : "s"} above add up to ${aggUses} ${aggUses === 1 ? "use" : "uses"} · ${money(aggRev)}.`
-          : `Rows sum to ${sumUses} · ${money(sumRev)} but the venue total is ${aggUses} · ${money(aggRev)} — these don’t reconcile.`}
+          : `Rows sum to ${sumUses} · ${money(sumRev)} but the venue total is ${aggUses} · ${money(aggRev)}. These don’t reconcile.`}
       </p>
     </div>
   )

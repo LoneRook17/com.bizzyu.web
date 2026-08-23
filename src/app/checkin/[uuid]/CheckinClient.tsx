@@ -3,6 +3,15 @@
 import { useState, useEffect, useCallback } from "react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
+import {
+  checkinRedeemPath,
+  checkinRedeemStatusLabel,
+  guestCameraCheckinEnabled,
+  guestCheckinAccent,
+  guestCheckinFooterCopy,
+  guestCheckinTypeLabel,
+  guestTicketIsRedeemable,
+} from "@/lib/checkin-guest"
 
 const API_URL = getApiBaseUrl()
 
@@ -20,16 +29,33 @@ interface TicketInfo {
   redeemed_at: string | null
   is_refunded: boolean
   event_status: string
+  access_kind?: string | null
+  redemption_mode?: string | null
+}
+
+interface RedeemResult {
+  status: string
+  ticket_type: string | null
+  ticket: {
+    uuid: string
+    ticket_name: string
+    event_name: string
+    owner_name: string
+    redeemed_at: string | null
+  }
 }
 
 type PageState = "loading" | "ticket_info" | "error"
+type OverlayState = null | "confirming" | "result"
 
 export default function CheckinClient({ uuid }: { uuid: string }) {
   const [state, setState] = useState<PageState>("loading")
   const [ticket, setTicket] = useState<TicketInfo | null>(null)
   const [error, setError] = useState("")
+  const [overlay, setOverlay] = useState<OverlayState>(null)
+  const [redeeming, setRedeeming] = useState(false)
+  const [result, setResult] = useState<RedeemResult | null>(null)
 
-  // Fetch ticket info (public)
   const fetchTicket = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/checkin/${uuid}`)
@@ -50,12 +76,55 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     }
   }, [uuid])
 
-  // Initialize page
   useEffect(() => {
     fetchTicket()
   }, [fetchTicket])
 
-  // Format date
+  const handleCheckin = async () => {
+    setRedeeming(true)
+    try {
+      const res = await fetch(`${API_URL}${checkinRedeemPath(uuid)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok && res.status === 403 && !data.status) {
+        setError(data.error || data.message || "Could not check in this ticket")
+        setOverlay(null)
+        setState("error")
+        return
+      }
+
+      const next: RedeemResult = {
+        status: data.status || (res.ok ? "redeemed_now" : "invalid"),
+        ticket_type: data.ticket_type ?? null,
+        ticket: data.ticket ?? {
+          uuid,
+          ticket_name: ticket?.ticket_name || "",
+          event_name: ticket?.event_name || "",
+          owner_name: ticket?.attendee_name || "Guest",
+          redeemed_at: data.ticket?.redeemed_at ?? ticket?.redeemed_at ?? null,
+        },
+      }
+      setResult(next)
+      setOverlay("result")
+
+      if (next.status === "redeemed_now" || next.status === "already_redeemed") {
+        setTimeout(() => {
+          setOverlay(null)
+          fetchTicket()
+        }, 3000)
+      }
+    } catch {
+      setError("Check-in failed. Please try again.")
+      setOverlay(null)
+      setState("error")
+    } finally {
+      setRedeeming(false)
+    }
+  }
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString("en-US", {
@@ -67,7 +136,73 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     })
   }
 
-  // Loading
+  if (overlay === "confirming" && ticket) {
+    const confirmAccent = guestCheckinAccent(ticket)
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f0f1a] p-6">
+        <div className="w-full max-w-md text-center">
+          <h1 className="mb-2 text-2xl font-bold text-white">Confirm check-in</h1>
+          <p className="mb-8 text-lg text-white/70">
+            Check in <span className="font-bold text-white">{ticket.attendee_name}</span>
+            {ticket.event_name ? ` for ${ticket.event_name}` : ""}?
+          </p>
+          <button
+            onClick={handleCheckin}
+            disabled={redeeming}
+            className="mb-4 w-full rounded-2xl py-5 text-xl font-bold text-white active:brightness-95 disabled:opacity-50 transition-colors"
+            style={{
+              backgroundImage: `linear-gradient(to bottom right, ${confirmAccent.accentDeep}, ${confirmAccent.accent})`,
+              boxShadow: `0 10px 15px -3px ${confirmAccent.accent}40`,
+            }}
+          >
+            {redeeming ? "Checking in..." : "Yes, check in"}
+          </button>
+          <button
+            onClick={() => setOverlay(null)}
+            disabled={redeeming}
+            className="w-full rounded-2xl bg-white/10 py-4 text-lg font-semibold text-white/80 active:bg-white/20 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (overlay === "result" && result) {
+    const ok = result.status === "redeemed_now"
+    const resultAccent = ticket ? guestCheckinAccent(ticket) : null
+    return (
+      <div
+        className={`fixed inset-0 z-50 flex flex-col items-center justify-center p-8 ${
+          ok ? "" : "bg-gradient-to-br from-[#8B1A2B] to-[#c41e3a]"
+        }`}
+        style={
+          ok
+            ? {
+                backgroundImage: `linear-gradient(to bottom right, ${resultAccent?.accentDeep ?? "#0d7a3e"}, ${resultAccent?.accent ?? "#05EB54"})`,
+              }
+            : undefined
+        }
+      >
+        <div className="text-center">
+          {ok ? (
+            <svg className="mx-auto mb-4 h-24 w-24 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="mx-auto mb-4 h-24 w-24 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          <h1 className="mb-2 text-5xl font-black text-white tracking-tight">{checkinRedeemStatusLabel(result.status)}</h1>
+          <p className="text-2xl font-semibold text-white/90">{result.ticket.owner_name}</p>
+          <p className="mt-1 text-lg text-white/70">{result.ticket.ticket_name || result.ticket.event_name}</p>
+        </div>
+      </div>
+    )
+  }
+
   if (state === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -79,7 +214,6 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     )
   }
 
-  // Error state
   if (state === "error") {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
@@ -99,16 +233,19 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     )
   }
 
-  // Main ticket view (info only)
+  const canCheckIn =
+    !!ticket &&
+    guestCameraCheckinEnabled(ticket) &&
+    guestTicketIsRedeemable(ticket)
+  const accent = ticket ? guestCheckinAccent(ticket) : null
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
-        {/* Bizzy branding */}
         <div className="mb-6 text-center">
           <img src="/images/bizzy-logo.png" alt="Bizzy" className="mx-auto h-8 opacity-80" />
         </div>
 
-        {/* Ticket card */}
         {ticket && (
           <div className="mb-6 rounded-2xl bg-white/5 border border-white/10 p-6 backdrop-blur-sm">
             <h1 className="mb-1 text-xl font-bold text-white">{ticket.event_name}</h1>
@@ -127,8 +264,14 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-white/50">Type</span>
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-primary/20 text-primary">
-                  Entry
+                <span
+                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                  style={{
+                    backgroundColor: `${(accent?.accent ?? "#05EB54")}33`,
+                    color: accent?.accent ?? "#05EB54",
+                  }}
+                >
+                  {guestCheckinTypeLabel(ticket)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -137,7 +280,6 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
               </div>
             </div>
 
-            {/* Status indicators */}
             {ticket.is_redeemed && (
               <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-center">
                 <p className="text-sm font-semibold text-red-400">Already Checked In</p>
@@ -151,11 +293,29 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
                 <p className="text-sm font-semibold text-red-400">Ticket Refunded</p>
               </div>
             )}
+            {ticket.event_status === "cancelled" && (
+              <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-center">
+                <p className="text-sm font-semibold text-red-400">Event Cancelled</p>
+              </div>
+            )}
           </div>
         )}
 
-        <p className="text-center text-xs text-white/40">
-          Ticket check-in is handled by event staff using the Bizzy scanner.
+        {canCheckIn && (
+          <button
+            onClick={() => setOverlay("confirming")}
+            className="w-full rounded-xl px-4 py-4 text-lg font-bold text-white transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              backgroundImage: `linear-gradient(to bottom right, ${accent?.accentDeep ?? "#2ECB4E"}, ${accent?.accent ?? "#05EB54"})`,
+              boxShadow: `0 10px 15px -3px ${(accent?.accent ?? "#05EB54")}40`,
+            }}
+          >
+            Check In
+          </button>
+        )}
+
+        <p className="mt-6 text-center text-xs text-white/40">
+          {ticket ? guestCheckinFooterCopy(ticket) : "Scan with any phone camera, then tap Check In. No staff login."}
         </p>
       </div>
     </div>

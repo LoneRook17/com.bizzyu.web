@@ -32,6 +32,10 @@ import { canChangeBusinessEmail } from "@/lib/business/email-change"
 import StripeConnectCard, { StripeReturnBanner } from "@/components/business/v2/settings/StripeConnectCard"
 import VenuePayoutAccountsSection from "@/components/business/v2/settings/VenuePayoutAccountsSection"
 import EscrowPanel from "@/components/business/v2/EscrowPanel"
+import {
+  completeProfileStripeOnboardOnce,
+  isProfileReadyForEscrowClaim,
+} from "@/lib/business/stripe-onboard-complete"
 import VenueManagementSection from "@/components/business/v2/settings/VenueManagementSection"
 import VenuePageSection from "@/components/business/v2/settings/VenuePageSection"
 import DashboardPreferences, { AppearanceSettings } from "@/components/business/v2/settings/DashboardPreferences"
@@ -83,7 +87,7 @@ function SettingsCard({
 }
 
 function SettingsContent() {
-  const { user, business, refreshProfile } = useAuth()
+  const { user, business, refreshProfile, isPending } = useAuth()
   const role = user?.business_role
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -106,6 +110,7 @@ function SettingsContent() {
   const [loading, setLoading] = useState(true)
   const [resetSent, setResetSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
+  const [escrowRefreshToken, setEscrowRefreshToken] = useState(0)
 
   const canEdit = role === "owner" || role === "manager"
   // Deliberately narrower than canEdit: businesses.email is the login
@@ -130,6 +135,27 @@ function SettingsContent() {
       setLoading(false)
     }
   }, [role, fetchProfile])
+
+  // Payments refresh must POST onboard/complete so services can claim held
+  // escrow. Stripe return already does this; a later Settings → Payments
+  // visit used to skip it. Once per success. Never starts a new Connect account.
+  const paymentsReadyToClaim = profile != null && isProfileReadyForEscrowClaim(profile)
+  useEffect(() => {
+    if (tab !== "payments" || !paymentsReadyToClaim) return
+    let cancelled = false
+    completeProfileStripeOnboardOnce()
+      .then((result) => {
+        if (cancelled || !result.onboarded || result.fromCache) return
+        fetchProfile()
+        refreshProfile()
+        setEscrowRefreshToken((n) => n + 1)
+      })
+      .catch(() => {
+        // Best-effort claim. The banner stays on hold-until-sent until a
+        // withdrawal actually exists.
+      })
+    return () => { cancelled = true }
+  }, [tab, paymentsReadyToClaim, fetchProfile, refreshProfile])
 
   const handleProfileSaved = () => { fetchProfile(); refreshProfile() }
   const handleLogoUploaded = () => { fetchProfile(); refreshProfile() }
@@ -257,6 +283,7 @@ function SettingsContent() {
                 onComplete={() => {
                   fetchProfile()
                   refreshProfile()
+                  setEscrowRefreshToken((n) => n + 1)
                   router.replace("/business/settings?tab=payments", { scroll: false })
                 }}
               />
@@ -265,11 +292,12 @@ function SettingsContent() {
                 Stripe cards. Renders nothing without escrow history — the mb-5
                 rides on the panel's card and disappears with it, so this tab is
                 unchanged for businesses without escrow. */}
-            <EscrowPanel variant="compact" className="mb-5" />
+            <EscrowPanel variant="compact" className="mb-5" refreshToken={escrowRefreshToken} />
             <StripeConnectCard
               onboarded={profile.stripe_connect_onboarded}
               reconnectRequired={profile.stripe_reconnect_required ?? false}
               onOnboardingComplete={() => { fetchProfile(); refreshProfile() }}
+              isPending={isPending}
             />
             <VenuePayoutAccountsSection />
           </div>
@@ -290,7 +318,7 @@ function SettingsContent() {
               <SettingsCard
                 icon={AtSign}
                 title="Login email"
-                description="The address you sign in with. We'll email the new address to confirm — nothing changes until you open that link."
+                description="The address you sign in with. We'll email the new address to confirm. Nothing changes until you open that link."
               >
                 <EmailChangeForm currentEmail={profile.email} businessId={profile.business_id} />
               </SettingsCard>

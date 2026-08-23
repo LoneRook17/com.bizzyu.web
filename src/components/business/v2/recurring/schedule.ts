@@ -34,7 +34,7 @@ export function fmtDateOnly(
   s?: string | null,
   opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" }
 ) {
-  if (!s) return "—"
+  if (!s) return "-"
   return new Date(s.slice(0, 10) + "T00:00:00").toLocaleDateString("en-US", opts)
 }
 
@@ -45,7 +45,7 @@ export function fmtDateOnlyLong(s?: string | null) {
 
 /** "HH:MM[:SS]" → "9:00 PM". */
 export function fmtTimeOfDay(t?: string | null) {
-  if (!t) return "—"
+  if (!t) return "-"
   const [h, m] = t.split(":").map(Number)
   const d = new Date(2000, 0, 1, h, m)
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })

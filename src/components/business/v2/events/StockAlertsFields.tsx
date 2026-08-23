@@ -1,5 +1,6 @@
 "use client"
 
+import { useProductCheckboxClass } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Input, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 
@@ -20,7 +21,7 @@ interface StockAlertsFieldsProps {
  * Stock alerts — sold-out notification, plus an optional low-stock warning.
  *
  * Extracted verbatim from EventForm so the same control can sit in BOTH places
- * 5.0 wants it: step 2 of creation, and Manage sales on the management page
+ * 5.0 wants it: step 2 of creation, and Manage Tickets on the management page
  * (F11 — "Manage Tickets absorbs … Stock Alerts"). Presentational only; the
  * caller owns the state and the `lowstockInputToStored` validation, so create
  * and post-create editing can never drift apart.
@@ -39,6 +40,7 @@ export function StockAlertsFields({
 }: StockAlertsFieldsProps) {
   const typeId = `${idPrefix}lowstock_threshold_type`
   const valueId = `${idPrefix}lowstock_threshold_value`
+  const checkboxClass = useProductCheckboxClass()
 
   return (
     <>
@@ -47,7 +49,7 @@ export function StockAlertsFields({
           type="checkbox"
           checked={enabled}
           onChange={(e) => onEnabledChange(e.target.checked)}
-          className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+          className={checkboxClass}
         />
         <span className="text-sm text-neutral-700 dark:text-neutral-300">Notify me when a ticket tier sells out</span>
       </label>
@@ -56,7 +58,7 @@ export function StockAlertsFields({
         <div className="mt-4 space-y-3">
           <div>
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Also warn me when it&apos;s running low</p>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional — leave blank to only be notified on sell-out.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional. Leave blank to only be notified on sell-out.</p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -94,7 +96,7 @@ export function StockAlertsFields({
               type="checkbox"
               checked={notifyTeam}
               onChange={(e) => onNotifyTeamChange(e.target.checked)}
-              className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+              className={checkboxClass}
             />
             <span className="text-sm text-neutral-700 dark:text-neutral-300">Also notify business team</span>
           </label>

@@ -17,7 +17,11 @@
 
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/business/auth-context"
-import { fetchEscrowPanelData, deriveEscrowPanelState } from "@/lib/business/escrow"
+import { fetchEscrowPanelData } from "@/lib/business/escrow"
+import {
+  localStoragePaidBannerAdapter,
+  shouldRenderEscrowPanel,
+} from "@/lib/business/escrow-paid-banner"
 import {
   shouldShowStripeConnectPrompt,
   canManagePayouts,
@@ -25,7 +29,7 @@ import {
 import StripeConnectCard from "@/components/business/v2/settings/StripeConnectCard"
 
 export default function HomeStripeConnectPrompt() {
-  const { user } = useAuth()
+  const { user, business, isPending } = useAuth()
   const mayManage = canManagePayouts(user?.business_role)
 
   const [show, setShow] = useState(false)
@@ -38,9 +42,14 @@ export default function HomeStripeConnectPrompt() {
       // Same seam the escrow panel reads, so the two can never disagree about
       // whether the hero is on screen. Never throws; null = no panel.
       const escrow = await fetchEscrowPanelData()
-      const escrowPanelVisible =
-        escrow != null &&
-        deriveEscrowPanelState(escrow.summary, escrow.stripeOnboarded) !== "empty"
+      // Same 24h paid-banner clock as EscrowPanel, so Home never stacks a
+      // Stripe nag on a Paid card that is still on screen, and never hides
+      // the nag behind a Paid card that has already expired.
+      const escrowPanelVisible = shouldRenderEscrowPanel(escrow, {
+        nowMs: Date.now(),
+        authBusinessId: business?.business_id ?? null,
+        storage: localStoragePaidBannerAdapter(),
+      })
 
       // When the escrow read succeeded it already carries the Stripe flag, so
       // the profile is only fetched in the branch that actually needs it.
@@ -68,10 +77,10 @@ export default function HomeStripeConnectPrompt() {
     })()
 
     return () => { cancelled = true }
-  }, [mayManage])
+  }, [mayManage, business?.business_id])
 
   if (!show) return null
 
   // The settings card's own CTA and onboarding POST, in its compact size.
-  return <StripeConnectCard onboarded={false} variant="compact" />
+  return <StripeConnectCard onboarded={false} variant="compact" isPending={isPending} />
 }

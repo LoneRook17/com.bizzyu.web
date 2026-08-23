@@ -18,10 +18,14 @@ import { useVenue } from "@/lib/business/venue-context"
 import type { EventFormData, TicketTier } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
-import { Badge } from "@/components/business/v2/ui/badge"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { cn } from "@/lib/v2/utils"
+import {
+  applySaveAsDraftFlag,
+  promoterToggleDisabled,
+  willDraftOnCreate,
+} from "@/lib/business/create-publish"
 import { ArtworkSection } from "./ArtworkSection"
 import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
 import { fmtDateTime, fmtTime } from "./eventStatus"
@@ -325,6 +329,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    await submitCreateOrEdit(false)
+  }
+
+  const submitCreateOrEdit = async (saveAsDraft: boolean) => {
     if (!validate()) {
       // Send the user back to the step that owns the failure — on the Review
       // step the offending field is otherwise off-screen entirely.
@@ -415,8 +423,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       // Opt-in announcement to venue followers on publish.
       payload.notify_followers_on_publish = !!form.notify_followers_on_publish
 
+      // Publish is the default POST (live). Only the explicit Save as draft
+      // button sends this flag.
+      const body = isEditing ? payload : applySaveAsDraftFlag(payload, saveAsDraft)
+
       if (isEditing) {
-        await apiClient.put(`/business/events/${eventId}`, payload)
+        await apiClient.put(`/business/events/${eventId}`, body)
         router.push(`/business/events/${eventId}`)
       } else {
         const data = await apiClient.post<{
@@ -425,10 +437,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           moderation_status: string | null
           requires_stripe_to_publish?: boolean
           requires_approval_to_publish?: boolean
-        }>("/business/events", payload)
+        }>("/business/events", body)
         if (data.status === "draft") {
-          // Saved, but not live yet (pending approval and/or Stripe). Land on the
-          // event so the draft banner there explains why + offers Publish.
+          // Saved as a draft (explicit Save as draft, or still pending approval).
           router.push(`/business/events/${data.event_id}`)
         } else if (data.moderation_status === "pending_review") {
           setModerationNotice("Your event has been created but is under review due to content moderation.")
@@ -458,22 +469,18 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   // server published the event immediately. Mirroring the server's own
   // predicate is the fix.
   const hasPaidTicket = form.type === "Ticketed" && form.tickets.some((t) => (t.price_usd ?? 0) > 0)
-  const promoToggleDisabled = !hasPaidTicket || !stripeOnboarded
-  const promoDisabledReason = !hasPaidTicket
+  const promoToggleDisabled = promoterToggleDisabled(hasPaidTicket)
+  const promoDisabledReason = promoToggleDisabled
     ? "Add a paid ticket to enable the promoter program."
-    : !stripeOnboarded
-      ? "Connect Stripe to enable the promoter program."
-      : ""
+    : ""
   const commissionType = form.promotion_commission_type || "percent"
   const lowstockType = form.lowstock_threshold_type || "percent"
 
-  // What actually happens when this is submitted, stated in the same terms the
-  // server decides it (see the hasPaidTicket comment above). `isPending` is the
-  // approval gate; the Stripe gate is paid-only.
-  const willDraft = isPending || (hasPaidTicket && !stripeOnboarded)
-  const draftReason = isPending
-    ? "Your business is still in review, so this saves as a draft. Publish it once you're approved."
-    : "Paid tickets need Stripe Connect before the event can go live. This saves as a draft until then."
+  // What the review banner says. `isPending` is the only default-draft gate —
+  // approved/verified hosts publish even without Stripe. `willDraft` must
+  // never be true just because `!stripeOnboarded`.
+  const willDraft = willDraftOnCreate(isPending)
+  const draftReason = "Your business is still in review, so this may save as a draft until you're approved."
 
   // `isEditing` renders every section on one page, exactly as before 5.0.
   // Creating walks the three steps.
@@ -505,12 +512,15 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               {/* D-P2: "Free" never reads as "RSVP" — a free event still mints a
                   real $0 order and a scannable ticket. */}
               <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{EVENT_TYPE_HINTS[form.type]}</p>
-              {/* Stripe is no longer required to BUILD a paid event - only to
-                  publish one. Show a non-blocking nudge for paid + no Stripe. */}
-              {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
+              {/* Approved businesses can publish paid events without Stripe —
+                  payments go to escrow. Show a soft nudge, not a blocker. */}
+              {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && !isPending && (
                 <div className="mt-1.5">
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    You can build this now and save it as a draft. Connect Stripe before a paid event can go live, free events don&apos;t need it.
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    Connect Stripe to receive payments instantly
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
                   </p>
                   <button
                     type="button"
@@ -683,7 +693,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Free entry</CardTitle>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-              Guests claim a real ticket at no charge — same wallet pass, same scan at the door. Nothing to price.
+              Guests claim a real ticket at no charge. Same wallet pass, same scan at the door. Nothing to price.
             </p>
           </CardHeader>
         </Card>
@@ -792,7 +802,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Stock alerts</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier sells out — and optionally before it does.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier sells out, and optionally before it does.</p>
           </CardHeader>
           <CardContent className="pt-0">
             <StockAlertsFields
@@ -829,10 +839,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <CardHeader><CardTitle>Review</CardTitle></CardHeader>
         <CardContent className="pt-0">
           <dl className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            <ReviewRow label="Name" value={form.name || "—"} />
+            <ReviewRow label="Name" value={form.name || "-"} />
             <ReviewRow label="Type" value={EVENT_TYPE_LABELS[form.type]} />
             <ReviewRow label="When" value={summariseWhen(form.start_date_time, form.end_date_time)} />
-            <ReviewRow label="Where" value={[form.venue_name, form.venue_address].filter(Boolean).join(" · ") || "—"} />
+            <ReviewRow label="Where" value={[form.venue_name, form.venue_address].filter(Boolean).join(" · ") || "-"} />
             {form.is_21_plus && <ReviewRow label="Age" value="21+" />}
             {form.type === "Ticketed" && <ReviewRow label="Tickets" value={summariseTiers(form.tickets)} />}
             {/* Still shown, no longer a decision: the host should see what the
@@ -921,15 +931,15 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           )}
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
-          {!isEditing && isPending && (
-            <Badge variant="warning">Trial: saved as a draft until you&apos;re approved</Badge>
-          )}
-          {!isEditing && !isPending && hasPaidTicket && !stripeOnboarded && (
-            <Badge variant="warning">Saved as a draft, connect Stripe to publish</Badge>
+          {!isEditing && (
+            <Button type="button" variant="secondary" size="lg" disabled={loading} onClick={() => submitCreateOrEdit(true)}>
+              {loading && <Loader2 className="animate-spin" />}
+              Save as draft
+            </Button>
           )}
           <Button type="submit" size="lg" disabled={loading}>
             {loading && <Loader2 className="animate-spin" />}
-            {isEditing ? "Save changes" : willDraft ? "Save draft" : "Publish event"}
+            {isEditing ? "Save changes" : "Publish event"}
           </Button>
         </div>
       </div>
@@ -952,7 +962,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isEditing
             ? "Update details, tickets, and settings."
-            : `Step ${step + 1} of ${EVENT_CREATE_STEPS.length} — ${EVENT_CREATE_STEPS[step].label}.`}
+            : `Step ${step + 1} of ${EVENT_CREATE_STEPS.length}. ${EVENT_CREATE_STEPS[step].label}.`}
         </p>
       </div>
 
@@ -1001,21 +1011,21 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 }
 
 function summariseWhen(start: string, end: string): string {
-  if (!start) return "—"
+  if (!start) return "-"
   const startLabel = fmtDateTime(start)
   if (!end) return startLabel
   const sameDay = start.slice(0, 10) === end.slice(0, 10)
-  return sameDay ? `${startLabel} – ${fmtTime(end)}` : `${startLabel} – ${fmtDateTime(end)}`
+  return sameDay ? `${startLabel} - ${fmtTime(end)}` : `${startLabel} - ${fmtDateTime(end)}`
 }
 
 function summariseTiers(tiers: TicketTier[]): string {
-  if (!tiers.length) return "—"
+  if (!tiers.length) return "-"
   const prices = tiers.map((t) => Number(t.price_usd) || 0)
   const min = Math.min(...prices)
   const max = Math.max(...prices)
   const count = `${tiers.length} tier${tiers.length === 1 ? "" : "s"}`
   if (max === 0) return `${count} · Free`
-  return min === max ? `${count} · $${max.toFixed(2)}` : `${count} · $${min.toFixed(2)}–$${max.toFixed(2)}`
+  return min === max ? `${count} · $${max.toFixed(2)}` : `${count} · ${min.toFixed(2)}-${max.toFixed(2)}`
 }
 
 function summariseArtwork(flyerUrl: string, template: ArtworkTemplate | null | undefined): string {

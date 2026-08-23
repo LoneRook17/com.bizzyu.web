@@ -3,6 +3,11 @@ import {
   Rocket, MapPin, CalendarDays, CreditCard, Zap, Tag, BarChart3, Users,
   Settings, RotateCcw, Smartphone, HelpCircle, Mail,
 } from "lucide-react"
+import {
+  ANALYTICS_HELP_INTRO,
+  ANALYTICS_HELP_TABS,
+  ANALYTICS_HELP_REVENUE_FAQ,
+} from "@/lib/business/analytics-copy"
 
 /** A content block within a subsection. */
 export type Block =
@@ -175,7 +180,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "p", text: "Events are one-time happenings at your venue: concerts, DJ nights, watch parties, themed nights." },
           { kind: "ul", items: [
-            "Sell tickets for paid events, or run a free event — guests still get a real, scannable ticket",
+            "Sell tickets for paid events, or run a free event. Guests still get a real, scannable ticket",
             "Customers buy tickets right from their phone in the Bizzy app",
             "You get a QR-code scanner to check people in at the door",
           ] },
@@ -388,13 +393,13 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: "analytics",
     title: "Analytics",
     icon: BarChart3,
-    intro: "Track your performance across events, deals, and line skips.",
+    intro: ANALYTICS_HELP_INTRO,
     subsections: [
       {
         id: "understanding-analytics",
         title: "Understanding your analytics",
         blocks: [
-          { kind: "p", text: "The Analytics page shows how your business is performing, split into Events, Deals, and Line skips tabs." },
+          { kind: "p", text: ANALYTICS_HELP_TABS },
         ],
       },
       {
@@ -604,7 +609,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     faqs: [
       { q: "When do I get paid?", a: "Money from ticket sales and line skips is transferred to your bank account through Stripe, typically within 2-3 business days after the transaction." },
       { q: "What fees does Bizzy charge?", a: "A small service fee is added on top of your price and paid by the customer. You receive the full amount you set. The fee comes out of the customer's total, not your pocket." },
-      { q: "How do I see how much money I've made?", a: "Go to Analytics in the sidebar. Your revenue is shown for events, line skips, and overall." },
+      { q: "How do I see how much money I've made?", a: ANALYTICS_HELP_REVENUE_FAQ },
       { q: "Can I change the ticket price after people have bought tickets?", a: "Yes, you can change the price for future purchases. Existing ticket holders keep their original price." },
       { q: "What if my event sells out?", a: "A \"Sold out\" badge appears and no more tickets can be purchased. To sell more, increase the ticket quantity." },
       { q: "Do deals cost me anything?", a: "No. Creating and running deals on Bizzy is completely free. Deals drive foot traffic to your venue at no cost." },

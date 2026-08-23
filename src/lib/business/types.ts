@@ -155,6 +155,12 @@ export interface EventListItem {
   event_id: number
   name: string
   description: string
+  /**
+   * Present on `SELECT e.*` list rows. Optional so an older payload still
+   * renders; the Events page uses it to hide another venue's Weekly Cover
+   * when the switcher is on a single venue.
+   */
+  venue_id?: number | null
   venue_name: string
   venue_address: string
   start_date_time: string
@@ -242,6 +248,9 @@ export interface EventDetail extends EventListItem {
   recurring_series_id?: number | null
   series_customized_at?: string | null
   occurrence_date?: string | null
+  // D10 artwork. Optional so an older GET /business/events/:id still hydrates.
+  artwork_template?: ArtworkTemplate | null
+  artwork_accent?: string | null
 }
 
 export interface RecurringNight {
@@ -389,13 +398,25 @@ export interface EventAnalytics {
   tierBreakdown: { ticket_id: number; tier_name: string; sold: number; revenue: number }[]
   trackingLinks: {
     tracking_link_id: number
+    // Legacy column. New rows persist "" on purpose; Name must fall back
+    // through other identity fields (see promoterDisplayName). A slug
+    // copied from `code` is treated as missing — never shown as Name.
     promoter_name: string
+    // Tracking / promo code. Never bound as the Name cell label.
     code: string
     sales_count: number
     clicks: number
     // Combined pending+paid commission cents for this promoter on this event.
     // Excludes clawed_back. New 2026-05-12 (May 2026 promoter rework).
     commission_cents: number
+    // Optional extras the insights payload may already send. Absent or ""
+    // is treated as missing by promoterDisplayName.
+    display_name?: string | null
+    full_name?: string | null
+    first_name?: string | null
+    last_name?: string | null
+    email?: string | null
+    promo_code?: string | null
   }[]
   revenue: {
     // The "Revenue" tile reads this - now matches the Stripe payout (net of
@@ -496,6 +517,12 @@ export interface EventOverviewItem {
   revenue: number
   checkin_rate: number
   door_sales_count: number
+  /**
+   * Same pink flag as EventListItem. Weekly Cover nights are real events
+   * rows with `'door_access'`; one-off events are `'event'` (or omitted on
+   * older overview payloads). Analytics buckets on this, then event id.
+   */
+  access_kind?: "event" | "door_access" | null
 }
 
 export interface EventsOverview {
@@ -777,6 +804,9 @@ export interface BusinessProfile {
   stripe_connect_onboarded: boolean
   /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
   stripe_reconnect_required?: boolean
+  /** Live Connect flags when the profile read includes them. Absent on older deploys. */
+  charges_enabled?: boolean
+  payouts_enabled?: boolean
   created_at: string
 }
 
@@ -784,6 +814,8 @@ export interface BusinessProfile {
 // A series is the schedule + occurrence template; every occurrence is a normal
 // Event row stamped by core's generator and managed from the events surface.
 export interface RecurringTemplateTicket {
+  /** Stable identity on door-access templates. Omit on create; send back on edit. */
+  tier_key?: string
   name: string
   description?: string | null
   price_usd: number

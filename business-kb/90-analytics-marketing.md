@@ -3,7 +3,7 @@
 ## Analytics
 
 The **Analytics** page shows how your business is performing, split into **Events**,
-**Deals**, and **Line skips** tabs.
+**Deals**, and **Weekly Cover** tabs.
 
 - **Events:** total events, total tickets sold (online + door), total revenue, and your
   check-in rate. Click any event for revenue by ticket type, the pre-sale vs. door

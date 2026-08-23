@@ -56,6 +56,17 @@ export interface EscrowLedgerEntry {
   reference_id: number | null
   /** "YYYY-MM-DD HH:MM:SS", US/Eastern (platform DATETIME convention). */
   created_at: string
+  /**
+   * Event the sale belongs to. Optional on the §7 wire; present when services
+   * joins the order. History groups by this, never by business name.
+   */
+  event_id: number | null
+  event_name: string | null
+  /**
+   * Connect Transfer id when services attached one. Optional on the §7 wire;
+   * used only to detect an in-flight payout (never rendered).
+   */
+  stripe_transfer_id: string | null
 }
 
 export interface EscrowSummary {
@@ -73,6 +84,8 @@ export interface EscrowPanelData {
   summary: EscrowSummary
   stripeOnboarded: boolean
   businessName: string | null
+  /** Profile `business_id`. Used only to key the paid-banner 24h clock. */
+  businessId: number | null
 }
 
 // ── Normalization (defensive: MySQL/JSON can serialize numbers as strings) ──
@@ -82,7 +95,35 @@ function num(v: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback
 }
 
-export function normalizeEscrowEntry(raw: Partial<EscrowLedgerEntry>): EscrowLedgerEntry {
+function strOrNull(v: unknown): string | null {
+  if (typeof v !== "string") return null
+  const s = v.trim()
+  return s.length ? s : null
+}
+
+function positiveInt(v: unknown): number | null {
+  const n = typeof v === "string" ? Number(v) : (v as number)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/** Read event identity from a ledger row. Services may send it flat
+ *  (`event_name`) or nested (`event: { id, name }`). Never invent a name
+ *  from the business. */
+function eventFromRaw(raw: Partial<EscrowLedgerEntry> & { event?: unknown }): {
+  event_id: number | null
+  event_name: string | null
+} {
+  const nested = raw.event && typeof raw.event === "object" ? (raw.event as { id?: unknown; event_id?: unknown; name?: unknown }) : null
+  const nestedId = nested?.id ?? nested?.event_id
+  const eventId = raw.event_id ?? nestedId
+  return {
+    event_id: eventId == null ? null : num(eventId),
+    event_name: strOrNull(raw.event_name) ?? strOrNull(nested?.name),
+  }
+}
+
+export function normalizeEscrowEntry(raw: Partial<EscrowLedgerEntry> & { event?: unknown }): EscrowLedgerEntry {
+  const event = eventFromRaw(raw)
   return {
     id: num(raw.id),
     entry_type: (raw.entry_type ?? "adjustment") as EscrowEntryType,
@@ -91,6 +132,9 @@ export function normalizeEscrowEntry(raw: Partial<EscrowLedgerEntry>): EscrowLed
     reference_type: raw.reference_type ?? null,
     reference_id: raw.reference_id == null ? null : num(raw.reference_id),
     created_at: raw.created_at ?? "",
+    event_id: event.event_id,
+    event_name: event.event_name,
+    stripe_transfer_id: strOrNull(raw.stripe_transfer_id),
   }
 }
 
@@ -105,23 +149,36 @@ export function normalizeEscrowSummary(raw: Partial<EscrowSummary> | null | unde
 
 // ── Panel state ─────────────────────────────────────────────────────────────
 
-export type EscrowPanelState = "empty" | "claimable" | "processing" | "paid"
+export type EscrowPanelState = "empty" | "claimable" | "ready" | "processing" | "paid"
+
+function transferIdInFlight(e: EscrowLedgerEntry): boolean {
+  const id = e.stripe_transfer_id?.trim()
+  if (!id) return false
+  return e.status !== "settled" && e.status !== "failed" && e.status !== "reversed"
+}
+
+/** A bank payout is actually moving: pending withdrawal or a Transfer in flight. */
+export function hasInFlightEscrowPayout(summary: EscrowSummary): boolean {
+  return summary.entries.some((e) => {
+    if (e.entry_type !== "withdrawal") return false
+    if (e.status === "pending") return true
+    return transferIdInFlight(e)
+  })
+}
 
 /**
- * - `processing`: a claim is in flight — a pending withdrawal row exists, or
- *   the business finished Stripe onboarding while still holding a balance
- *   (the payout kickoff is server-side and momentary; showing a "connect
- *   Stripe" CTA to an onboarded business would be wrong).
+ * - `processing`: a payout is actually moving — a pending withdrawal exists,
+ *   or a `stripe_transfer_id` is in flight. Never inferred from onboarded +
+ *   a leftover balance (that is a lie when Stripe+ledger have zero Transfers).
+ * - `ready`: onboarded, money still held, no withdrawal/transfer yet. Hold
+ *   until sent; do not claim it is on the way to the bank.
  * - `claimable`: settled money is waiting and Stripe isn't connected.
  * - `paid`: nothing left and at least one settled withdrawal proves a payout
  *   happened (a ledger that merely netted to zero via reversals is `empty`).
  */
 export function deriveEscrowPanelState(summary: EscrowSummary, stripeOnboarded: boolean): EscrowPanelState {
-  const pendingWithdrawal = summary.entries.some(
-    (e) => e.entry_type === "withdrawal" && e.status === "pending",
-  )
-  if (pendingWithdrawal) return "processing"
-  if (summary.available_cents > 0) return stripeOnboarded ? "processing" : "claimable"
+  if (hasInFlightEscrowPayout(summary)) return "processing"
+  if (summary.available_cents > 0) return stripeOnboarded ? "ready" : "claimable"
   if (summary.entries.some((e) => e.entry_type === "withdrawal" && e.status === "settled")) return "paid"
   return "empty"
 }
@@ -132,8 +189,8 @@ export function escrowHeroCents(summary: EscrowSummary, state: EscrowPanelState)
     const pendingOut = summary.entries
       .filter((e) => e.entry_type === "withdrawal" && e.status === "pending")
       .reduce((sum, e) => sum + e.amount_cents, 0)
-    // Withdrawals are negative; show the amount on its way. If the claim row
-    // hasn't been written yet (onboarded-with-balance), it's the balance.
+    // Withdrawals are negative; show the amount on its way. Fall back to
+    // the balance if only a transfer id marks the row in flight.
     return pendingOut < 0 ? -pendingOut : summary.available_cents
   }
   if (state === "paid") {
@@ -165,7 +222,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
  *  in the viewer's zone. Falls back to the raw string on anything malformed. */
 export function fmtEntryTimestamp(s: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(s)
-  if (!m) return s || "—"
+  if (!m) return s || "-"
   const [, y, mo, d, hh, mi] = m
   const month = MONTHS[Number(mo) - 1]
   if (!month) return s
@@ -221,6 +278,58 @@ export function visibleEscrowEntries(
   }
 }
 
+/** One event's slice of the history list. `totalCents` is the sum of the
+ *  already-shown row amounts in this group (display organization, not a
+ *  new balance). */
+export interface EscrowEventGroup {
+  key: string
+  eventId: number | null
+  eventName: string
+  totalCents: number
+  entries: EscrowLedgerEntry[]
+}
+
+/** Fallback when a row has no event identity (payouts, fees, older wires).
+ *  Deliberately not the business name. */
+export const ESCROW_UNGROUPED_EVENT_NAME = "Other"
+
+/**
+ * Group ledger rows by event, preserving first-seen order (newest first on
+ * the §7 list). Rows that share an event_id stay together even if the name
+ * is missing; name-only rows group by that name. Ungrouped rows land in
+ * Other, never under the business.
+ */
+export function groupEscrowEntriesByEvent(entries: EscrowLedgerEntry[]): EscrowEventGroup[] {
+  const groups = new Map<string, EscrowEventGroup>()
+  const order: string[] = []
+  for (const entry of entries) {
+    const name = entry.event_name?.trim() || null
+    const key =
+      entry.event_id != null
+        ? `id:${entry.event_id}`
+        : name
+          ? `name:${name}`
+          : "other"
+    let group = groups.get(key)
+    if (!group) {
+      group = {
+        key,
+        eventId: entry.event_id,
+        eventName: name ?? (entry.event_id != null ? `Event #${entry.event_id}` : ESCROW_UNGROUPED_EVENT_NAME),
+        totalCents: 0,
+        entries: [],
+      }
+      groups.set(key, group)
+      order.push(key)
+    } else if (!group.eventName || group.eventName.startsWith("Event #")) {
+      if (name) group.eventName = name
+    }
+    group.entries.push(entry)
+    group.totalCents += entry.amount_cents
+  }
+  return order.map((key) => groups.get(key)!)
+}
+
 // ── Demo fixtures ───────────────────────────────────────────────────────────
 // Entirely fictional businesses, orders, and amounts. The claimable number
 // mirrors the contract §7 example ($423.50) so the stub is recognizably "the
@@ -230,13 +339,19 @@ export function visibleEscrowEntries(
 export type EscrowDemoScenario = "zero" | "claimable" | "processing" | "paid" | "long"
 
 const EARNINGS: EscrowLedgerEntry[] = [
-  { id: 5, entry_type: "earning", amount_cents: 12600, status: "settled", reference_type: "order", reference_id: 9975, created_at: "2026-08-19 22:41:07" },
-  { id: 4, entry_type: "reversal", amount_cents: -1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-16 10:12:55" },
-  { id: 3, entry_type: "earning", amount_cents: 8750, status: "settled", reference_type: "order", reference_id: 9968, created_at: "2026-08-15 21:33:20" },
-  { id: 2, entry_type: "earning", amount_cents: 1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-14 20:05:44" },
-  { id: 1, entry_type: "earning", amount_cents: 21000, status: "settled", reference_type: "order", reference_id: 9931, created_at: "2026-08-14 19:04:11" },
+      { id: 5, entry_type: "earning", amount_cents: 12600, status: "settled", reference_type: "order", reference_id: 9975, created_at: "2026-08-19 22:41:07", event_id: 101, event_name: "Late Night", stripe_transfer_id: null },
+  { id: 4, entry_type: "reversal", amount_cents: -1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-16 10:12:55", event_id: 102, event_name: "Alumni Mixer", stripe_transfer_id: null },
+  { id: 3, entry_type: "earning", amount_cents: 8750, status: "settled", reference_type: "order", reference_id: 9968, created_at: "2026-08-15 21:33:20", event_id: 101, event_name: "Late Night", stripe_transfer_id: null },
+  { id: 2, entry_type: "earning", amount_cents: 1750, status: "settled", reference_type: "order", reference_id: 9942, created_at: "2026-08-14 20:05:44", event_id: 102, event_name: "Alumni Mixer", stripe_transfer_id: null },
+  { id: 1, entry_type: "earning", amount_cents: 21000, status: "settled", reference_type: "order", reference_id: 9931, created_at: "2026-08-14 19:04:11", event_id: 102, event_name: "Alumni Mixer", stripe_transfer_id: null },
 ]
 const EARNINGS_TOTAL = 42350
+
+const LONG_EVENTS = [
+  { id: 201, name: "Late Night" },
+  { id: 202, name: "Alumni Mixer" },
+  { id: 203, name: "Trivia Hour" },
+] as const
 
 /** ~30 rows of steady fictional sales for the layout-stress scenario. */
 function longEntries(): { entries: EscrowLedgerEntry[]; total: number } {
@@ -247,6 +362,7 @@ function longEntries(): { entries: EscrowLedgerEntry[]; total: number } {
     const day = 28 - i // Aug 28 back to Aug 1
     const amount = i % 9 === 4 ? -2250 : 4500 + (i % 5) * 1375
     const type: EscrowEntryType = amount < 0 ? "reversal" : "earning"
+    const event = LONG_EVENTS[i % LONG_EVENTS.length]
     entries.push({
       id: id--,
       entry_type: type,
@@ -255,6 +371,9 @@ function longEntries(): { entries: EscrowLedgerEntry[]; total: number } {
       reference_type: "order",
       reference_id: 88000 + i * 7,
       created_at: `2026-08-${String(day).padStart(2, "0")} ${String(18 + (i % 5)).padStart(2, "0")}:${String(10 + (i % 47)).padStart(2, "0")}:00`,
+      event_id: event.id,
+      event_name: event.name,
+      stripe_transfer_id: null,
     })
     total += amount
   }
@@ -267,11 +386,13 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
     summary: { available_cents: 0, pending_cents: 0, currency: "usd", entries: [] },
     stripeOnboarded: false,
     businessName: "Sample Sandwich Shop",
+    businessId: 9001,
   },
   claimable: {
     summary: { available_cents: EARNINGS_TOTAL, pending_cents: 0, currency: "usd", entries: EARNINGS },
     stripeOnboarded: false,
     businessName: "The Corner Tap",
+    businessId: 9001,
   },
   processing: {
     summary: {
@@ -279,12 +400,13 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
       pending_cents: 0,
       currency: "usd",
       entries: [
-        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "pending", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02" },
+        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "pending", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null, stripe_transfer_id: "tr_demo_pending" },
         ...EARNINGS,
       ],
     },
     stripeOnboarded: true,
     businessName: "The Corner Tap",
+    businessId: 9001,
   },
   paid: {
     summary: {
@@ -292,17 +414,19 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
       pending_cents: 0,
       currency: "usd",
       entries: [
-        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "settled", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02" },
+        { id: 6, entry_type: "withdrawal", amount_cents: -EARNINGS_TOTAL, status: "settled", reference_type: "payout", reference_id: 501, created_at: "2026-08-20 09:15:02", event_id: null, event_name: null, stripe_transfer_id: "tr_demo_settled" },
         ...EARNINGS,
       ],
     },
     stripeOnboarded: true,
     businessName: "The Corner Tap",
+    businessId: 9001,
   },
   long: {
     summary: { available_cents: LONG.total, pending_cents: 0, currency: "usd", entries: LONG.entries },
     stripeOnboarded: false,
     businessName: "The Fictional University Alumni Association Late-Night Waffle & Trivia Emporium at North Campus Commons",
+    businessId: 9001,
   },
 }
 
@@ -350,6 +474,7 @@ export async function fetchEscrowPanelData(opts?: {
     summary,
     stripeOnboarded: profile?.stripe_connect_onboarded ?? false,
     businessName: profile?.name ?? null,
+    businessId: profile?.business_id ?? null,
   }
 }
 
@@ -387,17 +512,26 @@ async function fetchEscrowSummary(): Promise<EscrowSummary | null> {
 }
 
 /** Business name + Stripe state from the services profile the dashboard already reads. */
-async function fetchEscrowProfile(): Promise<{ name: string | null; stripe_connect_onboarded: boolean } | null> {
+async function fetchEscrowProfile(): Promise<{
+  name: string | null
+  stripe_connect_onboarded: boolean
+  business_id: number | null
+} | null> {
   try {
     const { apiClient } = await import("./api-client")
-    const profile = await apiClient.get<{ name?: string; stripe_connect_onboarded?: boolean }>("/business/profile")
+    const profile = await apiClient.get<{
+      name?: string
+      stripe_connect_onboarded?: boolean
+      business_id?: unknown
+    }>("/business/profile")
     return {
       name: profile?.name ?? null,
       stripe_connect_onboarded: profile?.stripe_connect_onboarded === true,
+      business_id: positiveInt(profile?.business_id),
     }
   } catch {
     // The panel is still worth rendering without it: `stripeOnboarded: false`
-    // is the conservative read (shows "claim" rather than "processing"), and
+    // is the conservative read (shows "claim" rather than "ready"), and
     // the name is decorative.
     return null
   }

@@ -47,6 +47,8 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
           lowstock_threshold_type: event.lowstock_threshold_type ?? undefined,
           lowstock_threshold_value: event.lowstock_threshold_value ?? null,
           lowstock_notify_business_team: !!event.lowstock_notify_business_team,
+          artwork_template: event.artwork_template ?? null,
+          artwork_accent: event.artwork_accent ?? null,
         })
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load event")

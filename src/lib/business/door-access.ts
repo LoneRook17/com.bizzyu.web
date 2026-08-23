@@ -9,16 +9,16 @@
 // pipeline — this surface is the HOST's view of the template and its
 // schedule, nothing else.
 //
-// D-P5 VOCABULARY SPLIT, enforced by the label constants below:
-//   - Hosts creating one see "Weekly Cover / Skip the Line".
-//   - Host list rows and section headers read WEEKLY ACCESS.
-//   - Students see "Door Access" — a consumer string, never rendered here.
-// The API path, program_kind and every response field stay `door_access`.
-// These are DISPLAY strings only and must not be used to rename a contract.
+// D-P5 VOCABULARY. User-facing copy is "Weekly Cover" (renamed from Weekly
+// Access so it matches the Flutter app). No user-facing surface says
+// "Door Access". The API path, program_kind and every response field stay
+// `door_access`. Display strings live in ./weekly-cover-label so one label
+// drives every surface. Do not use them to rename a contract.
 //
 // D-F11.1 — a program card opens the SERIES, never a single night. The night
-// is reached from inside the series page. That routing rule is why
-// programHref() and nightHref() live here rather than being inlined.
+// is reached from inside the series page. Program-wide edits live on
+// programEditHref(). That routing rule is why programHref(), programEditHref()
+// and nightHref() live here rather than being inlined.
 //
 // Everything below the fetch functions is pure so the Node built-in test
 // runner (`npm test`) can exercise it without resolving the api-client chain.
@@ -27,25 +27,503 @@
 
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
-/** F9 card chip on a program row. Host vocabulary. */
-export const WEEKLY_ACCESS_TYPE_LABEL = "WEEKLY ACCESS"
+import { looksLikeWeeklyCoverName } from "./weekly-cover-label.ts"
+
+export {
+  WEEKLY_ACCESS_CREATION_LABEL,
+  WEEKLY_ACCESS_SECTION_LABEL,
+  WEEKLY_ACCESS_TYPE_LABEL,
+  looksLikeWeeklyCoverName,
+} from "./weekly-cover-label.ts"
+
+/**
+ * Flutter EventModel.readAccessKind: `weekly_cover` is the same night as
+ * `door_access`. Wire the alias here so public venue + dashboard list agree.
+ * Do not rename the API path or program_kind — those stay `door_access`.
+ */
+export function readAccessKind(raw: unknown): "event" | "door_access" | null {
+  if (raw === "event") return "event"
+  if (raw === "door_access" || raw === "weekly_cover") return "door_access"
+  return null
+}
+
+export function isDoorAccessKind(raw: unknown): boolean {
+  return readAccessKind(raw) === "door_access"
+}
+
+/** Wire program_kind for create/edit. Display copy stays Weekly Cover. */
+export const PROGRAM_KIND_DOOR_ACCESS = "door_access" as const
+
+/** New Weekly Cover writes stay program_kind=door_access. */
+export function withDoorAccessProgramKind<T extends Record<string, unknown>>(payload: T): T {
+  return { ...payload, program_kind: PROGRAM_KIND_DOOR_ACCESS }
+}
+
+/**
+ * A stamped Weekly Cover night's program id is `recurring_series_id`, never
+ * `event_id`. GET /business/door-access/:id only accepts a series id with
+ * program_kind === 'door_access'. Returns null instead of inventing a program.
+ */
+export function programIdFromOwnedEvent(event: {
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+}): number | null {
+  if (!isDoorAccessKind(event.access_kind)) return null
+  if (event.recurring_series_id == null || event.recurring_series_id === "") return null
+  const id = Number(event.recurring_series_id)
+  if (!Number.isFinite(id) || id <= 0) return null
+  return id
+}
+
+/** GET /business/events/:id, then programIdFromOwnedEvent. Does not invent. */
+export async function resolveDoorAccessProgramIdFromEvent(
+  eventId: number,
+): Promise<number | null> {
+  if (!Number.isFinite(eventId) || eventId <= 0) return null
+  try {
+    const api = await client()
+    const event = await api.get<{
+      access_kind?: string | null
+      recurring_series_id?: number | string | null
+    }>(`/business/events/${eventId}`)
+    return programIdFromOwnedEvent(event ?? {})
+  } catch {
+    return null
+  }
+}
+
+type RecoverEventRow = {
+  event_id?: number
+  name?: string
+  venue_name?: string
+  start_date_time?: string
+  end_date_time?: string
+  status?: string | null
+  flyer_image_url?: string
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+  ticket_sales_count?: number
+}
+
+function recoverEventNight(event: RecoverEventRow) {
+  return {
+    event_id: event.event_id,
+    name: String(event.name ?? ""),
+    venue_name: event.venue_name,
+    start_date_time: event.start_date_time,
+    access_kind: event.access_kind,
+    recurring_series_id: event.recurring_series_id,
+  }
+}
+
+/** Night belongs to this series id. Does not require access_kind. */
+export function eventBelongsToSeries(
+  event: { recurring_series_id?: number | string | null },
+  seriesId: number,
+): boolean {
+  if (!Number.isFinite(seriesId) || seriesId <= 0) return false
+  if (event.recurring_series_id == null || event.recurring_series_id === "") return false
+  const id = Number(event.recurring_series_id)
+  return Number.isFinite(id) && id === seriesId
+}
+
+export type OwnedSeriesOccurrence = {
+  event_id?: number | string | null
+  name?: string
+  occurrence_date?: string
+  status?: string | null
+  start_date_time?: string
+  end_date_time?: string
+  tickets_sold?: number
+  ticket_sales_count?: number
+  paid_orders?: number
+  is_customized?: boolean | number | string
+  flyer_image_url?: string
+}
+
+/**
+ * Build the host's program from an owned recurring series + its nights.
+ * Used when GET /business/door-access/:id 404s (program_kind=event series 23).
+ * Does not invent: no series payload and no nights for this id means null.
+ */
+export function doorAccessSeriesFromOwnedHydration(input: {
+  seriesId: number
+  series: Record<string, unknown> | null
+  eventRows: RecoverEventRow[]
+  occurrences?: OwnedSeriesOccurrence[]
+}): DoorAccessSeries | null {
+  const { seriesId, series, eventRows, occurrences = [] } = input
+  if (!Number.isFinite(seriesId) || seriesId <= 0) return null
+
+  const nightsFromEvents = eventRows.filter((event) => eventBelongsToSeries(event, seriesId))
+  const hasSeries = series != null && typeof series === "object"
+  if (!hasSeries && nightsFromEvents.length === 0 && occurrences.length === 0) return null
+
+  const first = nightsFromEvents[0]
+  const firstOcc = occurrences[0]
+  const nextDate = [
+    ...nightsFromEvents.map((event) => String(event.start_date_time ?? "").slice(0, 10)),
+    ...occurrences.map((occ) => String(occ.occurrence_date ?? occ.start_date_time ?? "").slice(0, 10)),
+  ]
+    .filter((date) => date.length === 10)
+    .sort()[0]
+
+  const program = normalizeProgram({
+    id: seriesId,
+    name: (hasSeries ? series.name : null) ?? first?.name ?? firstOcc?.name,
+    venue_name: (hasSeries ? series.venue_name : null) ?? first?.venue_name,
+    venue_id: hasSeries ? series.venue_id : undefined,
+    venue_address: hasSeries ? series.venue_address : undefined,
+    days_of_week: hasSeries ? series.days_of_week : undefined,
+    date_range_start: hasSeries ? series.date_range_start : undefined,
+    date_range_end: hasSeries ? series.date_range_end : undefined,
+    start_time: hasSeries ? series.start_time : undefined,
+    end_time: hasSeries ? series.end_time : undefined,
+    flyer_image_url:
+      (hasSeries ? series.flyer_image_url : null) ?? first?.flyer_image_url ?? firstOcc?.flyer_image_url,
+    photo_url: hasSeries ? series.photo_url : undefined,
+    is_active: hasSeries ? (series.is_active ?? true) : true,
+    is_21_plus: hasSeries ? series.is_21_plus : undefined,
+    description: hasSeries ? series.description : undefined,
+    template_tickets: hasSeries ? series.template_tickets : undefined,
+    type: hasSeries ? series.type : undefined,
+    timezone: hasSeries ? series.timezone : undefined,
+    promotion_enabled: hasSeries ? series.promotion_enabled : undefined,
+    promotion_commission_type: hasSeries ? series.promotion_commission_type : undefined,
+    promotion_commission_value: hasSeries ? series.promotion_commission_value : undefined,
+    lowstock_alerts_enabled: hasSeries ? series.lowstock_alerts_enabled : undefined,
+    lowstock_threshold_type: hasSeries ? series.lowstock_threshold_type : undefined,
+    lowstock_threshold_value: hasSeries ? series.lowstock_threshold_value : undefined,
+    lowstock_notify_business_team: hasSeries ? series.lowstock_notify_business_team : undefined,
+    redemption_mode: "camera_tap",
+    upcoming_night_count:
+      occurrences.length > 0 ? occurrences.length : nightsFromEvents.length,
+    next_night_date: nextDate,
+  })
+
+  const templateTiers = hasSeries && Array.isArray(series.template_tickets) ? series.template_tickets : []
+  const startTime = hasSeries ? series.start_time : undefined
+  const endTime = hasSeries ? series.end_time : undefined
+
+  const nights =
+    occurrences.length > 0
+      ? occurrences.map((occ) => {
+          const match = nightsFromEvents.find((event) => Number(event.event_id) === Number(occ.event_id))
+          return normalizeNight({
+            occurrence_date: String(occ.occurrence_date ?? occ.start_date_time ?? "").slice(0, 10),
+            is_stamped: occ.event_id != null && occ.event_id !== "",
+            is_scheduled: true,
+            event_id: occ.event_id,
+            status: occ.status ?? match?.status ?? null,
+            start_date_time: occ.start_date_time ?? match?.start_date_time,
+            end_date_time: occ.end_date_time ?? match?.end_date_time,
+            passes_sold: occ.tickets_sold ?? occ.ticket_sales_count ?? match?.ticket_sales_count,
+            paid_orders: occ.paid_orders,
+            is_customized: occ.is_customized,
+            start_time: startTime,
+            end_time: endTime,
+            tiers: templateTiers,
+          })
+        })
+      : nightsFromEvents.map((event) =>
+          normalizeNight({
+            occurrence_date: String(event.start_date_time ?? "").slice(0, 10),
+            is_stamped: true,
+            is_scheduled: true,
+            event_id: event.event_id,
+            status: event.status ?? null,
+            start_date_time: event.start_date_time,
+            end_date_time: event.end_date_time,
+            passes_sold: event.ticket_sales_count,
+            start_time: startTime,
+            end_time: endTime,
+            tiers: templateTiers,
+          }),
+        )
+
+  return { program, nights }
+}
+
+/**
+ * After GET /business/door-access/:id 404s, find the series id to retry or
+ * redirect to, or null for "Program not found".
+ *
+ * GET /business/events/:id runs only when :id is not already on GET
+ * /business/door-access, is not a series from Events-list grouping, and is
+ * not an owned recurring series. Series 23 is not an event: calling
+ * events/23 logged Boom "Event not found". Prefer GET
+ * /business/recurring-series/:id for the owning host.
+ * A listed id, a WC series from recurring_series_id grouping, or an owned
+ * series is surfaced so the page retries GET /business/door-access/:seriesId
+ * and hydrates if that still 404s. A WC night redirects to its
+ * recurring_series_id. Does not guess "the only program".
+ */
+export async function recoverDoorAccessProgramId(pathId: number): Promise<number | null> {
+  if (!Number.isFinite(pathId) || pathId <= 0) return null
+
+  let programs: DoorAccessProgramSummary[] = []
+  let programsLoaded = false
+  try {
+    programs = await fetchDoorAccessPrograms()
+    programsLoaded = true
+  } catch {
+    programs = []
+  }
+
+  const listed = programsLoaded && programs.some((program) => program.id === pathId)
+  const { recoverProgramIdFromLookups, doorAccessGroupsFromEvents } = await import("./events-list.ts")
+
+  let eventRows: RecoverEventRow[] = []
+  try {
+    const api = await client()
+    const upcoming = await api.get<{ events?: RecoverEventRow[] }>(
+      "/business/events?tab=upcoming&page=1&limit=50",
+    )
+    eventRows = upcoming.events ?? []
+    if (!eventRows.some((event) => eventBelongsToSeries(event, pathId))) {
+      const past = await api.get<{ events?: RecoverEventRow[] }>(
+        "/business/events?tab=past&page=1&limit=50",
+      )
+      eventRows = [...eventRows, ...(past.events ?? [])]
+    }
+  } catch {
+    eventRows = []
+  }
+
+  const nameSeriesIds = eventRows
+    .filter((event) => looksLikeWeeklyCoverName(event.name))
+    .map((event) => Number(event.recurring_series_id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight), nameSeriesIds)
+  const eventGroup = groups.find((group) => group.programId === pathId) ?? null
+
+  if (listed || eventGroup) {
+    return recoverProgramIdFromLookups({
+      pathId,
+      programs,
+      eventSeriesId: null,
+      eventGroup,
+    })
+  }
+
+  let ownedSeriesId: number | null = null
+  try {
+    const api = await client()
+    const data = await api.get<{ series?: { id?: number } }>(`/business/recurring-series/${pathId}`)
+    if (data?.series) {
+      const id = Number(data.series.id ?? pathId)
+      if (Number.isFinite(id) && id > 0) ownedSeriesId = id
+    }
+  } catch {
+    ownedSeriesId = null
+  }
+
+  if (ownedSeriesId != null) {
+    return recoverProgramIdFromLookups({
+      pathId,
+      programs,
+      eventSeriesId: null,
+      eventGroup,
+      ownedSeriesId,
+    })
+  }
+
+  let eventSeriesId: number | null = null
+  let recoveredEvent: RecoverEventRow | null = null
+  try {
+    const api = await client()
+    const event = await api.get<RecoverEventRow>(`/business/events/${pathId}`)
+    recoveredEvent = event ?? null
+    eventSeriesId = programIdFromOwnedEvent(event ?? {})
+    if (eventSeriesId == null && recoveredEvent?.recurring_series_id != null) {
+      const seriesId = Number(recoveredEvent.recurring_series_id)
+      if (
+        Number.isFinite(seriesId) &&
+        seriesId > 0 &&
+        (isDoorAccessKind(recoveredEvent.access_kind) ||
+          looksLikeWeeklyCoverName(recoveredEvent.name))
+      ) {
+        eventSeriesId = seriesId
+      }
+    }
+  } catch {
+    eventSeriesId = null
+  }
+
+  if (eventSeriesId != null && eventSeriesId !== pathId) {
+    return recoverProgramIdFromLookups({
+      pathId,
+      programs,
+      eventSeriesId,
+      eventGroup: recoveredEvent
+        ? {
+            programId: eventSeriesId,
+            name: String(recoveredEvent.name ?? ""),
+            events: [recoverEventNight(recoveredEvent)],
+          }
+        : { programId: eventSeriesId, name: "", events: [] },
+    })
+  }
+
+  return recoverProgramIdFromLookups({
+    pathId,
+    programs,
+    eventSeriesId: null,
+    eventGroup,
+    ownedSeriesId,
+  })
+}
+
+/**
+ * When GET /business/door-access/:id 404s after recover confirmed the series,
+ * assemble the host's program from owned recurring-series + nights. Nights
+ * match recurring_series_id even when access_kind is still event. Does not
+ * invent: no owned series and no nights for this id means null.
+ */
+export async function hydrateDoorAccessSeriesFromOwned(
+  seriesId: number,
+): Promise<DoorAccessSeries | null> {
+  if (!Number.isFinite(seriesId) || seriesId <= 0) return null
+
+  let eventRows: RecoverEventRow[] = []
+  try {
+    const api = await client()
+    const upcoming = await api.get<{ events?: RecoverEventRow[] }>(
+      "/business/events?tab=upcoming&page=1&limit=50",
+    )
+    eventRows = upcoming.events ?? []
+    const past = await api.get<{ events?: RecoverEventRow[] }>(
+      "/business/events?tab=past&page=1&limit=50",
+    )
+    eventRows = [...eventRows, ...(past.events ?? [])]
+  } catch {
+    eventRows = []
+  }
+
+  let series: Record<string, unknown> | null = null
+  let occurrences: OwnedSeriesOccurrence[] = []
+  try {
+    const api = await client()
+    const data = await api.get<{
+      series?: Record<string, unknown>
+      occurrences?: OwnedSeriesOccurrence[]
+    }>(`/business/recurring-series/${seriesId}`)
+    if (data.series && typeof data.series === "object") series = data.series
+    if (Array.isArray(data.occurrences)) occurrences = data.occurrences
+  } catch {
+    series = null
+    occurrences = []
+  }
+
+  return doorAccessSeriesFromOwnedHydration({
+    seriesId,
+    series,
+    eventRows,
+    occurrences,
+  })
+}
+
+export type DoorAccessSeriesLoad =
+  | { ok: true; series: DoorAccessSeries; redirectTo?: undefined }
+  | { ok: false; series?: undefined; redirectTo: number }
+  | { ok: false; series?: undefined; redirectTo?: undefined }
+
+/**
+ * GET /business/door-access/:id, then recover + retry, then hydrate from
+ * owned WC nights. A night event_id returns redirectTo the series.
+ */
+export async function loadDoorAccessSeriesForPath(
+  pathId: number,
+  lookaheadDays?: number,
+): Promise<DoorAccessSeriesLoad> {
+  if (!Number.isFinite(pathId) || pathId <= 0) return { ok: false }
+  try {
+    return { ok: true, series: await fetchDoorAccessSeries(pathId, lookaheadDays) }
+  } catch {
+    const resolved = await recoverDoorAccessProgramId(pathId)
+    if (resolved == null) return { ok: false }
+    if (resolved !== pathId) return { ok: false, redirectTo: resolved }
+    try {
+      return { ok: true, series: await fetchDoorAccessSeries(resolved, lookaheadDays) }
+    } catch {
+      const hydrated = await hydrateDoorAccessSeriesFromOwned(resolved)
+      return hydrated ? { ok: true, series: hydrated } : { ok: false }
+    }
+  }
+}
+
+export type DoorAccessNightLoad =
+  | { ok: true; program: DoorAccessProgram; night: DoorAccessNight; redirectTo?: undefined }
+  | { ok: false; redirectTo: number }
+  | { ok: false; redirectTo?: undefined }
+
+export async function loadDoorAccessNightForPath(
+  programId: number,
+  date: string,
+): Promise<DoorAccessNightLoad> {
+  if (!Number.isFinite(programId) || programId <= 0) return { ok: false }
+  try {
+    const data = await fetchDoorAccessNight(programId, date)
+    return { ok: true, program: data.program, night: data.night }
+  } catch {
+    const resolved = await recoverDoorAccessProgramId(programId)
+    if (resolved == null) return { ok: false }
+    if (resolved !== programId) return { ok: false, redirectTo: resolved }
+    try {
+      const data = await fetchDoorAccessNight(resolved, date)
+      return { ok: true, program: data.program, night: data.night }
+    } catch {
+      const hydrated = await hydrateDoorAccessSeriesFromOwned(resolved)
+      if (!hydrated) return { ok: false }
+      const night = hydrated.nights.find((row) => row.occurrence_date === date)
+      if (!night) return { ok: false }
+      return { ok: true, program: hydrated.program, night }
+    }
+  }
+}
 
 /** F9 card chip on a named-event row. */
 export const EVENT_TYPE_LABEL = "EVENT"
 
-/** Section/nav name. Title case — the chip above is the shouty one. */
-export const WEEKLY_ACCESS_SECTION_LABEL = "Weekly Access"
-
-/**
- * The creation-flow name (D-P5). Both halves of the product in one string:
- * hosts recognise "cover" and "skip the line", and neither alone describes a
- * program that is usually both.
- */
-export const WEEKLY_ACCESS_CREATION_LABEL = "Weekly Cover / Skip the Line"
-
 /** The accent pair. Green = named event, magenta = access (F9 / D-P5). */
 export const EVENT_ACCENT = "#05EB54"
 export const ACCESS_ACCENT = "#FF3ED1"
+/** Gradient partner for ACCESS_ACCENT — same pair as checkout / venue Weekly Cover. */
+export const ACCESS_ACCENT_DEEP = "#D10EA3"
+/** v2 Button variant for Weekly Cover primary CTAs. */
+export const ACCESS_BUTTON_VARIANT = "access" as const
+
+// ── F11 program page copy (no em dashes in host-facing strings) ─────────────
+
+export const PROGRAM_LINK_LABEL = "Program link"
+export const PROGRAM_LINK_DESCRIPTION = "Every upcoming night"
+
+export const NIGHTS_HELPER_EDIT =
+  "Tap a night to change price, capacity, or hours for that date only."
+export const NIGHTS_HELPER_VIEW = "Tap a night to see what it sells."
+
+/** Header control on the series page. Opens the dedicated template editor. */
+export const EDIT_PROGRAM_LABEL = "Edit program"
+
+/** Path segment is empty, undefined, NaN, or <= 0. Not a 404. */
+export const MISSING_PROGRAM_ID_TITLE = "Missing program id"
+export const MISSING_PROGRAM_ID_DESCRIPTION = "This URL has no program id."
+
+/** A /business/door-access/:id segment. Empty / undefined / NaN / <= 0 is missing. */
+export function parseProgramPathId(raw: string | null | undefined): number | null {
+  if (raw == null) return null
+  const trimmed = String(raw).trim()
+  if (trimmed === "" || trimmed === "undefined" || trimmed === "null") return null
+  const n = Number(trimmed)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n
+}
+
+/** Default strip: the next N upcoming nights, not a 4-week ledger. */
+export const DEFAULT_NIGHT_PREVIEW_COUNT = 4
+
+/** Days fetched before the host opens More nights. Server clamps at 180. */
+export const DEFAULT_SERIES_LOOKAHEAD_DAYS = 28
 
 // ── Wire shapes (services/src/services/DoorAccessProgramService.ts) ─────────
 
@@ -67,6 +545,10 @@ export interface DoorAccessTemplateTier {
   ticket_type: "paid" | "free"
   is_hidden: number
   sort_order: number
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
 }
 
 /** A row from GET /business/door-access — the F9 list card's source. */
@@ -83,6 +565,12 @@ export interface DoorAccessProgramSummary {
   start_time: string
   end_time: string
   flyer_image_url: string | null
+  /**
+   * Venue photo when the program payload includes it. Older services builds
+   * omit this; display then uses the venues list. A coalesced flyer from
+   * services still arrives on flyer_image_url and wins.
+   */
+  photo_url?: string | null
   redemption_mode: RedemptionMode
   template_tickets: DoorAccessTemplateTier[]
   migrated_from_line_skip_id: number | null
@@ -102,6 +590,12 @@ export interface DoorAccessProgram extends DoorAccessProgramSummary {
   type: "Ticketed" | "Free" | "RSVP"
   is_21_plus: boolean
   timezone: string | null
+  promotion_commission_type: "percent" | "fixed" | null
+  promotion_commission_value: number | null
+  lowstock_alerts_enabled: boolean
+  lowstock_threshold_type: "percent" | "count" | null
+  lowstock_threshold_value: number | null
+  lowstock_notify_business_team: boolean
 }
 
 /**
@@ -118,9 +612,23 @@ export interface DoorAccessNightTier {
   max_per_person: number
   sort_order: number
   is_disabled: boolean
+  /**
+   * Night-level sold out. Hydrated from `sold_out` or legacy `force_sold_out`
+   * when services echoes it. Missing on older payloads; default false.
+   */
+  sold_out: boolean
   is_overridden: boolean
   template_price_usd: number
   template_quantity: number
+  /**
+   * Present when the night payload includes them. Older nights omit these;
+   * draftFromNight then uses the program template so Edit matches create.
+   */
+  ticket_type?: "paid" | "free"
+  valid_from_time?: string | null
+  valid_until_time?: string | null
+  valid_from_day_offset?: number
+  valid_until_day_offset?: number
 }
 
 /**
@@ -156,10 +664,12 @@ export interface DoorAccessSeries {
 }
 
 /**
- * A per-night write's result. `restamp_error` is a WARNING, never a failure:
- * the override is already committed when core's restamp is attempted, so the
- * UI must show the saved state plus the notice, not an error wall that implies
- * nothing was written.
+ * A per-night write's result.
+ *
+ * The override row is committed before core restamps tickets. That does not
+ * mean buyers see the new price: restampNight can return times_only_has_sales
+ * or restamp_error, in which case checkout still has the old tickets.price_usd.
+ * The night page must not show a live Saved banner in those cases.
  */
 export interface NightOverrideResult {
   night: DoorAccessNight
@@ -167,16 +677,64 @@ export interface NightOverrideResult {
   restamp_error: string | null
 }
 
-/** A sparse night patch. Omit = leave alone. null = go back to inheriting. */
+/** Ticket row on the night page drafts only. Save night is the guest-facing commit. */
+export const NIGHT_TICKET_APPLY_LABEL = "Apply to night"
+
+export const NIGHT_TICKET_DRAFT_HINT =
+  "Drafts until you Save night. Buyers will not see this price until then."
+
+export const NIGHT_SAVE_LIVE = "Saved."
+
+export const NIGHT_SAVE_NOT_LIVE =
+  "Saved is not live. The price buyers see may still be the old one."
+
+export const TIMES_ONLY_HAS_SALES = "times_only_has_sales"
+
+export const NIGHT_UNSAVED_TITLE = "Unsaved changes"
+
+export const NIGHT_UNSAVED_BODY =
+  "Leave this night without saving? Hours, tickets, sold out, and order stay drafts until you Save night."
+
+export const NIGHT_UNSAVED_LEAVE = "Leave"
+
+/**
+ * A sparse night patch. Omit = leave alone. null = go back to inheriting.
+ *
+ * PUT /business/door-access/:id/nights/:date already accepts start_time,
+ * end_time, is_closed, and per-tier price_usd / quantity / is_disabled.
+ * This client also sends sold_out, sort_order, and the create-series ticket
+ * fields (name, type, description, max_per_person, scan window) on each
+ * tier so a host can Edit a night ticket with the same fields as Add ticket
+ * tier, then commit on Save night.
+ *
+ * Services follow-up: persist those keys on door_access_tier_overrides
+ * (and restamp them onto tickets). Older services builds drop unknown tier
+ * fields. Do not strip them here or the night UI becomes a silent no-op.
+ */
 export interface NightOverridePayload {
   start_time?: string | null
   end_time?: string | null
   is_closed?: boolean
+  /**
+   * Organizer Save night (not Save as draft). Services PUT restamps the night
+   * and can flip draft → published. Omit only on a times-only draft path.
+   */
+  publish?: boolean
   tiers?: Array<{
     tier_key: string
     price_usd?: number | null
     quantity?: number | null
     is_disabled?: boolean
+    sold_out?: boolean
+    sort_order?: number
+    name?: string | null
+    description?: string | null
+    ticket_type?: "paid" | "free" | null
+    max_per_person?: number | null
+    valid_from_time?: string | null
+    valid_until_time?: string | null
+    valid_from_day_offset?: number | null
+    valid_until_day_offset?: number | null
   }>
 }
 
@@ -238,6 +796,10 @@ export function normalizeTemplateTier(raw: Record<string, unknown>): DoorAccessT
     ticket_type: raw.ticket_type === "free" ? "free" : "paid",
     is_hidden: num(raw.is_hidden),
     sort_order: num(raw.sort_order),
+    valid_from_time: raw.valid_from_time == null || raw.valid_from_time === "" ? null : str(raw.valid_from_time),
+    valid_until_time: raw.valid_until_time == null || raw.valid_until_time === "" ? null : str(raw.valid_until_time),
+    valid_from_day_offset: num(raw.valid_from_day_offset),
+    valid_until_day_offset: num(raw.valid_until_day_offset),
   }
 }
 
@@ -271,6 +833,7 @@ export function normalizeProgramSummary(raw: Record<string, unknown>): DoorAcces
     start_time: str(raw.start_time),
     end_time: str(raw.end_time),
     flyer_image_url: raw.flyer_image_url ? str(raw.flyer_image_url) : null,
+    photo_url: raw.photo_url ? str(raw.photo_url) : null,
     redemption_mode: raw.redemption_mode === "native_scan" ? "native_scan" : "camera_tap",
     template_tickets: tiers,
     migrated_from_line_skip_id: nullableNum(raw.migrated_from_line_skip_id),
@@ -290,6 +853,8 @@ export function normalizeProgramSummary(raw: Record<string, unknown>): DoorAcces
 }
 
 export function normalizeProgram(raw: Record<string, unknown>): DoorAccessProgram {
+  const commissionType = raw.promotion_commission_type
+  const lowstockType = raw.lowstock_threshold_type
   return {
     ...normalizeProgramSummary(raw),
     description: raw.description == null ? null : str(raw.description),
@@ -297,6 +862,14 @@ export function normalizeProgram(raw: Record<string, unknown>): DoorAccessProgra
     type: raw.type === "Free" ? "Free" : raw.type === "RSVP" ? "RSVP" : "Ticketed",
     is_21_plus: bool(raw.is_21_plus),
     timezone: raw.timezone == null ? null : str(raw.timezone),
+    promotion_commission_type:
+      commissionType === "fixed" ? "fixed" : commissionType === "percent" ? "percent" : null,
+    promotion_commission_value: nullableNum(raw.promotion_commission_value),
+    lowstock_alerts_enabled: bool(raw.lowstock_alerts_enabled),
+    lowstock_threshold_type:
+      lowstockType === "count" ? "count" : lowstockType === "percent" ? "percent" : null,
+    lowstock_threshold_value: nullableNum(raw.lowstock_threshold_value),
+    lowstock_notify_business_team: bool(raw.lowstock_notify_business_team),
   }
 }
 
@@ -310,9 +883,23 @@ export function normalizeNightTier(raw: Record<string, unknown>): DoorAccessNigh
     max_per_person: num(raw.max_per_person),
     sort_order: num(raw.sort_order),
     is_disabled: bool(raw.is_disabled),
+    sold_out: bool(raw.sold_out) || bool(raw.force_sold_out),
     is_overridden: bool(raw.is_overridden),
     template_price_usd: num(raw.template_price_usd),
     template_quantity: num(raw.template_quantity),
+    ticket_type: raw.ticket_type === "free" ? "free" : raw.ticket_type === "paid" ? "paid" : undefined,
+    valid_from_time: !("valid_from_time" in raw)
+      ? undefined
+      : raw.valid_from_time == null || raw.valid_from_time === ""
+        ? null
+        : str(raw.valid_from_time),
+    valid_until_time: !("valid_until_time" in raw)
+      ? undefined
+      : raw.valid_until_time == null || raw.valid_until_time === ""
+        ? null
+        : str(raw.valid_until_time),
+    valid_from_day_offset: "valid_from_day_offset" in raw ? num(raw.valid_from_day_offset) : undefined,
+    valid_until_day_offset: "valid_until_day_offset" in raw ? num(raw.valid_until_day_offset) : undefined,
   }
 }
 
@@ -349,10 +936,26 @@ async function client() {
   return mod.apiClient
 }
 
+/**
+ * Query string for GET /business/door-access.
+ * A selected venue becomes `?venue_id=N`. All venues (null / missing / <= 0)
+ * omits the param so the host sees every owned series.
+ */
+export function doorAccessProgramsQuery(venueId?: number | null): string {
+  if (venueId == null) return ""
+  const id = Number(venueId)
+  if (!Number.isFinite(id) || id <= 0) return ""
+  return `?venue_id=${id}`
+}
+
 /** GET /business/door-access — the WEEKLY ACCESS rows on the combined list. */
-export async function fetchDoorAccessPrograms(): Promise<DoorAccessProgramSummary[]> {
+export async function fetchDoorAccessPrograms(
+  venueId?: number | null,
+): Promise<DoorAccessProgramSummary[]> {
   const api = await client()
-  const data = await api.get<{ programs?: unknown }>("/business/door-access")
+  const data = await api.get<{ programs?: unknown }>(
+    `/business/door-access${doorAccessProgramsQuery(venueId)}`,
+  )
   const rows = Array.isArray(data?.programs) ? data.programs : []
   return rows
     .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
@@ -367,9 +970,11 @@ export async function fetchDoorAccessPrograms(): Promise<DoorAccessProgramSummar
  * additive to a surface that worked before they existed. Failure is an empty
  * section, never an error wall.
  */
-export async function fetchDoorAccessProgramsSafe(): Promise<DoorAccessProgramSummary[]> {
+export async function fetchDoorAccessProgramsSafe(
+  venueId?: number | null,
+): Promise<DoorAccessProgramSummary[]> {
   try {
-    return await fetchDoorAccessPrograms()
+    return await fetchDoorAccessPrograms(venueId)
   } catch {
     return []
   }
@@ -446,14 +1051,61 @@ export async function clearNightOverride(
   }
 }
 
+/**
+ * A program-wide write's result. `restamp_error` is a WARNING, never a failure:
+ * the template is already committed when core's restamp is attempted.
+ */
+export interface ProgramUpdateResult {
+  program: DoorAccessProgram
+  restamp: unknown | null
+  restamp_error: string | null
+}
+
+/** PUT /business/door-access/:id — save the whole program template. */
+export async function updateDoorAccessProgram(
+  programId: number,
+  payload: Record<string, unknown>
+): Promise<ProgramUpdateResult> {
+  const api = await client()
+  const data = await api.put<{
+    program?: Record<string, unknown>
+    series?: Record<string, unknown>
+    restamp?: unknown
+    restamp_error?: string | null
+  }>(`/business/door-access/${programId}`, payload)
+  return {
+    program: normalizeProgram(data.program ?? data.series ?? {}),
+    restamp: data.restamp ?? null,
+    restamp_error: data.restamp_error ?? null,
+  }
+}
+
 // ── Routing (D-F11.1: a program card opens the SERIES, never a night) ───────
 
 export function programHref(programId: number): string {
   return `/business/door-access/${programId}`
 }
 
+/** Dedicated template editor. The series page stays view + tap a night. */
+export function programEditHref(programId: number): string {
+  return `/business/door-access/${programId}/edit`
+}
+
 export function nightHref(programId: number, date: string): string {
   return `/business/door-access/${programId}/nights/${date}`
+}
+
+/** "21:00:00" → "21:00" for `<input type="time">`. */
+export function toTimeInput(value: string | null | undefined): string {
+  const match = /^(\d{1,2}):(\d{2})/.exec(str(value))
+  if (!match) return ""
+  return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`
+}
+
+/** "21:00" from `<input type="time">` → "21:00:00" for the night draft. */
+export function fromTimeInput(value: string): string {
+  const hhmm = toTimeInput(value)
+  return hhmm ? `${hhmm}:00` : ""
 }
 
 // ── Pure formatting ─────────────────────────────────────────────────────────
@@ -501,6 +1153,47 @@ export function parseIsoDate(iso: string): { y: number; m: number; d: number } |
   return { y, m, d }
 }
 
+/**
+ * Image for a weekly-access row or night card.
+ *
+ * flyer_image_url wins, including when services already coalesced an empty
+ * flyer to the venue photo. If flyer is still empty, use photo_url on the
+ * program, then the matching venue from auth/venues. The date-block / icon
+ * tile stays only when there is no image at all.
+ */
+export function resolveProgramImageUrl(
+  program: {
+    flyer_image_url?: string | null
+    photo_url?: string | null
+    venue_id?: number | null
+  },
+  venues?: Array<{ id: number; photo_url?: string | null }>,
+): string | null {
+  const flyer = nonemptyUrl(program.flyer_image_url)
+  if (flyer) return flyer
+  const onProgram = nonemptyUrl(program.photo_url)
+  if (onProgram) return onProgram
+  if (program.venue_id == null || !venues?.length) return null
+  const venue = venues.find((v) => v.id === program.venue_id)
+  return nonemptyUrl(venue?.photo_url)
+}
+
+function nonemptyUrl(v: string | null | undefined): string | null {
+  if (typeof v !== "string") return null
+  const trimmed = v.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/** Flyer fallback on a night preview card: weekday, month name, calendar day. */
+export function nightDateBlock(
+  iso: string
+): { weekday: string; month: string; day: number } | null {
+  const parts = parseIsoDate(iso)
+  if (!parts) return null
+  const weekday = DAY_NAMES[(new Date(Date.UTC(parts.y, parts.m - 1, parts.d)).getUTCDay() + 6) % 7]
+  return { weekday, month: MONTH_NAMES[parts.m - 1], day: parts.d }
+}
+
 /** "22:00:00" → "10:00 PM". Wall-clock in, wall-clock out — no zone math. */
 export function fmtTime(value: string | null | undefined): string {
   const match = /^(\d{1,2}):(\d{2})/.exec(str(value))
@@ -519,11 +1212,11 @@ export function fmtWindow(start: string, end: string): string {
   if (!a && !b) return ""
   if (!b) return a
   if (!a) return b
-  return `${a} – ${b}`
+  return `${a} - ${b}`
 }
 
 export function usdPrice(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return "—"
+  if (n == null || !Number.isFinite(n)) return "-"
   return n === 0
     ? "Free"
     : `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -624,7 +1317,7 @@ export function accessRowStats(
   return [
     {
       label: "sold this week",
-      value: "—",
+      value: "-",
       pending: true,
       hint: "Per-night sales live on the program page. A week-scoped passes_sold on GET /business/door-access would fill this in.",
     },
@@ -656,6 +1349,43 @@ export function nightChips(night: DoorAccessNight): NightChip[] {
   if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
   if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
   return chips
+}
+
+/**
+ * The ONE chip on a program-page preview card.
+ *
+ * A ledger of Closed / Overridden / Customized / Not on sale yet is what made
+ * the list unreadable. Cards only say something when it changes what a host
+ * does next: buyable now, or not generated yet.
+ */
+export function nightPreviewChip(night: DoorAccessNight): NightChip | null {
+  if (!night.is_stamped || night.event_id == null) {
+    return { label: "Not generated", variant: "neutral" }
+  }
+  if (night.is_closed || night.status === "cancelled") return null
+  const status = (night.status ?? "").toLowerCase()
+  if (status === "published" || status === "approved" || status === "active") {
+    return { label: "On sale", variant: "info" }
+  }
+  return null
+}
+
+/** Lowest priced tier still on sale, or a short empty phrase. Never an em dash. */
+export function nightPreviewPrice(night: DoorAccessNight): string {
+  const priced = night.tiers.filter((t) => !t.is_disabled)
+  if (priced.length === 0) return "No tiers on sale"
+  const lowest = Math.min(...priced.map((t) => t.price_usd))
+  return `From ${usdPrice(lowest)}`
+}
+
+/** Default view is a short strip; More nights reveals the rest of the fetch. */
+export function visibleUpcomingNights<T>(
+  nights: T[],
+  expanded: boolean,
+  limit: number = DEFAULT_NIGHT_PREVIEW_COUNT
+): T[] {
+  if (expanded) return nights
+  return nights.slice(0, limit)
 }
 
 /**
@@ -692,6 +1422,9 @@ export function easternToday(now: Date = new Date()): string {
  * template's current value, which would silently FREEZE that night at today's
  * price the next time the template changed.
  */
+/** Matches TICKET_DESCRIPTION_MAX on the create-series ticket editor. */
+export const NIGHT_TICKET_DESCRIPTION_MAX = 64
+
 export interface NightTierDraft {
   tier_key: string
   inherit_price: boolean
@@ -699,6 +1432,35 @@ export interface NightTierDraft {
   inherit_quantity: boolean
   quantity: number | null
   is_disabled: boolean
+  sold_out: boolean
+  sort_order: number
+  name: string
+  inherit_name: boolean
+  description: string | null
+  inherit_description: boolean
+  ticket_type: "paid" | "free"
+  inherit_ticket_type: boolean
+  max_per_person: number
+  inherit_max_per_person: boolean
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+  inherit_scan_window: boolean
+}
+
+/** Create-series Add ticket tier values, applied to one night draft tier. */
+export interface NightTierFormValues {
+  name: string
+  description: string | null
+  ticket_type: "paid" | "free"
+  price_usd: number
+  quantity: number
+  max_per_person: number
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
 }
 
 export interface NightDraft {
@@ -710,26 +1472,198 @@ export interface NightDraft {
 }
 
 /**
+ * Typing a price or capacity is the override. Matching the program default
+ * again releases the pin (null on save) so the night keeps tracking the
+ * template. Empty or non-finite values stay overridden so validation can
+ * catch them instead of quietly inheriting.
+ */
+export function inheritIfMatchesTemplate(
+  value: number | null,
+  template: number | null | undefined
+): boolean {
+  return value != null && Number.isFinite(value) && value === template
+}
+
+export function inheritIfMatchesText(
+  value: string | null | undefined,
+  template: string | null | undefined
+): boolean {
+  return (value ?? "").trim() === (template ?? "").trim()
+}
+
+function scanWindowFingerprint(window: {
+  valid_from_time: string | null | undefined
+  valid_until_time: string | null | undefined
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+}): string {
+  const from = toTimeInput(window.valid_from_time)
+  const until = toTimeInput(window.valid_until_time)
+  return JSON.stringify({
+    from,
+    until,
+    from_off: from ? window.valid_from_day_offset : 0,
+    until_off: until ? window.valid_until_day_offset : 0,
+  })
+}
+
+export function inheritIfMatchesScan(
+  current: {
+    valid_from_time: string | null | undefined
+    valid_until_time: string | null | undefined
+    valid_from_day_offset: number
+    valid_until_day_offset: number
+  },
+  template: {
+    valid_from_time?: string | null
+    valid_until_time?: string | null
+    valid_from_day_offset?: number
+    valid_until_day_offset?: number
+  } | undefined
+): boolean {
+  return (
+    scanWindowFingerprint(current) ===
+    scanWindowFingerprint({
+      valid_from_time: template?.valid_from_time,
+      valid_until_time: template?.valid_until_time,
+      valid_from_day_offset: template?.valid_from_day_offset ?? 0,
+      valid_until_day_offset: template?.valid_until_day_offset ?? 0,
+    })
+  )
+}
+
+/**
+ * Typing a door hour is the override. Matching the program window again
+ * releases the pin (null on save) so the night keeps tracking the template.
+ * Empty or unparseable times stay overridden so validation can catch them
+ * instead of quietly inheriting.
+ */
+export function inheritIfMatchesTimes(
+  start: string,
+  end: string,
+  templateStart: string,
+  templateEnd: string
+): boolean {
+  const startInput = toTimeInput(start)
+  const endInput = toTimeInput(end)
+  return (
+    startInput !== "" &&
+    endInput !== "" &&
+    startInput === toTimeInput(templateStart) &&
+    endInput === toTimeInput(templateEnd)
+  )
+}
+
+/** Apply an hours edit. Matching the program window un-pins both times. */
+export function applyNightHours(
+  draft: NightDraft,
+  startTime: string,
+  endTime: string,
+  templateStart: string,
+  templateEnd: string
+): NightDraft {
+  return {
+    ...draft,
+    start_time: startTime,
+    end_time: endTime,
+    inherit_times: inheritIfMatchesTimes(startTime, endTime, templateStart, templateEnd),
+  }
+}
+
+/** Quiet Reset: put both times back on the program window. */
+export function resetNightHours(
+  draft: NightDraft,
+  templateStart: string,
+  templateEnd: string
+): NightDraft {
+  return {
+    ...draft,
+    start_time: templateStart,
+    end_time: templateEnd,
+    inherit_times: true,
+  }
+}
+
+/**
  * Seed a draft from the night the server returned.
  *
- * A tier is "inheriting" when its effective value still equals the template's
- * — the server's is_overridden covers the tier as a whole, but price and
+ * A tier is "inheriting" when its effective value still equals the template's.
+ * The server's is_overridden covers the tier as a whole, but price and
  * quantity override independently, so each is compared on its own.
  */
 export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgram): NightDraft {
   return {
-    inherit_times: night.start_time === program.start_time && night.end_time === program.end_time,
+    inherit_times: inheritIfMatchesTimes(
+      night.start_time,
+      night.end_time,
+      program.start_time,
+      program.end_time
+    ),
     start_time: night.start_time,
     end_time: night.end_time,
     is_closed: night.is_closed,
-    tiers: night.tiers.map((tier) => ({
-      tier_key: tier.tier_key,
-      inherit_price: tier.price_usd === tier.template_price_usd,
-      price_usd: tier.price_usd,
-      inherit_quantity: tier.quantity === tier.template_quantity,
-      quantity: tier.quantity,
-      is_disabled: tier.is_disabled,
-    })),
+    tiers: night.tiers.map((tier, index) => {
+      const template = program.template_tickets.find((t) => t.tier_key === tier.tier_key)
+      const name = tier.name
+      const templateName = template?.name ?? tier.name
+      const description = tier.description
+      const templateDescription = template?.description ?? tier.description
+      const ticketType = tier.ticket_type ?? nightTierTicketType(tier, program)
+      const templateType = template?.ticket_type ?? ticketType
+      const maxPerPerson = Number.isFinite(tier.max_per_person)
+        ? tier.max_per_person
+        : (template?.max_per_person ?? 0)
+      const templateMax = template?.max_per_person ?? maxPerPerson
+      const scan = resolveNightScanWindow(tier, template)
+      return {
+        tier_key: tier.tier_key,
+        inherit_price: inheritIfMatchesTemplate(tier.price_usd, tier.template_price_usd),
+        price_usd: tier.price_usd,
+        inherit_quantity: inheritIfMatchesTemplate(tier.quantity, tier.template_quantity),
+        quantity: tier.quantity,
+        is_disabled: tier.is_disabled,
+        sold_out: tier.sold_out,
+        sort_order: Number.isFinite(tier.sort_order) ? tier.sort_order : index,
+        name,
+        inherit_name: inheritIfMatchesText(name, templateName),
+        description,
+        inherit_description: inheritIfMatchesText(description, templateDescription),
+        ticket_type: ticketType,
+        inherit_ticket_type: ticketType === templateType,
+        max_per_person: maxPerPerson,
+        inherit_max_per_person: inheritIfMatchesTemplate(maxPerPerson, templateMax),
+        valid_from_time: scan.valid_from_time,
+        valid_until_time: scan.valid_until_time,
+        valid_from_day_offset: scan.valid_from_day_offset,
+        valid_until_day_offset: scan.valid_until_day_offset,
+        inherit_scan_window: inheritIfMatchesScan(scan, template),
+      }
+    }),
+  }
+}
+
+function resolveNightScanWindow(
+  tier: DoorAccessNightTier,
+  template: DoorAccessTemplateTier | undefined
+): {
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+} {
+  return {
+    valid_from_time:
+      tier.valid_from_time !== undefined ? tier.valid_from_time : (template?.valid_from_time ?? null),
+    valid_until_time:
+      tier.valid_until_time !== undefined ? tier.valid_until_time : (template?.valid_until_time ?? null),
+    valid_from_day_offset:
+      tier.valid_from_day_offset !== undefined
+        ? tier.valid_from_day_offset
+        : (template?.valid_from_day_offset ?? 0),
+    valid_until_day_offset:
+      tier.valid_until_day_offset !== undefined
+        ? tier.valid_until_day_offset
+        : (template?.valid_until_day_offset ?? 0),
   }
 }
 
@@ -738,28 +1672,54 @@ export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgra
  *
  * Always explicit: every override-capable field is sent either as a value or
  * as null. The endpoint treats null as "inherit" and upserts, so a save is
- * idempotent and the draft alone determines the outcome — no dirty tracking,
- * and no way for a stale flag to leave an override behind after the host
- * cleared it.
+ * idempotent and the draft alone determines the outcome. Unsaved-changes
+ * dirty is UI-only (leave prompts). It does not change what we PUT.
  */
 export function buildNightOverridePayload(draft: NightDraft): NightOverridePayload {
   return {
     start_time: draft.inherit_times ? null : draft.start_time,
     end_time: draft.inherit_times ? null : draft.end_time,
     is_closed: draft.is_closed,
-    tiers: draft.tiers.map((tier) => ({
+    tiers: draft.tiers.map((tier, index) => ({
       tier_key: tier.tier_key,
       price_usd: tier.inherit_price ? null : tier.price_usd,
       quantity: tier.inherit_quantity ? null : tier.quantity,
       is_disabled: tier.is_disabled,
+      sold_out: tier.sold_out,
+      sort_order: Number.isFinite(tier.sort_order) ? tier.sort_order : index,
+      name: tier.inherit_name ? null : tier.name,
+      description: tier.inherit_description ? null : tier.description,
+      ticket_type: tier.inherit_ticket_type ? null : tier.ticket_type,
+      max_per_person: tier.inherit_max_per_person ? null : tier.max_per_person,
+      valid_from_time: tier.inherit_scan_window ? null : tier.valid_from_time,
+      valid_until_time: tier.inherit_scan_window ? null : tier.valid_until_time,
+      valid_from_day_offset: tier.inherit_scan_window ? null : tier.valid_from_day_offset,
+      valid_until_day_offset: tier.inherit_scan_window ? null : tier.valid_until_day_offset,
     })),
   }
+}
+
+/** Save night: override fields plus the restamp/publish path, not times_only. */
+export function buildNightSavePayload(draft: NightDraft): NightOverridePayload {
+  return { ...buildNightOverridePayload(draft), publish: true }
 }
 
 /** Does this draft still say anything the template doesn't? Drives "Reset". */
 export function draftHasOverrides(draft: NightDraft): boolean {
   if (!draft.inherit_times || draft.is_closed) return true
-  return draft.tiers.some((t) => !t.inherit_price || !t.inherit_quantity || t.is_disabled)
+  return draft.tiers.some(
+    (t, i) =>
+      !t.inherit_price ||
+      !t.inherit_quantity ||
+      !t.inherit_name ||
+      !t.inherit_description ||
+      !t.inherit_ticket_type ||
+      !t.inherit_max_per_person ||
+      !t.inherit_scan_window ||
+      t.is_disabled ||
+      t.sold_out ||
+      t.sort_order !== i
+  )
 }
 
 /**
@@ -787,7 +1747,49 @@ export function validateNightDraft(draft: NightDraft): string[] {
       break
     }
   }
+  for (const tier of draft.tiers) {
+    if (!tier.inherit_name && !tier.name.trim()) {
+      errors.push("Every access tier needs a name.")
+      break
+    }
+  }
+  for (const tier of draft.tiers) {
+    if ((tier.description ?? "").length > NIGHT_TICKET_DESCRIPTION_MAX) {
+      errors.push("Description must be 64 characters or fewer.")
+      break
+    }
+  }
+  for (const tier of draft.tiers) {
+    if (
+      !tier.inherit_max_per_person &&
+      (tier.max_per_person < 0 || !Number.isInteger(tier.max_per_person))
+    ) {
+      errors.push("Max per person must be a whole number (0 = unlimited).")
+      break
+    }
+  }
+  for (const tier of draft.tiers) {
+    if (tier.inherit_scan_window) continue
+    const from = toTimeInput(tier.valid_from_time)
+    const until = toTimeInput(tier.valid_until_time)
+    if (from && until) {
+      const start = tier.valid_from_day_offset * 1440 + clockMinutes(from)
+      const end = tier.valid_until_day_offset * 1440 + clockMinutes(until)
+      if (start >= end) {
+        errors.push(
+          `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
+        )
+        break
+      }
+    }
+  }
   return errors
+}
+
+function clockMinutes(hhmm: string): number {
+  const match = /^(\d{1,2}):(\d{2})/.exec(hhmm)
+  if (!match) return NaN
+  return Number(match[1]) * 60 + Number(match[2])
 }
 
 /**
@@ -799,4 +1801,319 @@ export function validateNightDraft(draft: NightDraft): string[] {
  */
 export function nightIsEditable(night: DoorAccessNight): boolean {
   return night.status !== "cancelled" && !night.is_customized
+}
+
+/**
+ * A stamped night has a real events row. Guest checkout reads that row's
+ * tickets. Price still writes through door_access_tier_overrides on Save night;
+ * PUT /business/events/:id/tickets marks series_customized and is the wrong path.
+ */
+export function nightHasEventTickets(
+  night: Pick<DoorAccessNight, "is_stamped" | "event_id">
+): boolean {
+  return night.is_stamped && night.event_id != null
+}
+
+/**
+ * Hours and closed only. Not the night-page save: Save night always sends
+ * buildNightOverridePayload so ticket price/qty stay on the override.
+ */
+export function buildNightHoursPayload(draft: NightDraft): NightOverridePayload {
+  return {
+    start_time: draft.inherit_times ? null : draft.start_time,
+    end_time: draft.inherit_times ? null : draft.end_time,
+    is_closed: draft.is_closed,
+  }
+}
+
+/** Core skipped a ticket price restamp because this night already has sales. */
+export function restampSignalsTimesOnlyHasSales(restamp: unknown): boolean {
+  if (restamp == null) return false
+  const blob = typeof restamp === "string" ? restamp : JSON.stringify(restamp)
+  return blob.includes(TIMES_ONLY_HAS_SALES)
+}
+
+/**
+ * Guest prices are not live when core returns restamp_error or
+ * times_only_has_sales. The override may still be stored in the dash.
+ */
+export function nightGuestPricesNotLive(
+  result: Pick<NightOverrideResult, "restamp" | "restamp_error">
+): boolean {
+  if (result.restamp_error) return true
+  return restampSignalsTimesOnlyHasSales(result.restamp)
+}
+
+export function nightSaveFeedback(
+  result: Pick<NightOverrideResult, "restamp" | "restamp_error">
+): { live: boolean; message: string } {
+  if (!nightGuestPricesNotLive(result)) {
+    return { live: true, message: NIGHT_SAVE_LIVE }
+  }
+  const extra = (result.restamp_error ?? "").trim()
+  if (extra && extra !== NIGHT_SAVE_NOT_LIVE) {
+    return { live: false, message: `${NIGHT_SAVE_NOT_LIVE} ${extra}` }
+  }
+  return { live: false, message: NIGHT_SAVE_NOT_LIVE }
+}
+
+export function nightTierTicketType(
+  tier: Pick<DoorAccessNightTier, "tier_key" | "price_usd">,
+  program: Pick<DoorAccessProgram, "template_tickets">
+): "paid" | "free" {
+  const template = program.template_tickets.find((t) => t.tier_key === tier.tier_key)
+  if (template) return template.ticket_type
+  return (tier.price_usd ?? 0) === 0 ? "free" : "paid"
+}
+
+/** Apply a Manage Tickets-style price/quantity edit to one override tier. */
+export function applyOverrideTicketForm(
+  draft: NightDraft,
+  tierKey: string,
+  priceUsd: number,
+  quantity: number,
+  templatePrice: number | null | undefined,
+  templateQuantity: number | null | undefined
+): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey
+        ? {
+            ...tier,
+            price_usd: priceUsd,
+            quantity,
+            inherit_price: inheritIfMatchesTemplate(priceUsd, templatePrice),
+            inherit_quantity: inheritIfMatchesTemplate(quantity, templateQuantity),
+          }
+        : tier
+    ),
+  }
+}
+
+export function applyRecurringNightTier(
+  draft: NightDraft,
+  tierKey: string,
+  values: NightTierFormValues,
+  template:
+    | {
+        name?: string
+        description?: string | null
+        ticket_type?: "paid" | "free"
+        price_usd?: number | null
+        quantity?: number | null
+        max_per_person?: number | null
+        valid_from_time?: string | null
+        valid_until_time?: string | null
+        valid_from_day_offset?: number
+        valid_until_day_offset?: number
+      }
+    | undefined
+): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey
+        ? {
+            ...tier,
+            name: values.name,
+            inherit_name: inheritIfMatchesText(values.name, template?.name ?? tier.name),
+            description: values.description,
+            inherit_description: inheritIfMatchesText(
+              values.description,
+              template?.description ?? tier.description
+            ),
+            ticket_type: values.ticket_type,
+            inherit_ticket_type: values.ticket_type === (template?.ticket_type ?? tier.ticket_type),
+            price_usd: values.price_usd,
+            quantity: values.quantity,
+            inherit_price: inheritIfMatchesTemplate(values.price_usd, template?.price_usd),
+            inherit_quantity: inheritIfMatchesTemplate(values.quantity, template?.quantity),
+            max_per_person: values.max_per_person,
+            inherit_max_per_person: inheritIfMatchesTemplate(
+              values.max_per_person,
+              template?.max_per_person ?? tier.max_per_person
+            ),
+            valid_from_time: values.valid_from_time,
+            valid_until_time: values.valid_until_time,
+            valid_from_day_offset: values.valid_from_day_offset,
+            valid_until_day_offset: values.valid_until_day_offset,
+            inherit_scan_window: inheritIfMatchesScan(values, template),
+          }
+        : tier
+    ),
+  }
+}
+
+export function parseRecurringNightTier(row: {
+  name: string
+  description: string
+  ticket_type: "paid" | "free"
+  priceInput: string
+  quantityInput: string
+  maxPerPersonInput: string
+  valid_from_time: string
+  valid_until_time: string
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+}): { values: NightTierFormValues; error: string | null } {
+  const name = row.name.trim()
+  if (!name) {
+    return {
+      values: emptyNightTierFormValues(),
+      error: "Every access tier needs a name.",
+    }
+  }
+  if (row.description.length > NIGHT_TICKET_DESCRIPTION_MAX) {
+    return {
+      values: emptyNightTierFormValues(),
+      error: "Description must be 64 characters or fewer.",
+    }
+  }
+  const priceUsd = row.ticket_type === "free" ? 0 : parseFloat(row.priceInput) || 0
+  const quantity = parseInt(row.quantityInput, 10) || 0
+  const maxPerPerson = parseInt(row.maxPerPersonInput, 10) || 0
+  const numbers = parseOverrideTicketNumbers(String(priceUsd), String(quantity))
+  if (numbers.error) {
+    return { values: emptyNightTierFormValues(), error: numbers.error }
+  }
+  if (maxPerPerson < 0 || !Number.isInteger(maxPerPerson)) {
+    return {
+      values: emptyNightTierFormValues(),
+      error: "Max per person must be a whole number (0 = unlimited).",
+    }
+  }
+  const validFromTime = row.valid_from_time ? fromTimeInput(row.valid_from_time) || row.valid_from_time : null
+  const validUntilTime = row.valid_until_time ? fromTimeInput(row.valid_until_time) || row.valid_until_time : null
+  if (validFromTime && validUntilTime) {
+    const start = row.valid_from_day_offset * 1440 + clockMinutes(toTimeInput(validFromTime))
+    const end = row.valid_until_day_offset * 1440 + clockMinutes(toTimeInput(validUntilTime))
+    if (start >= end) {
+      return {
+        values: emptyNightTierFormValues(),
+        error: `"${name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`,
+      }
+    }
+  }
+  return {
+    values: {
+      name,
+      description: row.description.trim() || null,
+      ticket_type: row.ticket_type,
+      price_usd: numbers.price_usd,
+      quantity: numbers.quantity,
+      max_per_person: maxPerPerson,
+      valid_from_time: validFromTime,
+      valid_until_time: validUntilTime,
+      valid_from_day_offset: validFromTime ? row.valid_from_day_offset : 0,
+      valid_until_day_offset: validUntilTime ? row.valid_until_day_offset : 0,
+    },
+    error: null,
+  }
+}
+
+function emptyNightTierFormValues(): NightTierFormValues {
+  return {
+    name: "",
+    description: null,
+    ticket_type: "paid",
+    price_usd: 0,
+    quantity: 0,
+    max_per_person: 0,
+    valid_from_time: null,
+    valid_until_time: null,
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+  }
+}
+
+export function toggleNightTierDisabled(draft: NightDraft, tierKey: string): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey ? { ...tier, is_disabled: !tier.is_disabled } : tier
+    ),
+  }
+}
+
+export function toggleNightTierSoldOut(draft: NightDraft, tierKey: string): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey ? { ...tier, sold_out: !tier.sold_out } : tier
+    ),
+  }
+}
+
+/**
+ * Apply a Manage Tickets-style drag reorder as a night draft. sort_order is
+ * the 0-based buyer order we PUT. Missing keys stay at the end so a partial
+ * list cannot drop a tier.
+ */
+export function reorderNightTiers(draft: NightDraft, orderedKeys: string[]): NightDraft {
+  const byKey = new Map(draft.tiers.map((tier) => [tier.tier_key, tier]))
+  const next: NightTierDraft[] = []
+  for (const key of orderedKeys) {
+    const tier = byKey.get(key)
+    if (!tier) continue
+    next.push(tier)
+    byKey.delete(key)
+  }
+  for (const leftover of byKey.values()) next.push(leftover)
+  return {
+    ...draft,
+    tiers: next.map((tier, index) => ({ ...tier, sort_order: index })),
+  }
+}
+
+function nightDraftFingerprint(draft: NightDraft): string {
+  return JSON.stringify({
+    inherit_times: draft.inherit_times,
+    start_time: toTimeInput(draft.start_time),
+    end_time: toTimeInput(draft.end_time),
+    is_closed: draft.is_closed,
+    tiers: draft.tiers.map((tier) => ({
+      tier_key: tier.tier_key,
+      inherit_price: tier.inherit_price,
+      price_usd: tier.price_usd,
+      inherit_quantity: tier.inherit_quantity,
+      quantity: tier.quantity,
+      is_disabled: tier.is_disabled,
+      sold_out: !!tier.sold_out,
+      sort_order: tier.sort_order,
+      name: tier.name,
+      inherit_name: tier.inherit_name,
+      description: tier.description,
+      inherit_description: tier.inherit_description,
+      ticket_type: tier.ticket_type,
+      inherit_ticket_type: tier.inherit_ticket_type,
+      max_per_person: tier.max_per_person,
+      inherit_max_per_person: tier.inherit_max_per_person,
+      valid_from_time: toTimeInput(tier.valid_from_time),
+      valid_until_time: toTimeInput(tier.valid_until_time),
+      valid_from_day_offset: tier.valid_from_day_offset,
+      valid_until_day_offset: tier.valid_until_day_offset,
+      inherit_scan_window: tier.inherit_scan_window,
+    })),
+  })
+}
+
+/** True when the night page has drafts that Save night has not committed. */
+export function nightDraftIsDirty(current: NightDraft, baseline: NightDraft): boolean {
+  return nightDraftFingerprint(current) !== nightDraftFingerprint(baseline)
+}
+
+export function parseOverrideTicketNumbers(
+  price: string,
+  quantity: string
+): { price_usd: number; quantity: number; error: string | null } {
+  const priceUsd = Number(price)
+  const quantityNum = Number(quantity)
+  if (!Number.isFinite(priceUsd) || priceUsd < 0) {
+    return { price_usd: 0, quantity: 0, error: "Prices cannot be negative." }
+  }
+  if (!Number.isFinite(quantityNum) || quantityNum < 0 || !Number.isInteger(quantityNum)) {
+    return { price_usd: 0, quantity: 0, error: "Capacity must be a whole number (0 = unlimited)." }
+  }
+  return { price_usd: priceUsd, quantity: quantityNum, error: null }
 }

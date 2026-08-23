@@ -18,7 +18,9 @@ import { homeSections } from "@/lib/business/home-sections"
 import {
   ACCESS_ACCENT,
   WEEKLY_ACCESS_SECTION_LABEL,
+  WEEKLY_ACCESS_TYPE_LABEL,
   fetchDoorAccessProgramsSafe,
+  isDoorAccessKind,
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
@@ -35,7 +37,7 @@ import EscrowPanel from "@/components/business/v2/EscrowPanel"
 import HomeStripeConnectPrompt from "@/components/business/v2/HomeStripeConnectPrompt"
 
 function fmtDate(s?: string | null) {
-  if (!s) return "—"
+  if (!s) return "-"
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 function fmtRelative(s: string) {
@@ -53,7 +55,7 @@ function eventBadge(status: string): { variant: "success" | "neutral" | "warning
   if (s === "draft") return { variant: "neutral", label: "Draft" }
   if (s?.includes("pending")) return { variant: "warning", label: "In review" }
   if (s === "cancelled" || s === "rejected") return { variant: "danger", label: s === "cancelled" ? "Cancelled" : "Rejected" }
-  return { variant: "neutral", label: status || "—" }
+  return { variant: "neutral", label: status || "-" }
 }
 
 function MetricTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -149,7 +151,7 @@ export default function V2HomePage() {
   const showEventsSection = sections.events
   const showLineSkipSection = sections.lineSkips
   // Line-skip money is owner/manager only (the server omits the field for
-  // staff) — `null` renders as "—" through usd(), same as event revenue does.
+  // staff) — `null` renders as "-" through usd(), same as event revenue does.
   const lineSkipRevenue =
     stats?.line_skip_revenue_cents == null ? null : stats.line_skip_revenue_cents / 100
 
@@ -178,7 +180,9 @@ export default function V2HomePage() {
 
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
-  const nextEvent = showEventsSection ? events[0] : undefined
+  const nextEvent = showEventsSection
+    ? events.find((event) => !isDoorAccessKind(event.access_kind))
+    : undefined
   if (nextEvent) {
     attention.push({
       icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
@@ -303,7 +307,7 @@ export default function V2HomePage() {
             )}
             <MetricTile
               label="Next night"
-              value={nextAccessDate ? fmtDate(nextAccessDate) : "—"}
+              value={nextAccessDate ? fmtDate(nextAccessDate) : "-"}
               sub={nextAccessDate ? undefined : "None scheduled"}
             />
           </div>
@@ -364,7 +368,7 @@ export default function V2HomePage() {
               ) : upcoming.length === 0 ? (
                 // D2-B's emptiness test (the interleaved list, not just events)
                 // over D2-A's destination (the funnel, not the event form).
-                <div className="p-5"><EmptyState icon={CalendarDays} title="Nothing coming up" description="Create an event or a weekly access program to start selling." action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create</Link></Button>} /></div>
+                <div className="p-5"><EmptyState icon={CalendarDays} title="Nothing coming up" description={`Create an event or a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program to start selling.`} action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create</Link></Button>} /></div>
               ) : (
                 // Interleaved (D2-6). A pink 2px spine is the whole type marker:
                 // the row shapes are otherwise identical, which is the point —
@@ -387,7 +391,7 @@ export default function V2HomePage() {
                           className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.06em]"
                           style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
                         >
-                          WEEKLY ACCESS
+                          {WEEKLY_ACCESS_TYPE_LABEL}
                         </span>
                         <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
                       </Link>

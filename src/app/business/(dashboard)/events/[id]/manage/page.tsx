@@ -146,18 +146,18 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       icon: CircleCheck,
       title: isDoorAccess ? "Redemption list" : "Check-in history",
       subtitle: isDoorAccess
-        ? "Guests scan with any phone camera — check names off here"
+        ? "Guests scan with any phone camera. Check names off here"
         : "Attendee scan status",
       show: true,
     },
   ]
 
   // Event Setup — the things you configure before the doors open. "Manage
-  // sales" is the tickets page, which owns tiers, the group sellout toggle and
+  // Tickets" is the tickets page, which owns tiers, the group sellout toggle and
   // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
   const setupTiles: Tile[] = [
     { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
-    { href: `${base}/tickets`, icon: Ticket, title: "Manage sales", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
+    { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
     { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
   ]
 
@@ -166,7 +166,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   ]
 
   const promoteTiles: Tile[] = [
-    { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Stats and payouts", show: true },
+    { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Referral links and what they earn", show: true },
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
     { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
   ]
@@ -243,7 +243,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
               Guests scan with any phone camera
             </p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-              No scanner and no app setup at the door — open the redemption list and
+              No scanner and no app setup at the door. Open the redemption list and
               check names off as people arrive.
             </p>
           </div>
@@ -253,7 +253,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       {/* 2 — At the Door */}
       <ManageSection
         title="At the door"
-        blurb="Tonight's tools — check guests in and see who has arrived."
+        blurb="Tonight's tools. Check guests in and see who has arrived."
         tiles={atTheDoorTiles}
       />
 

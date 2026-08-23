@@ -33,8 +33,8 @@ test("no Stripe but money waiting — the BE-D hero owns the CTA, the card stays
 })
 
 test("the hero wins even in its processing/paid states", () => {
-  // deriveEscrowPanelState() !== "empty" is the whole signal — the card does
-  // not try to second-guess WHICH escrow state is showing.
+  // The card does not try to second-guess WHICH escrow state is showing.
+  // After the paid banner's 24h window, callers pass false here.
   assert.equal(
     shouldShowStripeConnectPrompt(shape({ stripeOnboarded: true, escrowPanelVisible: true })),
     false,

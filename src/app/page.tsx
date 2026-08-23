@@ -470,11 +470,14 @@ export default async function Home() {
                 students for one thing. */}
             <p className="text-ink/75 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
               Free to download, free to use, and free to claim every deal on it. No membership, no
-              coupon book, no catch.
+              coupon book, no catch. If your school is not live yet, request it and stay on this page.
             </p>
-            <div className="flex justify-center">
+            <div className="flex flex-wrap justify-center gap-3">
               <Button href={APP_STORE_URL} variant="white" size="lg" external>
                 Get Bizzy Free
+              </Button>
+              <Button href="/request-school" variant="white" size="lg">
+                Request your school
               </Button>
             </div>
           </AnimatedSection>

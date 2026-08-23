@@ -11,11 +11,15 @@ import { apiClient } from "@/lib/business/api-client"
 import { EVENT_TABS } from "@/lib/business/constants"
 import type { EventListItem, BusinessProfile, RecurringSeriesListItem } from "@/lib/business/types"
 import {
+  eventAccessGroupsForPrograms,
+  eventAccessGroupsForVenue,
   EVENT_TYPE_FILTERS,
   groupEventRows,
   parseEventTypeFilter,
   showsAccess,
   showsEvents,
+  weeklyCoverRowsForVenue,
+  weeklyCoverSeriesIds,
   type EventTypeFilter,
 } from "@/lib/business/events-list"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -29,10 +33,12 @@ import {
 import { EventCard } from "@/components/business/v2/events/EventCard"
 import { SeriesGroupRow } from "@/components/business/v2/events/SeriesGroupRow"
 import { Pagination } from "@/components/business/v2/events/Pagination"
+import { AccessEventGroupRow } from "@/components/business/v2/door-access/AccessEventGroupRow"
 import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
 import {
   fetchDoorAccessProgramsSafe,
   WEEKLY_ACCESS_CREATION_LABEL,
+  WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 
@@ -49,10 +55,14 @@ import {
  * event row → its manage page. Nothing was rebuilt; the entry points moved.
  */
 export default function V2EventsPage() {
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const router = useRouter()
-  const { venues, isAllVenues, setSelectedVenue } = useVenue()
+  const { venues, isAllVenues, selectedVenue, selectedVenueId, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
+  // Matches useVenueParam: All venues / unknown selection omits venue_id so
+  // every owned series stays visible. A concrete id scopes both fetches.
+  const scopedVenueId =
+    typeof selectedVenueId === "number" && selectedVenueId > 0 ? selectedVenueId : null
   const { config } = useDashboardMode()
 
   // Weekly Access follows the same flag Door Access always did — it IS the
@@ -141,20 +151,22 @@ export default function V2EventsPage() {
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
-  // Access programs load ONCE and independently of the tab/page, because they
-  // are not part of the paginated event query. fetchDoorAccessProgramsSafe
-  // degrades to [] on any failure — this list worked before access rows
-  // existed and must keep working if that endpoint is down or the build
-  // predates it.
+  // Access programs follow the venue switcher, independently of tab/page,
+  // because they are not part of the paginated event query. Passing
+  // scopedVenueId (or omitting it for All venues) is what keeps The Dungeon's
+  // Weekly Cover off The Devil Dungeon. fetchDoorAccessProgramsSafe degrades
+  // to [] on any failure — this list worked before access rows existed and
+  // must keep working if that endpoint is down or the build predates it.
   useEffect(() => {
     let cancelled = false
-    fetchDoorAccessProgramsSafe().then((rows) => {
+    setProgramsLoading(true)
+    fetchDoorAccessProgramsSafe(scopedVenueId).then((rows) => {
       if (cancelled) return
       setPrograms(rows)
       setProgramsLoading(false)
     })
     return () => { cancelled = true }
-  }, [])
+  }, [scopedVenueId])
 
   // Series load once too, and for the same reason: they label groups, they do
   // not page. A group whose series is missing still renders — it falls back to
@@ -168,7 +180,12 @@ export default function V2EventsPage() {
     return () => { cancelled = true }
   }, [])
 
-  const activePrograms = programs.filter((p) => p.is_active)
+  // Belt-and-suspenders: even if an older door-access build ignores
+  // ?venue_id=, hide another venue's Weekly Cover on a single-venue view.
+  // All venues keeps every owned series.
+  const venuePrograms = weeklyCoverRowsForVenue(programs, scopedVenueId, selectedVenue?.name)
+  const venueSeries = weeklyCoverRowsForVenue(series, scopedVenueId, selectedVenue?.name)
+  const activePrograms = venuePrograms.filter((p) => p.is_active)
 
   // In the combined view only on the tab that means "what's on". "Past" /
   // "Drafts" / "Recurring" are questions about dated events; an ongoing program
@@ -177,11 +194,23 @@ export default function V2EventsPage() {
   const visiblePrograms = !showsAccess(effectiveType)
     ? []
     : effectiveType === "access"
-      ? programs
+      ? venuePrograms
       : tab === "upcoming" ? activePrograms : []
 
-  const rows = showsEvents(effectiveType) ? groupEventRows(events, series) : []
-  const isEmpty = rows.length === 0 && visiblePrograms.length === 0
+  const wcSeriesIds = weeklyCoverSeriesIds(venuePrograms, venueSeries)
+  const rows = showsEvents(effectiveType) ? groupEventRows(events, venueSeries, wcSeriesIds) : []
+  // AccessProgramRow uses GET /business/door-access ids. Stamped WC nights
+  // still group by recurring_series_id when that list omits the series
+  // (program_kind=event). EventCard / SeriesGroupRow open the series id,
+  // never /door-access/{event_id}.
+  const eventAccessGroups = showsAccess(effectiveType)
+    ? eventAccessGroupsForVenue(
+        eventAccessGroupsForPrograms(events, venuePrograms, wcSeriesIds),
+        scopedVenueId,
+        selectedVenue?.name,
+      )
+    : []
+  const isEmpty = rows.length === 0 && visiblePrograms.length === 0 && eventAccessGroups.length === 0
 
   const handleTabChange = (newTab: string) => {
     setTab(newTab)
@@ -199,7 +228,7 @@ export default function V2EventsPage() {
         title="Events"
         description={
           accessEnabled
-            ? "Events and weekly access, in one place."
+            ? `Events and ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, in one place.`
             : "Create, manage, and track your events."
         }
         actions={
@@ -213,9 +242,13 @@ export default function V2EventsPage() {
       {canCreate && !stripeOnboarded && !stripeBannerDismissed && (
         <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3.5">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Stripe Connect not linked</p>
+            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+              {isPending ? "Stripe Connect not linked" : "Connect Stripe to receive payments instantly"}
+            </p>
             <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
-              To sell paid tickets, finish Stripe Connect onboarding. Free events work without it.
+              {isPending
+                ? "To sell paid tickets, finish Stripe Connect onboarding. Free events work without it."
+                : "You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away."}
             </p>
             {stripeError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{stripeError}</p>}
             <Button size="sm" className="mt-2.5" disabled={stripeConnecting} onClick={handleConnectStripe}>
@@ -268,15 +301,15 @@ export default function V2EventsPage() {
       ) : isEmpty ? (
         <EmptyState
           icon={effectiveType === "access" ? Sparkles : CalendarDays}
-          title={effectiveType === "access" ? "No weekly access programs yet" : "No events yet"}
+          title={effectiveType === "access" ? `No ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs yet` : "No events yet"}
           description={
             effectiveType === "access"
-              ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs — set the nights once and each one is generated for you.`
+              ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs. Set the nights once and each one is generated for you.`
               : tab === "upcoming" ? "Create your first event to start selling tickets." : `No ${tab} events found.`
           }
           action={
             canCreate && (effectiveType === "access" || tab === "upcoming") ? (
-              <Button onClick={handleCreate}><Plus /> Create</Button>
+              <Button variant={effectiveType === "access" ? "access" : "primary"} onClick={handleCreate}><Plus /> Create</Button>
             ) : undefined
           }
         />
@@ -285,10 +318,13 @@ export default function V2EventsPage() {
           {visiblePrograms.map((program) => (
             <AccessProgramRow key={`program-${program.id}`} program={program} />
           ))}
+          {eventAccessGroups.map((group) => (
+            <AccessEventGroupRow key={`access-event-${group.programId}`} group={group} />
+          ))}
           {rows.map((row) =>
             row.kind === "series"
-              ? <SeriesGroupRow key={row.key} row={row} />
-              : <EventCard key={row.key} event={row.event} />
+              ? <SeriesGroupRow key={row.key} row={row} programs={venuePrograms} wcSeriesIds={wcSeriesIds} />
+              : <EventCard key={row.key} event={row.event} programs={venuePrograms} wcSeriesIds={wcSeriesIds} />
           )}
         </div>
       )}

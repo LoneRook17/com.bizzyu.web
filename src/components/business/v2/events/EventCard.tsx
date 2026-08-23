@@ -4,7 +4,7 @@ import Link from "next/link"
 import { CalendarDays, ScanLine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
-import { eventRowStats } from "@/lib/business/events-list"
+import { eventListHref, eventRowStats, type ListedProgramRef } from "@/lib/business/events-list"
 import { Button } from "@/components/business/v2/ui/button"
 import {
   HostCardThumbnail,
@@ -26,7 +26,15 @@ import { eventStatusBadge, fmtDate, fmtTime } from "./eventStatus"
  * offer them directly, and taking them away would have been a regression
  * dressed up as a redesign.
  */
-export function EventCard({ event }: { event: EventListItem }) {
+export function EventCard({
+  event,
+  programs = [],
+  wcSeriesIds = [],
+}: {
+  event: EventListItem
+  programs?: readonly ListedProgramRef[]
+  wcSeriesIds?: readonly number[]
+}) {
   const { user } = useAuth()
   const canScan = user?.business_role !== "promoter"
   const badge = eventStatusBadge(event.status)
@@ -48,10 +56,12 @@ export function EventCard({ event }: { event: EventListItem }) {
     .filter(Boolean)
     .join(" · ")
 
+  const href = eventListHref(event, programs, wcSeriesIds)
+
   return (
     <HostListCard
       kind="event"
-      href={`/business/events/${event.event_id}`}
+      href={href}
       title={event.name}
       meta={meta}
       secondary={event.type === "Free" ? "Free entry" : "Presale + door tickets"}
@@ -73,7 +83,7 @@ export function EventCard({ event }: { event: EventListItem }) {
       actions={
         <>
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/business/events/${event.event_id}`}>View</Link>
+            <Link href={href}>View</Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>

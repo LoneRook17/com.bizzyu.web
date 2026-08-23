@@ -15,6 +15,7 @@ import {
   normalizeEscrowEntry,
   normalizeEscrowSummary,
   deriveEscrowPanelState,
+  hasInFlightEscrowPayout,
   escrowHeroCents,
   centsUsd,
   signedCentsUsd,
@@ -22,10 +23,12 @@ import {
   entryLabel,
   entryStatusBadge,
   visibleEscrowEntries,
+  groupEscrowEntriesByEvent,
   isEscrowDemoScenario,
   fetchEscrowPanelData,
   ESCROW_DEMO_FIXTURES,
   ESCROW_ENTRIES_COLLAPSED,
+  ESCROW_UNGROUPED_EVENT_NAME,
   type EscrowLedgerEntry,
   type EscrowSummary,
 } from "./escrow.ts"
@@ -39,6 +42,9 @@ function entry(overrides: Partial<EscrowLedgerEntry>): EscrowLedgerEntry {
     reference_type: "order",
     reference_id: 9931,
     created_at: "2026-08-20 19:04:11",
+    event_id: null,
+    event_name: null,
+    stripe_transfer_id: null,
     ...overrides,
   }
 }
@@ -80,6 +86,28 @@ test("normalizeEscrowEntry coerces amounts and preserves signs", () => {
   assert.equal(e.id, 7)
   assert.equal(e.amount_cents, -1750)
   assert.equal(e.reference_id, 9942)
+  assert.equal(e.event_id, null)
+  assert.equal(e.event_name, null)
+  assert.equal(e.stripe_transfer_id, null)
+})
+
+test("normalizeEscrowEntry keeps flat event identity and nested event objects", () => {
+  const flat = normalizeEscrowEntry({
+    id: 1,
+    amount_cents: 500,
+    event_id: "88",
+    event_name: "  Rumble  ",
+  } as unknown as Partial<EscrowLedgerEntry>)
+  assert.equal(flat.event_id, 88)
+  assert.equal(flat.event_name, "Rumble")
+
+  const nested = normalizeEscrowEntry({
+    id: 2,
+    amount_cents: 500,
+    event: { id: "88", name: "Rumble" },
+  } as unknown as Partial<EscrowLedgerEntry> & { event: { id: string; name: string } })
+  assert.equal(nested.event_id, 88)
+  assert.equal(nested.event_name, "Rumble")
 })
 
 // ── State machine ───────────────────────────────────────────────────────────
@@ -99,11 +127,48 @@ test("a pending withdrawal means a claim is in flight — processing", () => {
     entries: [entry({ id: 6, entry_type: "withdrawal", amount_cents: -42350, status: "pending", reference_type: "payout", reference_id: 501 }), entry({})],
   })
   assert.equal(deriveEscrowPanelState(s, true), "processing")
+  assert.equal(hasInFlightEscrowPayout(s), true)
 })
 
-test("onboarded with a balance but no claim row yet is still processing, never claimable", () => {
+test("onboarded with a balance and no withdrawal is NOT processing", () => {
   const s = summary({ available_cents: 42350, entries: [entry({})] })
+  assert.equal(deriveEscrowPanelState(s, true), "ready")
+  assert.notEqual(deriveEscrowPanelState(s, true), "processing")
+  assert.equal(hasInFlightEscrowPayout(s), false)
+})
+
+test("a withdrawal with a stripe_transfer_id still in flight is processing", () => {
+  const s = summary({
+    available_cents: 1500,
+    entries: [
+      entry({
+        id: 6,
+        entry_type: "withdrawal",
+        amount_cents: -1500,
+        status: "pending",
+        stripe_transfer_id: "tr_in_flight",
+      }),
+    ],
+  })
   assert.equal(deriveEscrowPanelState(s, true), "processing")
+})
+
+test("a settled withdrawal with a stripe_transfer_id is not in flight", () => {
+  const s = summary({
+    available_cents: 0,
+    entries: [
+      entry({
+        id: 6,
+        entry_type: "withdrawal",
+        amount_cents: -1500,
+        status: "settled",
+        stripe_transfer_id: "tr_done",
+      }),
+      entry({}),
+    ],
+  })
+  assert.equal(hasInFlightEscrowPayout(s), false)
+  assert.equal(deriveEscrowPanelState(s, true), "paid")
 })
 
 test("zero balance with a settled withdrawal is paid", () => {
@@ -135,9 +200,9 @@ test("processing hero is the pending withdrawal amount, positively signed", () =
   assert.equal(escrowHeroCents(s, "processing"), 42350)
 })
 
-test("processing hero falls back to the balance when the claim row is not written yet", () => {
-  const s = summary({ available_cents: 42350, entries: [entry({})] })
-  assert.equal(escrowHeroCents(s, "processing"), 42350)
+test("ready hero is the held balance, not a payout-in-flight number", () => {
+  const s = summary({ available_cents: 1500, entries: [entry({ amount_cents: 1500 })] })
+  assert.equal(escrowHeroCents(s, "ready"), 1500)
 })
 
 test("paid hero is the total of settled withdrawals", () => {
@@ -170,7 +235,7 @@ test("fmtEntryTimestamp renders ET wall time without Date() re-interpretation", 
 
 test("fmtEntryTimestamp falls back to the raw string on malformed input", () => {
   assert.equal(fmtEntryTimestamp("not a date"), "not a date")
-  assert.equal(fmtEntryTimestamp(""), "—")
+  assert.equal(fmtEntryTimestamp(""), "-")
 })
 
 test("entryLabel maps types and order references", () => {
@@ -202,6 +267,41 @@ test("visibleEscrowEntries collapses long ledgers and reports the hidden count",
 test("short ledgers never show an expander", () => {
   const few = [entry({}), entry({ id: 2 })]
   assert.deepEqual(visibleEscrowEntries(few, false), { rows: few, hiddenCount: 0 })
+})
+
+test("groupEscrowEntriesByEvent groups two Rumble sales and totals the shown rows", () => {
+  const rows = [
+    entry({ id: 2, amount_cents: 500, reference_id: 1398, event_id: 9, event_name: "Rumble" }),
+    entry({ id: 1, amount_cents: 500, reference_id: 1397, event_id: 9, event_name: "Rumble" }),
+  ]
+  const groups = groupEscrowEntriesByEvent(rows)
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].eventName, "Rumble")
+  assert.equal(groups[0].eventId, 9)
+  assert.equal(groups[0].totalCents, 1000)
+  assert.deepEqual(groups[0].entries.map((e) => e.reference_id), [1398, 1397])
+})
+
+test("groupEscrowEntriesByEvent keeps events separate and never uses a business name", () => {
+  const rows = [
+    entry({ id: 3, amount_cents: 500, event_id: 9, event_name: "Rumble" }),
+    entry({ id: 2, amount_cents: 750, event_id: 10, event_name: "Late Night" }),
+    entry({ id: 1, entry_type: "withdrawal", amount_cents: -1250, reference_type: "payout", event_id: null, event_name: null }),
+  ]
+  const groups = groupEscrowEntriesByEvent(rows)
+  assert.deepEqual(groups.map((g) => g.eventName), ["Rumble", "Late Night", ESCROW_UNGROUPED_EVENT_NAME])
+  assert.deepEqual(groups.map((g) => g.totalCents), [500, 750, -1250])
+  assert.ok(!groups.some((g) => /escrow test/i.test(g.eventName)))
+})
+
+test("groupEscrowEntriesByEvent prefers event_id over a missing name, then fills the name", () => {
+  const groups = groupEscrowEntriesByEvent([
+    entry({ id: 2, event_id: 9, event_name: null }),
+    entry({ id: 1, event_id: 9, event_name: "Rumble" }),
+  ])
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].eventName, "Rumble")
+  assert.equal(groups[0].entries.length, 2)
 })
 
 // ── Fixtures + the stub seam ────────────────────────────────────────────────

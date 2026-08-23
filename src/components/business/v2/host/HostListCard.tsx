@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { Badge, type BadgeProps } from "@/components/business/v2/ui/badge"
 import { Card } from "@/components/business/v2/ui/card"
-import { ACCESS_ACCENT, EVENT_ACCENT } from "@/lib/business/door-access"
+import { ACCESS_ACCENT, EVENT_ACCENT, EVENT_TYPE_LABEL, WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/door-access"
 
 /**
  * The F9 list-card anatomy, desktop-sized.
@@ -47,8 +47,8 @@ export interface HostCardStat {
 }
 
 const ACCENTS: Record<HostCardKind, { ink: string; label: string }> = {
-  event: { ink: EVENT_ACCENT, label: "EVENT" },
-  access: { ink: ACCESS_ACCENT, label: "WEEKLY ACCESS" },
+  event: { ink: EVENT_ACCENT, label: EVENT_TYPE_LABEL },
+  access: { ink: ACCESS_ACCENT, label: WEEKLY_ACCESS_TYPE_LABEL },
 }
 
 export function HostListCard({

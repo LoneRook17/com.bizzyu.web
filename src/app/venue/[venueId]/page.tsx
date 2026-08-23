@@ -1,4 +1,6 @@
 import { Metadata } from "next"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
+import { fetchVenuePublicData } from "@/lib/venuePublic"
 import VenuePageClient from "./VenuePageClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
@@ -23,15 +25,7 @@ interface PageProps {
 }
 
 async function getVenueData(venueId: string) {
-  try {
-    const res = await fetch(`${API_URL}/ui/venues/venue/${venueId}`, {
-      cache: "no-store",
-    })
-    if (!res.ok) return null
-    return res.json()
-  } catch {
-    return null
-  }
+  return fetchVenuePublicData(venueId, API_URL, CHECKOUT_BASE_URL)
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -41,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // §8 — the fallback description follows what the page actually shows now.
   const description =
     data?.venue?.description ||
-    `Check out events, door access, and deals at ${venueName} on Bizzy.`
+    `Check out events, ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, and deals at ${venueName} on Bizzy.`
 
   return {
     title: `${venueName} | Bizzy`,

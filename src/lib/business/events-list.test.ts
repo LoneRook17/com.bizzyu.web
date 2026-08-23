@@ -1,11 +1,23 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
+  EVENT_TYPE_FILTERS,
   MISSING_ROW_AGGREGATES,
+  doorAccessGroupsFromEvents,
+  eventAccessGroupsForPrograms,
+  eventListHref,
+  recoverProgramIdFromLookups,
+  weeklyCoverSeriesIds,
+  weeklyCoverVisibleForVenue,
+  weeklyCoverRowsForVenue,
+  eventAccessGroupsForVenue,
+  isWeeklyCoverSeriesRef,
+  workingProgramIdForEventGroup,
   eventRowStats,
   fmtRowDate,
   groupEventRows,
   relativeDayLabel,
+  seriesRowHref,
   seriesRowNumbers,
   parseEventTypeFilter,
   seriesHref,
@@ -13,13 +25,14 @@ import {
   showsAccess,
   showsEvents,
 } from "./events-list.ts"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 import type { EventListItem, RecurringSeriesListItem } from "./types.ts"
 
 function ev(
   event_id: number,
   start: string,
   seriesId: number | null = null,
-  extra: Partial<EventListItem> = {},
+  extra: Partial<EventListItem> & { access_kind?: string | null } = {},
 ): EventListItem {
   return {
     event_id,
@@ -64,6 +77,62 @@ function series(id: number, name: string, extra: Partial<RecurringSeriesListItem
     ...extra,
   }
 }
+
+test("Weekly Cover rows hide when another venue is selected; All venues keeps every series", () => {
+  const dungeon = {
+    id: 23,
+    name: "The Dungeon Weekly Cover (Mon Wed Fri From $5)",
+    venue_id: 990198,
+    venue_name: "The Dungeon",
+  }
+  const devilDungeonId = 990155
+  assert.equal(
+    weeklyCoverVisibleForVenue(dungeon, devilDungeonId, "The Devil Dungeon (Escrow Test)"),
+    false,
+    "Luke on The Devil Dungeon must not see The Dungeon Weekly Cover",
+  )
+  assert.equal(weeklyCoverVisibleForVenue(dungeon, 990198, "The Dungeon"), true)
+  assert.equal(weeklyCoverVisibleForVenue(dungeon, null), true, "All venues shows every owned series")
+  assert.equal(weeklyCoverVisibleForVenue(dungeon, undefined), true)
+
+  const listed = weeklyCoverRowsForVenue([dungeon], devilDungeonId, "The Devil Dungeon (Escrow Test)")
+  assert.deepEqual(listed, [])
+  assert.equal(weeklyCoverRowsForVenue([dungeon], null).length, 1)
+
+  const groups = eventAccessGroupsForVenue(
+    [
+      {
+        programId: 23,
+        name: dungeon.name,
+        events: [{ name: dungeon.name, venue_id: 990198, venue_name: "The Dungeon" }],
+      },
+    ],
+    devilDungeonId,
+    "The Devil Dungeon (Escrow Test)",
+  )
+  assert.equal(groups.length, 0)
+  assert.equal(
+    eventAccessGroupsForVenue(
+      [
+        {
+          programId: 23,
+          name: dungeon.name,
+          events: [{ name: dungeon.name, venue_name: "The Dungeon" }],
+        },
+      ],
+      devilDungeonId,
+      "The Devil Dungeon (Escrow Test)",
+    ).length,
+    0,
+    "stamped nights without venue_id still hide by venue name",
+  )
+})
+
+test("access filter uses the shared Weekly Cover label (renamed from Weekly Access)", () => {
+  const access = EVENT_TYPE_FILTERS.find((t) => t.value === "access")
+  assert.equal(access?.label, WEEKLY_ACCESS_SECTION_LABEL)
+  assert.equal(access?.label, "Weekly Cover")
+})
 
 test("the type segment defaults to All and refuses anything it doesn't know", () => {
   assert.equal(parseEventTypeFilter(null), "all")
@@ -127,6 +196,308 @@ test("a series TEMPLATE row is left alone — it has no nights to hide", () => {
   // What the "Recurring" status tab lists: is_recurring true, no series FK.
   const rows = groupEventRows([ev(1, "2026-09-01 21:00:00", null, { is_recurring: true })])
   assert.equal(rows[0].kind, "single")
+})
+
+test("door_access nights are excluded from green Event/Series rows", () => {
+  const rows = groupEventRows(
+    [
+      ev(1, "2026-09-01 21:00:00"),
+      ev(24, "2026-09-02 21:00:00", 9, { name: "Weekly Cover", access_kind: "door_access" }),
+      ev(26, "2026-09-09 21:00:00", 9, { name: "Weekly Cover", access_kind: "weekly_cover" }),
+      ev(3, "2026-09-03 21:00:00", 7),
+    ],
+    [series(7, "Trivia Tuesdays"), series(9, "Weekly Cover")],
+  )
+  assert.deepEqual(rows.map((r) => r.key), ["event-1", "series-7"])
+  assert.ok(rows.every((r) => r.kind !== "single" || r.event.access_kind !== "door_access"))
+})
+
+test("Weekly Cover nights group by recurring_series_id for the access segment", () => {
+  const groups = doorAccessGroupsFromEvents([
+    ev(24, "2026-09-02 21:00:00", 9, { name: "Weekly Cover", access_kind: "door_access" }),
+    ev(1, "2026-09-01 21:00:00"),
+    ev(26, "2026-09-09 21:00:00", 9, { name: "Weekly Cover", access_kind: "weekly_cover" }),
+    ev(40, "2026-09-04 21:00:00", null, { name: "Orphan cover", access_kind: "door_access" }),
+  ])
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].programId, 9)
+  assert.equal(groups[0].events.length, 2)
+  assert.equal(groups[0].name, "Weekly Cover")
+})
+
+test("stamped nights keep recurring_series_id even when the programs list omits it", () => {
+  const nights = [
+    ev(621, "2026-08-24 21:00:00", 23, {
+      name: "Weekly Cover",
+      venue_name: "The Dungeon",
+      access_kind: "door_access",
+    }),
+  ]
+  const groups = doorAccessGroupsFromEvents(nights)
+  assert.equal(groups[0].programId, 23)
+  assert.equal(
+    workingProgramIdForEventGroup(groups[0], [
+      {
+        id: 88,
+        name: "Weekly Cover",
+        venue_name: "The Dungeon",
+        next_night_date: "2026-08-24",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    23,
+    "stamped nights keep recurring_series_id; do not rematch to another listed id",
+  )
+  assert.equal(workingProgramIdForEventGroup(groups[0], []), 23)
+  assert.equal(
+    workingProgramIdForEventGroup(groups[0], [
+      {
+        id: 88,
+        name: "Other Cover",
+        venue_name: "Another Bar",
+        next_night_date: "2026-09-01",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    23,
+    "list omit of series 23 still opens the series",
+  )
+  const fallback = eventAccessGroupsForPrograms(nights, [
+    {
+      id: 88,
+      name: "Weekly Cover",
+      venue_name: "The Dungeon",
+      next_night_date: "2026-08-24",
+      date_range_start: "2026-08-01",
+      date_range_end: null,
+    },
+  ])
+  assert.equal(fallback[0]?.programId, 23, "omitted series 23 still gets a Weekly Cover row")
+  const emptyList = eventAccessGroupsForPrograms(nights, [])
+  assert.equal(emptyList[0]?.programId, 23)
+  assert.deepEqual(
+    eventAccessGroupsForPrograms(nights, [
+      {
+        id: 23,
+        name: "Weekly Cover",
+        venue_name: "The Dungeon",
+        next_night_date: "2026-08-24",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    [],
+    "AccessProgramRow already owns the listed series",
+  )
+})
+
+test("eventListHref uses series 23 and never a night event_id", () => {
+  const night = ev(621, "2026-08-24 21:00:00", 23, {
+    name: "Weekly Cover",
+    venue_name: "The Dungeon",
+    access_kind: "door_access",
+  })
+  const listed = [
+    {
+      id: 88,
+      name: "Weekly Cover",
+      venue_name: "The Dungeon",
+      next_night_date: "2026-08-24",
+      date_range_start: "2026-08-01",
+      date_range_end: null,
+    },
+  ]
+  assert.equal(eventListHref(night, listed), "/business/door-access/23")
+  assert.equal(eventListHref(night, [{ ...listed[0], id: 23 }]), "/business/door-access/23")
+  assert.equal(eventListHref(night, []), "/business/door-access/23")
+  assert.equal(
+    eventListHref(night, [
+      {
+        id: 99,
+        name: "Other Cover",
+        venue_name: "Another Bar",
+        next_night_date: "2026-09-01",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    "/business/door-access/23",
+    "never deep-link a night event_id or drop an omitted series",
+  )
+})
+
+test("recoverProgramIdFromLookups surfaces series 23 and redirects night event_ids", () => {
+  const dungeon = {
+    id: 88,
+    name: "Weekly Cover",
+    venue_name: "The Dungeon",
+    next_night_date: "2026-08-24",
+    date_range_start: "2026-08-01",
+    date_range_end: null,
+  }
+  const group = {
+    programId: 23,
+    name: "Weekly Cover",
+    events: [
+      ev(621, "2026-08-24 21:00:00", 23, {
+        name: "Weekly Cover",
+        venue_name: "The Dungeon",
+        access_kind: "door_access",
+      }),
+    ],
+  }
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [{ ...dungeon, id: 23 }],
+      eventSeriesId: 23,
+      eventGroup: group,
+    }),
+    23,
+    "listed series that 404s is retried as the series, not treated as an event",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 621,
+      programs: [dungeon],
+      eventSeriesId: 23,
+      eventGroup: { ...group, programId: 23 },
+    }),
+    23,
+    "night event_id redirects to recurring_series_id",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 621,
+      programs: [],
+      eventSeriesId: 23,
+      eventGroup: { ...group, programId: 23 },
+    }),
+    23,
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [dungeon],
+      eventSeriesId: null,
+      eventGroup: group,
+    }),
+    23,
+    "Events-list grouping surfaces series 23 even when the programs list omits it",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [],
+      eventSeriesId: null,
+      eventGroup: group,
+    }),
+    23,
+    "empty list + series 23 from nights still surfaces the series",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [dungeon],
+      eventSeriesId: null,
+      eventGroup: null,
+    }),
+    null,
+    "do not guess the only listed program",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [],
+      eventSeriesId: null,
+      eventGroup: null,
+      ownedSeriesId: 23,
+    }),
+    23,
+    "owning host GET recurring-series/23 recovers the series after door-access 404",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [dungeon],
+      eventSeriesId: null,
+      eventGroup: null,
+      ownedSeriesId: 99,
+    }),
+    99,
+    "owned series id is the recover target, not the only listed program",
+  )
+})
+
+test("list hrefs door-access/23 when access_kind is still event", () => {
+  const night = ev(621, "2026-08-24 21:00:00", 23, {
+    name: "The Dungeon Weekly Cover (Escrow Test)",
+    venue_name: "The Dungeon",
+    access_kind: "event",
+  })
+  assert.equal(eventListHref(night, [], [23]), "/business/door-access/23")
+  assert.equal(eventListHref(night, [], []), "/business/events/621")
+  assert.deepEqual(weeklyCoverSeriesIds([], [{ id: 23, name: "The Dungeon Weekly Cover (Escrow Test)" }]), [23])
+  assert.equal(isWeeklyCoverSeriesRef({ id: 7, name: "Trivia Tuesdays" }), false)
+  assert.equal(isWeeklyCoverSeriesRef({ id: 9, program_kind: "door_access" }), true)
+
+  const skipped = groupEventRows([night], [], [23])
+  assert.equal(skipped.length, 0, "WC series 23 nights leave the green Events list")
+  const groups = eventAccessGroupsForPrograms([night], [], [23])
+  assert.equal(groups[0]?.programId, 23)
+  assert.equal(eventListHref(groups[0]!.events[0] as typeof night, [], [23]), "/business/door-access/23")
+})
+
+test("Events list href for The Dungeon series 23 is the series, never a night event_id", () => {
+  const night = ev(621, "2026-08-24 21:00:00", 23, {
+    name: "The Dungeon Cover",
+    venue_name: "The Dungeon",
+    access_kind: "door_access",
+  })
+  assert.equal(eventListHref(night, []), "/business/door-access/23")
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 621,
+      programs: [],
+      eventSeriesId: 23,
+      eventGroup: {
+        programId: 23,
+        name: "The Dungeon Cover",
+        events: [night],
+      },
+    }),
+    23,
+  )
+})
+
+test("a dated Weekly Cover row opens the program, never event_id as the path segment", () => {
+  const night = ev(24, "2026-09-02 21:00:00", 9, { access_kind: "door_access" })
+  assert.equal(eventListHref(night), "/business/door-access/9")
+  assert.equal(eventListHref(ev(1, "2026-09-01 21:00:00")), "/business/events/1")
+  const leaked = groupEventRows(
+    [ev(24, "2026-09-02 21:00:00", 9, { access_kind: "event" })],
+    [series(9, "Weekly Cover")],
+  )
+  assert.equal(leaked[0].kind, "series")
+  if (leaked[0].kind !== "series") return
+  leaked[0].events[0].access_kind = "door_access"
+  assert.equal(seriesRowHref(leaked[0]), "/business/door-access/9")
+  assert.equal(
+    seriesRowHref(leaked[0], [
+      {
+        id: 88,
+        name: "Weekly Cover",
+        venue_name: "The Bar",
+        next_night_date: "2026-09-02",
+        date_range_start: "2026-09-01",
+        date_range_end: null,
+      },
+    ]),
+    "/business/door-access/9",
+  )
+  assert.equal(seriesHref(leaked[0].seriesId), "/business/recurring/9")
 })
 
 test("series stats sum the nights actually on the page", () => {
@@ -223,7 +594,7 @@ test("a partial series LABELS its sums and stubs the total it cannot compute", (
   assert.equal(stats[1].label, "revenue · 1 shown")
   const pending = stats.find((s) => s.pending)
   assert.ok(pending, "the whole-series total is stubbed, not silently omitted")
-  assert.equal(pending?.value, "—", "a stub is a dash, never a zero")
+  assert.equal(pending?.value, "-", "a stub is a dash, never a zero")
   assert.match(pending?.hint ?? "", /12 nights/)
   assert.match(pending?.hint ?? "", /recurring-series/)
 })

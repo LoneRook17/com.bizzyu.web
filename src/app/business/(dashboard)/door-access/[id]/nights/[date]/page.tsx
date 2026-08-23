@@ -2,27 +2,41 @@
 
 import { use, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import * as SwitchPrimitive from "@radix-ui/react-switch"
 import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
-  buildNightOverridePayload,
+  applyNightHours,
+  buildNightSavePayload,
   clearNightOverride,
   draftFromNight,
   draftHasOverrides,
-  fetchDoorAccessNight,
+  loadDoorAccessNightForPath,
+  nightDraftIsDirty,
   fmtNightDate,
-  fmtQuantity,
   fmtWindow,
+  fromTimeInput,
   nightChips,
   nightIsEditable,
+  nightSaveFeedback,
+  NIGHT_UNSAVED_TITLE,
+  nightHref,
   programHref,
+  resetNightHours,
   saveNightOverride,
-  usdPrice,
+  toTimeInput,
+  ACCESS_BUTTON_VARIANT,
+  WEEKLY_ACCESS_SECTION_LABEL,
   validateNightDraft,
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
+  type NightOverrideResult,
 } from "@/lib/business/door-access"
+import { cn } from "@/lib/v2/utils"
+import { NightLeaveGuard } from "@/components/business/v2/door-access/NightLeaveGuard"
+import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
@@ -34,22 +48,21 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The per-night override editor (D-F10.2).
  *
- * ONE night departs from the program template here — price, capacity, hours,
- * or closed entirely — without restating the program and without evicting the
- * night from series-wide edits.
+ * ONE night departs from the program template here: tickets, hours, or closed,
+ * without restating the program and without evicting the night from series-wide
+ * edits.
  *
- * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id stamps
- * series_customized_at, which permanently detaches the night from the program:
- * it stops receiving template updates forever. That is the opposite of what
- * "$40 on New Year's Eve" means, so per-night money runs through the
- * override endpoints instead, and a night that HAS been customized elsewhere
- * is read-only here (nightIsEditable) rather than silently written to.
+ * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id and
+ * PUT /business/events/:id/tickets stamp series_customized_at and detach the
+ * night from the program. Save night writes door_access_tier_overrides
+ * (hours, ticket price/qty, hide, sold_out, sort_order). Core restamp copies
+ * those onto tickets.id. Ticket rows on this page draft only. Leaving without
+ * Save night prompts (beforeunload + in-app confirm). A night that HAS been
+ * customized elsewhere is read-only here (nightIsEditable).
  *
- * INHERIT IS A REAL STATE, not "same value as the template". Every field can
- * be pinned or released, and releasing sends null so the night tracks the
- * template again the next time it moves. Rendering a released field as the
- * template's current number and saving that would freeze the night at today's
- * price — the bug this whole draft model exists to prevent.
+ * Hours are always visible. Matching the program window (or Reset to program
+ * default) sends null so the night tracks the template. Closed this night is
+ * a labeled switch.
  */
 export default function DoorAccessNightPage({
   params,
@@ -58,11 +71,13 @@ export default function DoorAccessNightPage({
 }) {
   const { id, date } = use(params)
   const programId = Number(id)
+  const router = useRouter()
   const { user } = useAuth()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [night, setNight] = useState<DoorAccessNight | null>(null)
   const [draft, setDraft] = useState<NightDraft | null>(null)
+  const [baseline, setBaseline] = useState<NightDraft | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -77,30 +92,54 @@ export default function DoorAccessNightPage({
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchDoorAccessNight(programId, date)
-      setProgram(data.program)
-      setNight(data.night)
-      setDraft(draftFromNight(data.night, data.program))
+      const loaded = await loadDoorAccessNightForPath(programId, date)
+      if (loaded.redirectTo != null) {
+        router.replace(nightHref(loaded.redirectTo, date))
+        return
+      }
+      if (!loaded.ok || !loaded.program || !loaded.night) {
+        setError("Could not load this night.")
+        return
+      }
+      setProgram(loaded.program)
+      setNight(loaded.night)
+      const next = draftFromNight(loaded.night, loaded.program)
+      setDraft(next)
+      setBaseline(next)
     } catch {
       setError("Could not load this night.")
     } finally {
       setLoading(false)
     }
-  }, [programId, date])
+  }, [programId, date, router])
 
   useEffect(() => {
     load()
   }, [load])
 
-  /** Adopt whatever the server says the night is now — never the local guess. */
-  const adopt = (result: { night: DoorAccessNight; restamp_error: string | null }) => {
+  /** Adopt whatever the server says the night is now. Never the local guess. */
+  const adopt = (result: { night: DoorAccessNight }) => {
     setNight(result.night)
-    if (program) setDraft(draftFromNight(result.night, program))
-    setRestampWarning(result.restamp_error)
+    if (!program) return
+    const next = draftFromNight(result.night, program)
+    setDraft(next)
+    setBaseline(next)
+  }
+
+  const showSaveOutcome = (result: NightOverrideResult, liveNotice: string) => {
+    adopt(result)
+    const feedback = nightSaveFeedback(result)
+    if (feedback.live) {
+      setNotice(liveNotice)
+      setRestampWarning(null)
+    } else {
+      setNotice(null)
+      setRestampWarning(feedback.message)
+    }
   }
 
   const handleSave = async () => {
-    if (!draft) return
+    if (!draft || !night) return
     const problems = validateNightDraft(draft)
     if (problems.length > 0) {
       setSaveError(problems.join(" "))
@@ -111,9 +150,8 @@ export default function DoorAccessNightPage({
     setNotice(null)
     setRestampWarning(null)
     try {
-      const result = await saveNightOverride(programId, date, buildNightOverridePayload(draft))
-      adopt(result)
-      setNotice("Saved.")
+      const result = await saveNightOverride(programId, date, buildNightSavePayload(draft))
+      showSaveOutcome(result, "Saved.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save this night.")
     } finally {
@@ -128,8 +166,7 @@ export default function DoorAccessNightPage({
     setRestampWarning(null)
     try {
       const result = await clearNightOverride(programId, date)
-      adopt(result)
-      setNotice("This night is back on the program's defaults.")
+      showSaveOutcome(result, "This night is back on the program's defaults.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not reset this night.")
     } finally {
@@ -162,9 +199,11 @@ export default function DoorAccessNightPage({
 
   const editable = canEdit && nightIsEditable(night)
   const chips = nightChips(night)
+  const dirty = !!(draft && baseline && nightDraftIsDirty(draft, baseline))
 
   return (
     <>
+      <NightLeaveGuard dirty={dirty} />
       <BackLink programId={programId} />
 
       <PageHeader
@@ -178,43 +217,50 @@ export default function DoorAccessNightPage({
             ))}
           </span>
         }
-        description={`${program.name || "Weekly access"} · ${fmtWindow(night.start_time, night.end_time)}`}
+        description={`${program.name || WEEKLY_ACCESS_SECTION_LABEL} · ${fmtWindow(night.start_time, night.end_time)}`}
         actions={
           editable ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               {night.has_override && (
-                <Button variant="secondary" onClick={handleReset} disabled={saving}>
+                <Button variant="access-secondary" onClick={handleReset} disabled={saving}>
                   <RotateCcw className="size-4" /> Reset to defaults
                 </Button>
               )}
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" /> Saving…
-                  </>
-                ) : (
-                  "Save night"
+              <div className="flex flex-col items-end">
+                <Button variant={ACCESS_BUTTON_VARIANT} onClick={handleSave} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" /> Saving…
+                    </>
+                  ) : (
+                    "Save night"
+                  )}
+                </Button>
+                {dirty && (
+                  <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+                    {NIGHT_UNSAVED_TITLE}
+                  </p>
                 )}
-              </Button>
+              </div>
             </div>
           ) : undefined
         }
       />
 
-      {/* Why this night can't be edited here — stated, never a dead form. */}
+      {/* Why this night can't be edited here. Stated, never a dead form. */}
       {!nightIsEditable(night) && (
         <Notice tone="warning">
           {night.status === "cancelled"
             ? "This night is cancelled. Cancelled nights can't be re-priced."
-            : "This night was edited directly as an event, so it no longer follows the program. Change it on its event page — edits made here wouldn't show up there."}
+            : "This night was edited directly as an event, so it no longer follows the program. Change it on its event page. Edits made here wouldn't show up there."}
         </Notice>
       )}
 
-      {/* Unstamped is not an error state — overrides key off the DATE, which is
+      {/* Unstamped is not an error state. Overrides key off the DATE, which is
           what lets a host price a holiday weeks before the night exists. */}
       {editable && !night.is_stamped && (
         <Notice tone="info">
-          This night hasn&apos;t been generated yet. You can still price it — the settings apply
+          This night hasn&apos;t been generated yet. You can still price it. The settings apply
           automatically when it&apos;s created.
         </Notice>
       )}
@@ -222,9 +268,9 @@ export default function DoorAccessNightPage({
       {!canEdit && <Notice tone="info">Only owners and managers can change a night.</Notice>}
 
       {saveError && <Notice tone="danger">{saveError}</Notice>}
-      {/* A restamp failure is a WARNING: the override IS saved. */}
-      {restampWarning && <Notice tone="warning">{restampWarning}</Notice>}
-      {notice && !saveError && <Notice tone="success">{notice}</Notice>}
+      {/* restamp_error / times_only_has_sales: override may be stored, prices are not live. */}
+      {restampWarning && !notice && <Notice tone="warning">{restampWarning}</Notice>}
+      {notice && !saveError && !restampWarning && <Notice tone="success">{notice}</Notice>}
 
       {night.passes_sold > 0 && (
         <Notice tone="info">
@@ -236,12 +282,19 @@ export default function DoorAccessNightPage({
 
       <HoursCard draft={draft} setDraft={setDraft} program={program} editable={editable} />
 
-      <TiersCard draft={draft} setDraft={setDraft} night={night} editable={editable} />
+      <NightTicketsEditor
+        program={program}
+        night={night}
+        draft={draft}
+        setDraft={setDraft}
+        setProgram={setProgram}
+        editable={editable}
+      />
 
       {editable && draftHasOverrides(draft) && (
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          This night differs from the program defaults. Anything set to{" "}
-          <span className="font-medium">Use default</span> keeps following the program.
+          This night differs from the program defaults. Reset a field to follow the program
+          again.
         </p>
       )}
     </>
@@ -283,38 +336,6 @@ function Notice({
   )
 }
 
-/** Inherit ⇄ override switch. The same control for every field, so "Use default" always means null. */
-function InheritToggle({
-  inheriting,
-  onChange,
-  disabled,
-}: {
-  inheriting: boolean
-  onChange: (inherit: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        size="sm"
-        variant={inheriting ? "subtle" : "ghost"}
-        onClick={() => onChange(true)}
-        disabled={disabled}
-      >
-        Use default
-      </Button>
-      <Button
-        size="sm"
-        variant={!inheriting ? "subtle" : "ghost"}
-        onClick={() => onChange(false)}
-        disabled={disabled}
-      >
-        Override
-      </Button>
-    </div>
-  )
-}
-
 function HoursCard({
   draft,
   setDraft,
@@ -337,195 +358,113 @@ function HoursCard({
       <CardContent className="flex flex-col gap-4 pt-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-neutral-700 dark:text-neutral-300">Hours for this night</p>
-          <InheritToggle
-            inheriting={draft.inherit_times}
-            onChange={(inherit) => setDraft({ ...draft, inherit_times: inherit })}
-            disabled={!editable}
-          />
+          {draft.inherit_times ? (
+            <span className="text-[12px] text-neutral-400 dark:text-neutral-500">Program default</span>
+          ) : editable ? (
+            <button
+              type="button"
+              onClick={() => setDraft(resetNightHours(draft, program.start_time, program.end_time))}
+              className="text-[12px] font-medium text-neutral-400 transition-colors hover:text-neutral-600 dark:hover:text-neutral-300"
+            >
+              Reset to program default
+            </button>
+          ) : null}
         </div>
 
-        {!draft.inherit_times && (
-          <div className="grid gap-3 sm:grid-cols-2 sm:max-w-md">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                Opens
-              </span>
-              <Input
-                type="time"
-                value={draft.start_time.slice(0, 5)}
-                disabled={!editable}
-                onChange={(e) => setDraft({ ...draft, start_time: `${e.target.value}:00` })}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-                Closes
-              </span>
-              <Input
-                type="time"
-                value={draft.end_time.slice(0, 5)}
-                disabled={!editable}
-                onChange={(e) => setDraft({ ...draft, end_time: `${e.target.value}:00` })}
-              />
-            </label>
-          </div>
-        )}
+        <div className="grid gap-3 sm:grid-cols-2 sm:max-w-md">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+              Opens
+            </span>
+            <Input
+              type="time"
+              value={toTimeInput(draft.start_time)}
+              disabled={!editable}
+              onChange={(e) =>
+                setDraft(
+                  applyNightHours(
+                    draft,
+                    fromTimeInput(e.target.value),
+                    draft.end_time,
+                    program.start_time,
+                    program.end_time
+                  )
+                )
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
+              Closes
+            </span>
+            <Input
+              type="time"
+              value={toTimeInput(draft.end_time)}
+              disabled={!editable}
+              onChange={(e) =>
+                setDraft(
+                  applyNightHours(
+                    draft,
+                    draft.start_time,
+                    fromTimeInput(e.target.value),
+                    program.start_time,
+                    program.end_time
+                  )
+                )
+              }
+            />
+          </label>
+        </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-4 dark:border-neutral-800">
-          <div>
-            <p className="text-sm text-neutral-700 dark:text-neutral-300">Closed this night</p>
+        <div
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3",
+            draft.is_closed
+              ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
+              : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900/40"
+          )}
+        >
+          <label htmlFor="closed-this-night" className="min-w-0 cursor-pointer">
+            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+              Closed this night
+            </p>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
               Stops sales for this date only. The rest of the program keeps running.
             </p>
+          </label>
+          <div className="flex items-center gap-3">
+            <span
+              className={cn(
+                "text-sm font-semibold",
+                draft.is_closed
+                  ? "text-red-700 dark:text-red-300"
+                  : "text-neutral-500 dark:text-neutral-400"
+              )}
+            >
+              {draft.is_closed ? "On" : "Off"}
+            </span>
+            <SwitchPrimitive.Root
+              id="closed-this-night"
+              checked={draft.is_closed}
+              disabled={!editable}
+              onCheckedChange={(closed) => setDraft({ ...draft, is_closed: closed })}
+              aria-label="Closed this night"
+              className={cn(
+                "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-access focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50",
+                draft.is_closed ? "bg-red-600" : "bg-neutral-300 dark:bg-neutral-600"
+              )}
+            >
+              <SwitchPrimitive.Thumb
+                className={cn(
+                  "pointer-events-none block size-5 rounded-full bg-white shadow-sm ring-0 transition-transform",
+                  draft.is_closed ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </SwitchPrimitive.Root>
           </div>
-          <Button
-            size="sm"
-            variant={draft.is_closed ? "danger" : "secondary"}
-            disabled={!editable}
-            onClick={() => setDraft({ ...draft, is_closed: !draft.is_closed })}
-          >
-            {draft.is_closed ? "Closed" : "Open"}
-          </Button>
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function TiersCard({
-  draft,
-  setDraft,
-  night,
-  editable,
-}: {
-  draft: NightDraft
-  setDraft: (d: NightDraft) => void
-  night: DoorAccessNight
-  editable: boolean
-}) {
-  const patch = (index: number, next: Partial<NightDraft["tiers"][number]>) => {
-    const tiers = draft.tiers.map((tier, i) => (i === index ? { ...tier, ...next } : tier))
-    setDraft({ ...draft, tiers })
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tiers this night</CardTitle>
-        <span className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          Program defaults unless overridden
-        </span>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {draft.tiers.length === 0 ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            This program has no tiers.
-          </p>
-        ) : (
-          <div className="flex flex-col divide-y divide-neutral-100 dark:divide-neutral-800">
-            {draft.tiers.map((tier, index) => {
-              const source = night.tiers.find((t) => t.tier_key === tier.tier_key)
-              return (
-                <div key={tier.tier_key} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                        {source?.name || tier.tier_key}
-                      </p>
-                      <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                        Default {usdPrice(source?.template_price_usd ?? null)} ·{" "}
-                        {fmtQuantity(source?.template_quantity ?? 0)}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={tier.is_disabled ? "danger" : "secondary"}
-                      disabled={!editable}
-                      onClick={() => patch(index, { is_disabled: !tier.is_disabled })}
-                    >
-                      {tier.is_disabled ? "Off tonight" : "On sale"}
-                    </Button>
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FieldOverride
-                      label="Price"
-                      inheriting={tier.inherit_price}
-                      onInherit={(inherit) => patch(index, { inherit_price: inherit })}
-                      editable={editable && !tier.is_disabled}
-                    >
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={tier.price_usd ?? ""}
-                        disabled={!editable || tier.is_disabled}
-                        onChange={(e) =>
-                          patch(index, {
-                            price_usd: e.target.value === "" ? null : Number(e.target.value),
-                          })
-                        }
-                      />
-                    </FieldOverride>
-
-                    <FieldOverride
-                      label="Capacity"
-                      hint="0 = unlimited"
-                      inheriting={tier.inherit_quantity}
-                      onInherit={(inherit) => patch(index, { inherit_quantity: inherit })}
-                      editable={editable && !tier.is_disabled}
-                    >
-                      <Input
-                        type="number"
-                        min={0}
-                        step="1"
-                        value={tier.quantity ?? ""}
-                        disabled={!editable || tier.is_disabled}
-                        onChange={(e) =>
-                          patch(index, {
-                            quantity: e.target.value === "" ? null : Number(e.target.value),
-                          })
-                        }
-                      />
-                    </FieldOverride>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function FieldOverride({
-  label,
-  hint,
-  inheriting,
-  onInherit,
-  editable,
-  children,
-}: {
-  label: string
-  hint?: string
-  inheriting: boolean
-  onInherit: (inherit: boolean) => void
-  editable: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-          {label}
-          {hint && (
-            <span className="ml-1.5 font-normal text-neutral-400 dark:text-neutral-500">{hint}</span>
-          )}
-        </span>
-        <InheritToggle inheriting={inheriting} onChange={onInherit} disabled={!editable} />
-      </div>
-      {!inheriting && children}
-    </div>
-  )
-}
