@@ -157,7 +157,7 @@ export type ListedProgramRef = Pick<
   "id" | "name" | "venue_name" | "next_night_date" | "date_range_start" | "date_range_end"
 >
 
-/** Dated Weekly Cover row → listed program page. Named event → its event page. */
+/** Dated Weekly Cover row → series program page. Named event → its event page. */
 export function eventListHref(
   event: EventListItem,
   programs: readonly ListedProgramRef[] = [],
@@ -168,16 +168,16 @@ export function eventListHref(
     { programId, name: event.name, events: [event] },
     programs,
   )
-  // Never emit /door-access/:unlistedId when the programs list is non-empty.
-  if (working == null) return `/business/events/${event.event_id}`
+  // WC nights always open the series. Never /door-access/{event_id}.
+  if (working == null) return programHref(programId)
   return programHref(working)
 }
 
 /**
  * A leaked door-access series still opens the program page, never
  * /business/recurring/:id (that page is for named recurring events).
- * Rematches to a listed GET /business/door-access id; unlisted series ids
- * stay on /business/recurring/:id rather than a 404ing door-access href.
+ * The series id is recurring_series_id on the WC nights. Named series
+ * without a WC program id stay on /business/recurring/:id.
  */
 export function seriesRowHref(
   row: Extract<EventRow, { kind: "series" }>,
@@ -189,8 +189,7 @@ export function seriesRowHref(
     { programId, name: row.name, events: row.events },
     programs,
   )
-  if (working == null) return seriesHref(row.seriesId)
-  return programHref(working)
+  return programHref(working ?? programId)
 }
 
 function eventDateOnly(value: string | null | undefined): string | null {
@@ -223,15 +222,16 @@ function programSharesNights(
 }
 
 /**
- * Prefer a GET /business/door-access program id when one covers these nights.
- * recurring_series_id (e.g. 23) is only used when the list is empty. An
- * unlisted series id is dropped rather than linked, because GET
- * /business/door-access/:id 404s when program_kind is not door_access.
+ * The program id for stamped Weekly Cover nights is recurring_series_id
+ * (e.g. 23). GET /business/door-access may omit a program_kind=event series;
+ * that list is not a rewrite of the series id. Rematch to a different listed
+ * id only when the nights have no series id of their own.
  */
 export function workingProgramIdForEventGroup(
   group: DoorAccessEventGroup,
   programs: readonly ListedProgramRef[],
 ): number | null {
+  if (group.programId > 0) return group.programId
   if (programs.some((program) => program.id === group.programId)) return group.programId
   const sameName = programs.find(
     (program) =>
@@ -241,18 +241,17 @@ export function workingProgramIdForEventGroup(
   if (sameName) return sameName.id
   const sameNights = programs.find((program) => programSharesNights(program, group))
   if (sameNights) return sameNights.id
-  if (programs.length === 0) return group.programId
   return null
 }
 
 /**
- * After GET /business/door-access/:id 404s, pick a different id to redirect
- * to, or null to keep "Program not found".
+ * After GET /business/door-access/:id 404s, pick the series id to retry or
+ * redirect to, or null to keep "Program not found".
  *
- * A listed id that 404s is a services miss: do not invent a replacement and
- * do not treat it as an event_id. A WC night event_id redirects to its
- * rematched series. An unlisted series id rematches to a listed program when
- * the nights prove the match; it never becomes a guess at "the only program".
+ * A listed id, or a series id from Events-list grouping, is the program:
+ * return it so the page retries GET /business/door-access/:seriesId. A WC
+ * night event_id redirects to that night's recurring_series_id. Does not
+ * invent a different program and does not guess "the only program".
  */
 export function recoverProgramIdFromLookups(args: {
   pathId: number
@@ -261,17 +260,17 @@ export function recoverProgramIdFromLookups(args: {
   eventGroup: DoorAccessEventGroup | null
 }): number | null {
   const { pathId, programs, eventSeriesId, eventGroup } = args
-  if (programs.some((program) => program.id === pathId)) return null
 
-  if (eventSeriesId != null) {
+  if (eventSeriesId != null && eventSeriesId !== pathId) {
     const nightGroup =
       eventGroup?.programId === eventSeriesId
         ? eventGroup
         : { programId: eventSeriesId, name: eventGroup?.name ?? "", events: eventGroup?.events ?? [] }
-    const working = workingProgramIdForEventGroup(nightGroup, programs)
-    if (working != null && working !== pathId) return working
-    return null
+    return workingProgramIdForEventGroup(nightGroup, programs) ?? eventSeriesId
   }
+
+  if (programs.some((program) => program.id === pathId)) return pathId
+  if (eventGroup?.programId === pathId) return pathId
 
   if (eventGroup) {
     const working = workingProgramIdForEventGroup(eventGroup, programs)
@@ -280,7 +279,11 @@ export function recoverProgramIdFromLookups(args: {
   return null
 }
 
-/** Fallback Weekly Cover rows, remapped to listed program ids when possible. */
+/**
+ * Fallback Weekly Cover rows from stamped nights. AccessProgramRow already
+ * owns a listed program id; an omitted series (program_kind=event) still
+ * appears here so the host can open recurring_series_id.
+ */
 export function eventAccessGroupsForPrograms(
   events: EventListItem[],
   programs: readonly ListedProgramRef[],

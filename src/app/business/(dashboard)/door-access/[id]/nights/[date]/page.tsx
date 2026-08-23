@@ -2,16 +2,17 @@
 
 import { use, useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import * as SwitchPrimitive from "@radix-ui/react-switch"
 import { AlertTriangle, ArrowLeft, Loader2, RotateCcw, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   applyNightHours,
-  buildNightOverridePayload,
+  buildNightSavePayload,
   clearNightOverride,
   draftFromNight,
   draftHasOverrides,
-  fetchDoorAccessNight,
+  loadDoorAccessNightForPath,
   nightDraftIsDirty,
   fmtNightDate,
   fmtWindow,
@@ -20,6 +21,7 @@ import {
   nightIsEditable,
   nightSaveFeedback,
   NIGHT_UNSAVED_TITLE,
+  nightHref,
   programHref,
   resetNightHours,
   saveNightOverride,
@@ -69,6 +71,7 @@ export default function DoorAccessNightPage({
 }) {
   const { id, date } = use(params)
   const programId = Number(id)
+  const router = useRouter()
   const { user } = useAuth()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
@@ -89,10 +92,18 @@ export default function DoorAccessNightPage({
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchDoorAccessNight(programId, date)
-      setProgram(data.program)
-      setNight(data.night)
-      const next = draftFromNight(data.night, data.program)
+      const loaded = await loadDoorAccessNightForPath(programId, date)
+      if (loaded.redirectTo != null) {
+        router.replace(nightHref(loaded.redirectTo, date))
+        return
+      }
+      if (!loaded.ok || !loaded.program || !loaded.night) {
+        setError("Could not load this night.")
+        return
+      }
+      setProgram(loaded.program)
+      setNight(loaded.night)
+      const next = draftFromNight(loaded.night, loaded.program)
       setDraft(next)
       setBaseline(next)
     } catch {
@@ -100,7 +111,7 @@ export default function DoorAccessNightPage({
     } finally {
       setLoading(false)
     }
-  }, [programId, date])
+  }, [programId, date, router])
 
   useEffect(() => {
     load()
@@ -139,7 +150,7 @@ export default function DoorAccessNightPage({
     setNotice(null)
     setRestampWarning(null)
     try {
-      const result = await saveNightOverride(programId, date, buildNightOverridePayload(draft))
+      const result = await saveNightOverride(programId, date, buildNightSavePayload(draft))
       showSaveOutcome(result, "Saved.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save this night.")
