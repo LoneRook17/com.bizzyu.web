@@ -165,10 +165,14 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     { href: `${base}/analytics`, icon: BarChart3, title: "Event analytics", subtitle: "Revenue and check-ins", show: true },
   ]
 
+  // Promo codes leads the section, matching the app's manage screen — the two
+  // surfaces are the same control panel and should list it in the same place.
+  // (The app had it buried inside Manage sales until 2026-08-23; the web never
+  // did, so only the ordering needed to change here.)
   const promoteTiles: Tile[] = [
+    { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
     { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Stats and payouts", show: true },
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
-    { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
   ]
 
   return (
