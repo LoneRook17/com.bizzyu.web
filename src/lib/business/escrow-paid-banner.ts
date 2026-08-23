@@ -60,16 +60,24 @@ export function resolvePaidBannerBusinessId(
   return null
 }
 
+function isPositiveMs(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n > 0
+}
+
 export function parsePaidBannerFirstSeen(raw: string | null | undefined): number | null {
   if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as { firstSeenAtMs?: unknown }
-    const n = parsed?.firstSeenAtMs
-    if (typeof n === "number" && Number.isFinite(n) && n > 0) return n
+    const parsed = JSON.parse(raw) as unknown
+    // JSON.parse("1787486400000") is a number, not an object.
+    if (isPositiveMs(parsed)) return parsed
+    if (parsed && typeof parsed === "object") {
+      const n = (parsed as { firstSeenAtMs?: unknown }).firstSeenAtMs
+      if (isPositiveMs(n)) return n
+    }
     return null
   } catch {
     const n = Number(raw)
-    return Number.isFinite(n) && n > 0 ? n : null
+    return isPositiveMs(n) ? n : null
   }
 }
 
