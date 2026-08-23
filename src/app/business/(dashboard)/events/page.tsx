@@ -12,11 +12,13 @@ import { EVENT_TABS } from "@/lib/business/constants"
 import type { EventListItem, BusinessProfile, RecurringSeriesListItem } from "@/lib/business/types"
 import {
   eventAccessGroupsForPrograms,
+  eventAccessGroupsForVenue,
   EVENT_TYPE_FILTERS,
   groupEventRows,
   parseEventTypeFilter,
   showsAccess,
   showsEvents,
+  weeklyCoverRowsForVenue,
   weeklyCoverSeriesIds,
   type EventTypeFilter,
 } from "@/lib/business/events-list"
@@ -55,8 +57,12 @@ import {
 export default function V2EventsPage() {
   const { user, isPending } = useAuth()
   const router = useRouter()
-  const { venues, isAllVenues, setSelectedVenue } = useVenue()
+  const { venues, isAllVenues, selectedVenue, selectedVenueId, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
+  // Matches useVenueParam: All venues / unknown selection omits venue_id so
+  // every owned series stays visible. A concrete id scopes both fetches.
+  const scopedVenueId =
+    typeof selectedVenueId === "number" && selectedVenueId > 0 ? selectedVenueId : null
   const { config } = useDashboardMode()
 
   // Weekly Access follows the same flag Door Access always did — it IS the
@@ -145,20 +151,22 @@ export default function V2EventsPage() {
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
-  // Access programs load ONCE and independently of the tab/page, because they
-  // are not part of the paginated event query. fetchDoorAccessProgramsSafe
-  // degrades to [] on any failure — this list worked before access rows
-  // existed and must keep working if that endpoint is down or the build
-  // predates it.
+  // Access programs follow the venue switcher, independently of tab/page,
+  // because they are not part of the paginated event query. Passing
+  // scopedVenueId (or omitting it for All venues) is what keeps The Dungeon's
+  // Weekly Cover off The Devil Dungeon. fetchDoorAccessProgramsSafe degrades
+  // to [] on any failure — this list worked before access rows existed and
+  // must keep working if that endpoint is down or the build predates it.
   useEffect(() => {
     let cancelled = false
-    fetchDoorAccessProgramsSafe().then((rows) => {
+    setProgramsLoading(true)
+    fetchDoorAccessProgramsSafe(scopedVenueId).then((rows) => {
       if (cancelled) return
       setPrograms(rows)
       setProgramsLoading(false)
     })
     return () => { cancelled = true }
-  }, [])
+  }, [scopedVenueId])
 
   // Series load once too, and for the same reason: they label groups, they do
   // not page. A group whose series is missing still renders — it falls back to
@@ -172,7 +180,12 @@ export default function V2EventsPage() {
     return () => { cancelled = true }
   }, [])
 
-  const activePrograms = programs.filter((p) => p.is_active)
+  // Belt-and-suspenders: even if an older door-access build ignores
+  // ?venue_id=, hide another venue's Weekly Cover on a single-venue view.
+  // All venues keeps every owned series.
+  const venuePrograms = weeklyCoverRowsForVenue(programs, scopedVenueId, selectedVenue?.name)
+  const venueSeries = weeklyCoverRowsForVenue(series, scopedVenueId, selectedVenue?.name)
+  const activePrograms = venuePrograms.filter((p) => p.is_active)
 
   // In the combined view only on the tab that means "what's on". "Past" /
   // "Drafts" / "Recurring" are questions about dated events; an ongoing program
@@ -181,17 +194,21 @@ export default function V2EventsPage() {
   const visiblePrograms = !showsAccess(effectiveType)
     ? []
     : effectiveType === "access"
-      ? programs
+      ? venuePrograms
       : tab === "upcoming" ? activePrograms : []
 
-  const wcSeriesIds = weeklyCoverSeriesIds(programs, series)
-  const rows = showsEvents(effectiveType) ? groupEventRows(events, series, wcSeriesIds) : []
+  const wcSeriesIds = weeklyCoverSeriesIds(venuePrograms, venueSeries)
+  const rows = showsEvents(effectiveType) ? groupEventRows(events, venueSeries, wcSeriesIds) : []
   // AccessProgramRow uses GET /business/door-access ids. Stamped WC nights
   // still group by recurring_series_id when that list omits the series
   // (program_kind=event). EventCard / SeriesGroupRow open the series id,
   // never /door-access/{event_id}.
   const eventAccessGroups = showsAccess(effectiveType)
-    ? eventAccessGroupsForPrograms(events, programs, wcSeriesIds)
+    ? eventAccessGroupsForVenue(
+        eventAccessGroupsForPrograms(events, venuePrograms, wcSeriesIds),
+        scopedVenueId,
+        selectedVenue?.name,
+      )
     : []
   const isEmpty = rows.length === 0 && visiblePrograms.length === 0 && eventAccessGroups.length === 0
 
@@ -306,8 +323,8 @@ export default function V2EventsPage() {
           ))}
           {rows.map((row) =>
             row.kind === "series"
-              ? <SeriesGroupRow key={row.key} row={row} programs={programs} wcSeriesIds={wcSeriesIds} />
-              : <EventCard key={row.key} event={row.event} programs={programs} wcSeriesIds={wcSeriesIds} />
+              ? <SeriesGroupRow key={row.key} row={row} programs={venuePrograms} wcSeriesIds={wcSeriesIds} />
+              : <EventCard key={row.key} event={row.event} programs={venuePrograms} wcSeriesIds={wcSeriesIds} />
           )}
         </div>
       )}
