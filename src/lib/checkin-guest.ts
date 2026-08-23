@@ -47,6 +47,16 @@ export function checkinRedeemPath(uuid: string): string {
   return `/checkin/${encodeURIComponent(uuid)}/redeem`
 }
 
+/** Copy for the public ticket page. Never says check-in is staff-only. */
+export function guestCheckinFooterCopy(
+  ticket: Pick<GuestCheckinTicket, "access_kind" | "redemption_mode">,
+): string {
+  if (isWeeklyCoverCheckinTicket(ticket)) {
+    return "Weekly Cover scans with any phone camera. Tap Check In. No staff login."
+  }
+  return "Scan with any phone camera, then tap Check In. No staff login."
+}
+
 export function checkinRedeemStatusLabel(status: string): string {
   if (status === "redeemed_now") return "ENTRY"
   const labels: Record<string, string> = {

@@ -20,6 +20,7 @@ import {
 } from "@/components/business/v2/ui/dialog"
 import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2/events/eventStatus"
 import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
+import { createFromTemplateHref } from "@/lib/business/create-from-template"
 
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -33,7 +34,6 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   const [editPriceCents, setEditPriceCents] = useState(0)
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceError, setPriceError] = useState("")
-  const [duplicating, setDuplicating] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState("")
 
@@ -95,15 +95,9 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  const handleDuplicate = async () => {
-    setDuplicating(true)
-    try {
-      const data = await apiClient.post<{ event_id: number }>(`/business/events/${id}/duplicate`)
-      router.push(`/business/events/${data.event_id}/edit`)
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to duplicate event")
-      setDuplicating(false)
-    }
+  const handleDuplicate = () => {
+    if (!event) return
+    router.push(createFromTemplateHref(event))
   }
 
   if (loading) {
@@ -158,8 +152,8 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
             <Link href={`/business/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
           </Button>
           {canEdit && (
-            <Button variant="secondary" onClick={handleDuplicate} disabled={duplicating}>
-              {duplicating ? <Loader2 className="animate-spin" /> : <Copy />} Duplicate
+            <Button variant="secondary" onClick={handleDuplicate}>
+              <Copy /> Use as template
             </Button>
           )}
         </div>

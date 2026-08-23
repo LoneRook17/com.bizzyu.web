@@ -100,11 +100,17 @@ interface CreateResponse {
  */
 const DOOR_ACCESS_REDEMPTION_MODE: RedemptionMode = "camera_tap"
 
-function seedTiers(program?: DoorAccessProgram): RecurringTierRow[] {
+function seedTiers(program?: DoorAccessProgram, asNew = false): RecurringTierRow[] {
   if (!program?.template_tickets.length) {
     return [{ ...EMPTY_RECURRING_TIER, name: "Cover" }]
   }
-  return templateToTierRows(program.template_tickets)
+  const rows = templateToTierRows(program.template_tickets)
+  if (!asNew) return rows
+  return rows.map((row) => {
+    const next = { ...row }
+    delete next.tier_key
+    return next
+  })
 }
 
 export function DoorAccessWizard({
@@ -145,7 +151,7 @@ export function DoorAccessWizard({
   const [flyerImageUrl, setFlyerImageUrl] = useState(initialData?.flyer_image_url ?? "")
 
   // ── Step 2: access & pricing ─────────────────────────────────────────────
-  const [tiers, setTiers] = useState<RecurringTierRow[]>(() => seedTiers(initialData))
+  const [tiers, setTiers] = useState<RecurringTierRow[]>(() => seedTiers(initialData, !isEdit))
   const [promotionEnabled, setPromotionEnabled] = useState(!!initialData?.promotion_enabled)
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">(
     initialData?.promotion_commission_type ?? "percent"

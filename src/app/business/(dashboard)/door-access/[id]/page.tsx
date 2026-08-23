@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CalendarDays, Loader2, Pencil, Zap } from "lucide-react"
+import { ArrowLeft, CalendarDays, Copy, Loader2, Pencil, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
@@ -43,6 +43,7 @@ import {
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
 import { venuePageUrl } from "@/lib/business/public-links"
+import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import ShareLinkRow from "@/components/business/v2/ShareLinkRow"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -180,11 +181,18 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           .join(" · ")}
         actions={
           canEdit ? (
-            <Button asChild variant={ACCESS_BUTTON_VARIANT}>
-              <Link href={programEditHref(programId)}>
-                <Pencil className="size-4" /> {EDIT_PROGRAM_LABEL}
-              </Link>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild variant="secondary">
+                <Link href={createFromTemplateHref({ program_id: programId })}>
+                  <Copy className="size-4" /> Use as template
+                </Link>
+              </Button>
+              <Button asChild variant={ACCESS_BUTTON_VARIANT}>
+                <Link href={programEditHref(programId)}>
+                  <Pencil className="size-4" /> {EDIT_PROGRAM_LABEL}
+                </Link>
+              </Button>
+            </div>
           ) : undefined
         }
       />
