@@ -7,6 +7,8 @@ import {
   eventAccessGroupsForPrograms,
   eventListHref,
   recoverProgramIdFromLookups,
+  weeklyCoverSeriesIds,
+  isWeeklyCoverSeriesRef,
   workingProgramIdForEventGroup,
   eventRowStats,
   fmtRowDate,
@@ -352,6 +354,47 @@ test("recoverProgramIdFromLookups surfaces series 23 and redirects night event_i
     null,
     "do not guess the only listed program",
   )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [],
+      eventSeriesId: null,
+      eventGroup: null,
+      ownedSeriesId: 23,
+    }),
+    23,
+    "owning host GET recurring-series/23 recovers the series after door-access 404",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [dungeon],
+      eventSeriesId: null,
+      eventGroup: null,
+      ownedSeriesId: 99,
+    }),
+    99,
+    "owned series id is the recover target, not the only listed program",
+  )
+})
+
+test("list hrefs door-access/23 when access_kind is still event", () => {
+  const night = ev(621, "2026-08-24 21:00:00", 23, {
+    name: "The Dungeon Weekly Cover (Escrow Test)",
+    venue_name: "The Dungeon",
+    access_kind: "event",
+  })
+  assert.equal(eventListHref(night, [], [23]), "/business/door-access/23")
+  assert.equal(eventListHref(night, [], []), "/business/events/621")
+  assert.deepEqual(weeklyCoverSeriesIds([], [{ id: 23, name: "The Dungeon Weekly Cover (Escrow Test)" }]), [23])
+  assert.equal(isWeeklyCoverSeriesRef({ id: 7, name: "Trivia Tuesdays" }), false)
+  assert.equal(isWeeklyCoverSeriesRef({ id: 9, program_kind: "door_access" }), true)
+
+  const skipped = groupEventRows([night], [], [23])
+  assert.equal(skipped.length, 0, "WC series 23 nights leave the green Events list")
+  const groups = eventAccessGroupsForPrograms([night], [], [23])
+  assert.equal(groups[0]?.programId, 23)
+  assert.equal(eventListHref(groups[0]!.events[0] as typeof night, [], [23]), "/business/door-access/23")
 })
 
 test("Events list href for The Dungeon series 23 is the series, never a night event_id", () => {

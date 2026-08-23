@@ -19,7 +19,7 @@ import {
   programIdFromOwnedEvent,
   type DoorAccessProgramSummary,
 } from "./door-access.ts"
-import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
+import { looksLikeWeeklyCoverName, WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 
 /** The segment's three positions. `all` is the default — one combined list. */
 export const EVENT_TYPE_FILTERS = [
@@ -110,15 +110,18 @@ export type DoorAccessEventGroup = {
 export function groupEventRows(
   events: EventListItem[],
   series: RecurringSeriesListItem[] = [],
+  wcSeriesIds: readonly number[] = [],
 ): EventRow[] {
   const byId = new Map<number, RecurringSeriesListItem>()
   for (const s of series) byId.set(s.id, s)
+  const weeklyIds = new Set(wcSeriesIds)
 
   const rows: EventRow[] = []
   const groupIndex = new Map<number, number>()
 
   for (const event of events) {
     if (isDoorAccessKind(event.access_kind)) continue
+    if (event.recurring_series_id != null && weeklyIds.has(event.recurring_series_id)) continue
     const seriesId = event.recurring_series_id
     if (seriesId == null) {
       rows.push({ kind: "single", key: `event-${event.event_id}`, event })
@@ -161,8 +164,10 @@ export type ListedProgramRef = Pick<
 export function eventListHref(
   event: EventListItem,
   programs: readonly ListedProgramRef[] = [],
+  wcSeriesIds: readonly number[] = [],
 ): string {
-  const programId = programIdFromOwnedEvent(event)
+  const programId =
+    programIdFromOwnedEvent(event) ?? programIdFromWeeklyCoverSeries(event, wcSeriesIds)
   if (programId == null) return `/business/events/${event.event_id}`
   const working = workingProgramIdForEventGroup(
     { programId, name: event.name, events: [event] },
@@ -182,14 +187,55 @@ export function eventListHref(
 export function seriesRowHref(
   row: Extract<EventRow, { kind: "series" }>,
   programs: readonly ListedProgramRef[] = [],
+  wcSeriesIds: readonly number[] = [],
 ): string {
-  const programId = row.events.map(programIdFromOwnedEvent).find((id) => id != null)
+  const programId =
+    row.events.map((event) => programIdFromOwnedEvent(event)).find((id) => id != null) ??
+    (wcSeriesIds.includes(row.seriesId) ? row.seriesId : null)
   if (programId == null) return seriesHref(row.seriesId)
   const working = workingProgramIdForEventGroup(
     { programId, name: row.name, events: row.events },
     programs,
   )
   return programHref(working ?? programId)
+}
+
+/** A night whose series is a known Weekly Cover program, even if access_kind is event. */
+function programIdFromWeeklyCoverSeries(
+  event: { recurring_series_id?: number | string | null },
+  wcSeriesIds: readonly number[],
+): number | null {
+  if (event.recurring_series_id == null || event.recurring_series_id === "") return null
+  const id = Number(event.recurring_series_id)
+  if (!Number.isFinite(id) || id <= 0) return null
+  return wcSeriesIds.includes(id) ? id : null
+}
+
+export type WeeklyCoverSeriesRef = {
+  id: number
+  name?: string
+  program_kind?: string | null
+  access_kind?: string | null
+}
+
+export function isWeeklyCoverSeriesRef(series: WeeklyCoverSeriesRef): boolean {
+  if (isDoorAccessKind(series.program_kind) || isDoorAccessKind(series.access_kind)) return true
+  return looksLikeWeeklyCoverName(series.name)
+}
+
+/** Listed door-access ids plus recurring series that are Weekly Cover. */
+export function weeklyCoverSeriesIds(
+  programs: readonly ListedProgramRef[],
+  series: readonly WeeklyCoverSeriesRef[] = [],
+): number[] {
+  const ids = new Set<number>()
+  for (const program of programs) {
+    if (program.id > 0) ids.add(program.id)
+  }
+  for (const row of series) {
+    if (row.id > 0 && isWeeklyCoverSeriesRef(row)) ids.add(row.id)
+  }
+  return [...ids]
 }
 
 function eventDateOnly(value: string | null | undefined): string | null {
@@ -258,8 +304,9 @@ export function recoverProgramIdFromLookups(args: {
   programs: readonly ListedProgramRef[]
   eventSeriesId: number | null
   eventGroup: DoorAccessEventGroup | null
+  ownedSeriesId?: number | null
 }): number | null {
-  const { pathId, programs, eventSeriesId, eventGroup } = args
+  const { pathId, programs, eventSeriesId, eventGroup, ownedSeriesId = null } = args
 
   if (eventSeriesId != null && eventSeriesId !== pathId) {
     const nightGroup =
@@ -271,6 +318,8 @@ export function recoverProgramIdFromLookups(args: {
 
   if (programs.some((program) => program.id === pathId)) return pathId
   if (eventGroup?.programId === pathId) return pathId
+  if (ownedSeriesId != null && ownedSeriesId === pathId) return pathId
+  if (ownedSeriesId != null && ownedSeriesId > 0) return ownedSeriesId
 
   if (eventGroup) {
     const working = workingProgramIdForEventGroup(eventGroup, programs)
@@ -287,11 +336,12 @@ export function recoverProgramIdFromLookups(args: {
 export function eventAccessGroupsForPrograms(
   events: EventListItem[],
   programs: readonly ListedProgramRef[],
+  wcSeriesIds: readonly number[] = [],
 ): DoorAccessEventGroup[] {
   const listedIds = new Set(programs.map((program) => program.id))
   const seen = new Set<number>()
   const rows: DoorAccessEventGroup[] = []
-  for (const group of doorAccessGroupsFromEvents(events)) {
+  for (const group of doorAccessGroupsFromEvents(events, wcSeriesIds)) {
     const workingId = workingProgramIdForEventGroup(group, programs)
     if (workingId == null) continue
     if (listedIds.has(workingId)) continue
@@ -303,11 +353,15 @@ export function eventAccessGroupsForPrograms(
 }
 
 /** Group stamped Weekly Cover nights by program id. Order is first-seen. */
-export function doorAccessGroupsFromEvents(events: DoorAccessEventNight[]): DoorAccessEventGroup[] {
+export function doorAccessGroupsFromEvents(
+  events: DoorAccessEventNight[],
+  wcSeriesIds: readonly number[] = [],
+): DoorAccessEventGroup[] {
   const groups = new Map<number, DoorAccessEventGroup>()
   const order: number[] = []
   for (const event of events) {
-    const programId = programIdFromOwnedEvent(event)
+    const programId =
+      programIdFromOwnedEvent(event) ?? programIdFromWeeklyCoverSeries(event, wcSeriesIds)
     if (programId == null) continue
     const existing = groups.get(programId)
     if (existing) {

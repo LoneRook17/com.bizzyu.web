@@ -7,6 +7,7 @@ import {
   checkinRedeemPath,
   checkinRedeemStatusLabel,
   guestCameraCheckinEnabled,
+  guestCheckinAccent,
   guestCheckinFooterCopy,
   guestTicketIsRedeemable,
   isWeeklyCoverCheckinTicket,
@@ -137,6 +138,7 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
   }
 
   if (overlay === "confirming" && ticket) {
+    const confirmAccent = guestCheckinAccent(ticket)
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f0f1a] p-6">
         <div className="w-full max-w-md text-center">
@@ -148,7 +150,11 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
           <button
             onClick={handleCheckin}
             disabled={redeeming}
-            className="mb-4 w-full rounded-2xl bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] py-5 text-xl font-bold text-white shadow-lg shadow-primary/25 active:brightness-95 disabled:opacity-50 transition-colors"
+            className="mb-4 w-full rounded-2xl py-5 text-xl font-bold text-white active:brightness-95 disabled:opacity-50 transition-colors"
+            style={{
+              backgroundImage: `linear-gradient(to bottom right, ${confirmAccent.accentDeep}, ${confirmAccent.accent})`,
+              boxShadow: `0 10px 15px -3px ${confirmAccent.accent}40`,
+            }}
           >
             {redeeming ? "Checking in..." : "Yes, check in"}
           </button>
@@ -166,11 +172,19 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
 
   if (overlay === "result" && result) {
     const ok = result.status === "redeemed_now"
+    const resultAccent = ticket ? guestCheckinAccent(ticket) : null
     return (
       <div
-        className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br p-8 ${
-          ok ? "from-[#0d7a3e] to-[#05EB54]" : "from-[#8B1A2B] to-[#c41e3a]"
+        className={`fixed inset-0 z-50 flex flex-col items-center justify-center p-8 ${
+          ok ? "" : "bg-gradient-to-br from-[#8B1A2B] to-[#c41e3a]"
         }`}
+        style={
+          ok
+            ? {
+                backgroundImage: `linear-gradient(to bottom right, ${resultAccent?.accentDeep ?? "#0d7a3e"}, ${resultAccent?.accent ?? "#05EB54"})`,
+              }
+            : undefined
+        }
       >
         <div className="text-center">
           {ok ? (
@@ -225,6 +239,7 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     guestCameraCheckinEnabled(ticket) &&
     guestTicketIsRedeemable(ticket)
   const weeklyCover = ticket ? isWeeklyCoverCheckinTicket(ticket) : false
+  const accent = ticket ? guestCheckinAccent(ticket) : null
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6">
@@ -251,7 +266,13 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-white/50">Type</span>
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-primary/20 text-primary">
+                <span
+                  className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                  style={{
+                    backgroundColor: `${(accent?.accent ?? "#05EB54")}33`,
+                    color: accent?.accent ?? "#05EB54",
+                  }}
+                >
                   {weeklyCover ? WEEKLY_ACCESS_TYPE_LABEL : "Entry"}
                 </span>
               </div>
@@ -285,7 +306,11 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
         {canCheckIn && (
           <button
             onClick={() => setOverlay("confirming")}
-            className="w-full rounded-xl bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-4 text-lg font-bold text-white shadow-lg shadow-primary/25 transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full rounded-xl px-4 py-4 text-lg font-bold text-white transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              backgroundImage: `linear-gradient(to bottom right, ${accent?.accentDeep ?? "#2ECB4E"}, ${accent?.accent ?? "#05EB54"})`,
+              boxShadow: `0 10px 15px -3px ${(accent?.accent ?? "#05EB54")}40`,
+            }}
           >
             Check In
           </button>

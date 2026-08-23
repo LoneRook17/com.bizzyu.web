@@ -74,6 +74,25 @@ test("toVenueEvent aliases weekly_cover to door_access like Flutter readAccessKi
   assert.equal(shouldListOnVenuePage(row), true)
 })
 
+test("toVenueEvent treats a Weekly Cover name as pink door_access when access_kind is event", () => {
+  const row = toVenueEvent({
+    event_id: 621,
+    name: "The Dungeon Weekly Cover (Escrow Test)",
+    access_kind: "event",
+    status: "draft",
+  })
+  assert.ok(row)
+  assert.equal(row.access_kind, "door_access")
+  assert.equal(shouldListOnVenuePage(row), true)
+  const namedEvent = toVenueEvent({
+    event_id: 1,
+    name: "Rumble",
+    access_kind: "event",
+    status: "draft",
+  })
+  assert.equal(namedEvent?.access_kind, "event")
+})
+
 test("toVenueEvent maps /ui/events lowest_price onto min_ticket_price", () => {
   const row = toVenueEvent({
     event_id: 621,

@@ -81,6 +81,9 @@ import {
   programEditHref,
   parseProgramPathId,
   programIdFromOwnedEvent,
+  eventBelongsToSeries,
+  doorAccessSeriesFromOwnedHydration,
+  looksLikeWeeklyCoverName,
   PROGRAM_KIND_DOOR_ACCESS,
   withDoorAccessProgramKind,
   MISSING_PROGRAM_ID_DESCRIPTION,
@@ -1302,6 +1305,87 @@ test("create writes stay program_kind=door_access and Save night PUTs publish/re
   assert.ok(nightPage.includes("loadDoorAccessNightForPath"))
 })
 
+test("looksLikeWeeklyCoverName is the leftover signal when access_kind is event", () => {
+  assert.equal(looksLikeWeeklyCoverName("The Dungeon Weekly Cover (Escrow Test)"), true)
+  assert.equal(looksLikeWeeklyCoverName("Weekly Cover"), true)
+  assert.equal(looksLikeWeeklyCoverName("Cover $5"), false)
+  assert.equal(looksLikeWeeklyCoverName("Trivia Tuesdays"), false)
+})
+
+test("hydrate from owned recurring-series 23 does not require access_kind", () => {
+  assert.equal(eventBelongsToSeries({ recurring_series_id: 23 }, 23), true)
+  assert.equal(eventBelongsToSeries({ recurring_series_id: "23", access_kind: "event" }, 23), true)
+  assert.equal(eventBelongsToSeries({ recurring_series_id: 9 }, 23), false)
+
+  const hydrated = doorAccessSeriesFromOwnedHydration({
+    seriesId: 23,
+    series: {
+      name: "The Dungeon Weekly Cover (Escrow Test)",
+      venue_name: "The Dungeon",
+      days_of_week: [5],
+      start_time: "21:00:00",
+      end_time: "02:00:00",
+      template_tickets: [{ tier_key: "cover", name: "Cover", price_usd: 5 }],
+    },
+    eventRows: [
+      {
+        event_id: 621,
+        name: "The Dungeon Weekly Cover (Escrow Test)",
+        venue_name: "The Dungeon",
+        start_date_time: "2026-08-24 21:00:00",
+        access_kind: "event",
+        recurring_series_id: 23,
+        ticket_sales_count: 2,
+      },
+    ],
+    occurrences: [
+      {
+        event_id: 621,
+        occurrence_date: "2026-08-24",
+        start_date_time: "2026-08-24 21:00:00",
+        status: "draft",
+        tickets_sold: 2,
+      },
+    ],
+  })
+  assert.ok(hydrated)
+  assert.equal(hydrated.program.id, 23)
+  assert.equal(hydrated.program.name, "The Dungeon Weekly Cover (Escrow Test)")
+  assert.equal(hydrated.nights.length, 1)
+  assert.equal(hydrated.nights[0].event_id, 621)
+  assert.equal(hydrated.nights[0].occurrence_date, "2026-08-24")
+
+  assert.equal(
+    doorAccessSeriesFromOwnedHydration({
+      seriesId: 23,
+      series: { name: "The Dungeon Weekly Cover (Escrow Test)" },
+      eventRows: [],
+      occurrences: [],
+    })?.program.id,
+    23,
+    "owning host still sees the series when nights are not on the events list",
+  )
+  assert.equal(
+    doorAccessSeriesFromOwnedHydration({
+      seriesId: 23,
+      series: null,
+      eventRows: [],
+      occurrences: [],
+    }),
+    null,
+    "do not invent a program without an owned series or nights",
+  )
+})
+
+test("program page recovers series 23 from owned recurring-series after GET 404", () => {
+  const src = readFileSync(fileURLToPath(new URL("./door-access.ts", import.meta.url)), "utf8")
+  assert.ok(src.includes("/business/recurring-series/${pathId}"), "recover GETs the owned series before events/:id")
+  assert.ok(src.includes("/business/recurring-series/${seriesId}"), "hydrate GETs owned series + occurrences")
+  assert.ok(src.includes("ownedSeriesId"), "recover surfaces the owned series id")
+  assert.ok(src.includes("doorAccessSeriesFromOwnedHydration"), "hydrate uses the owned payload helper")
+  assert.ok(src.includes("eventBelongsToSeries"), "hydrate matches recurring_series_id without access_kind")
+})
+
 test("programIdFromOwnedEvent uses recurring_series_id, never event_id", () => {
   assert.equal(
     programIdFromOwnedEvent({ access_kind: "door_access", recurring_series_id: 9 }),
@@ -1349,7 +1433,9 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
   assert.ok(eventsPage.includes("programs={programs}"), "EventCard/SeriesGroupRow rematch against the listed programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
-  assert.ok(eventCard.includes("eventListHref(event, programs)"), "EventCard hrefs WC nights via eventListHref")
+  assert.ok(eventCard.includes("eventListHref(event, programs, wcSeriesIds)"), "EventCard hrefs WC nights via eventListHref")
+  assert.ok(eventsPage.includes("weeklyCoverSeriesIds"), "list marks owned Weekly Cover series ids")
+  assert.ok(eventsPage.includes("wcSeriesIds"), "list hrefs door-access/{seriesId} for those series")
   assert.ok(programPage.includes("loadDoorAccessSeriesForPath"), "program page recovers a night id or retries the series")
   assert.ok(!programPage.includes("resolveDoorAccessProgramIdFromEvent"), "do not GET events/:id for a listed series id")
   assert.ok(programPage.includes("parseProgramPathId"), "missing/NaN id is not a 404")
