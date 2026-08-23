@@ -19,6 +19,7 @@ import {
   nightChips,
   nightIsEditable,
   nightSaveFeedback,
+  NIGHT_UNSAVED_TITLE,
   programHref,
   resetNightHours,
   saveNightOverride,
@@ -208,21 +209,28 @@ export default function DoorAccessNightPage({
         description={`${program.name || WEEKLY_ACCESS_SECTION_LABEL} · ${fmtWindow(night.start_time, night.end_time)}`}
         actions={
           editable ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-start gap-2">
               {night.has_override && (
                 <Button variant="access-secondary" onClick={handleReset} disabled={saving}>
                   <RotateCcw className="size-4" /> Reset to defaults
                 </Button>
               )}
-              <Button variant={ACCESS_BUTTON_VARIANT} onClick={handleSave} disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" /> Saving…
-                  </>
-                ) : (
-                  "Save night"
+              <div className="flex flex-col items-end">
+                <Button variant={ACCESS_BUTTON_VARIANT} onClick={handleSave} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" /> Saving…
+                    </>
+                  ) : (
+                    "Save night"
+                  )}
+                </Button>
+                {dirty && (
+                  <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+                    {NIGHT_UNSAVED_TITLE}
+                  </p>
                 )}
-              </Button>
+              </div>
             </div>
           ) : undefined
         }

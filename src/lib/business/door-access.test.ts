@@ -398,11 +398,17 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   const leave = readFileSync(leavePath, "utf8")
   assert.ok(src.includes("NightLeaveGuard"), "dirty night must prompt before leaving")
   assert.ok(src.includes("nightDraftIsDirty"), "Save night clears dirty by adopting the server night")
+  assert.ok(src.includes("NIGHT_UNSAVED_TITLE"), "dirty nights show Unsaved changes under Save night")
+  assert.ok(
+    /Save night[\s\S]*dirty &&[\s\S]*NIGHT_UNSAVED_TITLE/.test(src),
+    "Unsaved changes sits under Save night and uses the draft dirty flag"
+  )
   assert.ok(leave.includes("beforeunload"), "browser close/refresh must prompt")
   assert.ok(leave.includes("ConfirmDialog"), "back link and sidebar use an in-app confirm")
   assert.ok(leave.includes("NIGHT_UNSAVED_TITLE"))
   assert.ok(!NIGHT_UNSAVED_BODY.includes("\u2014") && !NIGHT_UNSAVED_TITLE.includes("\u2014"))
   assert.ok(!leave.includes("\u2014"), "leave prompt still has an em dash")
+  assert.equal(NIGHT_UNSAVED_TITLE, "Unsaved changes")
   assert.equal(NIGHT_UNSAVED_LEAVE, "Leave")
 
   assert.equal(NIGHT_TICKET_APPLY_LABEL, "Apply to night")
