@@ -84,6 +84,8 @@ export interface EscrowPanelData {
   summary: EscrowSummary
   stripeOnboarded: boolean
   businessName: string | null
+  /** Profile `business_id`. Used only to key the paid-banner 24h clock. */
+  businessId: number | null
 }
 
 // ── Normalization (defensive: MySQL/JSON can serialize numbers as strings) ──
@@ -97,6 +99,11 @@ function strOrNull(v: unknown): string | null {
   if (typeof v !== "string") return null
   const s = v.trim()
   return s.length ? s : null
+}
+
+function positiveInt(v: unknown): number | null {
+  const n = typeof v === "string" ? Number(v) : (v as number)
+  return Number.isFinite(n) && n > 0 ? n : null
 }
 
 /** Read event identity from a ledger row. Services may send it flat
@@ -379,11 +386,13 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
     summary: { available_cents: 0, pending_cents: 0, currency: "usd", entries: [] },
     stripeOnboarded: false,
     businessName: "Sample Sandwich Shop",
+    businessId: 9001,
   },
   claimable: {
     summary: { available_cents: EARNINGS_TOTAL, pending_cents: 0, currency: "usd", entries: EARNINGS },
     stripeOnboarded: false,
     businessName: "The Corner Tap",
+    businessId: 9001,
   },
   processing: {
     summary: {
@@ -397,6 +406,7 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
     },
     stripeOnboarded: true,
     businessName: "The Corner Tap",
+    businessId: 9001,
   },
   paid: {
     summary: {
@@ -410,11 +420,13 @@ export const ESCROW_DEMO_FIXTURES: Record<EscrowDemoScenario, EscrowPanelData> =
     },
     stripeOnboarded: true,
     businessName: "The Corner Tap",
+    businessId: 9001,
   },
   long: {
     summary: { available_cents: LONG.total, pending_cents: 0, currency: "usd", entries: LONG.entries },
     stripeOnboarded: false,
     businessName: "The Fictional University Alumni Association Late-Night Waffle & Trivia Emporium at North Campus Commons",
+    businessId: 9001,
   },
 }
 
@@ -462,6 +474,7 @@ export async function fetchEscrowPanelData(opts?: {
     summary,
     stripeOnboarded: profile?.stripe_connect_onboarded ?? false,
     businessName: profile?.name ?? null,
+    businessId: profile?.business_id ?? null,
   }
 }
 
@@ -499,13 +512,22 @@ async function fetchEscrowSummary(): Promise<EscrowSummary | null> {
 }
 
 /** Business name + Stripe state from the services profile the dashboard already reads. */
-async function fetchEscrowProfile(): Promise<{ name: string | null; stripe_connect_onboarded: boolean } | null> {
+async function fetchEscrowProfile(): Promise<{
+  name: string | null
+  stripe_connect_onboarded: boolean
+  business_id: number | null
+} | null> {
   try {
     const { apiClient } = await import("./api-client")
-    const profile = await apiClient.get<{ name?: string; stripe_connect_onboarded?: boolean }>("/business/profile")
+    const profile = await apiClient.get<{
+      name?: string
+      stripe_connect_onboarded?: boolean
+      business_id?: unknown
+    }>("/business/profile")
     return {
       name: profile?.name ?? null,
       stripe_connect_onboarded: profile?.stripe_connect_onboarded === true,
+      business_id: positiveInt(profile?.business_id),
     }
   } catch {
     // The panel is still worth rendering without it: `stripeOnboarded: false`
