@@ -104,9 +104,13 @@ function OffsetSelect({ value, onChange, idPrefix }: { value: number; onChange: 
 export function RecurringTierEditor({
   tiers,
   onChange,
+  allowAdd = true,
+  allowRemove = true,
 }: {
   tiers: RecurringTierRow[]
   onChange: (tiers: RecurringTierRow[]) => void
+  allowAdd?: boolean
+  allowRemove?: boolean
 }) {
   const update = (index: number, patch: Partial<RecurringTierRow>) => {
     const next = [...tiers]
@@ -218,7 +222,7 @@ export function RecurringTierEditor({
               />
               <span className="text-xs text-neutral-400 dark:text-neutral-500">(0 = unlimited)</span>
             </div>
-            {tiers.length > 1 && (
+            {allowRemove && tiers.length > 1 && (
               <Button type="button" variant="ghost" size="sm" onClick={() => removeTier(i)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-400">
                 <Trash2 className="size-3.5" /> Remove
               </Button>
@@ -227,9 +231,11 @@ export function RecurringTierEditor({
         </div>
       ))}
 
-      <Button type="button" variant={weekly ? "access-secondary" : "secondary"} size="sm" onClick={addTier}>
-        <Plus /> Add ticket tier
-      </Button>
+      {allowAdd && (
+        <Button type="button" variant={weekly ? "access-secondary" : "secondary"} size="sm" onClick={addTier}>
+          <Plus /> Add ticket tier
+        </Button>
+      )}
     </div>
   )
 }

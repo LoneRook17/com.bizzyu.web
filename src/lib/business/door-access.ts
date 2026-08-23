@@ -157,6 +157,15 @@ export interface DoorAccessNightTier {
   is_overridden: boolean
   template_price_usd: number
   template_quantity: number
+  /**
+   * Present when the night payload includes them. Older nights omit these;
+   * draftFromNight then uses the program template so Edit matches create.
+   */
+  ticket_type?: "paid" | "free"
+  valid_from_time?: string | null
+  valid_until_time?: string | null
+  valid_from_day_offset?: number
+  valid_until_day_offset?: number
 }
 
 /**
@@ -230,11 +239,12 @@ export const NIGHT_UNSAVED_LEAVE = "Leave"
  *
  * PUT /business/door-access/:id/nights/:date already accepts start_time,
  * end_time, is_closed, and per-tier price_usd / quantity / is_disabled.
- * This client also sends sold_out and sort_order on each tier so a host can
- * mark Cover sold out and drag Skip above Cover as drafts, then commit on
- * Save night.
+ * This client also sends sold_out, sort_order, and the create-series ticket
+ * fields (name, type, description, max_per_person, scan window) on each
+ * tier so a host can Edit a night ticket with the same fields as Add ticket
+ * tier, then commit on Save night.
  *
- * Services follow-up: persist those two keys on door_access_tier_overrides
+ * Services follow-up: persist those keys on door_access_tier_overrides
  * (and restamp them onto tickets). Older services builds drop unknown tier
  * fields. Do not strip them here or the night UI becomes a silent no-op.
  */
@@ -249,6 +259,14 @@ export interface NightOverridePayload {
     is_disabled?: boolean
     sold_out?: boolean
     sort_order?: number
+    name?: string | null
+    description?: string | null
+    ticket_type?: "paid" | "free" | null
+    max_per_person?: number | null
+    valid_from_time?: string | null
+    valid_until_time?: string | null
+    valid_from_day_offset?: number | null
+    valid_until_day_offset?: number | null
   }>
 }
 
@@ -401,6 +419,19 @@ export function normalizeNightTier(raw: Record<string, unknown>): DoorAccessNigh
     is_overridden: bool(raw.is_overridden),
     template_price_usd: num(raw.template_price_usd),
     template_quantity: num(raw.template_quantity),
+    ticket_type: raw.ticket_type === "free" ? "free" : raw.ticket_type === "paid" ? "paid" : undefined,
+    valid_from_time: !("valid_from_time" in raw)
+      ? undefined
+      : raw.valid_from_time == null || raw.valid_from_time === ""
+        ? null
+        : str(raw.valid_from_time),
+    valid_until_time: !("valid_until_time" in raw)
+      ? undefined
+      : raw.valid_until_time == null || raw.valid_until_time === ""
+        ? null
+        : str(raw.valid_until_time),
+    valid_from_day_offset: "valid_from_day_offset" in raw ? num(raw.valid_from_day_offset) : undefined,
+    valid_until_day_offset: "valid_until_day_offset" in raw ? num(raw.valid_until_day_offset) : undefined,
   }
 }
 
@@ -905,6 +936,9 @@ export function easternToday(now: Date = new Date()): string {
  * template's current value, which would silently FREEZE that night at today's
  * price the next time the template changed.
  */
+/** Matches TICKET_DESCRIPTION_MAX on the create-series ticket editor. */
+export const NIGHT_TICKET_DESCRIPTION_MAX = 64
+
 export interface NightTierDraft {
   tier_key: string
   inherit_price: boolean
@@ -914,6 +948,33 @@ export interface NightTierDraft {
   is_disabled: boolean
   sold_out: boolean
   sort_order: number
+  name: string
+  inherit_name: boolean
+  description: string | null
+  inherit_description: boolean
+  ticket_type: "paid" | "free"
+  inherit_ticket_type: boolean
+  max_per_person: number
+  inherit_max_per_person: boolean
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+  inherit_scan_window: boolean
+}
+
+/** Create-series Add ticket tier values, applied to one night draft tier. */
+export interface NightTierFormValues {
+  name: string
+  description: string | null
+  ticket_type: "paid" | "free"
+  price_usd: number
+  quantity: number
+  max_per_person: number
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
 }
 
 export interface NightDraft {
@@ -935,6 +996,54 @@ export function inheritIfMatchesTemplate(
   template: number | null | undefined
 ): boolean {
   return value != null && Number.isFinite(value) && value === template
+}
+
+export function inheritIfMatchesText(
+  value: string | null | undefined,
+  template: string | null | undefined
+): boolean {
+  return (value ?? "").trim() === (template ?? "").trim()
+}
+
+function scanWindowFingerprint(window: {
+  valid_from_time: string | null | undefined
+  valid_until_time: string | null | undefined
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+}): string {
+  const from = toTimeInput(window.valid_from_time)
+  const until = toTimeInput(window.valid_until_time)
+  return JSON.stringify({
+    from,
+    until,
+    from_off: from ? window.valid_from_day_offset : 0,
+    until_off: until ? window.valid_until_day_offset : 0,
+  })
+}
+
+export function inheritIfMatchesScan(
+  current: {
+    valid_from_time: string | null | undefined
+    valid_until_time: string | null | undefined
+    valid_from_day_offset: number
+    valid_until_day_offset: number
+  },
+  template: {
+    valid_from_time: string | null | undefined
+    valid_until_time: string | null | undefined
+    valid_from_day_offset?: number
+    valid_until_day_offset?: number
+  } | undefined
+): boolean {
+  return (
+    scanWindowFingerprint(current) ===
+    scanWindowFingerprint({
+      valid_from_time: template?.valid_from_time,
+      valid_until_time: template?.valid_until_time,
+      valid_from_day_offset: template?.valid_from_day_offset ?? 0,
+      valid_until_day_offset: template?.valid_until_day_offset ?? 0,
+    })
+  )
 }
 
 /**
@@ -1007,16 +1116,68 @@ export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgra
     start_time: night.start_time,
     end_time: night.end_time,
     is_closed: night.is_closed,
-    tiers: night.tiers.map((tier, index) => ({
-      tier_key: tier.tier_key,
-      inherit_price: inheritIfMatchesTemplate(tier.price_usd, tier.template_price_usd),
-      price_usd: tier.price_usd,
-      inherit_quantity: inheritIfMatchesTemplate(tier.quantity, tier.template_quantity),
-      quantity: tier.quantity,
-      is_disabled: tier.is_disabled,
-      sold_out: tier.sold_out,
-      sort_order: Number.isFinite(tier.sort_order) ? tier.sort_order : index,
-    })),
+    tiers: night.tiers.map((tier, index) => {
+      const template = program.template_tickets.find((t) => t.tier_key === tier.tier_key)
+      const name = tier.name
+      const templateName = template?.name ?? tier.name
+      const description = tier.description
+      const templateDescription = template?.description ?? tier.description
+      const ticketType = tier.ticket_type ?? nightTierTicketType(tier, program)
+      const templateType = template?.ticket_type ?? ticketType
+      const maxPerPerson = Number.isFinite(tier.max_per_person)
+        ? tier.max_per_person
+        : (template?.max_per_person ?? 0)
+      const templateMax = template?.max_per_person ?? maxPerPerson
+      const scan = resolveNightScanWindow(tier, template)
+      return {
+        tier_key: tier.tier_key,
+        inherit_price: inheritIfMatchesTemplate(tier.price_usd, tier.template_price_usd),
+        price_usd: tier.price_usd,
+        inherit_quantity: inheritIfMatchesTemplate(tier.quantity, tier.template_quantity),
+        quantity: tier.quantity,
+        is_disabled: tier.is_disabled,
+        sold_out: tier.sold_out,
+        sort_order: Number.isFinite(tier.sort_order) ? tier.sort_order : index,
+        name,
+        inherit_name: inheritIfMatchesText(name, templateName),
+        description,
+        inherit_description: inheritIfMatchesText(description, templateDescription),
+        ticket_type: ticketType,
+        inherit_ticket_type: ticketType === templateType,
+        max_per_person: maxPerPerson,
+        inherit_max_per_person: inheritIfMatchesTemplate(maxPerPerson, templateMax),
+        valid_from_time: scan.valid_from_time,
+        valid_until_time: scan.valid_until_time,
+        valid_from_day_offset: scan.valid_from_day_offset,
+        valid_until_day_offset: scan.valid_until_day_offset,
+        inherit_scan_window: inheritIfMatchesScan(scan, template),
+      }
+    }),
+  }
+}
+
+function resolveNightScanWindow(
+  tier: DoorAccessNightTier,
+  template: DoorAccessTemplateTier | undefined
+): {
+  valid_from_time: string | null
+  valid_until_time: string | null
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+} {
+  return {
+    valid_from_time:
+      tier.valid_from_time !== undefined ? tier.valid_from_time : (template?.valid_from_time ?? null),
+    valid_until_time:
+      tier.valid_until_time !== undefined ? tier.valid_until_time : (template?.valid_until_time ?? null),
+    valid_from_day_offset:
+      tier.valid_from_day_offset !== undefined
+        ? tier.valid_from_day_offset
+        : (template?.valid_from_day_offset ?? 0),
+    valid_until_day_offset:
+      tier.valid_until_day_offset !== undefined
+        ? tier.valid_until_day_offset
+        : (template?.valid_until_day_offset ?? 0),
   }
 }
 
@@ -1040,6 +1201,14 @@ export function buildNightOverridePayload(draft: NightDraft): NightOverridePaylo
       is_disabled: tier.is_disabled,
       sold_out: tier.sold_out,
       sort_order: Number.isFinite(tier.sort_order) ? tier.sort_order : index,
+      name: tier.inherit_name ? null : tier.name,
+      description: tier.inherit_description ? null : tier.description,
+      ticket_type: tier.inherit_ticket_type ? null : tier.ticket_type,
+      max_per_person: tier.inherit_max_per_person ? null : tier.max_per_person,
+      valid_from_time: tier.inherit_scan_window ? null : tier.valid_from_time,
+      valid_until_time: tier.inherit_scan_window ? null : tier.valid_until_time,
+      valid_from_day_offset: tier.inherit_scan_window ? null : tier.valid_from_day_offset,
+      valid_until_day_offset: tier.inherit_scan_window ? null : tier.valid_until_day_offset,
     })),
   }
 }
@@ -1051,6 +1220,11 @@ export function draftHasOverrides(draft: NightDraft): boolean {
     (t, i) =>
       !t.inherit_price ||
       !t.inherit_quantity ||
+      !t.inherit_name ||
+      !t.inherit_description ||
+      !t.inherit_ticket_type ||
+      !t.inherit_max_per_person ||
+      !t.inherit_scan_window ||
       t.is_disabled ||
       t.sold_out ||
       t.sort_order !== i
@@ -1082,7 +1256,49 @@ export function validateNightDraft(draft: NightDraft): string[] {
       break
     }
   }
+  for (const tier of draft.tiers) {
+    if (!tier.inherit_name && !tier.name.trim()) {
+      errors.push("Every access tier needs a name.")
+      break
+    }
+  }
+  for (const tier of draft.tiers) {
+    if ((tier.description ?? "").length > NIGHT_TICKET_DESCRIPTION_MAX) {
+      errors.push("Description must be 64 characters or fewer.")
+      break
+    }
+  }
+  for (const tier of draft.tiers) {
+    if (
+      !tier.inherit_max_per_person &&
+      (tier.max_per_person < 0 || !Number.isInteger(tier.max_per_person))
+    ) {
+      errors.push("Max per person must be a whole number (0 = unlimited).")
+      break
+    }
+  }
+  for (const tier of draft.tiers) {
+    if (tier.inherit_scan_window) continue
+    const from = toTimeInput(tier.valid_from_time)
+    const until = toTimeInput(tier.valid_until_time)
+    if (from && until) {
+      const start = tier.valid_from_day_offset * 1440 + clockMinutes(from)
+      const end = tier.valid_until_day_offset * 1440 + clockMinutes(until)
+      if (start >= end) {
+        errors.push(
+          `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
+        )
+        break
+      }
+    }
+  }
   return errors
+}
+
+function clockMinutes(hhmm: string): number {
+  const match = /^(\d{1,2}):(\d{2})/.exec(hhmm)
+  if (!match) return NaN
+  return Number(match[1]) * 60 + Number(match[2])
 }
 
 /**
@@ -1184,6 +1400,142 @@ export function applyOverrideTicketForm(
   }
 }
 
+export function applyRecurringNightTier(
+  draft: NightDraft,
+  tierKey: string,
+  values: NightTierFormValues,
+  template:
+    | {
+        name?: string
+        description?: string | null
+        ticket_type?: "paid" | "free"
+        price_usd?: number | null
+        quantity?: number | null
+        max_per_person?: number | null
+        valid_from_time?: string | null
+        valid_until_time?: string | null
+        valid_from_day_offset?: number
+        valid_until_day_offset?: number
+      }
+    | undefined
+): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.tier_key === tierKey
+        ? {
+            ...tier,
+            name: values.name,
+            inherit_name: inheritIfMatchesText(values.name, template?.name ?? tier.name),
+            description: values.description,
+            inherit_description: inheritIfMatchesText(
+              values.description,
+              template?.description ?? tier.description
+            ),
+            ticket_type: values.ticket_type,
+            inherit_ticket_type: values.ticket_type === (template?.ticket_type ?? tier.ticket_type),
+            price_usd: values.price_usd,
+            quantity: values.quantity,
+            inherit_price: inheritIfMatchesTemplate(values.price_usd, template?.price_usd),
+            inherit_quantity: inheritIfMatchesTemplate(values.quantity, template?.quantity),
+            max_per_person: values.max_per_person,
+            inherit_max_per_person: inheritIfMatchesTemplate(
+              values.max_per_person,
+              template?.max_per_person ?? tier.max_per_person
+            ),
+            valid_from_time: values.valid_from_time,
+            valid_until_time: values.valid_until_time,
+            valid_from_day_offset: values.valid_from_day_offset,
+            valid_until_day_offset: values.valid_until_day_offset,
+            inherit_scan_window: inheritIfMatchesScan(values, template),
+          }
+        : tier
+    ),
+  }
+}
+
+export function parseRecurringNightTier(row: {
+  name: string
+  description: string
+  ticket_type: "paid" | "free"
+  priceInput: string
+  quantityInput: string
+  maxPerPersonInput: string
+  valid_from_time: string
+  valid_until_time: string
+  valid_from_day_offset: number
+  valid_until_day_offset: number
+}): { values: NightTierFormValues; error: string | null } {
+  const name = row.name.trim()
+  if (!name) {
+    return {
+      values: emptyNightTierFormValues(),
+      error: "Every access tier needs a name.",
+    }
+  }
+  if (row.description.length > NIGHT_TICKET_DESCRIPTION_MAX) {
+    return {
+      values: emptyNightTierFormValues(),
+      error: "Description must be 64 characters or fewer.",
+    }
+  }
+  const priceUsd = row.ticket_type === "free" ? 0 : parseFloat(row.priceInput) || 0
+  const quantity = parseInt(row.quantityInput, 10) || 0
+  const maxPerPerson = parseInt(row.maxPerPersonInput, 10) || 0
+  const numbers = parseOverrideTicketNumbers(String(priceUsd), String(quantity))
+  if (numbers.error) {
+    return { values: emptyNightTierFormValues(), error: numbers.error }
+  }
+  if (maxPerPerson < 0 || !Number.isInteger(maxPerPerson)) {
+    return {
+      values: emptyNightTierFormValues(),
+      error: "Max per person must be a whole number (0 = unlimited).",
+    }
+  }
+  const validFromTime = row.valid_from_time ? fromTimeInput(row.valid_from_time) || row.valid_from_time : null
+  const validUntilTime = row.valid_until_time ? fromTimeInput(row.valid_until_time) || row.valid_until_time : null
+  if (validFromTime && validUntilTime) {
+    const start = row.valid_from_day_offset * 1440 + clockMinutes(toTimeInput(validFromTime))
+    const end = row.valid_until_day_offset * 1440 + clockMinutes(toTimeInput(validUntilTime))
+    if (start >= end) {
+      return {
+        values: emptyNightTierFormValues(),
+        error: `"${name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`,
+      }
+    }
+  }
+  return {
+    values: {
+      name,
+      description: row.description.trim() || null,
+      ticket_type: row.ticket_type,
+      price_usd: numbers.price_usd,
+      quantity: numbers.quantity,
+      max_per_person: maxPerPerson,
+      valid_from_time: validFromTime,
+      valid_until_time: validUntilTime,
+      valid_from_day_offset: validFromTime ? row.valid_from_day_offset : 0,
+      valid_until_day_offset: validUntilTime ? row.valid_until_day_offset : 0,
+    },
+    error: null,
+  }
+}
+
+function emptyNightTierFormValues(): NightTierFormValues {
+  return {
+    name: "",
+    description: null,
+    ticket_type: "paid",
+    price_usd: 0,
+    quantity: 0,
+    max_per_person: 0,
+    valid_from_time: null,
+    valid_until_time: null,
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+  }
+}
+
 export function toggleNightTierDisabled(draft: NightDraft, tierKey: string): NightDraft {
   return {
     ...draft,
@@ -1238,6 +1590,19 @@ function nightDraftFingerprint(draft: NightDraft): string {
       is_disabled: tier.is_disabled,
       sold_out: !!tier.sold_out,
       sort_order: tier.sort_order,
+      name: tier.name,
+      inherit_name: tier.inherit_name,
+      description: tier.description,
+      inherit_description: tier.inherit_description,
+      ticket_type: tier.ticket_type,
+      inherit_ticket_type: tier.inherit_ticket_type,
+      max_per_person: tier.max_per_person,
+      inherit_max_per_person: tier.inherit_max_per_person,
+      valid_from_time: toTimeInput(tier.valid_from_time),
+      valid_until_time: toTimeInput(tier.valid_until_time),
+      valid_from_day_offset: tier.valid_from_day_offset,
+      valid_until_day_offset: tier.valid_until_day_offset,
+      inherit_scan_window: tier.inherit_scan_window,
     })),
   })
 }
