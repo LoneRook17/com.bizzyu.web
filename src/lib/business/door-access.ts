@@ -1077,8 +1077,8 @@ export function inheritIfMatchesScan(
     valid_until_day_offset: number
   },
   template: {
-    valid_from_time: string | null | undefined
-    valid_until_time: string | null | undefined
+    valid_from_time?: string | null
+    valid_until_time?: string | null
     valid_from_day_offset?: number
     valid_until_day_offset?: number
   } | undefined
