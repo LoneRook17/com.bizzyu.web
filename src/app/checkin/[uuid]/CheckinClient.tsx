@@ -12,6 +12,11 @@ import {
   guestCheckinTypeLabel,
   guestTicketIsRedeemable,
 } from "@/lib/checkin-guest"
+import {
+  checkinTransportRefusal,
+  resolveCheckinRefusal,
+  type CheckinRefusal,
+} from "@/lib/checkin-refusal"
 
 const API_URL = getApiBaseUrl()
 
@@ -43,6 +48,8 @@ interface RedeemResult {
     owner_name: string
     redeemed_at: string | null
   }
+  /** Null on success. On a refusal, what the door reads. */
+  refusal: CheckinRefusal | null
 }
 
 type PageState = "loading" | "ticket_info" | "error"
@@ -51,7 +58,9 @@ type OverlayState = null | "confirming" | "result"
 export default function CheckinClient({ uuid }: { uuid: string }) {
   const [state, setState] = useState<PageState>("loading")
   const [ticket, setTicket] = useState<TicketInfo | null>(null)
-  const [error, setError] = useState("")
+  // A refusal, not a raw string. The door needs the second line ("what do I
+  // do now") as much as the first, and a bare message can only carry one.
+  const [error, setError] = useState<CheckinRefusal | null>(null)
   const [overlay, setOverlay] = useState<OverlayState>(null)
   const [redeeming, setRedeeming] = useState(false)
   const [result, setResult] = useState<RedeemResult | null>(null)
@@ -60,18 +69,18 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     try {
       const res = await fetch(`${API_URL}/checkin/${uuid}`)
       if (!res.ok) {
-        if (res.status === 404) {
-          setError("Ticket not found")
-          setState("error")
-          return
-        }
-        throw new Error("Failed to fetch ticket")
+        const body = await res.json().catch(() => ({}))
+        setError(resolveCheckinRefusal(body, { httpStatus: res.status }))
+        setState("error")
+        return
       }
       const data = await res.json()
       setTicket(data.ticket)
       setState("ticket_info")
     } catch {
-      setError("Could not load ticket information")
+      // Never reached a verdict. Saying "not found" here would blame a pass
+      // the server never even looked at.
+      setError(checkinTransportRefusal())
       setState("error")
     }
   }, [uuid])
@@ -89,15 +98,20 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
       })
       const data = await res.json().catch(() => ({}))
 
+      // A refusal about the DOOR rather than the pass (wrong door code, wrong
+      // business, no role) still goes to the full page, which has a retry.
+      // It now carries the same headline plus guidance as every other refusal
+      // instead of a lone sentence with no next step.
       if (!res.ok && res.status === 403 && !data.status) {
-        setError(data.error || data.message || "Could not check in this ticket")
+        setError(resolveCheckinRefusal(data, { httpStatus: res.status }))
         setOverlay(null)
         setState("error")
         return
       }
 
+      const status = data.status || (res.ok ? "redeemed_now" : "invalid")
       const next: RedeemResult = {
-        status: data.status || (res.ok ? "redeemed_now" : "invalid"),
+        status,
         ticket_type: data.ticket_type ?? null,
         ticket: data.ticket ?? {
           uuid,
@@ -106,6 +120,17 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
           owner_name: ticket?.attendee_name || "Guest",
           redeemed_at: data.ticket?.redeemed_at ?? ticket?.redeemed_at ?? null,
         },
+        refusal: resolveCheckinRefusal(
+          { ...data, status },
+          {
+            httpStatus: res.status,
+            // What the page already loaded, so the fallback path still has
+            // real times to quote when talking to an older API.
+            redeemedAt: ticket?.redeemed_at ?? null,
+            eventName: ticket?.event_name ?? null,
+            eventStart: ticket?.start_date_time ?? null,
+          },
+        ),
       }
       setResult(next)
       setOverlay("result")
@@ -117,7 +142,7 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
         }, 3000)
       }
     } catch {
-      setError("Check-in failed. Please try again.")
+      setError(checkinTransportRefusal())
       setOverlay(null)
       setState("error")
     } finally {
@@ -195,8 +220,32 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           )}
-          <h1 className="mb-2 text-5xl font-black text-white tracking-tight">{checkinRedeemStatusLabel(result.status)}</h1>
-          <p className="text-2xl font-semibold text-white/90">{result.ticket.owner_name}</p>
+          {ok ? (
+            <h1 className="mb-2 text-5xl font-black text-white tracking-tight">
+              {checkinRedeemStatusLabel(result.status)}
+            </h1>
+          ) : (
+            /*
+             * The refusal screen. Two lines, in this order, because that is
+             * the order a door person needs them: what happened, then what to
+             * do. The headline drops from 5xl to 3xl because it is now a real
+             * sentence ("Already checked in at 11:42 PM") rather than a
+             * one-word status, and a sentence at 5xl wraps into a wall.
+             */
+            <>
+              <h1 className="mb-3 text-3xl font-black leading-tight text-white tracking-tight">
+                {result.refusal?.headline ?? checkinRedeemStatusLabel(result.status)}
+              </h1>
+              {result.refusal?.guidance && (
+                <p className="mx-auto mb-5 max-w-sm text-base font-medium leading-snug text-white/90">
+                  {result.refusal.guidance}
+                </p>
+              )}
+            </>
+          )}
+          <p className={ok ? "text-2xl font-semibold text-white/90" : "text-xl font-semibold text-white/80"}>
+            {result.ticket.owner_name}
+          </p>
           <p className="mt-1 text-lg text-white/70">{result.ticket.ticket_name || result.ticket.event_name}</p>
         </div>
       </div>
@@ -221,7 +270,12 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
           <svg className="mx-auto mb-4 h-16 w-16 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
-          <h2 className="mb-2 text-xl font-bold text-white">{error}</h2>
+          <h2 className="mb-2 text-xl font-bold text-white">
+            {error?.headline ?? "Could not load this pass"}
+          </h2>
+          {error?.guidance && (
+            <p className="mx-auto max-w-sm text-sm leading-snug text-white/70">{error.guidance}</p>
+          )}
           <button
             onClick={() => window.location.reload()}
             className="mt-4 rounded-lg bg-white/10 px-6 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"

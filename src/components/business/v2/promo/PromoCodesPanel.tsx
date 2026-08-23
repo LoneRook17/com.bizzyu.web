@@ -1,0 +1,664 @@
+"use client"
+
+import { Fragment, useState, useEffect, useCallback } from "react"
+import { Plus, Ticket, ChevronRight, Info } from "lucide-react"
+import { apiClient, ApiError } from "@/lib/business/api-client"
+import type { PromoCode, PromoEventBreakdown } from "@/lib/business/types"
+import { Card } from "@/components/business/v2/ui/card"
+import { Button } from "@/components/business/v2/ui/button"
+import { Badge } from "@/components/business/v2/ui/badge"
+import { Input, Select } from "@/components/business/v2/ui/input"
+import { Label } from "@/components/business/v2/ui/label"
+import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/business/v2/ui/dialog"
+
+/**
+ * The promo-code manager — list, create/edit dialog, activate/delete confirms,
+ * and the per-event usage breakdown.
+ *
+ * ONE implementation, two scopes. It was the venue (universal) page's body; the
+ * Door Access program page needs the identical screen against a different scope,
+ * and the codebase's own promo history is explicit that a second copy is how the
+ * per-event and venue-wide surfaces drifted apart last time
+ * (PromoCode.REDEMPTIONS_BY_EVENT's comment). So the scope is a prop, not a fork:
+ * everything scope-specific arrives through `basePath` and `copy`, and the
+ * REST shape behind both is deliberately identical
+ * (`GET|POST {basePath}`, `PUT|DELETE {basePath}/{id}`, `GET {basePath}/{id}/breakdown`).
+ *
+ * The parent still owns its own page chrome (header, venue/program guards) —
+ * this is the body only.
+ */
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+}
+
+// SUM()-derived fields arrive as strings ("3", "25.00") — always coerce.
+function money(n: number | string) {
+  return `$${Number(n ?? 0).toFixed(2)}`
+}
+
+type BreakdownState = { loading: boolean; error: string; data: PromoEventBreakdown | null }
+
+const EMPTY_FORM = {
+  code: "",
+  discount_type: "percentage" as "percentage" | "flat",
+  discount_value: "",
+  max_redemptions: "",
+  max_per_user: "1",
+  expires_at: "",
+}
+
+type ConfirmState =
+  | { kind: "toggle"; code: PromoCode }
+  | { kind: "delete"; code: PromoCode }
+  | null
+
+/**
+ * Every string that differs between a venue-wide code and a program code. The
+ * distinction is not cosmetic — a host has to be able to tell from the screen
+ * how far a code reaches — so the wording is a required prop, not a default.
+ */
+export interface PromoScopeCopy {
+  /** Dialog title when creating, e.g. "New program promo code". */
+  createTitle: string
+  /** Dialog body when creating: what this code will apply to. */
+  createDescription: string
+  /** Empty-state title. */
+  emptyTitle: string
+  /** Empty-state description. */
+  emptyDescription: string
+  /** Reactivate confirm body: what starts working again. */
+  reactivateDescription: string
+  /** Breakdown's first column header — "Event" or "Night". */
+  breakdownUnitLabel: string
+  /** Breakdown footer row label — "All events" or "All nights". */
+  breakdownTotalLabel: string
+  /** "Max per user" help text — how the per-unit reset works at this scope. */
+  perUserHelp: string
+}
+
+export const VENUE_PROMO_COPY = (venueName: string): PromoScopeCopy => ({
+  createTitle: "New universal promo code",
+  createDescription: `This code will work on every event at ${venueName}.`,
+  emptyTitle: "No universal promo codes yet",
+  emptyDescription: "Create one to offer a discount on every event at this venue.",
+  reactivateDescription: "This code will work again on every event at this venue.",
+  breakdownUnitLabel: "Event",
+  breakdownTotalLabel: "All events",
+  perUserHelp:
+    "Counted per event. A customer can use this code once per event, so if it applies to several of your events, they can redeem it at each one. Your total usage limit still applies across all events combined.",
+})
+
+export const PROGRAM_PROMO_COPY = (programName: string): PromoScopeCopy => ({
+  createTitle: "New program promo code",
+  createDescription: `This code will work on every night of ${programName}, and on nothing else at this venue.`,
+  emptyTitle: "No promo codes on this program yet",
+  emptyDescription:
+    "Create one to discount every night of this program without touching the venue's other events.",
+  reactivateDescription: "This code will work again on every night of this program.",
+  breakdownUnitLabel: "Night",
+  breakdownTotalLabel: "All nights",
+  perUserHelp:
+    "Counted per night. A customer can use this code once per night, so they can redeem it again the following week. Your total usage limit still applies across all nights combined.",
+})
+
+export function PromoCodesPanel({
+  basePath,
+  copy,
+  canManage,
+  createButtonLabel = "Create code",
+  headerAction,
+}: {
+  /**
+   * REST root for this scope's codes — no trailing slash.
+   * Venue:   `/business/venues/{venueId}/promo-codes`
+   * Program: `/user/business/door-access/{programId}/promo-codes`
+   */
+  basePath: string
+  copy: PromoScopeCopy
+  canManage: boolean
+  createButtonLabel?: string
+  /**
+   * Receives the panel's own "create" opener so the parent can put the button in
+   * its PageHeader instead of above the table. Returning nothing renders the
+   * built-in inline button.
+   */
+  headerAction?: (openCreate: () => void) => React.ReactNode
+}) {
+  const [codes, setCodes] = useState<PromoCode[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [formError, setFormError] = useState("")
+  const [showPerUserInfo, setShowPerUserInfo] = useState(false)
+
+  const [confirm, setConfirm] = useState<ConfirmState>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  const [confirmError, setConfirmError] = useState("")
+
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [breakdowns, setBreakdowns] = useState<Record<number, BreakdownState>>({})
+
+  const fetchCodes = useCallback(() => {
+    // Codes (and their cached breakdowns) are scope-specific — drop them when
+    // the scope changes, or a program would briefly show the venue's numbers.
+    setExpandedId(null)
+    setBreakdowns({})
+    setLoading(true)
+    apiClient
+      .get<{ promo_codes: PromoCode[] }>(basePath)
+      .then((data) => setCodes(data.promo_codes ?? []))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load promo codes"))
+      .finally(() => setLoading(false))
+  }, [basePath])
+
+  useEffect(() => {
+    setError("")
+    fetchCodes()
+  }, [fetchCodes])
+
+  const toggleExpand = (code: PromoCode) => {
+    // Only multi-event codes have a breakdown. An event-scoped row lives on one
+    // event — no dead affordance for it.
+    if (code.event_id !== null) return
+    const id = code.promo_code_id
+    if (expandedId === id) {
+      setExpandedId(null)
+      return
+    }
+    setExpandedId(id)
+    if (!breakdowns[id]) {
+      setBreakdowns((b) => ({ ...b, [id]: { loading: true, error: "", data: null } }))
+      apiClient
+        .get<PromoEventBreakdown>(`${basePath}/${id}/breakdown`)
+        .then((data) => setBreakdowns((b) => ({ ...b, [id]: { loading: false, error: "", data } })))
+        .catch((err) =>
+          setBreakdowns((b) => ({
+            ...b,
+            [id]: { loading: false, error: err instanceof ApiError ? err.message : "Failed to load breakdown", data: null },
+          })),
+        )
+    }
+  }
+
+  const openCreate = () => {
+    setEditingId(null)
+    setForm(EMPTY_FORM)
+    setFormError("")
+    setFormOpen(true)
+  }
+
+  const openEdit = (code: PromoCode) => {
+    setEditingId(code.promo_code_id)
+    setForm({
+      code: code.code,
+      discount_type: code.discount_type,
+      discount_value: String(code.discount_value),
+      max_redemptions: code.max_redemptions != null ? String(code.max_redemptions) : "",
+      max_per_user: String(code.max_per_user),
+      expires_at: code.expires_at ? code.expires_at.slice(0, 16) : "",
+    })
+    setFormError("")
+    setFormOpen(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.discount_value || (!editingId && !form.code.trim())) return
+    setSaving(true)
+    setFormError("")
+    const payload = {
+      discount_type: form.discount_type,
+      discount_value: parseFloat(form.discount_value),
+      max_redemptions: form.max_redemptions ? parseInt(form.max_redemptions) : null,
+      max_per_user: parseInt(form.max_per_user) || 1,
+      expires_at: form.expires_at || null,
+    }
+    try {
+      if (editingId) {
+        await apiClient.put(`${basePath}/${editingId}`, payload)
+      } else {
+        await apiClient.post(basePath, { code: form.code.trim().toUpperCase(), ...payload })
+      }
+      setFormOpen(false)
+      setEditingId(null)
+      fetchCodes()
+    } catch (err) {
+      // 422 here is usually a name collision with a wider-scoped code the
+      // server refuses to let this one shadow — its message names the surface
+      // that owns it, so surface it verbatim.
+      setFormError(err instanceof ApiError ? err.message : "Failed to save promo code")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const runConfirm = async () => {
+    if (!confirm) return
+    setConfirmBusy(true)
+    setConfirmError("")
+    try {
+      if (confirm.kind === "toggle") {
+        await apiClient.put(`${basePath}/${confirm.code.promo_code_id}`, {
+          is_active: !confirm.code.is_active,
+        })
+      } else {
+        await apiClient.delete(`${basePath}/${confirm.code.promo_code_id}`)
+      }
+      setConfirm(null)
+      fetchCodes()
+    } catch (err) {
+      // 409 on delete → has redemptions; surface message, suggest deactivate.
+      setConfirmError(err instanceof ApiError ? err.message : "Something went wrong")
+    } finally {
+      setConfirmBusy(false)
+    }
+  }
+
+  const createButton = canManage ? (
+    <Button onClick={openCreate}>
+      <Plus /> {createButtonLabel}
+    </Button>
+  ) : undefined
+
+  return (
+    <>
+      {headerAction ? headerAction(openCreate) : null}
+
+      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+      {loading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-48 w-full rounded-xl" />
+        </div>
+      ) : codes.length === 0 ? (
+        <EmptyState
+          icon={Ticket}
+          title={copy.emptyTitle}
+          description={copy.emptyDescription}
+          action={createButton}
+        />
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 text-xs text-neutral-500 dark:text-neutral-400">
+                  <th className="px-5 py-3 text-left font-medium">Code</th>
+                  <th className="px-5 py-3 text-left font-medium">Discount</th>
+                  <th className="px-5 py-3 text-right font-medium">Uses</th>
+                  <th className="px-5 py-3 text-left font-medium">Status</th>
+                  <th className="px-5 py-3 text-left font-medium">Expires</th>
+                  <th className="px-5 py-3 text-right font-medium" />
+                </tr>
+              </thead>
+              <tbody>
+                {codes.map((code) => {
+                  const isExpired = code.expires_at && new Date(code.expires_at) < new Date()
+                  const isMaxed = code.max_redemptions && code.current_redemptions >= code.max_redemptions
+                  const status = !code.is_active ? "Inactive" : isExpired ? "Expired" : isMaxed ? "Maxed" : "Active"
+                  const canExpand = code.event_id === null
+                  const isExpanded = expandedId === code.promo_code_id
+                  return (
+                    <Fragment key={code.promo_code_id}>
+                      <tr className="border-b border-neutral-50 dark:border-neutral-800/60 last:border-0">
+                        <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">
+                          {canExpand ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(code)}
+                              aria-expanded={isExpanded}
+                              className="group inline-flex items-center gap-1.5 -ml-1 rounded px-1 py-0.5 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                              title={`Show per-${copy.breakdownUnitLabel.toLowerCase()} breakdown`}
+                            >
+                              <ChevronRight className={`size-3.5 shrink-0 text-neutral-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                              {code.code}
+                            </button>
+                          ) : (
+                            code.code
+                          )}
+                        </td>
+                        <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">
+                          {code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}
+                        </td>
+                        <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">
+                          {code.current_redemptions}
+                          {code.max_redemptions ? ` / ${code.max_redemptions}` : ""}
+                        </td>
+                        <td className="px-5 py-3">
+                          <Badge variant={status === "Active" ? "success" : "neutral"} size="sm">
+                            {status}
+                          </Badge>
+                        </td>
+                        <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">
+                          {code.expires_at ? formatDate(code.expires_at) : "Never"}
+                        </td>
+                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                          {canManage && (
+                            <span className="inline-flex items-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => openEdit(code)}>
+                                Edit
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setConfirm({ kind: "toggle", code })}>
+                                {code.is_active ? "Deactivate" : "Reactivate"}
+                              </Button>
+                              {code.current_redemptions === 0 ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-700 dark:hover:text-red-300"
+                                  onClick={() => setConfirm({ kind: "delete", code })}
+                                >
+                                  Delete
+                                </Button>
+                              ) : (
+                                <span
+                                  className="px-3 text-[13px] font-semibold text-neutral-300 dark:text-neutral-600"
+                                  title="Has redemptions, deactivate instead"
+                                >
+                                  Delete
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="border-b border-neutral-50 dark:border-neutral-800/60">
+                          <td colSpan={6} className="bg-neutral-50/60 dark:bg-neutral-800/20 px-5 py-4">
+                            <PromoBreakdown state={breakdowns[code.promo_code_id]} copy={copy} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Create / edit dialog */}
+      <Dialog open={formOpen} onOpenChange={(o) => !o && setFormOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Edit promo code" : copy.createTitle}</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Update the discount terms for this code." : copy.createDescription}
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Label htmlFor="pc-code" className="mb-1.5 block">Code</Label>
+              <Input
+                id="pc-code"
+                value={form.code}
+                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                placeholder="e.g. FREE"
+                disabled={!!editingId}
+                className="font-mono"
+                autoFocus={!editingId}
+              />
+              {editingId && <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">Code can’t be changed after creation.</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="pc-type" className="mb-1.5 block">Discount type</Label>
+              <Select
+                id="pc-type"
+                value={form.discount_type}
+                onChange={(e) => setForm((f) => ({ ...f, discount_type: e.target.value as "percentage" | "flat" }))}
+              >
+                <option value="percentage">Percentage (%)</option>
+                <option value="flat">Flat ($)</option>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="pc-value" className="mb-1.5 block">
+                Discount value {form.discount_type === "percentage" ? "(%)" : "($)"}
+              </Label>
+              <Input
+                id="pc-value"
+                type="number"
+                min="0"
+                max={form.discount_type === "percentage" ? "100" : undefined}
+                step="0.01"
+                value={form.discount_value}
+                onChange={(e) => setForm((f) => ({ ...f, discount_value: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="pc-max" className="mb-1.5 block">Max redemptions</Label>
+              <Input
+                id="pc-max"
+                type="number"
+                min="0"
+                value={form.max_redemptions}
+                onChange={(e) => setForm((f) => ({ ...f, max_redemptions: e.target.value }))}
+                placeholder="Unlimited"
+              />
+            </div>
+
+            <div>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <Label htmlFor="pc-per-user">Max per user</Label>
+                <button
+                  type="button"
+                  onClick={() => setShowPerUserInfo((v) => !v)}
+                  className="text-neutral-400 dark:text-neutral-500 transition-colors hover:text-neutral-600 dark:hover:text-neutral-400"
+                  aria-label="How does Max per user work for a code that covers more than one event?"
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </div>
+              <Input
+                id="pc-per-user"
+                type="number"
+                min="1"
+                value={form.max_per_user}
+                onChange={(e) => setForm((f) => ({ ...f, max_per_user: e.target.value }))}
+              />
+              {showPerUserInfo && (
+                <p className="mt-1.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 p-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
+                  {copy.perUserHelp}
+                </p>
+              )}
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label htmlFor="pc-expires" className="mb-1.5 block">Expires at</Label>
+              <Input
+                id="pc-expires"
+                type="datetime-local"
+                value={form.expires_at}
+                onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))}
+              />
+            </div>
+
+            {formError && <p className="text-sm text-red-600 dark:text-red-400 sm:col-span-2">{formError}</p>}
+
+            <DialogFooter className="sm:col-span-2">
+              <Button type="button" variant="secondary" onClick={() => setFormOpen(false)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving || !form.discount_value || (!editingId && !form.code.trim())}>
+                {saving ? "Saving…" : editingId ? "Save changes" : "Create"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm (toggle / delete) dialog */}
+      <Dialog
+        open={confirm !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setConfirm(null)
+            setConfirmError("")
+          }
+        }}
+      >
+        <DialogContent>
+          {confirm && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {confirm.kind === "delete"
+                    ? `Delete ${confirm.code.code}?`
+                    : confirm.code.is_active
+                      ? `Deactivate ${confirm.code.code}?`
+                      : `Reactivate ${confirm.code.code}?`}
+                </DialogTitle>
+                <DialogDescription>
+                  {confirm.kind === "delete"
+                    ? "This permanently removes the code and can’t be undone."
+                    : confirm.code.is_active
+                      ? "Students won’t be able to use this code until you reactivate it."
+                      : copy.reactivateDescription}
+                </DialogDescription>
+              </DialogHeader>
+
+              {confirmError && (
+                <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-700 dark:text-red-400">{confirmError}</div>
+              )}
+
+              <DialogFooter>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setConfirm(null)
+                    setConfirmError("")
+                  }}
+                  disabled={confirmBusy}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant={confirm.kind === "delete" ? "danger" : "primary"}
+                  onClick={runConfirm}
+                  disabled={confirmBusy}
+                >
+                  {confirmBusy
+                    ? "Working…"
+                    : confirm.kind === "delete"
+                      ? "Delete"
+                      : confirm.code.is_active
+                        ? "Deactivate"
+                        : "Reactivate"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+/**
+ * A multi-event code's usage, one row per event it applied to — INCLUDING
+ * zero-usage ones — with the code-wide total below, so a host can see the rows
+ * add up. Numbers are coerced (SUM() fields may be strings).
+ *
+ * The server scopes the row set off the code's OWN scope column, so this is
+ * nights for a program code and events for a venue code with no branch here —
+ * only the column wording changes.
+ */
+function PromoBreakdown({ state, copy }: { state: BreakdownState | undefined; copy: PromoScopeCopy }) {
+  if (!state || state.loading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </div>
+    )
+  }
+  if (state.error) {
+    return <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+  }
+  const data = state.data
+  if (!data) return null
+
+  const unit = copy.breakdownUnitLabel.toLowerCase()
+  const rows = data.events
+  const aggUses = Number(data.aggregate?.redemptions ?? 0)
+  const aggRev = Number(data.aggregate?.revenue_generated ?? 0)
+  // Sum the rows ourselves and compare to the API's total, so the "it adds up"
+  // claim is shown, not asserted. Compare revenue in cents.
+  const sumUses = rows.reduce((s, r) => s + Number(r.redemptions ?? 0), 0)
+  const sumRev = rows.reduce((s, r) => s + Number(r.revenue_generated ?? 0), 0)
+  const reconciles = sumUses === aggUses && Math.round(sumRev * 100) === Math.round(aggRev * 100)
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-neutral-500 dark:text-neutral-400">This code doesn’t apply to any {unit}s yet.</p>
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+        Per-{unit} usage
+      </p>
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400">
+              <th className="px-4 py-2 text-left font-medium">{copy.breakdownUnitLabel}</th>
+              <th className="px-4 py-2 text-left font-medium">Date</th>
+              <th className="px-4 py-2 text-right font-medium">Uses</th>
+              <th className="px-4 py-2 text-right font-medium">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const uses = Number(r.redemptions ?? 0)
+              const rev = Number(r.revenue_generated ?? 0)
+              const isZero = uses === 0 && rev === 0
+              return (
+                <tr
+                  key={r.event_id}
+                  className={`border-b border-neutral-50 dark:border-neutral-800/60 last:border-0 ${isZero ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+                >
+                  <td className="px-4 py-2">{r.event_name ?? `#${r.event_id}`}</td>
+                  <td className="px-4 py-2 text-xs">{r.event_date ? formatDate(r.event_date) : "-"}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{uses}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{money(rev)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-neutral-200 dark:border-neutral-700 font-semibold text-neutral-900 dark:text-neutral-100">
+              <td className="px-4 py-2" colSpan={2}>{copy.breakdownTotalLabel}</td>
+              <td className="px-4 py-2 text-right tabular-nums">{aggUses}</td>
+              <td className="px-4 py-2 text-right tabular-nums">{money(aggRev)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className={`mt-2 text-[11px] ${reconciles ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 dark:text-amber-400"}`}>
+        {reconciles
+          ? `The ${rows.length} row${rows.length === 1 ? "" : "s"} above add up to ${aggUses} ${aggUses === 1 ? "use" : "uses"} · ${money(aggRev)}.`
+          : `Rows sum to ${sumUses} · ${money(sumRev)} but the total is ${aggUses} · ${money(aggRev)}. These don’t reconcile.`}
+      </p>
+    </div>
+  )
+}
