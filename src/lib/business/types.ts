@@ -242,6 +242,9 @@ export interface EventDetail extends EventListItem {
   recurring_series_id?: number | null
   series_customized_at?: string | null
   occurrence_date?: string | null
+  // D10 artwork. Optional so an older GET /business/events/:id still hydrates.
+  artwork_template?: ArtworkTemplate | null
+  artwork_accent?: string | null
 }
 
 export interface RecurringNight {

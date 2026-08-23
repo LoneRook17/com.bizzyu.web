@@ -7,6 +7,7 @@ import {
   checkinRedeemPath,
   checkinRedeemStatusLabel,
   guestCameraCheckinEnabled,
+  guestCheckinFooterCopy,
   guestTicketIsRedeemable,
   isWeeklyCoverCheckinTicket,
 } from "@/lib/checkin-guest"
@@ -291,7 +292,7 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
         )}
 
         <p className="mt-6 text-center text-xs text-white/40">
-          Scan with any phone camera, then tap Check In. No staff login.
+          {ticket ? guestCheckinFooterCopy(ticket) : "Scan with any phone camera, then tap Check In. No staff login."}
         </p>
       </div>
     </div>
