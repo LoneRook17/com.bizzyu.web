@@ -1196,6 +1196,7 @@ test("Weekly Access has a dedicated program editor, same fields as create", () =
   assert.ok(editSrc.includes("owner") && editSrc.includes("manager"), "edit is owners/managers only")
   assert.ok(!editSrc.includes("\u2014"), "edit page still has an em dash")
   assert.ok(wizardSrc.includes('mode === "edit"') || wizardSrc.includes("isEdit"), "wizard has an edit mode")
+  assert.ok(editSrc.includes("recoverDoorAccessProgramId"), "edit rematches an unlisted series or night id")
   assert.ok(wizardSrc.includes("updateDoorAccessProgram"), "edit saves via PUT /business/door-access/:id")
   assert.ok(wizardSrc.includes("Save program"), "edit CTA is Save program")
   assert.ok(wizardSrc.includes("Edit program"), "edit heading matches the series-page control")
@@ -1307,8 +1308,16 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(!eventsPage.includes("/weekly-cover"), "do not rename the API path")
   assert.ok(eventsPage.includes("eventAccessGroupsForPrograms"), "empty programs list still shows stamped nights")
   assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
+  const accessRow = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/AccessProgramRow.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
+  assert.ok(eventsPage.includes("programs={programs}"), "EventCard/SeriesGroupRow rematch against the listed programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
-  assert.ok(programPage.includes("resolveDoorAccessProgramIdFromEvent"), "program page recovers an event_id segment")
+  assert.ok(eventCard.includes("eventListHref(event, programs)"), "EventCard rematches hrefs against GET /business/door-access")
+  assert.ok(programPage.includes("recoverDoorAccessProgramId"), "program page recovers a night id or rematches an unlisted series")
+  assert.ok(!programPage.includes("resolveDoorAccessProgramIdFromEvent"), "do not GET events/:id for a listed series id")
   assert.ok(programPage.includes("parseProgramPathId"), "missing/NaN id is not a 404")
   assert.ok(programPage.includes("MISSING_PROGRAM_ID_TITLE"))
   assert.ok(!programPage.includes("fetchDoorAccessProgramsSafe"), "program page must not swallow 404s as []")

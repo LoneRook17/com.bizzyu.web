@@ -67,10 +67,20 @@ export type EventRow =
  * needs a row even if GET /business/door-access returned []. Never invents a
  * program: a night without a series id is skipped.
  */
+export type DoorAccessEventNight = {
+  name: string
+  venue_name?: string
+  start_date_time?: string | null
+  flyer_image_url?: string
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+  event_id?: number
+}
+
 export type DoorAccessEventGroup = {
   programId: number
   name: string
-  events: EventListItem[]
+  events: DoorAccessEventNight[]
 }
 
 /**
@@ -141,21 +151,46 @@ export function seriesHref(seriesId: number): string {
   return `/business/recurring/${seriesId}`
 }
 
-/** Dated Weekly Cover row → program page. Named event → its event page. */
-export function eventListHref(event: EventListItem): string {
+/** Fields `workingProgramIdForEventGroup` reads from GET /business/door-access. */
+export type ListedProgramRef = Pick<
+  DoorAccessProgramSummary,
+  "id" | "name" | "venue_name" | "next_night_date" | "date_range_start" | "date_range_end"
+>
+
+/** Dated Weekly Cover row → listed program page. Named event → its event page. */
+export function eventListHref(
+  event: EventListItem,
+  programs: readonly ListedProgramRef[] = [],
+): string {
   const programId = programIdFromOwnedEvent(event)
-  if (programId != null) return programHref(programId)
-  return `/business/events/${event.event_id}`
+  if (programId == null) return `/business/events/${event.event_id}`
+  const working = workingProgramIdForEventGroup(
+    { programId, name: event.name, events: [event] },
+    programs,
+  )
+  // Never emit /door-access/:unlistedId when the programs list is non-empty.
+  if (working == null) return `/business/events/${event.event_id}`
+  return programHref(working)
 }
 
 /**
  * A leaked door-access series still opens the program page, never
  * /business/recurring/:id (that page is for named recurring events).
+ * Rematches to a listed GET /business/door-access id; unlisted series ids
+ * stay on /business/recurring/:id rather than a 404ing door-access href.
  */
-export function seriesRowHref(row: Extract<EventRow, { kind: "series" }>): string {
+export function seriesRowHref(
+  row: Extract<EventRow, { kind: "series" }>,
+  programs: readonly ListedProgramRef[] = [],
+): string {
   const programId = row.events.map(programIdFromOwnedEvent).find((id) => id != null)
-  if (programId != null) return programHref(programId)
-  return seriesHref(row.seriesId)
+  if (programId == null) return seriesHref(row.seriesId)
+  const working = workingProgramIdForEventGroup(
+    { programId, name: row.name, events: row.events },
+    programs,
+  )
+  if (working == null) return seriesHref(row.seriesId)
+  return programHref(working)
 }
 
 function eventDateOnly(value: string | null | undefined): string | null {
@@ -195,10 +230,7 @@ function programSharesNights(
  */
 export function workingProgramIdForEventGroup(
   group: DoorAccessEventGroup,
-  programs: readonly Pick<
-    DoorAccessProgramSummary,
-    "id" | "name" | "venue_name" | "next_night_date" | "date_range_start" | "date_range_end"
-  >[],
+  programs: readonly ListedProgramRef[],
 ): number | null {
   if (programs.some((program) => program.id === group.programId)) return group.programId
   const sameName = programs.find(
@@ -213,13 +245,45 @@ export function workingProgramIdForEventGroup(
   return null
 }
 
+/**
+ * After GET /business/door-access/:id 404s, pick a different id to redirect
+ * to, or null to keep "Program not found".
+ *
+ * A listed id that 404s is a services miss: do not invent a replacement and
+ * do not treat it as an event_id. A WC night event_id redirects to its
+ * rematched series. An unlisted series id rematches to a listed program when
+ * the nights prove the match; it never becomes a guess at "the only program".
+ */
+export function recoverProgramIdFromLookups(args: {
+  pathId: number
+  programs: readonly ListedProgramRef[]
+  eventSeriesId: number | null
+  eventGroup: DoorAccessEventGroup | null
+}): number | null {
+  const { pathId, programs, eventSeriesId, eventGroup } = args
+  if (programs.some((program) => program.id === pathId)) return null
+
+  if (eventSeriesId != null) {
+    const nightGroup =
+      eventGroup?.programId === eventSeriesId
+        ? eventGroup
+        : { programId: eventSeriesId, name: eventGroup?.name ?? "", events: eventGroup?.events ?? [] }
+    const working = workingProgramIdForEventGroup(nightGroup, programs)
+    if (working != null && working !== pathId) return working
+    return null
+  }
+
+  if (eventGroup) {
+    const working = workingProgramIdForEventGroup(eventGroup, programs)
+    if (working != null && working !== pathId) return working
+  }
+  return null
+}
+
 /** Fallback Weekly Cover rows, remapped to listed program ids when possible. */
 export function eventAccessGroupsForPrograms(
   events: EventListItem[],
-  programs: readonly Pick<
-    DoorAccessProgramSummary,
-    "id" | "name" | "venue_name" | "next_night_date" | "date_range_start" | "date_range_end"
-  >[],
+  programs: readonly ListedProgramRef[],
 ): DoorAccessEventGroup[] {
   const listedIds = new Set(programs.map((program) => program.id))
   const seen = new Set<number>()
@@ -236,7 +300,7 @@ export function eventAccessGroupsForPrograms(
 }
 
 /** Group stamped Weekly Cover nights by program id. Order is first-seen. */
-export function doorAccessGroupsFromEvents(events: EventListItem[]): DoorAccessEventGroup[] {
+export function doorAccessGroupsFromEvents(events: DoorAccessEventNight[]): DoorAccessEventGroup[] {
   const groups = new Map<number, DoorAccessEventGroup>()
   const order: number[] = []
   for (const event of events) {

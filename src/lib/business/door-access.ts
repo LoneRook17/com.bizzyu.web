@@ -81,6 +81,103 @@ export async function resolveDoorAccessProgramIdFromEvent(
   }
 }
 
+type RecoverEventRow = {
+  event_id?: number
+  name?: string
+  venue_name?: string
+  start_date_time?: string
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+}
+
+function recoverEventNight(event: RecoverEventRow) {
+  return {
+    event_id: event.event_id,
+    name: String(event.name ?? ""),
+    venue_name: event.venue_name,
+    start_date_time: event.start_date_time,
+    access_kind: event.access_kind,
+    recurring_series_id: event.recurring_series_id,
+  }
+}
+
+/**
+ * After GET /business/door-access/:id 404s, find a listed program to open, or
+ * null for "Program not found".
+ *
+ * GET /business/events/:id runs only when :id is not already on GET
+ * /business/door-access. Series 23 is not an event: calling events/23 is
+ * what logged Boom "Event not found". A listed id that 404s is left as a
+ * true miss (services program_kind). A WC night redirects to its rematched
+ * series. An unlisted series rematches to a listed program when nights
+ * prove the match. Does not guess "the only program".
+ */
+export async function recoverDoorAccessProgramId(pathId: number): Promise<number | null> {
+  if (!Number.isFinite(pathId) || pathId <= 0) return null
+
+  let programs: DoorAccessProgramSummary[] = []
+  try {
+    programs = await fetchDoorAccessPrograms()
+  } catch {
+    programs = []
+  }
+
+  if (programs.some((program) => program.id === pathId)) return null
+
+  let eventSeriesId: number | null = null
+  let recoveredEvent: RecoverEventRow | null = null
+  try {
+    const api = await client()
+    const event = await api.get<RecoverEventRow>(`/business/events/${pathId}`)
+    recoveredEvent = event ?? null
+    eventSeriesId = programIdFromOwnedEvent(event ?? {})
+  } catch {
+    eventSeriesId = null
+  }
+
+  const { recoverProgramIdFromLookups, doorAccessGroupsFromEvents } = await import("./events-list.ts")
+
+  if (eventSeriesId != null && eventSeriesId !== pathId) {
+    return recoverProgramIdFromLookups({
+      pathId,
+      programs,
+      eventSeriesId,
+      eventGroup: recoveredEvent
+        ? {
+            programId: eventSeriesId,
+            name: String(recoveredEvent.name ?? ""),
+            events: [recoverEventNight(recoveredEvent)],
+          }
+        : { programId: eventSeriesId, name: "", events: [] },
+    })
+  }
+
+  let eventRows: RecoverEventRow[] = recoveredEvent ? [recoveredEvent] : []
+  try {
+    const api = await client()
+    const upcoming = await api.get<{ events?: RecoverEventRow[] }>(
+      "/business/events?tab=upcoming&page=1&limit=50",
+    )
+    eventRows = [...eventRows, ...(upcoming.events ?? [])]
+    if (!eventRows.some((event) => programIdFromOwnedEvent(event) === pathId)) {
+      const past = await api.get<{ events?: RecoverEventRow[] }>(
+        "/business/events?tab=past&page=1&limit=50",
+      )
+      eventRows = [...eventRows, ...(past.events ?? [])]
+    }
+  } catch {
+    // Keep recoveredEvent only.
+  }
+
+  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight))
+  return recoverProgramIdFromLookups({
+    pathId,
+    programs,
+    eventSeriesId: null,
+    eventGroup: groups.find((group) => group.programId === pathId) ?? null,
+  })
+}
+
 /** F9 card chip on a named-event row. */
 export const EVENT_TYPE_LABEL = "EVENT"
 

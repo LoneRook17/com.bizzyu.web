@@ -4,7 +4,7 @@ import Link from "next/link"
 import { CalendarDays, ScanLine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
-import { eventListHref, eventRowStats } from "@/lib/business/events-list"
+import { eventListHref, eventRowStats, type ListedProgramRef } from "@/lib/business/events-list"
 import { Button } from "@/components/business/v2/ui/button"
 import {
   HostCardThumbnail,
@@ -26,7 +26,13 @@ import { eventStatusBadge, fmtDate, fmtTime } from "./eventStatus"
  * offer them directly, and taking them away would have been a regression
  * dressed up as a redesign.
  */
-export function EventCard({ event }: { event: EventListItem }) {
+export function EventCard({
+  event,
+  programs = [],
+}: {
+  event: EventListItem
+  programs?: readonly ListedProgramRef[]
+}) {
   const { user } = useAuth()
   const canScan = user?.business_role !== "promoter"
   const badge = eventStatusBadge(event.status)
@@ -48,7 +54,7 @@ export function EventCard({ event }: { event: EventListItem }) {
     .filter(Boolean)
     .join(" · ")
 
-  const href = eventListHref(event)
+  const href = eventListHref(event, programs)
 
   return (
     <HostListCard

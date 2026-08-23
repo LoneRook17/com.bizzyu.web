@@ -6,6 +6,7 @@ import {
   doorAccessGroupsFromEvents,
   eventAccessGroupsForPrograms,
   eventListHref,
+  recoverProgramIdFromLookups,
   workingProgramIdForEventGroup,
   eventRowStats,
   fmtRowDate,
@@ -221,6 +222,119 @@ test("listed door_access programs win over an unlisted recurring_series_id", () 
   assert.equal(emptyList[0]?.programId, 23)
 })
 
+test("eventListHref rematches to a listed program and never emits an unlisted 23", () => {
+  const night = ev(621, "2026-08-24 21:00:00", 23, {
+    name: "Weekly Cover",
+    venue_name: "The Dungeon",
+    access_kind: "door_access",
+  })
+  const listed = [
+    {
+      id: 88,
+      name: "Weekly Cover",
+      venue_name: "The Dungeon",
+      next_night_date: "2026-08-24",
+      date_range_start: "2026-08-01",
+      date_range_end: null,
+    },
+  ]
+  assert.equal(eventListHref(night, listed), "/business/door-access/88")
+  assert.equal(eventListHref(night, [{ ...listed[0], id: 23 }]), "/business/door-access/23")
+  assert.equal(eventListHref(night, []), "/business/door-access/23")
+  assert.equal(
+    eventListHref(night, [
+      {
+        id: 99,
+        name: "Other Cover",
+        venue_name: "Another Bar",
+        next_night_date: "2026-09-01",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    "/business/events/621",
+  )
+})
+
+test("recoverProgramIdFromLookups rematches unlisted series and skips listed 404s", () => {
+  const dungeon = {
+    id: 88,
+    name: "Weekly Cover",
+    venue_name: "The Dungeon",
+    next_night_date: "2026-08-24",
+    date_range_start: "2026-08-01",
+    date_range_end: null,
+  }
+  const group = {
+    programId: 23,
+    name: "Weekly Cover",
+    events: [
+      ev(621, "2026-08-24 21:00:00", 23, {
+        name: "Weekly Cover",
+        venue_name: "The Dungeon",
+        access_kind: "door_access",
+      }),
+    ],
+  }
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [{ ...dungeon, id: 23 }],
+      eventSeriesId: 23,
+      eventGroup: group,
+    }),
+    null,
+    "listed series that 404s is a services miss, not an event redirect",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 621,
+      programs: [dungeon],
+      eventSeriesId: 23,
+      eventGroup: { ...group, programId: 23 },
+    }),
+    88,
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 621,
+      programs: [],
+      eventSeriesId: 23,
+      eventGroup: { ...group, programId: 23 },
+    }),
+    23,
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [dungeon],
+      eventSeriesId: null,
+      eventGroup: group,
+    }),
+    88,
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [],
+      eventSeriesId: null,
+      eventGroup: group,
+    }),
+    null,
+    "empty list must not redirect an unlisted series to itself",
+  )
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 23,
+      programs: [dungeon],
+      eventSeriesId: null,
+      eventGroup: null,
+    }),
+    null,
+    "do not guess the only listed program",
+  )
+})
+
 test("a dated Weekly Cover row opens the program, never event_id as the path segment", () => {
   const night = ev(24, "2026-09-02 21:00:00", 9, { access_kind: "door_access" })
   assert.equal(eventListHref(night), "/business/door-access/9")
@@ -233,6 +347,19 @@ test("a dated Weekly Cover row opens the program, never event_id as the path seg
   if (leaked[0].kind !== "series") return
   leaked[0].events[0].access_kind = "door_access"
   assert.equal(seriesRowHref(leaked[0]), "/business/door-access/9")
+  assert.equal(
+    seriesRowHref(leaked[0], [
+      {
+        id: 88,
+        name: "Weekly Cover",
+        venue_name: "The Bar",
+        next_night_date: "2026-09-02",
+        date_range_start: "2026-09-01",
+        date_range_end: null,
+      },
+    ]),
+    "/business/door-access/88",
+  )
   assert.equal(seriesHref(leaked[0].seriesId), "/business/recurring/9")
 })
 
