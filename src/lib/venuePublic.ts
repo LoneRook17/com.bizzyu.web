@@ -1,4 +1,4 @@
-import { resolveProgramImageUrl } from "./business/door-access.ts"
+import { readAccessKind, resolveProgramImageUrl } from "./business/door-access.ts"
 
 // Public /venue/:id board data.
 //
@@ -95,9 +95,7 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
   const name = typeof row.name === "string" ? row.name : ""
   if (!eventId || !name) return null
 
-  const access = row.access_kind
-  const accessKind =
-    access === "door_access" || access === "event" ? access : null
+  const accessKind = readAccessKind(row.access_kind)
 
   const price = firstUsdAmount(
     row.min_ticket_price,

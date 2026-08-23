@@ -6,7 +6,7 @@ import { ChevronDown, Repeat } from "lucide-react"
 import {
   fmtRowDate,
   relativeDayLabel,
-  seriesHref,
+  seriesRowHref,
   seriesRowNumbers,
   seriesRowStats,
   type EventRow,
@@ -67,7 +67,7 @@ export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series
     <div className="flex flex-col gap-2">
       <HostListCard
         kind="event"
-        href={seriesHref(row.seriesId)}
+        href={seriesRowHref(row)}
         typeLabel="SERIES"
         title={row.name}
         meta={meta}
@@ -94,7 +94,7 @@ export function SeriesGroupRow({ row }: { row: Extract<EventRow, { kind: "series
               {open ? "Hide nights" : `Show ${stats.nights} ${stats.nights === 1 ? "night" : "nights"}`}
             </Button>
             <Button variant="ghost" size="sm" asChild>
-              <Link href={seriesHref(row.seriesId)}>Manage series</Link>
+              <Link href={seriesRowHref(row)}>Manage series</Link>
             </Button>
           </>
         }

@@ -13,6 +13,7 @@
 // existing /business/recurring/:id page.
 
 import type { EventListItem, RecurringSeriesListItem } from "./types"
+import { isDoorAccessKind, programHref, programIdFromOwnedEvent } from "./door-access.ts"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 
 /** The segment's three positions. `all` is the default — one combined list. */
@@ -56,6 +57,18 @@ export type EventRow =
     }
 
 /**
+ * Dated Weekly Cover nights on GET /business/events, grouped by program id
+ * (`recurring_series_id`). Used when the dedicated Weekly Cover segment still
+ * needs a row even if GET /business/door-access returned []. Never invents a
+ * program: a night without a series id is skipped.
+ */
+export type DoorAccessEventGroup = {
+  programId: number
+  name: string
+  events: EventListItem[]
+}
+
+/**
  * Collapse a page of events into rows.
  *
  * ORDER IS PRESERVED. The server sorts by start_date_time and that sort is the
@@ -72,6 +85,12 @@ export type EventRow =
  * the server returned, so a series whose nights straddle a page boundary shows
  * as one group per page. The group row links to the series page, which is the
  * complete list — so the answer is always one click away, never wrong.
+ *
+ * Door-access nights are NOT green Event/Series rows. They belong on the
+ * Weekly Cover segment (AccessProgramRow, or doorAccessGroupsFromEvents as a
+ * fallback). Treating them as EventCard / SeriesGroupRow sends hosts to
+ * /business/events/:event_id or /business/recurring/:id, and using event_id as
+ * a /business/door-access/:id segment 404s.
  */
 export function groupEventRows(
   events: EventListItem[],
@@ -84,6 +103,7 @@ export function groupEventRows(
   const groupIndex = new Map<number, number>()
 
   for (const event of events) {
+    if (isDoorAccessKind(event.access_kind)) continue
     const seriesId = event.recurring_series_id
     if (seriesId == null) {
       rows.push({ kind: "single", key: `event-${event.event_id}`, event })
@@ -114,6 +134,41 @@ export function groupEventRows(
 /** Where a series row goes: the existing recurring detail page (D2-2). */
 export function seriesHref(seriesId: number): string {
   return `/business/recurring/${seriesId}`
+}
+
+/** Dated Weekly Cover row → program page. Named event → its event page. */
+export function eventListHref(event: EventListItem): string {
+  const programId = programIdFromOwnedEvent(event)
+  if (programId != null) return programHref(programId)
+  return `/business/events/${event.event_id}`
+}
+
+/**
+ * A leaked door-access series still opens the program page, never
+ * /business/recurring/:id (that page is for named recurring events).
+ */
+export function seriesRowHref(row: Extract<EventRow, { kind: "series" }>): string {
+  const programId = row.events.map(programIdFromOwnedEvent).find((id) => id != null)
+  if (programId != null) return programHref(programId)
+  return seriesHref(row.seriesId)
+}
+
+/** Group stamped Weekly Cover nights by program id. Order is first-seen. */
+export function doorAccessGroupsFromEvents(events: EventListItem[]): DoorAccessEventGroup[] {
+  const groups = new Map<number, DoorAccessEventGroup>()
+  const order: number[] = []
+  for (const event of events) {
+    const programId = programIdFromOwnedEvent(event)
+    if (programId == null) continue
+    const existing = groups.get(programId)
+    if (existing) {
+      existing.events.push(event)
+      continue
+    }
+    order.push(programId)
+    groups.set(programId, { programId, name: event.name, events: [event] })
+  }
+  return order.map((id) => groups.get(id)!)
 }
 
 /** The at-a-glance numbers on a series row — summed across the nights shown. */
