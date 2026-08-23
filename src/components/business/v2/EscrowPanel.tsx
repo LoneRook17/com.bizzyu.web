@@ -19,6 +19,9 @@
 //               hold-until-sent copy. Never "on the way to your bank".
 //   processing  a pending withdrawal or in-flight Transfer ("Payment processing")
 //   paid        everything claimed. Quiet confirmation + shared EscrowHistory.
+//               First dash view while paid starts a 24h localStorage clock
+//               (business_id + payout/transfer id). After that window the
+//               card hides. Display-only: no Stripe or money writes.
 //
 // ONE NUMBER (amendment A4): escrow credits settle immediately, so there is
 // no available/pending split anywhere in this component.
@@ -27,6 +30,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { ArrowUpRight, CheckCircle2, Clock, Landmark, Loader2, Send } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
+import { useAuth } from "@/lib/business/auth-context"
 import {
   fetchEscrowPanelData,
   deriveEscrowPanelState,
@@ -36,6 +40,10 @@ import {
   type EscrowPanelData,
   type EscrowPanelState,
 } from "@/lib/business/escrow"
+import {
+  localStoragePaidBannerAdapter,
+  shouldRenderEscrowPanel,
+} from "@/lib/business/escrow-paid-banner"
 import { completeProfileStripeOnboardOnce } from "@/lib/business/stripe-onboard-complete"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
@@ -142,14 +150,27 @@ function EscrowPanelInner({
 }) {
   const searchParams = useSearchParams()
   const demoScenario = searchParams.get("escrow_demo")
+  const { business } = useAuth()
   const [data, setData] = useState<EscrowPanelData | null>(null)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     let cancelled = false
+    const applyPanel = (next: EscrowPanelData | null) => {
+      setData(next)
+      setVisible(
+        shouldRenderEscrowPanel(next, {
+          nowMs: Date.now(),
+          demo: isEscrowDemoScenario(demoScenario),
+          authBusinessId: business?.business_id ?? null,
+          storage: localStoragePaidBannerAdapter(),
+        }),
+      )
+    }
     ;(async () => {
       const first = await fetchEscrowPanelData({ demoScenario })
       if (cancelled) return
-      setData(first)
+      applyPanel(first)
 
       // Payments compact only: if Stripe is already onboarded, POST complete
       // so services can run the escrow claim. Home hero does not kick this.
@@ -166,12 +187,12 @@ function EscrowPanelInner({
       }
       if (cancelled) return
       const second = await fetchEscrowPanelData({ demoScenario })
-      if (!cancelled) setData(second)
+      if (!cancelled) applyPanel(second)
     })()
     return () => { cancelled = true }
-  }, [demoScenario, variant, refreshToken])
+  }, [demoScenario, variant, refreshToken, business?.business_id])
 
-  if (!data) return null
+  if (!data || !visible) return null
   const state = deriveEscrowPanelState(data.summary, data.stripeOnboarded)
   if (state === "empty") return null
 

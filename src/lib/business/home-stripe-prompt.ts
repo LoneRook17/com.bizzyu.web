@@ -24,7 +24,8 @@ export type HomeStripePromptInput = {
   stripeOnboarded: boolean | null
   /**
    * Is the BE-D escrow panel rendering right now? True whenever
-   * deriveEscrowPanelState() returned anything other than "empty".
+   * shouldRenderEscrowPanel() is true: any non-empty state, except a
+   * paid banner whose 24h first-seen window has ended.
    */
   escrowPanelVisible: boolean
   /**

@@ -52,6 +52,7 @@ test("escrow and payments host copy has no em or en dashes", () => {
     ["../../app/business/(dashboard)/payouts/page.tsx", "payouts page"],
     ["../../components/business/v2/payouts/ReconcileView.tsx", "ReconcileView"],
     ["./escrow.ts", "escrow client copy"],
+    ["./escrow-paid-banner.ts", "escrow paid-banner clock"],
     ["./stripe-onboard-complete.ts", "stripe onboard complete"],
     ["./email-change.ts", "email-change copy"],
     ["./verify-email-copy.ts", "verify-email copy"],
