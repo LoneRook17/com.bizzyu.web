@@ -57,11 +57,14 @@ import {
   nightHasEventTickets,
   nightTierTicketType,
   applyOverrideTicketForm,
+  applyRecurringNightTier,
+  parseRecurringNightTier,
   toggleNightTierDisabled,
   toggleNightTierSoldOut,
   reorderNightTiers,
   nightDraftIsDirty,
   parseOverrideTicketNumbers,
+  NIGHT_TICKET_DESCRIPTION_MAX,
   nightSaveFeedback,
   nightGuestPricesNotLive,
   restampSignalsTimesOnlyHasSales,
@@ -258,6 +261,14 @@ test("an inherited field serializes as null, not as the template's value", () =>
       is_disabled: false,
       sold_out: false,
       sort_order: 0,
+      name: null,
+      description: null,
+      ticket_type: null,
+      max_per_person: null,
+      valid_from_time: null,
+      valid_until_time: null,
+      valid_from_day_offset: null,
+      valid_until_day_offset: null,
     },
     {
       tier_key: "skip",
@@ -266,6 +277,14 @@ test("an inherited field serializes as null, not as the template's value", () =>
       is_disabled: false,
       sold_out: false,
       sort_order: 1,
+      name: null,
+      description: null,
+      ticket_type: null,
+      max_per_person: null,
+      valid_from_time: null,
+      valid_until_time: null,
+      valid_from_day_offset: null,
+      valid_until_day_offset: null,
     },
   ])
 })
@@ -384,7 +403,9 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   assert.ok(editor.includes("NIGHT_TICKET_APPLY_LABEL"), "inline edit must not say Save changes")
   assert.ok(editor.includes("NIGHT_TICKET_DRAFT_HINT"), "inline edit must say it drafts until Save night")
   assert.ok(editor.includes("updateDoorAccessProgram"), "stock alerts persist on the program, not the event")
-  assert.ok(editor.includes("scan_window: false"), "omit scan window when the override cannot store it")
+  assert.ok(editor.includes("RecurringTierEditor"), "night Edit uses the create-series ticket fields")
+  assert.ok(!editor.includes("TicketEditForm"), "do not use the reduced event ticket form on a night")
+  assert.ok(editor.includes("allowAdd={false}"), "add tiers on Edit program, not on one night")
   assert.ok(editor.includes("soldOut: true"), "sold out drafts into NightDraft like Manage Tickets")
   assert.ok(editor.includes("allowReorder={editable}"), "drag-to-reorder drafts until Save night")
   assert.ok(editor.includes("toggleNightTierSoldOut"), "sold out must not be a silent no-op")
@@ -398,11 +419,17 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   const leave = readFileSync(leavePath, "utf8")
   assert.ok(src.includes("NightLeaveGuard"), "dirty night must prompt before leaving")
   assert.ok(src.includes("nightDraftIsDirty"), "Save night clears dirty by adopting the server night")
+  assert.ok(src.includes("NIGHT_UNSAVED_TITLE"), "dirty nights show Unsaved changes under Save night")
+  assert.ok(
+    /Save night[\s\S]*dirty &&[\s\S]*NIGHT_UNSAVED_TITLE/.test(src),
+    "Unsaved changes sits under Save night and uses the draft dirty flag"
+  )
   assert.ok(leave.includes("beforeunload"), "browser close/refresh must prompt")
   assert.ok(leave.includes("ConfirmDialog"), "back link and sidebar use an in-app confirm")
   assert.ok(leave.includes("NIGHT_UNSAVED_TITLE"))
   assert.ok(!NIGHT_UNSAVED_BODY.includes("\u2014") && !NIGHT_UNSAVED_TITLE.includes("\u2014"))
   assert.ok(!leave.includes("\u2014"), "leave prompt still has an em dash")
+  assert.equal(NIGHT_UNSAVED_TITLE, "Unsaved changes")
   assert.equal(NIGHT_UNSAVED_LEAVE, "Leave")
 
   assert.equal(NIGHT_TICKET_APPLY_LABEL, "Apply to night")
@@ -585,6 +612,19 @@ test("dirty is true after a price edit and Save night clears it", () => {
   assert.equal(nightDraftIsDirty(toggleNightTierDisabled(baseline, "cover"), baseline), true)
   assert.equal(nightDraftIsDirty(toggleNightTierSoldOut(baseline, "cover"), baseline), true)
   assert.equal(nightDraftIsDirty(reorderNightTiers(baseline, ["skip", "cover"]), baseline), true)
+  const renamed = applyRecurringNightTier(baseline, "cover", {
+    name: "Door",
+    description: null,
+    ticket_type: "paid",
+    price_usd: 10,
+    quantity: 0,
+    max_per_person: 2,
+    valid_from_time: null,
+    valid_until_time: null,
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+  }, { name: "Cover", price_usd: 10, quantity: 0, max_per_person: 2, ticket_type: "paid" })
+  assert.equal(nightDraftIsDirty(renamed, baseline), true)
 
   // Save night adopts the server night and that snapshot becomes the baseline.
   const savedNight = night({
@@ -632,6 +672,87 @@ test("sold out and drag order go on the override payload", () => {
     "utf8"
   )
   assert.ok(row.includes('aria-label="Drag to reorder"'))
+})
+
+test("night Edit persists create-series ticket fields on Save night", () => {
+  const baseline = draftFromNight(night(), program())
+  const parsed = parseRecurringNightTier({
+    name: "Early Cover",
+    description: "In before 10",
+    ticket_type: "paid",
+    priceInput: "12",
+    quantityInput: "40",
+    maxPerPersonInput: "3",
+    valid_from_time: "",
+    valid_until_time: "22:00",
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+  })
+  assert.equal(parsed.error, null)
+  const next = applyRecurringNightTier(baseline, "cover", parsed.values, {
+    name: "Cover",
+    description: null,
+    ticket_type: "paid",
+    price_usd: 10,
+    quantity: 0,
+    max_per_person: 2,
+    valid_from_time: null,
+    valid_until_time: null,
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+  })
+  assert.equal(nightDraftIsDirty(next, baseline), true)
+  const payload = buildNightOverridePayload(next)
+  assert.equal(payload.tiers?.[0].name, "Early Cover")
+  assert.equal(payload.tiers?.[0].description, "In before 10")
+  assert.equal(payload.tiers?.[0].ticket_type, null, "unchanged type still inherits")
+  assert.equal(payload.tiers?.[0].price_usd, 12)
+  assert.equal(payload.tiers?.[0].quantity, 40)
+  assert.equal(payload.tiers?.[0].max_per_person, 3)
+  assert.equal(payload.tiers?.[0].valid_until_time, "22:00:00")
+  assert.equal(payload.tiers?.[0].valid_until_day_offset, 0)
+  assert.equal(payload.tiers?.[0].sort_order, 0)
+
+  const free = applyRecurringNightTier(baseline, "cover", {
+    ...parsed.values,
+    ticket_type: "free",
+    price_usd: 0,
+  }, {
+    name: "Cover",
+    ticket_type: "paid",
+    price_usd: 10,
+    quantity: 0,
+    max_per_person: 2,
+  })
+  assert.equal(buildNightOverridePayload(free).tiers?.[0].ticket_type, "free")
+
+  assert.equal(NIGHT_TICKET_DESCRIPTION_MAX, 64)
+  assert.equal(
+    parseRecurringNightTier({
+      name: "",
+      description: "",
+      ticket_type: "paid",
+      priceInput: "10",
+      quantityInput: "0",
+      maxPerPersonInput: "0",
+      valid_from_time: "",
+      valid_until_time: "",
+      valid_from_day_offset: 0,
+      valid_until_day_offset: 0,
+    }).error,
+    "Every access tier needs a name."
+  )
+
+  const recurring = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/recurring/RecurringTierEditor.tsx", import.meta.url)),
+    "utf8"
+  )
+  assert.ok(recurring.includes("Quantity per night"))
+  assert.ok(recurring.includes("TICKET_DESCRIPTION_MAX"))
+  assert.ok(recurring.includes("ScanWindowToggle"))
+  assert.ok(recurring.includes("Max per person"))
+  assert.ok(recurring.includes("Add ticket tier"))
+  assert.ok(!recurring.includes("\u2014"))
 })
 
 test("override ticket form pins price and quantity independently", () => {

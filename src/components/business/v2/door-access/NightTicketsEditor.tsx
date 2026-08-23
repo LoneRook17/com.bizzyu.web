@@ -3,12 +3,13 @@
 import { useMemo, useRef, useState } from "react"
 import type { TicketTier } from "@/lib/business/types"
 import {
-  applyOverrideTicketForm,
+  applyRecurringNightTier,
   nightTierTicketType,
-  parseOverrideTicketNumbers,
+  parseRecurringNightTier,
   reorderNightTiers,
   toggleNightTierDisabled,
   toggleNightTierSoldOut,
+  toTimeInput,
   updateDoorAccessProgram,
   NIGHT_TICKET_APPLY_LABEL,
   NIGHT_TICKET_DRAFT_HINT,
@@ -16,37 +17,26 @@ import {
   type DoorAccessNightTier,
   type DoorAccessProgram,
   type NightDraft,
+  type NightTierDraft,
 } from "@/lib/business/door-access"
 import { lowstockInputToStored, lowstockValueToInput } from "@/components/business/v2/events/EventForm"
 import {
   StockAlertsCard,
-  TicketEditForm,
   TicketSection,
-  ticketToForm,
   type StockAlertsAdapter,
   type StockAlertsState,
-  type TicketFormState,
-  type TicketFormVisibility,
 } from "@/components/business/v2/events/ManageSalesTickets"
+import { RecurringTierEditor, type RecurringTierRow } from "@/components/business/v2/recurring/RecurringTierEditor"
+import { Button } from "@/components/business/v2/ui/button"
 
 /**
- * Night override drafts price, quantity, hide (is_disabled), sold out, and
- * sort_order. Name and type stay visible so the card matches Manage Tickets;
- * fields the API cannot store (scan window, max per person) are omitted.
+ * Night override drafts the same ticket fields as create-series Add ticket
+ * tier (RecurringTierEditor): name, type, price, quantity per night,
+ * description, scan window, max per person. Hide and sold out stay on the
+ * ticket cards. Drag writes sort_order. Save night is the only persist.
  *
- * Edits here draft into the night. Save night on the page is the only write
- * to door_access_tier_overrides. Do not PUT /business/events/:id/tickets.
+ * Do not PUT /business/events/:id/tickets.
  */
-export const OVERRIDE_TICKET_FORM_FIELDS: TicketFormVisibility = {
-  name: "readonly",
-  description: false,
-  ticket_type: "readonly",
-  price: true,
-  quantity: true,
-  max_per_person: false,
-  scan_window: false,
-}
-
 function programStockAlertsAdapter(
   program: DoorAccessProgram,
   onSaved?: (next: DoorAccessProgram) => void
@@ -90,13 +80,13 @@ function nightTierToTicket(
   const quantity = draftTier?.quantity ?? tier.quantity
   return {
     ticket_id: index + 1,
-    name: tier.name,
-    description: tier.description ?? "",
+    name: draftTier?.name ?? tier.name,
+    description: draftTier?.description ?? tier.description ?? "",
     price_usd: price ?? 0,
     quantity: quantity ?? 0,
     sold_count: 0,
-    max_per_person: tier.max_per_person,
-    ticket_type: nightTierTicketType(tier, program),
+    max_per_person: draftTier?.max_per_person ?? tier.max_per_person,
+    ticket_type: draftTier?.ticket_type ?? nightTierTicketType(tier, program),
     is_hidden: draftTier?.is_disabled ?? tier.is_disabled,
     force_sold_out: draftTier?.sold_out ?? tier.sold_out,
   }
@@ -114,13 +104,20 @@ function ticketsFromDraft(
   })
 }
 
-function formFromNightTier(
-  tier: DoorAccessNightTier,
-  draft: NightDraft,
-  program: DoorAccessProgram,
-  index: number
-): TicketFormState {
-  return ticketToForm(nightTierToTicket(tier, draft, program, index))
+function draftTierToRow(draftTier: NightTierDraft): RecurringTierRow {
+  return {
+    tier_key: draftTier.tier_key,
+    name: draftTier.name,
+    description: draftTier.description ?? "",
+    ticket_type: draftTier.ticket_type,
+    priceInput: String(draftTier.price_usd ?? 0),
+    quantityInput: String(draftTier.quantity ?? 0),
+    maxPerPersonInput: String(draftTier.max_per_person ?? 0),
+    valid_from_time: toTimeInput(draftTier.valid_from_time),
+    valid_until_time: toTimeInput(draftTier.valid_until_time),
+    valid_from_day_offset: draftTier.valid_from_day_offset,
+    valid_until_day_offset: draftTier.valid_until_day_offset,
+  }
 }
 
 function tierIndex(night: DoorAccessNight, ticketId: number | undefined): number {
@@ -183,7 +180,7 @@ function NightOverrideTickets({
   alertsAdapter: StockAlertsAdapter
 }) {
   const [editingKey, setEditingKey] = useState<string | null>(null)
-  const [editing, setEditing] = useState<TicketFormState | null>(null)
+  const [editingRows, setEditingRows] = useState<RecurringTierRow[] | null>(null)
   const [saveError, setSaveError] = useState("")
   const [liveTickets, setLiveTickets] = useState<TicketTier[] | null>(null)
   const liveTicketsRef = useRef<TicketTier[] | null>(null)
@@ -208,25 +205,30 @@ function NightOverrideTickets({
 
   const applyTicketDraft = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editing || !editingKey) return
-    const parsed = parseOverrideTicketNumbers(editing.price_usd, editing.quantity)
+    if (!editingRows?.[0] || !editingKey) return
+    const parsed = parseRecurringNightTier(editingRows[0])
     if (parsed.error) {
       setSaveError(parsed.error)
       return
     }
     const source = night.tiers.find((t) => t.tier_key === editingKey)
+    const template = program.template_tickets.find((t) => t.tier_key === editingKey)
     setDraft(
-      applyOverrideTicketForm(
-        draft,
-        editingKey,
-        parsed.price_usd,
-        parsed.quantity,
-        source?.template_price_usd,
-        source?.template_quantity
-      )
+      applyRecurringNightTier(draft, editingKey, parsed.values, {
+        name: template?.name ?? source?.name,
+        description: template?.description ?? source?.description,
+        ticket_type: template?.ticket_type ?? source?.ticket_type,
+        price_usd: source?.template_price_usd ?? template?.price_usd,
+        quantity: source?.template_quantity ?? template?.quantity,
+        max_per_person: template?.max_per_person ?? source?.max_per_person,
+        valid_from_time: template?.valid_from_time ?? source?.valid_from_time,
+        valid_until_time: template?.valid_until_time ?? source?.valid_until_time,
+        valid_from_day_offset: template?.valid_from_day_offset ?? source?.valid_from_day_offset,
+        valid_until_day_offset: template?.valid_until_day_offset ?? source?.valid_until_day_offset,
+      })
     )
     setSaveError("")
-    setEditing(null)
+    setEditingRows(null)
     setEditingKey(null)
   }
 
@@ -234,22 +236,14 @@ function NightOverrideTickets({
     const index = tierIndex(night, ticket.ticket_id)
     const source = night.tiers[index]
     if (!source) return
-    const next = toggleNightTierDisabled(draft, source.tier_key)
-    setDraft(next)
-    if (editingKey === source.tier_key) {
-      setEditing(formFromNightTier(source, next, program, index))
-    }
+    setDraft(toggleNightTierDisabled(draft, source.tier_key))
   }
 
   const handleToggleSoldOut = (ticket: TicketTier) => {
     const index = tierIndex(night, ticket.ticket_id)
     const source = night.tiers[index]
     if (!source) return
-    const next = toggleNightTierSoldOut(draft, source.tier_key)
-    setDraft(next)
-    if (editingKey === source.tier_key) {
-      setEditing(formFromNightTier(source, next, program, index))
-    }
+    setDraft(toggleNightTierSoldOut(draft, source.tier_key))
   }
 
   const handleReorder = (section: "active" | "hidden", next: TicketTier[]) => {
@@ -302,9 +296,11 @@ function NightOverrideTickets({
     const index = tierIndex(night, t.ticket_id)
     const source = night.tiers[index]
     if (!source) return
+    const draftTier = draft.tiers.find((tier) => tier.tier_key === source.tier_key)
+    if (!draftTier) return
     setSaveError("")
     setEditingKey(source.tier_key)
-    setEditing(formFromNightTier(source, draft, program, index))
+    setEditingRows([draftTierToRow(draftTier)])
   }
 
   return (
@@ -313,21 +309,33 @@ function NightOverrideTickets({
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{NIGHT_TICKET_DRAFT_HINT}</p>
       )}
 
-      {editing && (
-        <TicketEditForm
-          editing={editing}
-          onChange={setEditing}
-          onSave={applyTicketDraft}
-          onCancel={() => {
-            setEditing(null)
-            setEditingKey(null)
-          }}
-          saving={false}
-          saveError={saveError}
-          fields={OVERRIDE_TICKET_FORM_FIELDS}
-          saveLabel={NIGHT_TICKET_APPLY_LABEL}
-          saveHint={NIGHT_TICKET_DRAFT_HINT}
-        />
+      {editingRows && (
+        <form onSubmit={applyTicketDraft} className="flex flex-col gap-3">
+          <RecurringTierEditor
+            tiers={editingRows}
+            onChange={(rows) => {
+              setEditingRows(rows)
+              setSaveError("")
+            }}
+            allowAdd={false}
+            allowRemove={false}
+          />
+          {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{NIGHT_TICKET_DRAFT_HINT}</p>
+          <div className="flex items-center gap-2">
+            <Button type="submit">{NIGHT_TICKET_APPLY_LABEL}</Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEditingRows(null)
+                setEditingKey(null)
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       )}
 
       <TicketSection
