@@ -41,9 +41,11 @@ import { EventCard } from "./EventCard"
 export function SeriesGroupRow({
   row,
   programs = [],
+  wcSeriesIds = [],
 }: {
   row: Extract<EventRow, { kind: "series" }>
   programs?: readonly ListedProgramRef[]
+  wcSeriesIds?: readonly number[]
 }) {
   const [open, setOpen] = useState(false)
   const stats = seriesRowStats(row)
@@ -74,7 +76,7 @@ export function SeriesGroupRow({
     <div className="flex flex-col gap-2">
       <HostListCard
         kind="event"
-        href={seriesRowHref(row, programs)}
+        href={seriesRowHref(row, programs, wcSeriesIds)}
         typeLabel="SERIES"
         title={row.name}
         meta={meta}
@@ -101,7 +103,7 @@ export function SeriesGroupRow({
               {open ? "Hide nights" : `Show ${stats.nights} ${stats.nights === 1 ? "night" : "nights"}`}
             </Button>
             <Button variant="ghost" size="sm" asChild>
-              <Link href={seriesRowHref(row, programs)}>Manage series</Link>
+              <Link href={seriesRowHref(row, programs, wcSeriesIds)}>Manage series</Link>
             </Button>
           </>
         }
@@ -112,7 +114,7 @@ export function SeriesGroupRow({
         // not as the list having suddenly grown a dozen new top-level entries.
         <div className="flex flex-col gap-2 border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
           {row.events.map((event) => (
-            <EventCard key={event.event_id} event={event} programs={programs} />
+            <EventCard key={event.event_id} event={event} programs={programs} wcSeriesIds={wcSeriesIds} />
           ))}
         </div>
       )}

@@ -29,9 +29,11 @@ import { eventStatusBadge, fmtDate, fmtTime } from "./eventStatus"
 export function EventCard({
   event,
   programs = [],
+  wcSeriesIds = [],
 }: {
   event: EventListItem
   programs?: readonly ListedProgramRef[]
+  wcSeriesIds?: readonly number[]
 }) {
   const { user } = useAuth()
   const canScan = user?.business_role !== "promoter"
@@ -54,7 +56,7 @@ export function EventCard({
     .filter(Boolean)
     .join(" · ")
 
-  const href = eventListHref(event, programs)
+  const href = eventListHref(event, programs, wcSeriesIds)
 
   return (
     <HostListCard

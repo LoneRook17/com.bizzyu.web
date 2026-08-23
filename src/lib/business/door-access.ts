@@ -27,10 +27,13 @@
 
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
+import { looksLikeWeeklyCoverName } from "./weekly-cover-label.ts"
+
 export {
   WEEKLY_ACCESS_CREATION_LABEL,
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
+  looksLikeWeeklyCoverName,
 } from "./weekly-cover-label.ts"
 
 /**
@@ -113,17 +116,147 @@ function recoverEventNight(event: RecoverEventRow) {
   }
 }
 
+/** Night belongs to this series id. Does not require access_kind. */
+export function eventBelongsToSeries(
+  event: { recurring_series_id?: number | string | null },
+  seriesId: number,
+): boolean {
+  if (!Number.isFinite(seriesId) || seriesId <= 0) return false
+  if (event.recurring_series_id == null || event.recurring_series_id === "") return false
+  const id = Number(event.recurring_series_id)
+  return Number.isFinite(id) && id === seriesId
+}
+
+export type OwnedSeriesOccurrence = {
+  event_id?: number | string | null
+  name?: string
+  occurrence_date?: string
+  status?: string | null
+  start_date_time?: string
+  end_date_time?: string
+  tickets_sold?: number
+  ticket_sales_count?: number
+  paid_orders?: number
+  is_customized?: boolean | number | string
+  flyer_image_url?: string
+}
+
+/**
+ * Build the host's program from an owned recurring series + its nights.
+ * Used when GET /business/door-access/:id 404s (program_kind=event series 23).
+ * Does not invent: no series payload and no nights for this id means null.
+ */
+export function doorAccessSeriesFromOwnedHydration(input: {
+  seriesId: number
+  series: Record<string, unknown> | null
+  eventRows: RecoverEventRow[]
+  occurrences?: OwnedSeriesOccurrence[]
+}): DoorAccessSeries | null {
+  const { seriesId, series, eventRows, occurrences = [] } = input
+  if (!Number.isFinite(seriesId) || seriesId <= 0) return null
+
+  const nightsFromEvents = eventRows.filter((event) => eventBelongsToSeries(event, seriesId))
+  const hasSeries = series != null && typeof series === "object"
+  if (!hasSeries && nightsFromEvents.length === 0 && occurrences.length === 0) return null
+
+  const first = nightsFromEvents[0]
+  const firstOcc = occurrences[0]
+  const nextDate = [
+    ...nightsFromEvents.map((event) => String(event.start_date_time ?? "").slice(0, 10)),
+    ...occurrences.map((occ) => String(occ.occurrence_date ?? occ.start_date_time ?? "").slice(0, 10)),
+  ]
+    .filter((date) => date.length === 10)
+    .sort()[0]
+
+  const program = normalizeProgram({
+    id: seriesId,
+    name: (hasSeries ? series.name : null) ?? first?.name ?? firstOcc?.name,
+    venue_name: (hasSeries ? series.venue_name : null) ?? first?.venue_name,
+    venue_id: hasSeries ? series.venue_id : undefined,
+    venue_address: hasSeries ? series.venue_address : undefined,
+    days_of_week: hasSeries ? series.days_of_week : undefined,
+    date_range_start: hasSeries ? series.date_range_start : undefined,
+    date_range_end: hasSeries ? series.date_range_end : undefined,
+    start_time: hasSeries ? series.start_time : undefined,
+    end_time: hasSeries ? series.end_time : undefined,
+    flyer_image_url:
+      (hasSeries ? series.flyer_image_url : null) ?? first?.flyer_image_url ?? firstOcc?.flyer_image_url,
+    photo_url: hasSeries ? series.photo_url : undefined,
+    is_active: hasSeries ? (series.is_active ?? true) : true,
+    is_21_plus: hasSeries ? series.is_21_plus : undefined,
+    description: hasSeries ? series.description : undefined,
+    template_tickets: hasSeries ? series.template_tickets : undefined,
+    type: hasSeries ? series.type : undefined,
+    timezone: hasSeries ? series.timezone : undefined,
+    promotion_enabled: hasSeries ? series.promotion_enabled : undefined,
+    promotion_commission_type: hasSeries ? series.promotion_commission_type : undefined,
+    promotion_commission_value: hasSeries ? series.promotion_commission_value : undefined,
+    lowstock_alerts_enabled: hasSeries ? series.lowstock_alerts_enabled : undefined,
+    lowstock_threshold_type: hasSeries ? series.lowstock_threshold_type : undefined,
+    lowstock_threshold_value: hasSeries ? series.lowstock_threshold_value : undefined,
+    lowstock_notify_business_team: hasSeries ? series.lowstock_notify_business_team : undefined,
+    redemption_mode: "camera_tap",
+    upcoming_night_count:
+      occurrences.length > 0 ? occurrences.length : nightsFromEvents.length,
+    next_night_date: nextDate,
+  })
+
+  const templateTiers = hasSeries && Array.isArray(series.template_tickets) ? series.template_tickets : []
+  const startTime = hasSeries ? series.start_time : undefined
+  const endTime = hasSeries ? series.end_time : undefined
+
+  const nights =
+    occurrences.length > 0
+      ? occurrences.map((occ) => {
+          const match = nightsFromEvents.find((event) => Number(event.event_id) === Number(occ.event_id))
+          return normalizeNight({
+            occurrence_date: String(occ.occurrence_date ?? occ.start_date_time ?? "").slice(0, 10),
+            is_stamped: occ.event_id != null && occ.event_id !== "",
+            is_scheduled: true,
+            event_id: occ.event_id,
+            status: occ.status ?? match?.status ?? null,
+            start_date_time: occ.start_date_time ?? match?.start_date_time,
+            end_date_time: occ.end_date_time ?? match?.end_date_time,
+            passes_sold: occ.tickets_sold ?? occ.ticket_sales_count ?? match?.ticket_sales_count,
+            paid_orders: occ.paid_orders,
+            is_customized: occ.is_customized,
+            start_time: startTime,
+            end_time: endTime,
+            tiers: templateTiers,
+          })
+        })
+      : nightsFromEvents.map((event) =>
+          normalizeNight({
+            occurrence_date: String(event.start_date_time ?? "").slice(0, 10),
+            is_stamped: true,
+            is_scheduled: true,
+            event_id: event.event_id,
+            status: event.status ?? null,
+            start_date_time: event.start_date_time,
+            end_date_time: event.end_date_time,
+            passes_sold: event.ticket_sales_count,
+            start_time: startTime,
+            end_time: endTime,
+            tiers: templateTiers,
+          }),
+        )
+
+  return { program, nights }
+}
+
 /**
  * After GET /business/door-access/:id 404s, find the series id to retry or
  * redirect to, or null for "Program not found".
  *
  * GET /business/events/:id runs only when :id is not already on GET
- * /business/door-access and is not a series from Events-list grouping.
- * Series 23 is not an event: calling events/23 logged Boom "Event not found".
- * A listed id, or a WC series from recurring_series_id grouping, is surfaced
- * so the page retries GET /business/door-access/:seriesId. A WC night
- * redirects to its recurring_series_id. Does not guess "the only program".
- * List fetch failure is not treated as [].
+ * /business/door-access, is not a series from Events-list grouping, and is
+ * not an owned recurring series. Series 23 is not an event: calling
+ * events/23 logged Boom "Event not found". Prefer GET
+ * /business/recurring-series/:id for the owning host.
+ * A listed id, a WC series from recurring_series_id grouping, or an owned
+ * series is surfaced so the page retries GET /business/door-access/:seriesId
+ * and hydrates if that still 404s. A WC night redirects to its
+ * recurring_series_id. Does not guess "the only program".
  */
 export async function recoverDoorAccessProgramId(pathId: number): Promise<number | null> {
   if (!Number.isFinite(pathId) || pathId <= 0) return null
@@ -147,7 +280,7 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
       "/business/events?tab=upcoming&page=1&limit=50",
     )
     eventRows = upcoming.events ?? []
-    if (!eventRows.some((event) => programIdFromOwnedEvent(event) === pathId)) {
+    if (!eventRows.some((event) => eventBelongsToSeries(event, pathId))) {
       const past = await api.get<{ events?: RecoverEventRow[] }>(
         "/business/events?tab=past&page=1&limit=50",
       )
@@ -157,7 +290,11 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
     eventRows = []
   }
 
-  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight))
+  const nameSeriesIds = eventRows
+    .filter((event) => looksLikeWeeklyCoverName(event.name))
+    .map((event) => Number(event.recurring_series_id))
+    .filter((id) => Number.isFinite(id) && id > 0)
+  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight), nameSeriesIds)
   const eventGroup = groups.find((group) => group.programId === pathId) ?? null
 
   if (listed || eventGroup) {
@@ -166,6 +303,28 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
       programs,
       eventSeriesId: null,
       eventGroup,
+    })
+  }
+
+  let ownedSeriesId: number | null = null
+  try {
+    const api = await client()
+    const data = await api.get<{ series?: { id?: number } }>(`/business/recurring-series/${pathId}`)
+    if (data?.series) {
+      const id = Number(data.series.id ?? pathId)
+      if (Number.isFinite(id) && id > 0) ownedSeriesId = id
+    }
+  } catch {
+    ownedSeriesId = null
+  }
+
+  if (ownedSeriesId != null) {
+    return recoverProgramIdFromLookups({
+      pathId,
+      programs,
+      eventSeriesId: null,
+      eventGroup,
+      ownedSeriesId,
     })
   }
 
@@ -181,7 +340,8 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
       if (
         Number.isFinite(seriesId) &&
         seriesId > 0 &&
-        isDoorAccessKind(recoveredEvent.access_kind)
+        (isDoorAccessKind(recoveredEvent.access_kind) ||
+          looksLikeWeeklyCoverName(recoveredEvent.name))
       ) {
         eventSeriesId = seriesId
       }
@@ -210,13 +370,15 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
     programs,
     eventSeriesId: null,
     eventGroup,
+    ownedSeriesId,
   })
 }
 
 /**
  * When GET /business/door-access/:id 404s after recover confirmed the series,
- * assemble the host's program from owned WC nights + recurring-series. Does
- * not invent: no WC nights with this recurring_series_id means null.
+ * assemble the host's program from owned recurring-series + nights. Nights
+ * match recurring_series_id even when access_kind is still event. Does not
+ * invent: no owned series and no nights for this id means null.
  */
 export async function hydrateDoorAccessSeriesFromOwned(
   seriesId: number,
@@ -235,77 +397,30 @@ export async function hydrateDoorAccessSeriesFromOwned(
     )
     eventRows = [...eventRows, ...(past.events ?? [])]
   } catch {
-    return null
+    eventRows = []
   }
 
-  const nights = eventRows.filter((event) => programIdFromOwnedEvent(event) === seriesId)
-  if (nights.length === 0) return null
-
-  let series: Record<string, unknown> = {}
+  let series: Record<string, unknown> | null = null
+  let occurrences: OwnedSeriesOccurrence[] = []
   try {
     const api = await client()
-    const data = await api.get<{ series?: Record<string, unknown> }>(
-      `/business/recurring-series/${seriesId}`,
-    )
+    const data = await api.get<{
+      series?: Record<string, unknown>
+      occurrences?: OwnedSeriesOccurrence[]
+    }>(`/business/recurring-series/${seriesId}`)
     if (data.series && typeof data.series === "object") series = data.series
+    if (Array.isArray(data.occurrences)) occurrences = data.occurrences
   } catch {
-    series = {}
+    series = null
+    occurrences = []
   }
 
-  const first = nights[0]
-  const nextDate = nights
-    .map((event) => String(event.start_date_time ?? "").slice(0, 10))
-    .filter((date) => date.length === 10)
-    .sort()[0]
-  const program = normalizeProgram({
-    id: seriesId,
-    name: series.name ?? first.name,
-    venue_name: series.venue_name ?? first.venue_name,
-    venue_id: series.venue_id,
-    venue_address: series.venue_address,
-    days_of_week: series.days_of_week,
-    date_range_start: series.date_range_start,
-    date_range_end: series.date_range_end,
-    start_time: series.start_time,
-    end_time: series.end_time,
-    flyer_image_url: series.flyer_image_url ?? first.flyer_image_url,
-    photo_url: series.photo_url,
-    is_active: series.is_active ?? true,
-    is_21_plus: series.is_21_plus,
-    description: series.description,
-    template_tickets: series.template_tickets,
-    type: series.type,
-    timezone: series.timezone,
-    promotion_enabled: series.promotion_enabled,
-    promotion_commission_type: series.promotion_commission_type,
-    promotion_commission_value: series.promotion_commission_value,
-    lowstock_alerts_enabled: series.lowstock_alerts_enabled,
-    lowstock_threshold_type: series.lowstock_threshold_type,
-    lowstock_threshold_value: series.lowstock_threshold_value,
-    lowstock_notify_business_team: series.lowstock_notify_business_team,
-    redemption_mode: "camera_tap",
-    upcoming_night_count: nights.length,
-    next_night_date: nextDate,
+  return doorAccessSeriesFromOwnedHydration({
+    seriesId,
+    series,
+    eventRows,
+    occurrences,
   })
-
-  return {
-    program,
-    nights: nights.map((event) =>
-      normalizeNight({
-        occurrence_date: String(event.start_date_time ?? "").slice(0, 10),
-        is_stamped: true,
-        is_scheduled: true,
-        event_id: event.event_id,
-        status: event.status ?? null,
-        start_date_time: event.start_date_time,
-        end_date_time: event.end_date_time,
-        passes_sold: event.ticket_sales_count,
-        start_time: series.start_time,
-        end_time: series.end_time,
-        tiers: Array.isArray(series.template_tickets) ? series.template_tickets : [],
-      }),
-    ),
-  }
 }
 
 export type DoorAccessSeriesLoad =

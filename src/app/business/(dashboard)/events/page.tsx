@@ -17,6 +17,7 @@ import {
   parseEventTypeFilter,
   showsAccess,
   showsEvents,
+  weeklyCoverSeriesIds,
   type EventTypeFilter,
 } from "@/lib/business/events-list"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -183,13 +184,14 @@ export default function V2EventsPage() {
       ? programs
       : tab === "upcoming" ? activePrograms : []
 
-  const rows = showsEvents(effectiveType) ? groupEventRows(events, series) : []
+  const wcSeriesIds = weeklyCoverSeriesIds(programs, series)
+  const rows = showsEvents(effectiveType) ? groupEventRows(events, series, wcSeriesIds) : []
   // AccessProgramRow uses GET /business/door-access ids. Stamped WC nights
   // still group by recurring_series_id when that list omits the series
   // (program_kind=event). EventCard / SeriesGroupRow open the series id,
   // never /door-access/{event_id}.
   const eventAccessGroups = showsAccess(effectiveType)
-    ? eventAccessGroupsForPrograms(events, programs)
+    ? eventAccessGroupsForPrograms(events, programs, wcSeriesIds)
     : []
   const isEmpty = rows.length === 0 && visiblePrograms.length === 0 && eventAccessGroups.length === 0
 
@@ -304,8 +306,8 @@ export default function V2EventsPage() {
           ))}
           {rows.map((row) =>
             row.kind === "series"
-              ? <SeriesGroupRow key={row.key} row={row} programs={programs} />
-              : <EventCard key={row.key} event={row.event} programs={programs} />
+              ? <SeriesGroupRow key={row.key} row={row} programs={programs} wcSeriesIds={wcSeriesIds} />
+              : <EventCard key={row.key} event={row.event} programs={programs} wcSeriesIds={wcSeriesIds} />
           )}
         </div>
       )}

@@ -7,7 +7,8 @@
 // same public Check In control so a missing access_kind never hides the
 // button on a WC guest ticket.
 
-import { isDoorAccessKind } from "./business/door-access.ts"
+import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP, isDoorAccessKind } from "./business/door-access.ts"
+import { looksLikeWeeklyCoverName } from "./business/weekly-cover-label.ts"
 
 export type GuestCheckinTicket = {
   access_kind?: string | null
@@ -15,13 +16,28 @@ export type GuestCheckinTicket = {
   is_redeemed?: boolean | number
   is_refunded?: boolean | number
   event_status?: string | null
+  event_name?: string | null
+  ticket_name?: string | null
 }
 
+export const EVENT_CHECKIN_ACCENT = "#05EB54"
+export const EVENT_CHECKIN_ACCENT_DEEP = "#2ECB4E"
+
 export function isWeeklyCoverCheckinTicket(
-  ticket: Pick<GuestCheckinTicket, "access_kind" | "redemption_mode">,
+  ticket: Pick<GuestCheckinTicket, "access_kind" | "redemption_mode" | "event_name" | "ticket_name">,
 ): boolean {
   if (ticket.redemption_mode === "camera_tap") return true
-  return isDoorAccessKind(ticket.access_kind)
+  if (isDoorAccessKind(ticket.access_kind)) return true
+  return looksLikeWeeklyCoverName(ticket.event_name) || looksLikeWeeklyCoverName(ticket.ticket_name)
+}
+
+export function guestCheckinAccent(
+  ticket: Pick<GuestCheckinTicket, "access_kind" | "redemption_mode" | "event_name" | "ticket_name">,
+): { accent: string; accentDeep: string } {
+  if (isWeeklyCoverCheckinTicket(ticket)) {
+    return { accent: ACCESS_ACCENT, accentDeep: ACCESS_ACCENT_DEEP }
+  }
+  return { accent: EVENT_CHECKIN_ACCENT, accentDeep: EVENT_CHECKIN_ACCENT_DEEP }
 }
 
 /**
@@ -49,7 +65,7 @@ export function checkinRedeemPath(uuid: string): string {
 
 /** Copy for the public ticket page. Never says check-in is staff-only. */
 export function guestCheckinFooterCopy(
-  ticket: Pick<GuestCheckinTicket, "access_kind" | "redemption_mode">,
+  ticket: Pick<GuestCheckinTicket, "access_kind" | "redemption_mode" | "event_name" | "ticket_name">,
 ): string {
   if (isWeeklyCoverCheckinTicket(ticket)) {
     return "Weekly Cover scans with any phone camera. Tap Check In. No staff login."
