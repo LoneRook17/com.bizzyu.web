@@ -166,7 +166,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   ]
 
   const promoteTiles: Tile[] = [
-    { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Stats and payouts", show: true },
+    { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Referral links and what they earn", show: true },
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
     { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
   ]
