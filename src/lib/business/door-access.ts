@@ -33,6 +33,54 @@ export {
   WEEKLY_ACCESS_TYPE_LABEL,
 } from "./weekly-cover-label.ts"
 
+/**
+ * Flutter EventModel.readAccessKind: `weekly_cover` is the same night as
+ * `door_access`. Wire the alias here so public venue + dashboard list agree.
+ * Do not rename the API path or program_kind — those stay `door_access`.
+ */
+export function readAccessKind(raw: unknown): "event" | "door_access" | null {
+  if (raw === "event") return "event"
+  if (raw === "door_access" || raw === "weekly_cover") return "door_access"
+  return null
+}
+
+export function isDoorAccessKind(raw: unknown): boolean {
+  return readAccessKind(raw) === "door_access"
+}
+
+/**
+ * A stamped Weekly Cover night's program id is `recurring_series_id`, never
+ * `event_id`. GET /business/door-access/:id only accepts a series id with
+ * program_kind === 'door_access'. Returns null instead of inventing a program.
+ */
+export function programIdFromOwnedEvent(event: {
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+}): number | null {
+  if (!isDoorAccessKind(event.access_kind)) return null
+  if (event.recurring_series_id == null || event.recurring_series_id === "") return null
+  const id = Number(event.recurring_series_id)
+  if (!Number.isFinite(id) || id <= 0) return null
+  return id
+}
+
+/** GET /business/events/:id, then programIdFromOwnedEvent. Does not invent. */
+export async function resolveDoorAccessProgramIdFromEvent(
+  eventId: number,
+): Promise<number | null> {
+  if (!Number.isFinite(eventId) || eventId <= 0) return null
+  try {
+    const api = await client()
+    const event = await api.get<{
+      access_kind?: string | null
+      recurring_series_id?: number | string | null
+    }>(`/business/events/${eventId}`)
+    return programIdFromOwnedEvent(event ?? {})
+  } catch {
+    return null
+  }
+}
+
 /** F9 card chip on a named-event row. */
 export const EVENT_TYPE_LABEL = "EVENT"
 

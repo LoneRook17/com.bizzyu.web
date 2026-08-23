@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/business/api-client"
 import { EVENT_TABS } from "@/lib/business/constants"
 import type { EventListItem, BusinessProfile, RecurringSeriesListItem } from "@/lib/business/types"
 import {
+  doorAccessGroupsFromEvents,
   EVENT_TYPE_FILTERS,
   groupEventRows,
   parseEventTypeFilter,
@@ -29,6 +30,7 @@ import {
 import { EventCard } from "@/components/business/v2/events/EventCard"
 import { SeriesGroupRow } from "@/components/business/v2/events/SeriesGroupRow"
 import { Pagination } from "@/components/business/v2/events/Pagination"
+import { AccessEventGroupRow } from "@/components/business/v2/door-access/AccessEventGroupRow"
 import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
 import {
   fetchDoorAccessProgramsSafe,
@@ -182,7 +184,16 @@ export default function V2EventsPage() {
       : tab === "upcoming" ? activePrograms : []
 
   const rows = showsEvents(effectiveType) ? groupEventRows(events, series) : []
-  const isEmpty = rows.length === 0 && visiblePrograms.length === 0
+  // Keep Weekly Cover visible when GET /business/door-access failed ([]):
+  // stamped nights still arrive on GET /business/events. Deduped against
+  // AccessProgramRow so a working programs list is not shown twice. Events-
+  // only segment stays green named events; door_access nights are excluded
+  // from groupEventRows.
+  const visibleProgramIds = new Set(visiblePrograms.map((p) => p.id))
+  const eventAccessGroups = showsAccess(effectiveType)
+    ? doorAccessGroupsFromEvents(events).filter((g) => !visibleProgramIds.has(g.programId))
+    : []
+  const isEmpty = rows.length === 0 && visiblePrograms.length === 0 && eventAccessGroups.length === 0
 
   const handleTabChange = (newTab: string) => {
     setTab(newTab)
@@ -289,6 +300,9 @@ export default function V2EventsPage() {
         <div className="flex flex-col gap-3">
           {visiblePrograms.map((program) => (
             <AccessProgramRow key={`program-${program.id}`} program={program} />
+          ))}
+          {eventAccessGroups.map((group) => (
+            <AccessEventGroupRow key={`access-event-${group.programId}`} group={group} />
           ))}
           {rows.map((row) =>
             row.kind === "series"

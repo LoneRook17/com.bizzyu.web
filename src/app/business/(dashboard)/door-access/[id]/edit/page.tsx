@@ -2,11 +2,14 @@
 
 import { use, useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Lock, Zap } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   fetchDoorAccessSeries,
+  programEditHref,
+  resolveDoorAccessProgramIdFromEvent,
   WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
@@ -27,6 +30,7 @@ import { DoorAccessWizard } from "@/components/business/v2/door-access/DoorAcces
 export default function EditDoorAccessProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const programId = Number(id)
+  const router = useRouter()
   const { user } = useAuth()
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
@@ -41,6 +45,7 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
     async function load() {
       setLoading(true)
       setError(null)
+      let redirected = false
       try {
         const [series] = await Promise.all([
           fetchDoorAccessSeries(programId),
@@ -53,16 +58,22 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
         ])
         if (!cancelled) setProgram(series.program)
       } catch {
+        const resolved = await resolveDoorAccessProgramIdFromEvent(programId)
+        if (!cancelled && resolved != null && resolved !== programId) {
+          redirected = true
+          router.replace(programEditHref(resolved))
+          return
+        }
         if (!cancelled) setError("Could not load this program.")
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled && !redirected) setLoading(false)
       }
     }
     load()
     return () => {
       cancelled = true
     }
-  }, [programId])
+  }, [programId, router])
 
   if (loading) {
     return (

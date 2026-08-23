@@ -20,6 +20,7 @@ import {
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
   fetchDoorAccessProgramsSafe,
+  isDoorAccessKind,
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
@@ -179,7 +180,9 @@ export default function V2HomePage() {
 
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
-  const nextEvent = showEventsSection ? events[0] : undefined
+  const nextEvent = showEventsSection
+    ? events.find((event) => !isDoorAccessKind(event.access_kind))
+    : undefined
   if (nextEvent) {
     attention.push({
       icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",

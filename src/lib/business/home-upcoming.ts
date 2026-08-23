@@ -12,10 +12,10 @@
 //
 // Pure, so `npm test` can pin the interleave without a browser.
 
-// Type-only imports: erased at build, so this module stays runtime-free and
-// `node --test` can load it without dragging in the API client.
+// isDoorAccessKind is a pure helper in door-access.ts (api-client stays behind
+// a lazy import), so `node --test` can load this module without a browser.
 import type { EventListItem } from "./types"
-import type { DoorAccessProgramSummary } from "./door-access"
+import { isDoorAccessKind, type DoorAccessProgramSummary } from "./door-access.ts"
 
 export type UpcomingEntry =
   | { kind: "event"; key: string; sortKey: string; event: EventListItem }
@@ -46,12 +46,14 @@ export function homeUpcoming(
   programs: DoorAccessProgramSummary[],
   limit = 4,
 ): UpcomingEntry[] {
-  const entries: UpcomingEntry[] = events.map((event) => ({
-    kind: "event",
-    key: `event-${event.event_id}`,
-    sortKey: event.start_date_time ?? "",
-    event,
-  }))
+  const entries: UpcomingEntry[] = events
+    .filter((event) => !isDoorAccessKind(event.access_kind))
+    .map((event) => ({
+      kind: "event",
+      key: `event-${event.event_id}`,
+      sortKey: event.start_date_time ?? "",
+      event,
+    }))
 
   for (const program of programs) {
     const next = nextAccessNight(program)
