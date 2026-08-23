@@ -11,7 +11,7 @@ import { apiClient } from "@/lib/business/api-client"
 import { EVENT_TABS } from "@/lib/business/constants"
 import type { EventListItem, BusinessProfile, RecurringSeriesListItem } from "@/lib/business/types"
 import {
-  doorAccessGroupsFromEvents,
+  eventAccessGroupsForPrograms,
   EVENT_TYPE_FILTERS,
   groupEventRows,
   parseEventTypeFilter,
@@ -184,14 +184,11 @@ export default function V2EventsPage() {
       : tab === "upcoming" ? activePrograms : []
 
   const rows = showsEvents(effectiveType) ? groupEventRows(events, series) : []
-  // Keep Weekly Cover visible when GET /business/door-access failed ([]):
-  // stamped nights still arrive on GET /business/events. Deduped against
-  // AccessProgramRow so a working programs list is not shown twice. Events-
-  // only segment stays green named events; door_access nights are excluded
-  // from groupEventRows.
-  const visibleProgramIds = new Set(visiblePrograms.map((p) => p.id))
+  // AccessProgramRow uses GET /business/door-access ids. Fallback rows from
+  // stamped nights only appear when that list is empty; if a listed program
+  // covers the same nights, do not href an unlisted series id (23 404s).
   const eventAccessGroups = showsAccess(effectiveType)
-    ? doorAccessGroupsFromEvents(events).filter((g) => !visibleProgramIds.has(g.programId))
+    ? eventAccessGroupsForPrograms(events, programs)
     : []
   const isEmpty = rows.length === 0 && visiblePrograms.length === 0 && eventAccessGroups.length === 0
 

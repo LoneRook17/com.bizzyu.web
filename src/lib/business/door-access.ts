@@ -104,6 +104,20 @@ export const NIGHTS_HELPER_VIEW = "Tap a night to see what it sells."
 /** Header control on the series page. Opens the dedicated template editor. */
 export const EDIT_PROGRAM_LABEL = "Edit program"
 
+/** Path segment is empty, undefined, NaN, or <= 0. Not a 404. */
+export const MISSING_PROGRAM_ID_TITLE = "Missing program id"
+export const MISSING_PROGRAM_ID_DESCRIPTION = "This URL has no program id."
+
+/** A /business/door-access/:id segment. Empty / undefined / NaN / <= 0 is missing. */
+export function parseProgramPathId(raw: string | null | undefined): number | null {
+  if (raw == null) return null
+  const trimmed = String(raw).trim()
+  if (trimmed === "" || trimmed === "undefined" || trimmed === "null") return null
+  const n = Number(trimmed)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n
+}
+
 /** Default strip: the next N upcoming nights, not a 4-week ledger. */
 export const DEFAULT_NIGHT_PREVIEW_COUNT = 4
 
@@ -1077,8 +1091,8 @@ export function inheritIfMatchesScan(
     valid_until_day_offset: number
   },
   template: {
-    valid_from_time: string | null | undefined
-    valid_until_time: string | null | undefined
+    valid_from_time?: string | null
+    valid_until_time?: string | null
     valid_from_day_offset?: number
     valid_until_day_offset?: number
   } | undefined

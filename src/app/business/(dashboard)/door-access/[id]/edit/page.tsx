@@ -8,6 +8,9 @@ import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   fetchDoorAccessSeries,
+  MISSING_PROGRAM_ID_DESCRIPTION,
+  MISSING_PROGRAM_ID_TITLE,
+  parseProgramPathId,
   programEditHref,
   resolveDoorAccessProgramIdFromEvent,
   WEEKLY_ACCESS_SECTION_LABEL,
@@ -29,12 +32,12 @@ import { DoorAccessWizard } from "@/components/business/v2/door-access/DoorAcces
  */
 export default function EditDoorAccessProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const programId = Number(id)
+  const programId = parseProgramPathId(id)
   const router = useRouter()
   const { user } = useAuth()
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(programId != null)
   const [error, setError] = useState<string | null>(null)
 
   // Same gate as create (owner/manager). Staff can view the series, not edit it.
@@ -43,6 +46,11 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
   useEffect(() => {
     let cancelled = false
     async function load() {
+      if (programId == null) {
+        setLoading(false)
+        setError(null)
+        return
+      }
       setLoading(true)
       setError(null)
       let redirected = false
@@ -92,6 +100,21 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
         icon={Lock}
         title="You can't edit here"
         description={`Only owners and managers can change a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program.`}
+      />
+    )
+  }
+
+  if (programId == null) {
+    return (
+      <EmptyState
+        icon={Zap}
+        title={MISSING_PROGRAM_ID_TITLE}
+        description={MISSING_PROGRAM_ID_DESCRIPTION}
+        action={
+          <Button asChild variant="secondary">
+            <Link href="/business/door-access">{`Back to ${WEEKLY_ACCESS_SECTION_LABEL}`}</Link>
+          </Button>
+        }
       />
     )
   }
