@@ -1,4 +1,4 @@
-import { readAccessKind, resolveProgramImageUrl } from "./business/door-access.ts"
+import { looksLikeWeeklyCoverName, readAccessKind, resolveProgramImageUrl } from "./business/door-access.ts"
 
 // Public /venue/:id board data.
 //
@@ -95,7 +95,10 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
   const name = typeof row.name === "string" ? row.name : ""
   if (!eventId || !name) return null
 
-  const accessKind = readAccessKind(row.access_kind)
+  let accessKind = readAccessKind(row.access_kind)
+  if (accessKind !== "door_access" && looksLikeWeeklyCoverName(name)) {
+    accessKind = "door_access"
+  }
 
   const price = firstUsdAmount(
     row.min_ticket_price,
@@ -132,6 +135,7 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
 /** Door-access nights stay listable even when core stamped them draft. */
 export function shouldListOnVenuePage(event: VenueEvent): boolean {
   if (event.access_kind === "door_access") return true
+  if (looksLikeWeeklyCoverName(event.name)) return true
   if (!event.status) return true
   return LIVE_ONE_OFF_STATUSES.has(event.status.toLowerCase())
 }

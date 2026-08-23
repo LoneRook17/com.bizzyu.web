@@ -8,11 +8,14 @@ import { join } from "node:path"
 import {
   checkinRedeemPath,
   checkinRedeemStatusLabel,
+  EVENT_CHECKIN_ACCENT,
   guestCameraCheckinEnabled,
+  guestCheckinAccent,
   guestCheckinFooterCopy,
   guestTicketIsRedeemable,
   isWeeklyCoverCheckinTicket,
 } from "./checkin-guest.ts"
+import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP } from "./business/door-access.ts"
 
 const SRC = join(process.cwd(), "src")
 
@@ -22,6 +25,29 @@ test("Weekly Cover / door_access / camera_tap tickets are camera check-in ticket
   assert.equal(isWeeklyCoverCheckinTicket({ redemption_mode: "camera_tap" }), true)
   assert.equal(isWeeklyCoverCheckinTicket({ access_kind: "event" }), false)
   assert.equal(isWeeklyCoverCheckinTicket({ redemption_mode: "native_scan" }), false)
+  assert.equal(
+    isWeeklyCoverCheckinTicket({
+      access_kind: "event",
+      event_name: "The Dungeon Weekly Cover (Escrow Test)",
+    }),
+    true,
+    "mis-tagged WC nights still check in as Weekly Cover",
+  )
+})
+
+test("Weekly Cover check-in chrome is pink, named events stay green", () => {
+  assert.deepEqual(guestCheckinAccent({ access_kind: "door_access" }), {
+    accent: ACCESS_ACCENT,
+    accentDeep: ACCESS_ACCENT_DEEP,
+  })
+  assert.deepEqual(
+    guestCheckinAccent({ event_name: "The Dungeon Weekly Cover (Escrow Test)" }),
+    { accent: ACCESS_ACCENT, accentDeep: ACCESS_ACCENT_DEEP },
+  )
+  assert.equal(guestCheckinAccent({ access_kind: "event" }).accent, EVENT_CHECKIN_ACCENT)
+  const client = readFileSync(join(SRC, "app/checkin/[uuid]/CheckinClient.tsx"), "utf8")
+  assert.ok(client.includes("guestCheckinAccent"), "guest ticket page uses the WC pink accent")
+  assert.ok(client.includes("Check In"), "Check In control stays on the WC ticket page")
 })
 
 test("anyone with a camera can check in a WC ticket (no staff privilege)", () => {
