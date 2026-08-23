@@ -15,8 +15,10 @@ import {
  * Fallback Weekly Cover row from GET /business/events nights.
  *
  * AccessProgramRow is preferred when GET /business/door-access returned the
- * program. This row exists so a stamped night still opens
- * /business/door-access/{recurring_series_id} when that list is empty.
+ * program. This row exists so a stamped night still opens a rematched
+ * listed program id, or /business/door-access/{recurring_series_id} when
+ * that list is empty. Never hrefs an unlisted series id when the list has
+ * programs that do not cover these nights.
  */
 export function AccessEventGroupRow({ group }: { group: DoorAccessEventGroup }) {
   const first = group.events[0]

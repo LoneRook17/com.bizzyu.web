@@ -184,9 +184,10 @@ export default function V2EventsPage() {
       : tab === "upcoming" ? activePrograms : []
 
   const rows = showsEvents(effectiveType) ? groupEventRows(events, series) : []
-  // AccessProgramRow uses GET /business/door-access ids. Fallback rows from
-  // stamped nights only appear when that list is empty; if a listed program
-  // covers the same nights, do not href an unlisted series id (23 404s).
+  // AccessProgramRow uses GET /business/door-access ids. EventCard /
+  // SeriesGroupRow rematch against that list so a leaked cover night never
+  // hrefs /door-access/23 unless 23 is listed (or the list is empty).
+  // Fallback rows from stamped nights only appear when that list is empty.
   const eventAccessGroups = showsAccess(effectiveType)
     ? eventAccessGroupsForPrograms(events, programs)
     : []
@@ -303,8 +304,8 @@ export default function V2EventsPage() {
           ))}
           {rows.map((row) =>
             row.kind === "series"
-              ? <SeriesGroupRow key={row.key} row={row} />
-              : <EventCard key={row.key} event={row.event} />
+              ? <SeriesGroupRow key={row.key} row={row} programs={programs} />
+              : <EventCard key={row.key} event={row.event} programs={programs} />
           )}
         </div>
       )}
