@@ -58,6 +58,7 @@ import {
   nightTierTicketType,
   applyOverrideTicketForm,
   applyRecurringNightTier,
+  buildNightSavePayload,
   parseRecurringNightTier,
   toggleNightTierDisabled,
   toggleNightTierSoldOut,
@@ -80,6 +81,8 @@ import {
   programEditHref,
   parseProgramPathId,
   programIdFromOwnedEvent,
+  PROGRAM_KIND_DOOR_ACCESS,
+  withDoorAccessProgramKind,
   MISSING_PROGRAM_ID_DESCRIPTION,
   MISSING_PROGRAM_ID_TITLE,
   readAccessKind,
@@ -393,7 +396,8 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   const editor = readFileSync(editorPath, "utf8")
 
   assert.ok(src.includes("NightTicketsEditor"), "night page hosts the ticket editor")
-  assert.ok(src.includes("buildNightOverridePayload"), "Save night commits hours and ticket price/qty")
+  assert.ok(src.includes("buildNightSavePayload"), "Save night commits hours and ticket price/qty on the restamp path")
+  assert.ok(src.includes("saveNightOverride"), "Save night still PUTs /business/door-access/:id/nights/:date")
   assert.ok(src.includes("nightSaveFeedback"), "Save night must surface restamp as not-live")
   assert.ok(!src.includes("buildNightHoursPayload"), "do not drop ticket price from Save night")
   assert.ok(!src.includes("nightHasEventTickets"), "do not route stamped nights onto event ticket PUTs")
@@ -1196,7 +1200,7 @@ test("Weekly Access has a dedicated program editor, same fields as create", () =
   assert.ok(editSrc.includes("owner") && editSrc.includes("manager"), "edit is owners/managers only")
   assert.ok(!editSrc.includes("\u2014"), "edit page still has an em dash")
   assert.ok(wizardSrc.includes('mode === "edit"') || wizardSrc.includes("isEdit"), "wizard has an edit mode")
-  assert.ok(editSrc.includes("recoverDoorAccessProgramId"), "edit rematches an unlisted series or night id")
+  assert.ok(editSrc.includes("loadDoorAccessSeriesForPath"), "edit recovers a night id or retries the series")
   assert.ok(wizardSrc.includes("updateDoorAccessProgram"), "edit saves via PUT /business/door-access/:id")
   assert.ok(wizardSrc.includes("Save program"), "edit CTA is Save program")
   assert.ok(wizardSrc.includes("Edit program"), "edit heading matches the series-page control")
@@ -1268,6 +1272,36 @@ test("readAccessKind aliases weekly_cover to door_access", () => {
   assert.equal(readAccessKind("draft"), null)
 })
 
+test("create writes stay program_kind=door_access and Save night PUTs publish/restamp", () => {
+  assert.equal(PROGRAM_KIND_DOOR_ACCESS, "door_access")
+  assert.deepEqual(withDoorAccessProgramKind({ name: "Cover $5" }), {
+    name: "Cover $5",
+    program_kind: "door_access",
+  })
+  const payload = buildNightSavePayload(draftFromNight(night(), program()))
+  assert.equal(payload.publish, true)
+  assert.equal(payload.is_closed, false)
+  assert.ok(payload.tiers?.length)
+
+  const wizard = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(wizard.includes("withDoorAccessProgramKind"), "create/edit must send program_kind=door_access")
+  assert.ok(wizard.includes("updateDoorAccessProgram"), "publish create restamps via PUT")
+  assert.ok(!wizard.includes("program_kind: \"event\""))
+
+  const nightPage = readFileSync(
+    fileURLToPath(
+      new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url),
+    ),
+    "utf8",
+  )
+  assert.ok(nightPage.includes("buildNightSavePayload"))
+  assert.ok(nightPage.includes("saveNightOverride"))
+  assert.ok(nightPage.includes("loadDoorAccessNightForPath"))
+})
+
 test("programIdFromOwnedEvent uses recurring_series_id, never event_id", () => {
   assert.equal(
     programIdFromOwnedEvent({ access_kind: "door_access", recurring_series_id: 9 }),
@@ -1315,8 +1349,8 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
   assert.ok(eventsPage.includes("programs={programs}"), "EventCard/SeriesGroupRow rematch against the listed programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
-  assert.ok(eventCard.includes("eventListHref(event, programs)"), "EventCard rematches hrefs against GET /business/door-access")
-  assert.ok(programPage.includes("recoverDoorAccessProgramId"), "program page recovers a night id or rematches an unlisted series")
+  assert.ok(eventCard.includes("eventListHref(event, programs)"), "EventCard hrefs WC nights via eventListHref")
+  assert.ok(programPage.includes("loadDoorAccessSeriesForPath"), "program page recovers a night id or retries the series")
   assert.ok(!programPage.includes("resolveDoorAccessProgramIdFromEvent"), "do not GET events/:id for a listed series id")
   assert.ok(programPage.includes("parseProgramPathId"), "missing/NaN id is not a 404")
   assert.ok(programPage.includes("MISSING_PROGRAM_ID_TITLE"))
@@ -1343,6 +1377,7 @@ test("parseProgramPathId treats empty, undefined, NaN, and <=0 as missing", () =
 })
 
 test("D-F11.1: a program links to its SERIES, and a night hangs off that", () => {
+  assert.equal(programHref(23), "/business/door-access/23")
   assert.equal(programHref(77), "/business/door-access/77")
   assert.equal(programEditHref(77), "/business/door-access/77/edit")
   assert.equal(nightHref(77, "2026-08-28"), "/business/door-access/77/nights/2026-08-28")

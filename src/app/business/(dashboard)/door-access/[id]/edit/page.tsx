@@ -7,12 +7,11 @@ import { Lock, Zap } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import {
-  fetchDoorAccessSeries,
+  loadDoorAccessSeriesForPath,
   MISSING_PROGRAM_ID_DESCRIPTION,
   MISSING_PROGRAM_ID_TITLE,
   parseProgramPathId,
   programEditHref,
-  recoverDoorAccessProgramId,
   WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
@@ -55,8 +54,8 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
       setError(null)
       let redirected = false
       try {
-        const [series] = await Promise.all([
-          fetchDoorAccessSeries(programId),
+        const [loaded] = await Promise.all([
+          loadDoorAccessSeriesForPath(programId),
           apiClient
             .get<BusinessProfile>("/business/profile")
             .then((p) => {
@@ -64,14 +63,17 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
             })
             .catch(() => {}),
         ])
-        if (!cancelled) setProgram(series.program)
-      } catch {
-        const resolved = await recoverDoorAccessProgramId(programId)
-        if (!cancelled && resolved != null && resolved !== programId) {
+        if (loaded.redirectTo != null) {
           redirected = true
-          router.replace(programEditHref(resolved))
+          router.replace(programEditHref(loaded.redirectTo))
           return
         }
+        if (!loaded.ok || !loaded.series) {
+          if (!cancelled) setError("Could not load this program.")
+          return
+        }
+        if (!cancelled) setProgram(loaded.series.program)
+      } catch {
         if (!cancelled) setError("Could not load this program.")
       } finally {
         if (!cancelled && !redirected) setLoading(false)
