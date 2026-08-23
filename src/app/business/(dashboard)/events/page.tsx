@@ -184,10 +184,10 @@ export default function V2EventsPage() {
       : tab === "upcoming" ? activePrograms : []
 
   const rows = showsEvents(effectiveType) ? groupEventRows(events, series) : []
-  // AccessProgramRow uses GET /business/door-access ids. EventCard /
-  // SeriesGroupRow rematch against that list so a leaked cover night never
-  // hrefs /door-access/23 unless 23 is listed (or the list is empty).
-  // Fallback rows from stamped nights only appear when that list is empty.
+  // AccessProgramRow uses GET /business/door-access ids. Stamped WC nights
+  // still group by recurring_series_id when that list omits the series
+  // (program_kind=event). EventCard / SeriesGroupRow open the series id,
+  // never /door-access/{event_id}.
   const eventAccessGroups = showsAccess(effectiveType)
     ? eventAccessGroupsForPrograms(events, programs)
     : []

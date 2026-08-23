@@ -48,6 +48,14 @@ export function isDoorAccessKind(raw: unknown): boolean {
   return readAccessKind(raw) === "door_access"
 }
 
+/** Wire program_kind for create/edit. Display copy stays Weekly Cover. */
+export const PROGRAM_KIND_DOOR_ACCESS = "door_access" as const
+
+/** New Weekly Cover writes stay program_kind=door_access. */
+export function withDoorAccessProgramKind<T extends Record<string, unknown>>(payload: T): T {
+  return { ...payload, program_kind: PROGRAM_KIND_DOOR_ACCESS }
+}
+
 /**
  * A stamped Weekly Cover night's program id is `recurring_series_id`, never
  * `event_id`. GET /business/door-access/:id only accepts a series id with
@@ -86,8 +94,12 @@ type RecoverEventRow = {
   name?: string
   venue_name?: string
   start_date_time?: string
+  end_date_time?: string
+  status?: string | null
+  flyer_image_url?: string
   access_kind?: string | null
   recurring_series_id?: number | string | null
+  ticket_sales_count?: number
 }
 
 function recoverEventNight(event: RecoverEventRow) {
@@ -102,27 +114,60 @@ function recoverEventNight(event: RecoverEventRow) {
 }
 
 /**
- * After GET /business/door-access/:id 404s, find a listed program to open, or
- * null for "Program not found".
+ * After GET /business/door-access/:id 404s, find the series id to retry or
+ * redirect to, or null for "Program not found".
  *
  * GET /business/events/:id runs only when :id is not already on GET
- * /business/door-access. Series 23 is not an event: calling events/23 is
- * what logged Boom "Event not found". A listed id that 404s is left as a
- * true miss (services program_kind). A WC night redirects to its rematched
- * series. An unlisted series rematches to a listed program when nights
- * prove the match. Does not guess "the only program".
+ * /business/door-access and is not a series from Events-list grouping.
+ * Series 23 is not an event: calling events/23 logged Boom "Event not found".
+ * A listed id, or a WC series from recurring_series_id grouping, is surfaced
+ * so the page retries GET /business/door-access/:seriesId. A WC night
+ * redirects to its recurring_series_id. Does not guess "the only program".
+ * List fetch failure is not treated as [].
  */
 export async function recoverDoorAccessProgramId(pathId: number): Promise<number | null> {
   if (!Number.isFinite(pathId) || pathId <= 0) return null
 
   let programs: DoorAccessProgramSummary[] = []
+  let programsLoaded = false
   try {
     programs = await fetchDoorAccessPrograms()
+    programsLoaded = true
   } catch {
     programs = []
   }
 
-  if (programs.some((program) => program.id === pathId)) return null
+  const listed = programsLoaded && programs.some((program) => program.id === pathId)
+  const { recoverProgramIdFromLookups, doorAccessGroupsFromEvents } = await import("./events-list.ts")
+
+  let eventRows: RecoverEventRow[] = []
+  try {
+    const api = await client()
+    const upcoming = await api.get<{ events?: RecoverEventRow[] }>(
+      "/business/events?tab=upcoming&page=1&limit=50",
+    )
+    eventRows = upcoming.events ?? []
+    if (!eventRows.some((event) => programIdFromOwnedEvent(event) === pathId)) {
+      const past = await api.get<{ events?: RecoverEventRow[] }>(
+        "/business/events?tab=past&page=1&limit=50",
+      )
+      eventRows = [...eventRows, ...(past.events ?? [])]
+    }
+  } catch {
+    eventRows = []
+  }
+
+  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight))
+  const eventGroup = groups.find((group) => group.programId === pathId) ?? null
+
+  if (listed || eventGroup) {
+    return recoverProgramIdFromLookups({
+      pathId,
+      programs,
+      eventSeriesId: null,
+      eventGroup,
+    })
+  }
 
   let eventSeriesId: number | null = null
   let recoveredEvent: RecoverEventRow | null = null
@@ -131,11 +176,19 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
     const event = await api.get<RecoverEventRow>(`/business/events/${pathId}`)
     recoveredEvent = event ?? null
     eventSeriesId = programIdFromOwnedEvent(event ?? {})
+    if (eventSeriesId == null && recoveredEvent?.recurring_series_id != null) {
+      const seriesId = Number(recoveredEvent.recurring_series_id)
+      if (
+        Number.isFinite(seriesId) &&
+        seriesId > 0 &&
+        isDoorAccessKind(recoveredEvent.access_kind)
+      ) {
+        eventSeriesId = seriesId
+      }
+    }
   } catch {
     eventSeriesId = null
   }
-
-  const { recoverProgramIdFromLookups, doorAccessGroupsFromEvents } = await import("./events-list.ts")
 
   if (eventSeriesId != null && eventSeriesId !== pathId) {
     return recoverProgramIdFromLookups({
@@ -152,30 +205,166 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
     })
   }
 
-  let eventRows: RecoverEventRow[] = recoveredEvent ? [recoveredEvent] : []
+  return recoverProgramIdFromLookups({
+    pathId,
+    programs,
+    eventSeriesId: null,
+    eventGroup,
+  })
+}
+
+/**
+ * When GET /business/door-access/:id 404s after recover confirmed the series,
+ * assemble the host's program from owned WC nights + recurring-series. Does
+ * not invent: no WC nights with this recurring_series_id means null.
+ */
+export async function hydrateDoorAccessSeriesFromOwned(
+  seriesId: number,
+): Promise<DoorAccessSeries | null> {
+  if (!Number.isFinite(seriesId) || seriesId <= 0) return null
+
+  let eventRows: RecoverEventRow[] = []
   try {
     const api = await client()
     const upcoming = await api.get<{ events?: RecoverEventRow[] }>(
       "/business/events?tab=upcoming&page=1&limit=50",
     )
-    eventRows = [...eventRows, ...(upcoming.events ?? [])]
-    if (!eventRows.some((event) => programIdFromOwnedEvent(event) === pathId)) {
-      const past = await api.get<{ events?: RecoverEventRow[] }>(
-        "/business/events?tab=past&page=1&limit=50",
-      )
-      eventRows = [...eventRows, ...(past.events ?? [])]
-    }
+    eventRows = upcoming.events ?? []
+    const past = await api.get<{ events?: RecoverEventRow[] }>(
+      "/business/events?tab=past&page=1&limit=50",
+    )
+    eventRows = [...eventRows, ...(past.events ?? [])]
   } catch {
-    // Keep recoveredEvent only.
+    return null
   }
 
-  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight))
-  return recoverProgramIdFromLookups({
-    pathId,
-    programs,
-    eventSeriesId: null,
-    eventGroup: groups.find((group) => group.programId === pathId) ?? null,
+  const nights = eventRows.filter((event) => programIdFromOwnedEvent(event) === seriesId)
+  if (nights.length === 0) return null
+
+  let series: Record<string, unknown> = {}
+  try {
+    const api = await client()
+    const data = await api.get<{ series?: Record<string, unknown> }>(
+      `/business/recurring-series/${seriesId}`,
+    )
+    if (data.series && typeof data.series === "object") series = data.series
+  } catch {
+    series = {}
+  }
+
+  const first = nights[0]
+  const nextDate = nights
+    .map((event) => String(event.start_date_time ?? "").slice(0, 10))
+    .filter((date) => date.length === 10)
+    .sort()[0]
+  const program = normalizeProgram({
+    id: seriesId,
+    name: series.name ?? first.name,
+    venue_name: series.venue_name ?? first.venue_name,
+    venue_id: series.venue_id,
+    venue_address: series.venue_address,
+    days_of_week: series.days_of_week,
+    date_range_start: series.date_range_start,
+    date_range_end: series.date_range_end,
+    start_time: series.start_time,
+    end_time: series.end_time,
+    flyer_image_url: series.flyer_image_url ?? first.flyer_image_url,
+    photo_url: series.photo_url,
+    is_active: series.is_active ?? true,
+    is_21_plus: series.is_21_plus,
+    description: series.description,
+    template_tickets: series.template_tickets,
+    type: series.type,
+    timezone: series.timezone,
+    promotion_enabled: series.promotion_enabled,
+    promotion_commission_type: series.promotion_commission_type,
+    promotion_commission_value: series.promotion_commission_value,
+    lowstock_alerts_enabled: series.lowstock_alerts_enabled,
+    lowstock_threshold_type: series.lowstock_threshold_type,
+    lowstock_threshold_value: series.lowstock_threshold_value,
+    lowstock_notify_business_team: series.lowstock_notify_business_team,
+    redemption_mode: "camera_tap",
+    upcoming_night_count: nights.length,
+    next_night_date: nextDate,
   })
+
+  return {
+    program,
+    nights: nights.map((event) =>
+      normalizeNight({
+        occurrence_date: String(event.start_date_time ?? "").slice(0, 10),
+        is_stamped: true,
+        is_scheduled: true,
+        event_id: event.event_id,
+        status: event.status ?? null,
+        start_date_time: event.start_date_time,
+        end_date_time: event.end_date_time,
+        passes_sold: event.ticket_sales_count,
+        start_time: series.start_time,
+        end_time: series.end_time,
+        tiers: Array.isArray(series.template_tickets) ? series.template_tickets : [],
+      }),
+    ),
+  }
+}
+
+export type DoorAccessSeriesLoad =
+  | { ok: true; series: DoorAccessSeries; redirectTo?: undefined }
+  | { ok: false; series?: undefined; redirectTo: number }
+  | { ok: false; series?: undefined; redirectTo?: undefined }
+
+/**
+ * GET /business/door-access/:id, then recover + retry, then hydrate from
+ * owned WC nights. A night event_id returns redirectTo the series.
+ */
+export async function loadDoorAccessSeriesForPath(
+  pathId: number,
+  lookaheadDays?: number,
+): Promise<DoorAccessSeriesLoad> {
+  if (!Number.isFinite(pathId) || pathId <= 0) return { ok: false }
+  try {
+    return { ok: true, series: await fetchDoorAccessSeries(pathId, lookaheadDays) }
+  } catch {
+    const resolved = await recoverDoorAccessProgramId(pathId)
+    if (resolved == null) return { ok: false }
+    if (resolved !== pathId) return { ok: false, redirectTo: resolved }
+    try {
+      return { ok: true, series: await fetchDoorAccessSeries(resolved, lookaheadDays) }
+    } catch {
+      const hydrated = await hydrateDoorAccessSeriesFromOwned(resolved)
+      return hydrated ? { ok: true, series: hydrated } : { ok: false }
+    }
+  }
+}
+
+export type DoorAccessNightLoad =
+  | { ok: true; program: DoorAccessProgram; night: DoorAccessNight; redirectTo?: undefined }
+  | { ok: false; redirectTo: number }
+  | { ok: false; redirectTo?: undefined }
+
+export async function loadDoorAccessNightForPath(
+  programId: number,
+  date: string,
+): Promise<DoorAccessNightLoad> {
+  if (!Number.isFinite(programId) || programId <= 0) return { ok: false }
+  try {
+    const data = await fetchDoorAccessNight(programId, date)
+    return { ok: true, program: data.program, night: data.night }
+  } catch {
+    const resolved = await recoverDoorAccessProgramId(programId)
+    if (resolved == null) return { ok: false }
+    if (resolved !== programId) return { ok: false, redirectTo: resolved }
+    try {
+      const data = await fetchDoorAccessNight(resolved, date)
+      return { ok: true, program: data.program, night: data.night }
+    } catch {
+      const hydrated = await hydrateDoorAccessSeriesFromOwned(resolved)
+      if (!hydrated) return { ok: false }
+      const night = hydrated.nights.find((row) => row.occurrence_date === date)
+      if (!night) return { ok: false }
+      return { ok: true, program: hydrated.program, night }
+    }
+  }
 }
 
 /** F9 card chip on a named-event row. */
@@ -411,6 +600,11 @@ export interface NightOverridePayload {
   start_time?: string | null
   end_time?: string | null
   is_closed?: boolean
+  /**
+   * Organizer Save night (not Save as draft). Services PUT restamps the night
+   * and can flip draft → published. Omit only on a times-only draft path.
+   */
+  publish?: boolean
   tiers?: Array<{
     tier_key: string
     price_usd?: number | null
@@ -1370,6 +1564,11 @@ export function buildNightOverridePayload(draft: NightDraft): NightOverridePaylo
       valid_until_day_offset: tier.inherit_scan_window ? null : tier.valid_until_day_offset,
     })),
   }
+}
+
+/** Save night: override fields plus the restamp/publish path, not times_only. */
+export function buildNightSavePayload(draft: NightDraft): NightOverridePayload {
+  return { ...buildNightOverridePayload(draft), publish: true }
 }
 
 /** Does this draft still say anything the template doesn't? Drives "Reset". */

@@ -170,7 +170,7 @@ test("Weekly Cover nights group by recurring_series_id for the access segment", 
   assert.equal(groups[0].name, "Weekly Cover")
 })
 
-test("listed door_access programs win over an unlisted recurring_series_id", () => {
+test("stamped nights keep recurring_series_id even when the programs list omits it", () => {
   const nights = [
     ev(621, "2026-08-24 21:00:00", 23, {
       name: "Weekly Cover",
@@ -191,7 +191,8 @@ test("listed door_access programs win over an unlisted recurring_series_id", () 
         date_range_end: null,
       },
     ]),
-    88,
+    23,
+    "stamped nights keep recurring_series_id; do not rematch to another listed id",
   )
   assert.equal(workingProgramIdForEventGroup(groups[0], []), 23)
   assert.equal(
@@ -205,7 +206,8 @@ test("listed door_access programs win over an unlisted recurring_series_id", () 
         date_range_end: null,
       },
     ]),
-    null,
+    23,
+    "list omit of series 23 still opens the series",
   )
   const fallback = eventAccessGroupsForPrograms(nights, [
     {
@@ -217,12 +219,26 @@ test("listed door_access programs win over an unlisted recurring_series_id", () 
       date_range_end: null,
     },
   ])
-  assert.deepEqual(fallback, [], "AccessProgramRow already owns the listed program")
+  assert.equal(fallback[0]?.programId, 23, "omitted series 23 still gets a Weekly Cover row")
   const emptyList = eventAccessGroupsForPrograms(nights, [])
   assert.equal(emptyList[0]?.programId, 23)
+  assert.deepEqual(
+    eventAccessGroupsForPrograms(nights, [
+      {
+        id: 23,
+        name: "Weekly Cover",
+        venue_name: "The Dungeon",
+        next_night_date: "2026-08-24",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    [],
+    "AccessProgramRow already owns the listed series",
+  )
 })
 
-test("eventListHref rematches to a listed program and never emits an unlisted 23", () => {
+test("eventListHref uses series 23 and never a night event_id", () => {
   const night = ev(621, "2026-08-24 21:00:00", 23, {
     name: "Weekly Cover",
     venue_name: "The Dungeon",
@@ -238,7 +254,7 @@ test("eventListHref rematches to a listed program and never emits an unlisted 23
       date_range_end: null,
     },
   ]
-  assert.equal(eventListHref(night, listed), "/business/door-access/88")
+  assert.equal(eventListHref(night, listed), "/business/door-access/23")
   assert.equal(eventListHref(night, [{ ...listed[0], id: 23 }]), "/business/door-access/23")
   assert.equal(eventListHref(night, []), "/business/door-access/23")
   assert.equal(
@@ -252,11 +268,12 @@ test("eventListHref rematches to a listed program and never emits an unlisted 23
         date_range_end: null,
       },
     ]),
-    "/business/events/621",
+    "/business/door-access/23",
+    "never deep-link a night event_id or drop an omitted series",
   )
 })
 
-test("recoverProgramIdFromLookups rematches unlisted series and skips listed 404s", () => {
+test("recoverProgramIdFromLookups surfaces series 23 and redirects night event_ids", () => {
   const dungeon = {
     id: 88,
     name: "Weekly Cover",
@@ -283,8 +300,8 @@ test("recoverProgramIdFromLookups rematches unlisted series and skips listed 404
       eventSeriesId: 23,
       eventGroup: group,
     }),
-    null,
-    "listed series that 404s is a services miss, not an event redirect",
+    23,
+    "listed series that 404s is retried as the series, not treated as an event",
   )
   assert.equal(
     recoverProgramIdFromLookups({
@@ -293,7 +310,8 @@ test("recoverProgramIdFromLookups rematches unlisted series and skips listed 404
       eventSeriesId: 23,
       eventGroup: { ...group, programId: 23 },
     }),
-    88,
+    23,
+    "night event_id redirects to recurring_series_id",
   )
   assert.equal(
     recoverProgramIdFromLookups({
@@ -311,7 +329,8 @@ test("recoverProgramIdFromLookups rematches unlisted series and skips listed 404
       eventSeriesId: null,
       eventGroup: group,
     }),
-    88,
+    23,
+    "Events-list grouping surfaces series 23 even when the programs list omits it",
   )
   assert.equal(
     recoverProgramIdFromLookups({
@@ -320,8 +339,8 @@ test("recoverProgramIdFromLookups rematches unlisted series and skips listed 404
       eventSeriesId: null,
       eventGroup: group,
     }),
-    null,
-    "empty list must not redirect an unlisted series to itself",
+    23,
+    "empty list + series 23 from nights still surfaces the series",
   )
   assert.equal(
     recoverProgramIdFromLookups({
@@ -332,6 +351,28 @@ test("recoverProgramIdFromLookups rematches unlisted series and skips listed 404
     }),
     null,
     "do not guess the only listed program",
+  )
+})
+
+test("Events list href for The Dungeon series 23 is the series, never a night event_id", () => {
+  const night = ev(621, "2026-08-24 21:00:00", 23, {
+    name: "The Dungeon Cover",
+    venue_name: "The Dungeon",
+    access_kind: "door_access",
+  })
+  assert.equal(eventListHref(night, []), "/business/door-access/23")
+  assert.equal(
+    recoverProgramIdFromLookups({
+      pathId: 621,
+      programs: [],
+      eventSeriesId: 23,
+      eventGroup: {
+        programId: 23,
+        name: "The Dungeon Cover",
+        events: [night],
+      },
+    }),
+    23,
   )
 })
 
@@ -358,7 +399,7 @@ test("a dated Weekly Cover row opens the program, never event_id as the path seg
         date_range_end: null,
       },
     ]),
-    "/business/door-access/88",
+    "/business/door-access/9",
   )
   assert.equal(seriesHref(leaked[0].seriesId), "/business/recurring/9")
 })

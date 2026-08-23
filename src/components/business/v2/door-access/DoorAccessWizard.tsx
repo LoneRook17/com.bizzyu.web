@@ -17,6 +17,7 @@ import {
   redemptionModeLabel,
   toTimeInput,
   updateDoorAccessProgram,
+  withDoorAccessProgramKind,
   usdPrice,
   type DoorAccessProgram,
   type RedemptionMode,
@@ -377,7 +378,7 @@ export function DoorAccessWizard({
       }
 
       if (isEdit && programId != null) {
-        const data = await updateDoorAccessProgram(programId, body)
+        const data = await updateDoorAccessProgram(programId, withDoorAccessProgramKind(body))
         if (data.restamp_error) {
           setGenerationNotice({ id: programId, message: data.restamp_error, kind: "updated" })
           return
@@ -388,10 +389,24 @@ export function DoorAccessWizard({
 
       const data = await apiClient.post<CreateResponse>(
         "/business/door-access",
-        applySaveAsDraftFlag(body, saveAsDraft),
+        applySaveAsDraftFlag(withDoorAccessProgramKind(body), saveAsDraft),
       )
       const id = Number(data.program?.id)
-      if (data.generation_error && !saveAsDraft) {
+      // Publish (not Save as draft) restamps so nights are not left draft.
+      let restamped = false
+      if (!saveAsDraft && Number.isFinite(id) && id > 0) {
+        try {
+          const restamp = await updateDoorAccessProgram(id, withDoorAccessProgramKind({}))
+          if (restamp.restamp_error) {
+            setGenerationNotice({ id, message: restamp.restamp_error, kind: "created" })
+            return
+          }
+          restamped = true
+        } catch {
+          // Create already committed; nightly restamp can still catch up.
+        }
+      }
+      if (data.generation_error && !saveAsDraft && !restamped) {
         setGenerationNotice({ id, message: data.generation_error, kind: "created" })
         return
       }

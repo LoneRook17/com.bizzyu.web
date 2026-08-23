@@ -12,7 +12,7 @@ import {
   DEFAULT_NIGHT_PREVIEW_COUNT,
   DEFAULT_SERIES_LOOKAHEAD_DAYS,
   easternToday,
-  fetchDoorAccessSeries,
+  loadDoorAccessSeriesForPath,
   fmtNightDate,
   fmtQuantity,
   fmtWindow,
@@ -26,7 +26,6 @@ import {
   programEditHref,
   programHref,
   parseProgramPathId,
-  recoverDoorAccessProgramId,
   MISSING_PROGRAM_ID_DESCRIPTION,
   MISSING_PROGRAM_ID_TITLE,
   PROGRAM_LINK_DESCRIPTION,
@@ -90,19 +89,19 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
     setError(null)
     let redirected = false
     try {
-      const data = await fetchDoorAccessSeries(programId, lookahead)
-      setProgram(data.program)
-      setNights(data.nights)
-    } catch {
-      // Recover a WC night event_id, or rematch an unlisted series id to a
-      // listed GET /business/door-access program. A listed id that 404s stays
-      // "Program not found". Do not invent, and do not GET events/:id.
-      const resolved = await recoverDoorAccessProgramId(programId)
-      if (resolved != null && resolved !== programId) {
+      const loaded = await loadDoorAccessSeriesForPath(programId, lookahead)
+      if (loaded.redirectTo != null) {
         redirected = true
-        router.replace(programHref(resolved))
+        router.replace(programHref(loaded.redirectTo))
         return
       }
+      if (!loaded.ok || !loaded.series) {
+        setError("Could not load this program.")
+        return
+      }
+      setProgram(loaded.series.program)
+      setNights(loaded.series.nights)
+    } catch {
       setError("Could not load this program.")
     } finally {
       if (!redirected) setLoading(false)
