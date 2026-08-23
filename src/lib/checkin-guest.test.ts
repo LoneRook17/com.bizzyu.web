@@ -9,11 +9,15 @@ import {
   checkinRedeemPath,
   checkinRedeemStatusLabel,
   EVENT_CHECKIN_ACCENT,
+  GUEST_CHECKIN_COVER_TYPE_LABEL,
+  GUEST_CHECKIN_EVENT_TYPE_LABEL,
   guestCameraCheckinEnabled,
   guestCheckinAccent,
   guestCheckinFooterCopy,
+  guestCheckinTypeLabel,
   guestTicketIsRedeemable,
   isWeeklyCoverCheckinTicket,
+  looksLikeNightCoverName,
 } from "./checkin-guest.ts"
 import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP } from "./business/door-access.ts"
 
@@ -22,6 +26,7 @@ const SRC = join(process.cwd(), "src")
 test("Weekly Cover / door_access / camera_tap tickets are camera check-in tickets", () => {
   assert.equal(isWeeklyCoverCheckinTicket({ access_kind: "door_access" }), true)
   assert.equal(isWeeklyCoverCheckinTicket({ access_kind: "weekly_cover" }), true)
+  assert.equal(isWeeklyCoverCheckinTicket({ access_kind: "night_cover" }), true)
   assert.equal(isWeeklyCoverCheckinTicket({ redemption_mode: "camera_tap" }), true)
   assert.equal(isWeeklyCoverCheckinTicket({ access_kind: "event" }), false)
   assert.equal(isWeeklyCoverCheckinTicket({ redemption_mode: "native_scan" }), false)
@@ -35,7 +40,25 @@ test("Weekly Cover / door_access / camera_tap tickets are camera check-in ticket
   )
 })
 
-test("Weekly Cover check-in chrome is pink, named events stay green", () => {
+test("Night Cover nights are Cover tickets even when the public API omits access_kind", () => {
+  assert.equal(looksLikeNightCoverName("Night Cover"), true)
+  assert.equal(looksLikeNightCoverName("Friday Night Cover"), true)
+  assert.equal(looksLikeNightCoverName("Cover"), false)
+  const live = { event_name: "Night Cover", ticket_name: "Cover" }
+  assert.equal(isWeeklyCoverCheckinTicket(live), true)
+  assert.deepEqual(guestCheckinAccent(live), {
+    accent: ACCESS_ACCENT,
+    accentDeep: ACCESS_ACCENT_DEEP,
+  })
+  assert.equal(guestCheckinTypeLabel(live), GUEST_CHECKIN_COVER_TYPE_LABEL)
+  assert.equal(
+    isWeeklyCoverCheckinTicket({ event_name: "Rumble", ticket_name: "Cover" }),
+    false,
+    "a generic Cover tier on a named event stays Entry",
+  )
+})
+
+test("Weekly Cover check-in chrome is pink Cover, named events stay green Entry", () => {
   assert.deepEqual(guestCheckinAccent({ access_kind: "door_access" }), {
     accent: ACCESS_ACCENT,
     accentDeep: ACCESS_ACCENT_DEEP,
@@ -45,8 +68,15 @@ test("Weekly Cover check-in chrome is pink, named events stay green", () => {
     { accent: ACCESS_ACCENT, accentDeep: ACCESS_ACCENT_DEEP },
   )
   assert.equal(guestCheckinAccent({ access_kind: "event" }).accent, EVENT_CHECKIN_ACCENT)
+  assert.equal(guestCheckinTypeLabel({ access_kind: "door_access" }), "Cover")
+  assert.equal(guestCheckinTypeLabel({ access_kind: "weekly_cover" }), "Cover")
+  assert.equal(guestCheckinTypeLabel({ event_name: "Night Cover" }), "Cover")
+  assert.equal(guestCheckinTypeLabel({ access_kind: "event" }), GUEST_CHECKIN_EVENT_TYPE_LABEL)
+  assert.equal(GUEST_CHECKIN_COVER_TYPE_LABEL, "Cover")
   const client = readFileSync(join(SRC, "app/checkin/[uuid]/CheckinClient.tsx"), "utf8")
   assert.ok(client.includes("guestCheckinAccent"), "guest ticket page uses the WC pink accent")
+  assert.ok(client.includes("guestCheckinTypeLabel"), "type chip is Cover vs Entry from the helper")
+  assert.ok(!client.includes("WEEKLY_ACCESS_TYPE_LABEL"), "type chip must say Cover, not WEEKLY COVER")
   assert.ok(client.includes("Check In"), "Check In control stays on the WC ticket page")
 })
 
@@ -76,8 +106,12 @@ test("footer copy names the working camera scan, never a staff-only dead end", (
   assert.match(weekly, /Weekly Cover/)
   assert.match(weekly, /phone camera/)
   assert.ok(!weekly.toLowerCase().includes("handled by staff"))
+  const night = guestCheckinFooterCopy({ event_name: "Night Cover", ticket_name: "Cover" })
+  assert.match(night, /phone camera/)
+  assert.ok(!night.toLowerCase().includes("handled by staff"))
   const named = guestCheckinFooterCopy({ access_kind: "event" })
   assert.match(named, /phone camera/)
+  assert.match(named, /Scan with any phone camera/)
   assert.ok(!named.toLowerCase().includes("handled by staff"))
   assert.ok(!named.includes("Bizzy scanner"))
 })

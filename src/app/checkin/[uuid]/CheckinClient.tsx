@@ -9,10 +9,9 @@ import {
   guestCameraCheckinEnabled,
   guestCheckinAccent,
   guestCheckinFooterCopy,
+  guestCheckinTypeLabel,
   guestTicketIsRedeemable,
-  isWeeklyCoverCheckinTicket,
 } from "@/lib/checkin-guest"
-import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
 
 const API_URL = getApiBaseUrl()
 
@@ -238,7 +237,6 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     !!ticket &&
     guestCameraCheckinEnabled(ticket) &&
     guestTicketIsRedeemable(ticket)
-  const weeklyCover = ticket ? isWeeklyCoverCheckinTicket(ticket) : false
   const accent = ticket ? guestCheckinAccent(ticket) : null
 
   return (
@@ -273,7 +271,7 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
                     color: accent?.accent ?? "#05EB54",
                   }}
                 >
-                  {weeklyCover ? WEEKLY_ACCESS_TYPE_LABEL : "Entry"}
+                  {guestCheckinTypeLabel(ticket)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
