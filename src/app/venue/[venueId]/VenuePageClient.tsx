@@ -529,17 +529,41 @@ export default function VenuePageClient({
         </div>
 
         {/* Happening today - a highlighted callout that pulls today's event(s)
-            and line skip(s) to the very top so they're impossible to miss. */}
-        {hasToday && (
+            and line skip(s) to the very top so they're impossible to miss.
+
+            WC2 — the FRAME follows what is actually on. The pills were already
+            split green/pink (§8), but the callout around them was hardcoded
+            green, so a venue whose only thing tonight is a Door Access night
+            got a green banner wrapped around a single pink pill. Mixed nights
+            keep the green frame: it is the section's chrome, not a claim about
+            one product. */}
+        {hasToday && (() => {
+          const todayTheme =
+            todayEvents.length === 0 ? DOOR_ACCESS_THEME : EVENT_THEME
+          return (
           <section className="vp-rise mt-10">
-            <div className="rounded-3xl border border-[#05EB54]/50 bg-gradient-to-br from-[#05EB54]/12 via-[#05EB54]/5 to-transparent p-5 sm:p-6">
+            <div
+              className="rounded-3xl border bg-gradient-to-br p-5 sm:p-6"
+              style={{
+                borderColor: `${todayTheme.accent}80`,
+                backgroundImage: `linear-gradient(to bottom right, ${todayTheme.accent}1F, ${todayTheme.accent}0D, transparent)`,
+              }}
+            >
               <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#05EB54] text-black">
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-black"
+                  style={{ backgroundColor: todayTheme.accent }}
+                >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </span>
-                <h2 className="text-lg font-extrabold tracking-tight text-[#05EB54]">Happening today</h2>
+                <h2
+                  className="text-lg font-extrabold tracking-tight"
+                  style={{ color: todayTheme.accent }}
+                >
+                  Happening today
+                </h2>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {todayEvents.map((e) => (
@@ -572,7 +596,8 @@ export default function VenuePageClient({
               </div>
             </div>
           </section>
-        )}
+          )
+        })()}
 
         {/* §8 — SECTION ONE: Events, green. Hidden when the venue has nothing on
             the calendar but does run Door Access (see showEventsSection), so a
