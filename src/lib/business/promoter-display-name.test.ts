@@ -1,6 +1,6 @@
 // Never-blank promoter Name on event analytics (Promoter Performance).
 // The live views bind Name through promoterDisplayName; this pins the
-// fallbacks so an empty legacy promoter_name cannot blank the cell.
+// fallbacks so a tracking slug / promo code cannot appear in the Name cell.
 //
 // Runnable with the Node built-in test runner: `npm test`.
 
@@ -28,18 +28,59 @@ test("display_name wins over promoter_name", () => {
   )
 })
 
-test("non-empty promoter_name is used when no display_name", () => {
+test("non-empty human promoter_name is used when no display_name", () => {
   assert.equal(promoterDisplayName({ promoter_name: "Sam Lee", code: "SAM10" }), "Sam Lee")
 })
 
-test("empty and whitespace promoter_name are missing", () => {
-  assert.equal(promoterDisplayName({ promoter_name: "", code: "JULES" }), "JULES")
-  assert.equal(promoterDisplayName({ promoter_name: "   ", code: "JULES" }), "JULES")
-  assert.equal(promoterDisplayName({ promoter_name: null, code: "JULES" }), "JULES")
+test("slug-shaped promoter_name plus lowercase full_name title-cases the person", () => {
+  assert.equal(
+    promoterDisplayName({
+      promoter_name: "reggieblack-promotertester",
+      code: "reggieblack-promotertester",
+      full_name: "reggie black",
+    }),
+    "Reggie Black",
+  )
 })
 
-test("the reported blank-name row with sales still shows a name", () => {
-  // Blank Name, Clicks 0, Sales 1, Commission $4.00: code is the visible label.
+test("empty promoter_name plus lowercase first/last title-cases the person", () => {
+  assert.equal(
+    promoterDisplayName({
+      promoter_name: "",
+      code: "reggieblack-promotertester",
+      first_name: "reggie",
+      last_name: "black",
+    }),
+    "Reggie Black",
+  )
+})
+
+test("slug-only row shows Promoter, never the tracking code", () => {
+  assert.equal(
+    promoterDisplayName({
+      promoter_name: "reggieblack-promotertester",
+      code: "reggieblack-promotertester",
+    }),
+    PROMOTER_NAME_FALLBACK,
+  )
+})
+
+test("empty and whitespace promoter_name are missing", () => {
+  assert.equal(
+    promoterDisplayName({ promoter_name: "", code: "JULES" }),
+    PROMOTER_NAME_FALLBACK,
+  )
+  assert.equal(
+    promoterDisplayName({ promoter_name: "   ", code: "JULES" }),
+    PROMOTER_NAME_FALLBACK,
+  )
+  assert.equal(
+    promoterDisplayName({ promoter_name: null, code: "JULES" }),
+    PROMOTER_NAME_FALLBACK,
+  )
+})
+
+test("the reported blank-name row with sales still shows a name, never the code", () => {
   assert.equal(
     promoterDisplayName({
       promoter_name: "",
@@ -48,7 +89,7 @@ test("the reported blank-name row with sales still shows a name", () => {
       last_name: "",
       email: "",
     }),
-    "MAYA4",
+    PROMOTER_NAME_FALLBACK,
   )
 })
 
@@ -71,16 +112,31 @@ test("email local-part is used when names are missing", () => {
   )
 })
 
-test("email without a local-part is skipped", () => {
+test("email local-part that is the tracking slug is skipped", () => {
   assert.equal(
-    promoterDisplayName({ promoter_name: "", email: "@campus.edu", code: "X" }),
-    "X",
+    promoterDisplayName({
+      promoter_name: "",
+      email: "reggieblack-promotertester@campus.edu",
+      code: "reggieblack-promotertester",
+    }),
+    PROMOTER_NAME_FALLBACK,
   )
 })
 
-test("last resort is Promoter, never an empty string", () => {
+test("email without a local-part is skipped", () => {
+  assert.equal(
+    promoterDisplayName({ promoter_name: "", email: "@campus.edu", code: "X" }),
+    PROMOTER_NAME_FALLBACK,
+  )
+})
+
+test("last resort is Promoter, never an empty string or a slug", () => {
   assert.equal(promoterDisplayName({ promoter_name: "" }), PROMOTER_NAME_FALLBACK)
   assert.equal(promoterDisplayName({}), PROMOTER_NAME_FALLBACK)
+  assert.equal(
+    promoterDisplayName({ promoter_name: "  ", code: "  " }),
+    PROMOTER_NAME_FALLBACK,
+  )
   assert.ok(promoterDisplayName({ promoter_name: "  ", code: "  " }).length > 0)
 })
 

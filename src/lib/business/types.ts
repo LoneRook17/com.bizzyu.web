@@ -390,8 +390,10 @@ export interface EventAnalytics {
   trackingLinks: {
     tracking_link_id: number
     // Legacy column. New rows persist "" on purpose; Name must fall back
-    // through other identity fields (see promoterDisplayName).
+    // through other identity fields (see promoterDisplayName). A slug
+    // copied from `code` is treated as missing — never shown as Name.
     promoter_name: string
+    // Tracking / promo code. Never bound as the Name cell label.
     code: string
     sales_count: number
     clicks: number
