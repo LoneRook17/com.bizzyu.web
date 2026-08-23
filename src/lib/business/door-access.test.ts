@@ -78,7 +78,10 @@ import {
   TIMES_ONLY_HAS_SALES,
   programHref,
   programEditHref,
+  parseProgramPathId,
   programIdFromOwnedEvent,
+  MISSING_PROGRAM_ID_DESCRIPTION,
+  MISSING_PROGRAM_ID_TITLE,
   readAccessKind,
   nightHref,
   resolveProgramImageUrl,
@@ -1152,7 +1155,7 @@ test("list and program page use the flyer/venue image helper", () => {
 })
 
 test("program page host copy has no em dashes", () => {
-  const copy = [PROGRAM_LINK_LABEL, PROGRAM_LINK_DESCRIPTION, NIGHTS_HELPER_EDIT, NIGHTS_HELPER_VIEW, EDIT_PROGRAM_LABEL]
+  const copy = [PROGRAM_LINK_LABEL, PROGRAM_LINK_DESCRIPTION, NIGHTS_HELPER_EDIT, NIGHTS_HELPER_VIEW, EDIT_PROGRAM_LABEL, MISSING_PROGRAM_ID_TITLE, MISSING_PROGRAM_ID_DESCRIPTION]
   assert.equal(PROGRAM_LINK_LABEL, "Program link")
   assert.equal(PROGRAM_LINK_DESCRIPTION, "Every upcoming night")
   assert.equal(NIGHTS_HELPER_EDIT, "Tap a night to change price, capacity, or hours for that date only.")
@@ -1302,13 +1305,32 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   )
   assert.ok(eventsPage.includes("fetchDoorAccessProgramsSafe"), "list still GETs /business/door-access")
   assert.ok(!eventsPage.includes("/weekly-cover"), "do not rename the API path")
-  assert.ok(eventsPage.includes("doorAccessGroupsFromEvents"), "empty programs list still shows stamped nights")
+  assert.ok(eventsPage.includes("eventAccessGroupsForPrograms"), "empty programs list still shows stamped nights")
   assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
   assert.ok(programPage.includes("resolveDoorAccessProgramIdFromEvent"), "program page recovers an event_id segment")
+  assert.ok(programPage.includes("parseProgramPathId"), "missing/NaN id is not a 404")
+  assert.ok(programPage.includes("MISSING_PROGRAM_ID_TITLE"))
   assert.ok(!programPage.includes("fetchDoorAccessProgramsSafe"), "program page must not swallow 404s as []")
   assert.ok(home.includes("programHref(soonestNight.program.id)"))
   assert.ok(home.includes("programHref(p.id)"))
+})
+
+test("parseProgramPathId treats empty, undefined, NaN, and <=0 as missing", () => {
+  assert.equal(parseProgramPathId("23"), 23)
+  assert.equal(parseProgramPathId(" 23 "), 23)
+  assert.equal(parseProgramPathId(""), null)
+  assert.equal(parseProgramPathId("undefined"), null)
+  assert.equal(parseProgramPathId("null"), null)
+  assert.equal(parseProgramPathId("NaN"), null)
+  assert.equal(parseProgramPathId("0"), null)
+  assert.equal(parseProgramPathId("-1"), null)
+  assert.equal(parseProgramPathId("abc"), null)
+  assert.equal(parseProgramPathId(undefined), null)
+  assert.equal(MISSING_PROGRAM_ID_TITLE, "Missing program id")
+  assert.equal(MISSING_PROGRAM_ID_DESCRIPTION, "This URL has no program id.")
+  assert.ok(!MISSING_PROGRAM_ID_TITLE.includes("not found"))
+  assert.ok(!MISSING_PROGRAM_ID_DESCRIPTION.includes("Could not load"))
 })
 
 test("D-F11.1: a program links to its SERIES, and a night hangs off that", () => {

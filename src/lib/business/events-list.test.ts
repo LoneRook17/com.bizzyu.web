@@ -4,7 +4,9 @@ import {
   EVENT_TYPE_FILTERS,
   MISSING_ROW_AGGREGATES,
   doorAccessGroupsFromEvents,
+  eventAccessGroupsForPrograms,
   eventListHref,
+  workingProgramIdForEventGroup,
   eventRowStats,
   fmtRowDate,
   groupEventRows,
@@ -165,6 +167,58 @@ test("Weekly Cover nights group by recurring_series_id for the access segment", 
   assert.equal(groups[0].programId, 9)
   assert.equal(groups[0].events.length, 2)
   assert.equal(groups[0].name, "Weekly Cover")
+})
+
+test("listed door_access programs win over an unlisted recurring_series_id", () => {
+  const nights = [
+    ev(621, "2026-08-24 21:00:00", 23, {
+      name: "Weekly Cover",
+      venue_name: "The Dungeon",
+      access_kind: "door_access",
+    }),
+  ]
+  const groups = doorAccessGroupsFromEvents(nights)
+  assert.equal(groups[0].programId, 23)
+  assert.equal(
+    workingProgramIdForEventGroup(groups[0], [
+      {
+        id: 88,
+        name: "Weekly Cover",
+        venue_name: "The Dungeon",
+        next_night_date: "2026-08-24",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    88,
+  )
+  assert.equal(workingProgramIdForEventGroup(groups[0], []), 23)
+  assert.equal(
+    workingProgramIdForEventGroup(groups[0], [
+      {
+        id: 88,
+        name: "Other Cover",
+        venue_name: "Another Bar",
+        next_night_date: "2026-09-01",
+        date_range_start: "2026-08-01",
+        date_range_end: null,
+      },
+    ]),
+    null,
+  )
+  const fallback = eventAccessGroupsForPrograms(nights, [
+    {
+      id: 88,
+      name: "Weekly Cover",
+      venue_name: "The Dungeon",
+      next_night_date: "2026-08-24",
+      date_range_start: "2026-08-01",
+      date_range_end: null,
+    },
+  ])
+  assert.deepEqual(fallback, [], "AccessProgramRow already owns the listed program")
+  const emptyList = eventAccessGroupsForPrograms(nights, [])
+  assert.equal(emptyList[0]?.programId, 23)
 })
 
 test("a dated Weekly Cover row opens the program, never event_id as the path segment", () => {
