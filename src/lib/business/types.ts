@@ -555,12 +555,27 @@ export interface EventTeamMember {
   created_at: string
 }
 
+/**
+ * A promo code is scoped by exactly one non-null column, narrowest first:
+ *
+ *   event_id            → one event (for a Door Access program, one night)
+ *   recurring_series_id → one program, every night of it
+ *   venue_id            → every event at the venue
+ *
+ * Checkout resolves all three with that precedence (narrowest wins).
+ */
 export interface PromoCode {
   promo_code_id: number
-  /** Event-scoped code. null for universal (venue) codes. */
+  /** Event-scoped code. null for series- and venue-scoped codes. */
   event_id: number | null
-  /** Venue-scoped (universal) code. null for event-scoped codes. */
+  /** Venue-scoped (universal) code. null for event- and series-scoped codes. */
   venue_id: number | null
+  /**
+   * Series-scoped code: every night of ONE Door Access program and nothing
+   * else at the venue. Written with venue_id null, so a series code never
+   * appears in a venue-wide list.
+   */
+  recurring_series_id?: number | null
   code: string
   discount_type: 'percentage' | 'flat'
   discount_value: number

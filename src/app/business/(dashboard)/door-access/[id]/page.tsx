@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CalendarDays, Copy, Loader2, Pencil, Zap } from "lucide-react"
+import { ArrowLeft, CalendarDays, Copy, Loader2, Pencil, Plus, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
@@ -50,6 +50,10 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import {
+  PromoCodesPanel,
+  PROGRAM_PROMO_COPY,
+} from "@/components/business/v2/promo/PromoCodesPanel"
 
 /**
  * The Weekly Access SERIES page (F11 / D-F11.1).
@@ -265,7 +269,63 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
       <ProgramTermsCard program={program} />
 
       <TemplateTiersCard program={program} />
+
+      <ProgramPromoCodes program={program} canManage={canEdit} />
     </>
+  )
+}
+
+/**
+ * Promo codes scoped to THIS program.
+ *
+ * The gap this fills: a per-night code already worked (a night is an events
+ * row) and a venue-wide code already covered every night (checkout resolves it
+ * live), but "this program only, not the venue's other events" had no
+ * representation at all. It does now, via `promo_codes.recurring_series_id`,
+ * and checkout resolves event, then series, then venue: narrowest first.
+ *
+ * The screen itself is the venue page's, verbatim: same PromoCodesPanel,
+ * different scope prop. Only the copy changes, and it changes because the reach
+ * genuinely differs (a host must be able to read the blast radius off the
+ * screen). The panel keys off `program.id`, the canonical series id from the
+ * payload, NOT the path id, which may be a night's event_id on a deep link.
+ */
+function ProgramPromoCodes({
+  program,
+  canManage,
+}: {
+  program: DoorAccessProgram
+  canManage: boolean
+}) {
+  const programName = program.name || WEEKLY_ACCESS_SECTION_LABEL
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Promo codes</h2>
+        <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
+          Work on every night of this program, and on nothing else at{" "}
+          {program.venue_name || "this venue"}. For a code that covers the venue’s whole
+          calendar, use Universal Promo Codes.
+        </p>
+      </div>
+
+      <PromoCodesPanel
+        basePath={`/business/door-access/${program.id}/promo-codes`}
+        copy={PROGRAM_PROMO_COPY(programName)}
+        canManage={canManage}
+        createButtonLabel="Create code"
+        headerAction={(openCreate) =>
+          canManage ? (
+            <div className="flex">
+              <Button size="sm" variant={ACCESS_BUTTON_VARIANT} onClick={openCreate}>
+                <Plus className="size-4" /> Create code
+              </Button>
+            </div>
+          ) : null
+        }
+      />
+    </div>
   )
 }
 
