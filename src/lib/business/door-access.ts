@@ -936,10 +936,26 @@ async function client() {
   return mod.apiClient
 }
 
+/**
+ * Query string for GET /business/door-access.
+ * A selected venue becomes `?venue_id=N`. All venues (null / missing / <= 0)
+ * omits the param so the host sees every owned series.
+ */
+export function doorAccessProgramsQuery(venueId?: number | null): string {
+  if (venueId == null) return ""
+  const id = Number(venueId)
+  if (!Number.isFinite(id) || id <= 0) return ""
+  return `?venue_id=${id}`
+}
+
 /** GET /business/door-access — the WEEKLY ACCESS rows on the combined list. */
-export async function fetchDoorAccessPrograms(): Promise<DoorAccessProgramSummary[]> {
+export async function fetchDoorAccessPrograms(
+  venueId?: number | null,
+): Promise<DoorAccessProgramSummary[]> {
   const api = await client()
-  const data = await api.get<{ programs?: unknown }>("/business/door-access")
+  const data = await api.get<{ programs?: unknown }>(
+    `/business/door-access${doorAccessProgramsQuery(venueId)}`,
+  )
   const rows = Array.isArray(data?.programs) ? data.programs : []
   return rows
     .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
@@ -954,9 +970,11 @@ export async function fetchDoorAccessPrograms(): Promise<DoorAccessProgramSummar
  * additive to a surface that worked before they existed. Failure is an empty
  * section, never an error wall.
  */
-export async function fetchDoorAccessProgramsSafe(): Promise<DoorAccessProgramSummary[]> {
+export async function fetchDoorAccessProgramsSafe(
+  venueId?: number | null,
+): Promise<DoorAccessProgramSummary[]> {
   try {
-    return await fetchDoorAccessPrograms()
+    return await fetchDoorAccessPrograms(venueId)
   } catch {
     return []
   }

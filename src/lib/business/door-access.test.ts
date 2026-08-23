@@ -86,6 +86,7 @@ import {
   looksLikeWeeklyCoverName,
   PROGRAM_KIND_DOOR_ACCESS,
   withDoorAccessProgramKind,
+  doorAccessProgramsQuery,
   MISSING_PROGRAM_ID_DESCRIPTION,
   MISSING_PROGRAM_ID_TITLE,
   readAccessKind,
@@ -1405,6 +1406,14 @@ test("programIdFromOwnedEvent uses recurring_series_id, never event_id", () => {
   )
 })
 
+test("GET /business/door-access query includes venue_id only for a selected venue", () => {
+  assert.equal(doorAccessProgramsQuery(990198), "?venue_id=990198")
+  assert.equal(doorAccessProgramsQuery(null), "", "All venues omits venue_id")
+  assert.equal(doorAccessProgramsQuery(undefined), "", "unknown selection omits venue_id")
+  assert.equal(doorAccessProgramsQuery(0), "")
+  assert.equal(doorAccessProgramsQuery(-1), "")
+})
+
 test("Events list keeps GET /business/door-access and routes dated nights to the program", () => {
   const eventsPage = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/events/page.tsx", import.meta.url)),
@@ -1423,6 +1432,13 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
     "utf8",
   )
   assert.ok(eventsPage.includes("fetchDoorAccessProgramsSafe"), "list still GETs /business/door-access")
+  assert.ok(
+    eventsPage.includes("fetchDoorAccessProgramsSafe(scopedVenueId)"),
+    "list passes the selected venue_id into GET /business/door-access",
+  )
+  assert.ok(eventsPage.includes("${venueParam}"), "events list fetch stays venue-scoped")
+  assert.ok(eventsPage.includes("weeklyCoverRowsForVenue"), "single-venue view hides other venues' Weekly Cover")
+  assert.ok(eventsPage.includes("eventAccessGroupsForVenue"), "stamped WC nights hide with the same venue scope")
   assert.ok(!eventsPage.includes("/weekly-cover"), "do not rename the API path")
   assert.ok(eventsPage.includes("eventAccessGroupsForPrograms"), "empty programs list still shows stamped nights")
   assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
@@ -1431,7 +1447,7 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
     "utf8",
   )
   assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
-  assert.ok(eventsPage.includes("programs={programs}"), "EventCard/SeriesGroupRow rematch against the listed programs")
+  assert.ok(eventsPage.includes("programs={venuePrograms}"), "EventCard/SeriesGroupRow rematch against the venue-scoped programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
   assert.ok(eventCard.includes("eventListHref(event, programs, wcSeriesIds)"), "EventCard hrefs WC nights via eventListHref")
   assert.ok(eventsPage.includes("weeklyCoverSeriesIds"), "list marks owned Weekly Cover series ids")

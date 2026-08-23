@@ -69,6 +69,7 @@ export type EventRow =
  */
 export type DoorAccessEventNight = {
   name: string
+  venue_id?: number | string | null
   venue_name?: string
   start_date_time?: string | null
   flyer_image_url?: string
@@ -248,6 +249,54 @@ function sameVenueName(a: string | undefined, b: string | undefined): boolean {
   const left = (a ?? "").trim().toLowerCase()
   const right = (b ?? "").trim().toLowerCase()
   return left.length > 0 && left === right
+}
+
+function numericVenueId(value: number | string | null | undefined): number | null {
+  if (value == null || value === "") return null
+  const id = Number(value)
+  if (!Number.isFinite(id) || id <= 0) return null
+  return id
+}
+
+/**
+ * Weekly Cover row visibility for the venue switcher.
+ *
+ * All venues (`selectedVenueId` null) keeps every owned series. A single
+ * venue hides another venue's series — Luke on The Devil Dungeon must not
+ * see The Dungeon's Weekly Cover. Prefer `venue_id`; fall back to name
+ * when a stamped night omitted the id.
+ */
+export function weeklyCoverVisibleForVenue(
+  row: { venue_id?: number | string | null; venue_name?: string },
+  selectedVenueId?: number | null,
+  selectedVenueName?: string | null,
+): boolean {
+  const selectedId = numericVenueId(selectedVenueId)
+  if (selectedId == null) return true
+  const rowId = numericVenueId(row.venue_id)
+  if (rowId != null) return rowId === selectedId
+  if (selectedVenueName && row.venue_name) return sameVenueName(row.venue_name, selectedVenueName)
+  return true
+}
+
+/** Hide other venues' Weekly Cover when a single venue is selected. */
+export function weeklyCoverRowsForVenue<T extends { venue_id?: number | string | null; venue_name?: string }>(
+  rows: readonly T[],
+  selectedVenueId?: number | null,
+  selectedVenueName?: string | null,
+): T[] {
+  return rows.filter((row) => weeklyCoverVisibleForVenue(row, selectedVenueId, selectedVenueName))
+}
+
+/** Access-group fallback rows, scoped the same way as listed programs. */
+export function eventAccessGroupsForVenue(
+  groups: readonly DoorAccessEventGroup[],
+  selectedVenueId?: number | null,
+  selectedVenueName?: string | null,
+): DoorAccessEventGroup[] {
+  return groups.filter((group) =>
+    weeklyCoverVisibleForVenue(group.events[0] ?? { name: group.name }, selectedVenueId, selectedVenueName),
+  )
 }
 
 function programSharesNights(
