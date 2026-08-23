@@ -155,6 +155,12 @@ export interface EventListItem {
   event_id: number
   name: string
   description: string
+  /**
+   * Present on `SELECT e.*` list rows. Optional so an older payload still
+   * renders; the Events page uses it to hide another venue's Weekly Cover
+   * when the switcher is on a single venue.
+   */
+  venue_id?: number | null
   venue_name: string
   venue_address: string
   start_date_time: string

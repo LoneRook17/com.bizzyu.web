@@ -8,6 +8,9 @@ import {
   eventListHref,
   recoverProgramIdFromLookups,
   weeklyCoverSeriesIds,
+  weeklyCoverVisibleForVenue,
+  weeklyCoverRowsForVenue,
+  eventAccessGroupsForVenue,
   isWeeklyCoverSeriesRef,
   workingProgramIdForEventGroup,
   eventRowStats,
@@ -74,6 +77,56 @@ function series(id: number, name: string, extra: Partial<RecurringSeriesListItem
     ...extra,
   }
 }
+
+test("Weekly Cover rows hide when another venue is selected; All venues keeps every series", () => {
+  const dungeon = {
+    id: 23,
+    name: "The Dungeon Weekly Cover (Mon Wed Fri From $5)",
+    venue_id: 990198,
+    venue_name: "The Dungeon",
+  }
+  const devilDungeonId = 990155
+  assert.equal(
+    weeklyCoverVisibleForVenue(dungeon, devilDungeonId, "The Devil Dungeon (Escrow Test)"),
+    false,
+    "Luke on The Devil Dungeon must not see The Dungeon Weekly Cover",
+  )
+  assert.equal(weeklyCoverVisibleForVenue(dungeon, 990198, "The Dungeon"), true)
+  assert.equal(weeklyCoverVisibleForVenue(dungeon, null), true, "All venues shows every owned series")
+  assert.equal(weeklyCoverVisibleForVenue(dungeon, undefined), true)
+
+  const listed = weeklyCoverRowsForVenue([dungeon], devilDungeonId, "The Devil Dungeon (Escrow Test)")
+  assert.deepEqual(listed, [])
+  assert.equal(weeklyCoverRowsForVenue([dungeon], null).length, 1)
+
+  const groups = eventAccessGroupsForVenue(
+    [
+      {
+        programId: 23,
+        name: dungeon.name,
+        events: [{ name: dungeon.name, venue_id: 990198, venue_name: "The Dungeon" }],
+      },
+    ],
+    devilDungeonId,
+    "The Devil Dungeon (Escrow Test)",
+  )
+  assert.equal(groups.length, 0)
+  assert.equal(
+    eventAccessGroupsForVenue(
+      [
+        {
+          programId: 23,
+          name: dungeon.name,
+          events: [{ name: dungeon.name, venue_name: "The Dungeon" }],
+        },
+      ],
+      devilDungeonId,
+      "The Devil Dungeon (Escrow Test)",
+    ).length,
+    0,
+    "stamped nights without venue_id still hide by venue name",
+  )
+})
 
 test("access filter uses the shared Weekly Cover label (renamed from Weekly Access)", () => {
   const access = EVENT_TYPE_FILTERS.find((t) => t.value === "access")
