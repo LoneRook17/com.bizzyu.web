@@ -3,10 +3,13 @@ import assert from "node:assert/strict"
 import {
   EVENT_TYPE_FILTERS,
   MISSING_ROW_AGGREGATES,
+  doorAccessGroupsFromEvents,
+  eventListHref,
   eventRowStats,
   fmtRowDate,
   groupEventRows,
   relativeDayLabel,
+  seriesRowHref,
   seriesRowNumbers,
   parseEventTypeFilter,
   seriesHref,
@@ -21,7 +24,7 @@ function ev(
   event_id: number,
   start: string,
   seriesId: number | null = null,
-  extra: Partial<EventListItem> = {},
+  extra: Partial<EventListItem> & { access_kind?: string | null } = {},
 ): EventListItem {
   return {
     event_id,
@@ -135,6 +138,48 @@ test("a series TEMPLATE row is left alone — it has no nights to hide", () => {
   // What the "Recurring" status tab lists: is_recurring true, no series FK.
   const rows = groupEventRows([ev(1, "2026-09-01 21:00:00", null, { is_recurring: true })])
   assert.equal(rows[0].kind, "single")
+})
+
+test("door_access nights are excluded from green Event/Series rows", () => {
+  const rows = groupEventRows(
+    [
+      ev(1, "2026-09-01 21:00:00"),
+      ev(24, "2026-09-02 21:00:00", 9, { name: "Weekly Cover", access_kind: "door_access" }),
+      ev(26, "2026-09-09 21:00:00", 9, { name: "Weekly Cover", access_kind: "weekly_cover" }),
+      ev(3, "2026-09-03 21:00:00", 7),
+    ],
+    [series(7, "Trivia Tuesdays"), series(9, "Weekly Cover")],
+  )
+  assert.deepEqual(rows.map((r) => r.key), ["event-1", "series-7"])
+  assert.ok(rows.every((r) => r.kind !== "single" || r.event.access_kind !== "door_access"))
+})
+
+test("Weekly Cover nights group by recurring_series_id for the access segment", () => {
+  const groups = doorAccessGroupsFromEvents([
+    ev(24, "2026-09-02 21:00:00", 9, { name: "Weekly Cover", access_kind: "door_access" }),
+    ev(1, "2026-09-01 21:00:00"),
+    ev(26, "2026-09-09 21:00:00", 9, { name: "Weekly Cover", access_kind: "weekly_cover" }),
+    ev(40, "2026-09-04 21:00:00", null, { name: "Orphan cover", access_kind: "door_access" }),
+  ])
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].programId, 9)
+  assert.equal(groups[0].events.length, 2)
+  assert.equal(groups[0].name, "Weekly Cover")
+})
+
+test("a dated Weekly Cover row opens the program, never event_id as the path segment", () => {
+  const night = ev(24, "2026-09-02 21:00:00", 9, { access_kind: "door_access" })
+  assert.equal(eventListHref(night), "/business/door-access/9")
+  assert.equal(eventListHref(ev(1, "2026-09-01 21:00:00")), "/business/events/1")
+  const leaked = groupEventRows(
+    [ev(24, "2026-09-02 21:00:00", 9, { access_kind: "event" })],
+    [series(9, "Weekly Cover")],
+  )
+  assert.equal(leaked[0].kind, "series")
+  if (leaked[0].kind !== "series") return
+  leaked[0].events[0].access_kind = "door_access"
+  assert.equal(seriesRowHref(leaked[0]), "/business/door-access/9")
+  assert.equal(seriesHref(leaked[0].seriesId), "/business/recurring/9")
 })
 
 test("series stats sum the nights actually on the page", () => {

@@ -78,6 +78,8 @@ import {
   TIMES_ONLY_HAS_SALES,
   programHref,
   programEditHref,
+  programIdFromOwnedEvent,
+  readAccessKind,
   nightHref,
   resolveProgramImageUrl,
   toTimeInput,
@@ -1218,6 +1220,7 @@ test("product copy no longer says Weekly Access (renamed to Weekly Cover)", () =
   const files = [
     "../../components/business/v2/host/HostListCard.tsx",
     "../../components/business/v2/door-access/AccessProgramRow.tsx",
+    "../../components/business/v2/door-access/AccessEventGroupRow.tsx",
     "../../app/venue/[venueId]/VenuePageClient.tsx",
     "../../app/venue/[venueId]/page.tsx",
     "../../app/business/(dashboard)/page.tsx",
@@ -1252,6 +1255,60 @@ test("product copy no longer says Weekly Access (renamed to Weekly Cover)", () =
     "utf8",
   )
   assert.ok(card.includes("WEEKLY_ACCESS_TYPE_LABEL"), "list chip must use the shared type label")
+})
+
+test("readAccessKind aliases weekly_cover to door_access", () => {
+  assert.equal(readAccessKind("door_access"), "door_access")
+  assert.equal(readAccessKind("weekly_cover"), "door_access")
+  assert.equal(readAccessKind("event"), "event")
+  assert.equal(readAccessKind("draft"), null)
+})
+
+test("programIdFromOwnedEvent uses recurring_series_id, never event_id", () => {
+  assert.equal(
+    programIdFromOwnedEvent({ access_kind: "door_access", recurring_series_id: 9 }),
+    9,
+  )
+  assert.equal(
+    programIdFromOwnedEvent({ access_kind: "weekly_cover", recurring_series_id: "9" }),
+    9,
+  )
+  assert.equal(
+    programIdFromOwnedEvent({ access_kind: "event", recurring_series_id: 9 }),
+    null,
+  )
+  assert.equal(
+    programIdFromOwnedEvent({ access_kind: "door_access", recurring_series_id: null }),
+    null,
+  )
+})
+
+test("Events list keeps GET /business/door-access and routes dated nights to the program", () => {
+  const eventsPage = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/events/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  const eventCard = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/events/EventCard.tsx", import.meta.url)),
+    "utf8",
+  )
+  const programPage = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  const home = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(eventsPage.includes("fetchDoorAccessProgramsSafe"), "list still GETs /business/door-access")
+  assert.ok(!eventsPage.includes("/weekly-cover"), "do not rename the API path")
+  assert.ok(eventsPage.includes("doorAccessGroupsFromEvents"), "empty programs list still shows stamped nights")
+  assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
+  assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
+  assert.ok(programPage.includes("resolveDoorAccessProgramIdFromEvent"), "program page recovers an event_id segment")
+  assert.ok(!programPage.includes("fetchDoorAccessProgramsSafe"), "program page must not swallow 404s as []")
+  assert.ok(home.includes("programHref(soonestNight.program.id)"))
+  assert.ok(home.includes("programHref(p.id)"))
 })
 
 test("D-F11.1: a program links to its SERIES, and a night hangs off that", () => {

@@ -95,6 +95,15 @@ test("the card's row budget is respected across both types", () => {
   assert.deepEqual(out.map((e) => e.key), ["event-1", "access-9", "access-10", "event-2"])
 })
 
+test("door_access nights are not green event rows on Home", () => {
+  const cover = ev(24, "2026-09-02 21:00:00")
+  cover.access_kind = "door_access"
+  cover.recurring_series_id = 9
+  const out = homeUpcoming([cover, ev(1, "2026-09-05 21:00:00")], [program(9, "2026-09-02")])
+  assert.deepEqual(out.map((e) => e.key), ["access-9", "event-1"])
+  assert.ok(out.every((e) => e.kind !== "event" || e.event.event_id !== 24))
+})
+
 test("no programs at all ⇒ byte-identical to the events-only list it replaced", () => {
   const events = [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-02 21:00:00")]
   const out = homeUpcoming(events, [])

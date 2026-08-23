@@ -62,6 +62,18 @@ test("eventMatchesVenue compares numeric ids, including string venue_id", () => 
   assert.equal(eventMatchesVenue({ venue_id: null }, "990198"), false)
 })
 
+test("toVenueEvent aliases weekly_cover to door_access like Flutter readAccessKind", () => {
+  const row = toVenueEvent({
+    event_id: 621,
+    name: "Weekly Cover",
+    access_kind: "weekly_cover",
+    status: "draft",
+  })
+  assert.ok(row)
+  assert.equal(row.access_kind, "door_access")
+  assert.equal(shouldListOnVenuePage(row), true)
+})
+
 test("toVenueEvent maps /ui/events lowest_price onto min_ticket_price", () => {
   const row = toVenueEvent({
     event_id: 621,

@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, CalendarDays, Loader2, Pencil, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -23,6 +24,8 @@ import {
   nightPreviewChip,
   nightPreviewPrice,
   programEditHref,
+  programHref,
+  resolveDoorAccessProgramIdFromEvent,
   PROGRAM_LINK_DESCRIPTION,
   PROGRAM_LINK_LABEL,
   EDIT_PROGRAM_LABEL,
@@ -60,6 +63,7 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const programId = Number(id)
+  const router = useRouter()
   const { user } = useAuth()
   const { venues } = useVenue()
 
@@ -75,16 +79,28 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    let redirected = false
     try {
       const data = await fetchDoorAccessSeries(programId, lookahead)
       setProgram(data.program)
       setNights(data.nights)
     } catch {
+      // Stamped nights and named series 404 here. If :id is an event, recover
+      // to the program. Do not invent a program when the event is not
+      // door_access or has no recurring_series_id. The Events list may degrade
+      // a failed programs GET to an empty section; this page must still show
+      // "Program not found" when the id is not a door-access series.
+      const resolved = await resolveDoorAccessProgramIdFromEvent(programId)
+      if (resolved != null && resolved !== programId) {
+        redirected = true
+        router.replace(programHref(resolved))
+        return
+      }
       setError("Could not load this program.")
     } finally {
-      setLoading(false)
+      if (!redirected) setLoading(false)
     }
-  }, [programId, lookahead])
+  }, [programId, lookahead, router])
 
   useEffect(() => {
     load()
