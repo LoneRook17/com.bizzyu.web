@@ -9,6 +9,7 @@ import {
   checkinRedeemPath,
   checkinRedeemStatusLabel,
   guestCameraCheckinEnabled,
+  guestCheckinFooterCopy,
   guestTicketIsRedeemable,
   isWeeklyCoverCheckinTicket,
 } from "./checkin-guest.ts"
@@ -44,6 +45,17 @@ test("a redeemed, refunded, or cancelled ticket is not tap-redeemable", () => {
   assert.equal(guestTicketIsRedeemable({ event_status: "Canceled" }), false)
 })
 
+test("footer copy names the working camera scan, never a staff-only dead end", () => {
+  const weekly = guestCheckinFooterCopy({ access_kind: "door_access" })
+  assert.match(weekly, /Weekly Cover/)
+  assert.match(weekly, /phone camera/)
+  assert.ok(!weekly.toLowerCase().includes("handled by staff"))
+  const named = guestCheckinFooterCopy({ access_kind: "event" })
+  assert.match(named, /phone camera/)
+  assert.ok(!named.toLowerCase().includes("handled by staff"))
+  assert.ok(!named.includes("Bizzy scanner"))
+})
+
 test("redeem path is the public checkin endpoint, not a staff scanner route", () => {
   assert.equal(checkinRedeemPath("abc-123"), "/checkin/abc-123/redeem")
   assert.ok(!checkinRedeemPath("abc-123").includes("/business/"))
@@ -65,6 +77,8 @@ test("the guest ticket page posts a public redeem and never asks for staff login
   assert.ok(client.includes("guestCameraCheckinEnabled"), "WC and event tickets share guest check-in")
   assert.ok(client.includes("guestTicketIsRedeemable"), "redeem button is gated on ticket state only")
   assert.ok(client.includes("Check In"), "guest must see a Check In control")
+  assert.ok(client.includes("guestCheckinFooterCopy"), "footer must follow the working scan, not a dead end")
+  assert.ok(!client.includes("handled by staff"), "must not dead-end on staff-only copy")
   assert.ok(!client.includes("Bizzy scanner"), "must not say check-in is staff/scanner only")
   assert.ok(!client.includes("Staff login"), "must not require staff login")
   assert.ok(!client.includes("Log in to Check In"), "must not require staff login")
