@@ -13,7 +13,12 @@
 // existing /business/recurring/:id page.
 
 import type { EventListItem, RecurringSeriesListItem } from "./types"
-import { isDoorAccessKind, programHref, programIdFromOwnedEvent } from "./door-access.ts"
+import {
+  isDoorAccessKind,
+  programHref,
+  programIdFromOwnedEvent,
+  type DoorAccessProgramSummary,
+} from "./door-access.ts"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 
 /** The segment's three positions. `all` is the default — one combined list. */
@@ -151,6 +156,83 @@ export function seriesRowHref(row: Extract<EventRow, { kind: "series" }>): strin
   const programId = row.events.map(programIdFromOwnedEvent).find((id) => id != null)
   if (programId != null) return programHref(programId)
   return seriesHref(row.seriesId)
+}
+
+function eventDateOnly(value: string | null | undefined): string | null {
+  if (!value) return null
+  const dateOnly = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim())
+  return dateOnly ? dateOnly[1] : null
+}
+
+function sameVenueName(a: string | undefined, b: string | undefined): boolean {
+  const left = (a ?? "").trim().toLowerCase()
+  const right = (b ?? "").trim().toLowerCase()
+  return left.length > 0 && left === right
+}
+
+function programSharesNights(
+  program: Pick<DoorAccessProgramSummary, "next_night_date" | "date_range_start" | "date_range_end" | "venue_name">,
+  group: DoorAccessEventGroup,
+): boolean {
+  const venue = group.events[0]?.venue_name
+  if (!sameVenueName(program.venue_name, venue)) return false
+  const dates = group.events
+    .map((event) => eventDateOnly(event.start_date_time))
+    .filter((d): d is string => d != null)
+  if (program.next_night_date && dates.includes(program.next_night_date)) return true
+  return dates.some((d) => {
+    if (program.date_range_start && d < program.date_range_start) return false
+    if (program.date_range_end && d > program.date_range_end) return false
+    return true
+  })
+}
+
+/**
+ * Prefer a GET /business/door-access program id when one covers these nights.
+ * recurring_series_id (e.g. 23) is only used when the list is empty. An
+ * unlisted series id is dropped rather than linked, because GET
+ * /business/door-access/:id 404s when program_kind is not door_access.
+ */
+export function workingProgramIdForEventGroup(
+  group: DoorAccessEventGroup,
+  programs: readonly Pick<
+    DoorAccessProgramSummary,
+    "id" | "name" | "venue_name" | "next_night_date" | "date_range_start" | "date_range_end"
+  >[],
+): number | null {
+  if (programs.some((program) => program.id === group.programId)) return group.programId
+  const sameName = programs.find(
+    (program) =>
+      program.name.trim().toLowerCase() === group.name.trim().toLowerCase() &&
+      sameVenueName(program.venue_name, group.events[0]?.venue_name),
+  )
+  if (sameName) return sameName.id
+  const sameNights = programs.find((program) => programSharesNights(program, group))
+  if (sameNights) return sameNights.id
+  if (programs.length === 0) return group.programId
+  return null
+}
+
+/** Fallback Weekly Cover rows, remapped to listed program ids when possible. */
+export function eventAccessGroupsForPrograms(
+  events: EventListItem[],
+  programs: readonly Pick<
+    DoorAccessProgramSummary,
+    "id" | "name" | "venue_name" | "next_night_date" | "date_range_start" | "date_range_end"
+  >[],
+): DoorAccessEventGroup[] {
+  const listedIds = new Set(programs.map((program) => program.id))
+  const seen = new Set<number>()
+  const rows: DoorAccessEventGroup[] = []
+  for (const group of doorAccessGroupsFromEvents(events)) {
+    const workingId = workingProgramIdForEventGroup(group, programs)
+    if (workingId == null) continue
+    if (listedIds.has(workingId)) continue
+    if (seen.has(workingId)) continue
+    seen.add(workingId)
+    rows.push({ ...group, programId: workingId })
+  }
+  return rows
 }
 
 /** Group stamped Weekly Cover nights by program id. Order is first-seen. */

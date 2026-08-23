@@ -25,7 +25,10 @@ import {
   nightPreviewPrice,
   programEditHref,
   programHref,
+  parseProgramPathId,
   resolveDoorAccessProgramIdFromEvent,
+  MISSING_PROGRAM_ID_DESCRIPTION,
+  MISSING_PROGRAM_ID_TITLE,
   PROGRAM_LINK_DESCRIPTION,
   PROGRAM_LINK_LABEL,
   EDIT_PROGRAM_LABEL,
@@ -62,14 +65,14 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
  */
 export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const programId = Number(id)
+  const programId = parseProgramPathId(id)
   const router = useRouter()
   const { user } = useAuth()
   const { venues } = useVenue()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [nights, setNights] = useState<DoorAccessNight[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(programId != null)
   const [error, setError] = useState<string | null>(null)
   const [lookahead, setLookahead] = useState(DEFAULT_SERIES_LOOKAHEAD_DAYS)
   const [showMoreNights, setShowMoreNights] = useState(false)
@@ -77,6 +80,11 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
 
   const load = useCallback(async () => {
+    if (programId == null) {
+      setLoading(false)
+      setError(null)
+      return
+    }
     setLoading(true)
     setError(null)
     let redirected = false
@@ -85,11 +93,9 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
       setProgram(data.program)
       setNights(data.nights)
     } catch {
-      // Stamped nights and named series 404 here. If :id is an event, recover
-      // to the program. Do not invent a program when the event is not
-      // door_access or has no recurring_series_id. The Events list may degrade
-      // a failed programs GET to an empty section; this page must still show
-      // "Program not found" when the id is not a door-access series.
+      // Recover only when :id is a stamped night event_id. A series id that
+      // 404s (program_kind not door_access) is a services fix, not a client
+      // invention. GET /business/events/23 fails because 23 is not an event.
       const resolved = await resolveDoorAccessProgramIdFromEvent(programId)
       if (resolved != null && resolved !== programId) {
         redirected = true
@@ -122,6 +128,19 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
         <Skeleton className="h-9 w-64 rounded-lg" />
         <Skeleton className="h-[220px] rounded-xl" />
         <Skeleton className="h-[320px] rounded-xl" />
+      </>
+    )
+  }
+
+  if (programId == null) {
+    return (
+      <>
+        <BackLink />
+        <EmptyState
+          icon={Zap}
+          title={MISSING_PROGRAM_ID_TITLE}
+          description={MISSING_PROGRAM_ID_DESCRIPTION}
+        />
       </>
     )
   }
