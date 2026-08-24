@@ -92,7 +92,7 @@ export function DoorAccessWizard({
   initialData?: DoorAccessProgram
   initialNights?: DoorAccessNight[]
   stripeOnboarded?: boolean
-  /** Kept so create/edit pages can still pass it. Flutter has no Save as draft. */
+  /** Kept so create/edit pages can still pass pending status. Unused: no draft CTA. */
   isPending?: boolean
 }) {
   const router = useRouter()

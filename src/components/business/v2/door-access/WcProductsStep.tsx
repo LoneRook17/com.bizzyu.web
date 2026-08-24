@@ -74,7 +74,7 @@ export function WcProductsStep({
                   <span className="text-[17px] font-semibold text-neutral-900 dark:text-neutral-100">
                     {copy.title}
                   </span>
-                  {featured && !selected && (
+                  {featured && (
                     <span
                       className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
                       style={{ backgroundColor: ACCESS_ACCENT, color: "#33052A" }}
