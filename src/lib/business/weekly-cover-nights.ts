@@ -61,6 +61,64 @@ export const WC_PRODUCT_COPY: Record<WcProducts, { title: string; blurb: string 
   both: { title: "Both", blurb: "Cover and Skip the Line, priced per night." },
 }
 
+/**
+ * Program name the app derives. The dashboard never asks for one on create —
+ * Flutter writes `{Venue} Cover` and `date_range_end: null`.
+ */
+export function derivedWeeklyCoverName(venueName: string | null | undefined): string {
+  const venue = (venueName ?? "").trim()
+  return venue === "" ? "Weekly Cover" : `${venue} Cover`
+}
+
+/** Flutter days-step title, specialized when they picked only one product. */
+export function daysQuestion(products: WcProducts | null): string {
+  if (products === "cover") return "What days do you have cover?"
+  if (products === "skip") return "What days do you have skip the line?"
+  return "What days do you have cover or skip the line?"
+}
+
+/**
+ * Unset night-row subtitle. Flutter shows the $0 placeholders so the host
+ * sees what they still owe, not a blank "set this up" line.
+ */
+export function nightUnsetSubtitle(products: WcProducts | null): string {
+  if (products === "skip") return "Set doors open & close / Skip $0"
+  if (products === "cover") return "Set doors open & close / Cover $0"
+  return "Set doors open & close / Cover $0 / Skip $0"
+}
+
+/**
+ * Flutter WC create numbers screens 1-9. We skip 1 (venue picker: the
+ * dashboard is already scoped) and the create-funnel choice lives on
+ * `/business/create`. The wizard is screens 2-9. A pink bar fills to
+ * `step / 9`.
+ *
+ *   2 Sell · 3 Days · 4 Nights list · 5 Prices editor · 6 Copy + continue
+ *   7 Calendar · 8 Door / promoter · 9 Review
+ */
+export function flutterWizardStep(opts: {
+  wizardIndex: number
+  editorOpen?: boolean
+  nightsSaved?: number
+}): number {
+  switch (opts.wizardIndex) {
+    case 0:
+      return 2
+    case 1:
+      return 3
+    case 2:
+      if (opts.editorOpen) return 5
+      if ((opts.nightsSaved ?? 0) > 0) return 6
+      return 4
+    case 3:
+      return 7
+    case 4:
+      return 8
+    default:
+      return 9
+  }
+}
+
 /** Host-facing label for the nights, by product. Drives the day cards. */
 export function nightLabelFor(products: WcProducts | null): string {
   if (products === "skip") return "Skip the Line"

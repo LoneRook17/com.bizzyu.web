@@ -76,10 +76,10 @@ export function WcProductsStep({
                   </span>
                   {featured && !selected && (
                     <span
-                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-access"
-                      style={{ backgroundColor: `${ACCESS_ACCENT}1f` }}
+                      className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                      style={{ backgroundColor: ACCESS_ACCENT, color: "#33052A" }}
                     >
-                      Most bars
+                      MOST BARS
                     </span>
                   )}
                 </span>
