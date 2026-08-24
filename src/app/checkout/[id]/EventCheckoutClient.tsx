@@ -989,32 +989,34 @@ export default function EventCheckoutClient({
                       <VenueSalesPausedNotice block={venueBlock} />
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={startCheckout}
-                      disabled={totalQty === 0 || feeLoading}
-                      className="mt-5 w-full rounded-xl bg-gradient-to-r from-[#05EB54] to-[#03b840] py-4 text-lg font-bold text-white transition hover:from-[#33f77c] hover:to-[#05EB54] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500"
-                    >
-                      <span className="inline-flex items-center justify-center gap-2">
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                        </svg>
-                        {ctaLabel}
-                      </span>
-                    </button>
-                    <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
-                      By purchasing, you agree that all sales are final. No refunds or exchanges.
-                      If the event is cancelled by the organizer, you will receive a refund of the ticket face value.
-                      You also agree to the{" "}
-                      <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
-                        Terms
-                      </a>{" "}
-                      and{" "}
-                      <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
-                        Privacy Policy
-                      </a>
-                      .
-                    </p>
+                    <>
+                      <button
+                        type="button"
+                        onClick={startCheckout}
+                        disabled={totalQty === 0 || feeLoading}
+                        className="mt-5 w-full rounded-xl bg-gradient-to-r from-[#05EB54] to-[#03b840] py-4 text-lg font-bold text-white transition hover:from-[#33f77c] hover:to-[#05EB54] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500"
+                      >
+                        <span className="inline-flex items-center justify-center gap-2">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                          {ctaLabel}
+                        </span>
+                      </button>
+                      <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
+                        By purchasing, you agree that all sales are final. No refunds or exchanges.
+                        If the event is cancelled by the organizer, you will receive a refund of the ticket face value.
+                        You also agree to the{" "}
+                        <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                          Terms
+                        </a>{" "}
+                        and{" "}
+                        <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                          Privacy Policy
+                        </a>
+                        .
+                      </p>
+                    </>
                   )}
                 </div>
               </div>
