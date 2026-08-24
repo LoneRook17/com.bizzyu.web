@@ -58,7 +58,7 @@ export interface CheckinFallbackContext {
 /** The one status that means "let them in". Never a refusal. */
 export const CHECKIN_SUCCESS_STATUS = "redeemed_now"
 
-/** Too-early scan. Exact door-screen title. Spelled Window, never Widnow. */
+/** Too-early scan. Exact door-screen title. */
 export const OUTSIDE_REDEMPTION_WINDOW_HEADLINE = "Outside of Redemption Window"
 
 function clean(value: string | null | undefined): string | null {

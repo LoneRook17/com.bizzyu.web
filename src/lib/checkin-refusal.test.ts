@@ -259,7 +259,8 @@ test("the check-in page renders guidance, not just a status word", () => {
     "night start from the ticket must reach the resolver as doors",
   )
   assert.ok(refusal.includes("Outside of Redemption Window"), "too-early title is Luke's copy")
-  assert.ok(!refusal.includes("Widnow"), "Window is spelled correctly")
+  assert.equal(OUTSIDE_REDEMPTION_WINDOW_HEADLINE, "Outside of Redemption Window")
+  assert.ok(!OUTSIDE_REDEMPTION_WINDOW_HEADLINE.includes("Widnow"), "Window is spelled correctly")
   assert.ok(!refusal.includes("\u2014") && !refusal.includes("\u2013"), "no em or en dashes in refusal copy")
   assert.ok(!client.includes("\u2014") && !client.includes("\u2013"), "no em or en dashes on the check-in page")
 })
