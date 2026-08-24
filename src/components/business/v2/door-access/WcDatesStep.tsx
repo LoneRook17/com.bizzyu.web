@@ -98,8 +98,8 @@ export function WcDatesStep({
     if (fromWeekday) return cloneNightDraft(fromWeekday)
     return seedNightDraft({
       products,
-      startTime: defaultStartTime,
-      endTime: defaultEndTime,
+      startTime: defaultStartTime || "",
+      endTime: defaultEndTime || "",
       is21Plus: programIs21Plus,
       inheritedFlyerUrl,
       venueName,
@@ -113,11 +113,10 @@ export function WcDatesStep({
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          Need different prices on specific days?
+          Need higher prices on specific days?
         </h2>
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
-          Game days, holidays, big weekends. Set them ahead of time so you never have to scramble.
-          Skip this and every night uses its weekly price.
+          Game days, holidays, big weekends. Skip for now and every night uses its weekly price.
         </p>
       </div>
 

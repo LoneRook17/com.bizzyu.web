@@ -35,7 +35,10 @@ import {
   collapseTiers,
   copyNightToDay,
   dateEditsToWire,
+  daysQuestion,
   defaultTierDescription,
+  derivedWeeklyCoverName,
+  flutterWizardStep,
   emptyTier,
   firstConfiguredNight,
   fmtGameDay,
@@ -43,6 +46,7 @@ import {
   isoWeekdayOfDate,
   looksClientInventedTierKey,
   nightPriceSummary,
+  nightUnsetSubtitle,
   nightOwnFlyer,
   nightToWire,
   paidPricesFromDraft,
@@ -612,4 +616,37 @@ test("a weekday whose every night is cancelled still hydrates, so it opens as it
 
 test("a weekday with nothing left returns null, so the caller falls back", () => {
   assert.equal(weekdayHydrationNight({ isoWeekday: 2, nights: [], today: "2026-08-24" }), null)
+})
+
+test("create derives {Venue} Cover and never asks for a typed name", () => {
+  assert.equal(derivedWeeklyCoverName("The Dungeon"), "The Dungeon Cover")
+  assert.equal(derivedWeeklyCoverName("  The Bar  "), "The Bar Cover")
+  assert.equal(derivedWeeklyCoverName(""), "Weekly Cover")
+  assert.equal(derivedWeeklyCoverName(null), "Weekly Cover")
+})
+
+test("days question and unset night subtitle follow the product pick", () => {
+  assert.equal(daysQuestion("both"), "What days do you have cover or skip the line?")
+  assert.equal(daysQuestion(null), "What days do you have cover or skip the line?")
+  assert.equal(daysQuestion("cover"), "What days do you have cover?")
+  assert.equal(nightUnsetSubtitle("both"), "Set doors open & close / Cover $0 / Skip $0")
+  assert.equal(nightUnsetSubtitle("cover"), "Set doors open & close / Cover $0")
+  assert.equal(nightUnsetSubtitle("skip"), "Set doors open & close / Skip $0")
+})
+
+test("Flutter wizard progress is screens 2-9, with the editor and copy as 5 and 6", () => {
+  assert.equal(flutterWizardStep({ wizardIndex: 0 }), 2)
+  assert.equal(flutterWizardStep({ wizardIndex: 1 }), 3)
+  assert.equal(flutterWizardStep({ wizardIndex: 2 }), 4)
+  assert.equal(flutterWizardStep({ wizardIndex: 2, editorOpen: true }), 5)
+  assert.equal(flutterWizardStep({ wizardIndex: 2, nightsSaved: 1 }), 6)
+  assert.equal(flutterWizardStep({ wizardIndex: 3 }), 7)
+  assert.equal(flutterWizardStep({ wizardIndex: 4 }), 8)
+  assert.equal(flutterWizardStep({ wizardIndex: 5 }), 9)
+})
+
+test("blank qty and max serialize as 0 (unlimited)", () => {
+  const wire = tierToWire(tier({ quantityInput: "", maxPerPersonInput: "" }))
+  assert.equal(wire.quantity, 0)
+  assert.equal(wire.max_per_person, 0)
 })

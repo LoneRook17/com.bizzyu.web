@@ -100,6 +100,7 @@ import {
   EVENT_TYPE_LABEL,
   ACCESS_ACCENT,
   ACCESS_ACCENT_DEEP,
+  ACCESS_INK,
   ACCESS_BUTTON_VARIANT,
   PROGRAM_LINK_LABEL,
   PROGRAM_LINK_DESCRIPTION,
@@ -1133,17 +1134,20 @@ test("no image at all stays empty so the date-block / icon tile can stand in", (
   )
 })
 
-test("create wizard previews the venue photo and still posts a null flyer", () => {
+test("create wizard posts a program flyer only from the first night, never a typed Details upload", () => {
   const wizardPath = fileURLToPath(
     new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url),
   )
+  const editorPath = fileURLToPath(
+    new URL("../../components/business/v2/door-access/NightEditorDialog.tsx", import.meta.url),
+  )
   const src = readFileSync(wizardPath, "utf8")
-  assert.ok(src.includes("flyer_image_url: flyerImageUrl || null"), "create still posts the uploaded flyer only")
-  assert.ok(src.includes("fallbackSrc={currentVenue?.photo_url ?? null}"), "empty upload must preview the venue photo")
-  assert.ok(src.includes("the venue photo stands in"), "create helper still promises the venue stand-in")
-  assert.ok(!/photo optional/i.test(src), "do not rewrite the helper to photo optional")
+  const editor = readFileSync(editorPath, "utf8")
+  assert.ok(src.includes("flyer_image_url: flyer || null"), "create posts the first night flyer or null")
+  assert.ok(!src.includes("ImageUpload"), "program-level flyer upload is gone from create")
   const caption = "Venue photo. Nights use this until you add a flyer."
-  assert.ok(src.includes(caption))
+  assert.ok(editor.includes(caption), "night editor still previews the venue photo")
+  assert.ok(editor.includes("fallbackSrc={draft.inheritedFlyerUrl || null}"))
   assert.ok(!caption.includes("\u2014") && !caption.includes("\u2013"))
 })
 
@@ -1208,7 +1212,7 @@ test("Weekly Access has a dedicated program editor, same fields as create", () =
   assert.ok(wizardSrc.includes("updateDoorAccessProgram"), "edit saves via PUT /business/door-access/:id")
   assert.ok(wizardSrc.includes("Save program"), "edit CTA is Save program")
   assert.ok(wizardSrc.includes("Edit program"), "edit heading matches the series-page control")
-  assert.ok(wizardSrc.includes("fallbackSrc={currentVenue?.photo_url ?? null}"), "edit still previews the venue photo")
+  assert.ok(wizardSrc.includes("inheritedFlyerUrl={currentVenue?.photo_url || \"\"}"), "edit still seeds the venue photo")
 })
 
 test("redemptionModeLabel names both modes in host vocabulary", () => {
@@ -1558,11 +1562,13 @@ test("isoWeekday reads a calendar date without a timezone round trip", () => {
 test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green", () => {
   assert.equal(ACCESS_ACCENT, "#FF3ED1")
   assert.equal(ACCESS_ACCENT_DEEP, "#D10EA3")
+  assert.equal(ACCESS_INK, "#33052A")
   assert.equal(ACCESS_BUTTON_VARIANT, "access")
 
   const theme = readFileSync(fileURLToPath(new URL("../../app/globals.css", import.meta.url)), "utf8")
   assert.ok(theme.includes("--color-access: #FF3ED1"), "theme token must match ACCESS_ACCENT")
   assert.ok(theme.includes("--color-access-deep: #D10EA3"), "theme token must match ACCESS_ACCENT_DEEP")
+  assert.ok(theme.includes("--color-access-ink: #33052A"), "theme token must match ACCESS_INK")
 
   const button = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/ui/button.tsx", import.meta.url)),
@@ -1570,6 +1576,7 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   )
   assert.ok(button.includes("access:"), "Button must expose the Weekly Cover variant")
   assert.ok(button.includes("from-access-deep to-access"), "access variant uses the shared tokens, not a one-off hex")
+  assert.ok(button.includes("text-[#33052A]"), "ink on pink fill is #33052A")
   assert.ok(button.includes("access-secondary"), "Save as draft / Reset stay in the pink family")
   assert.ok(button.includes("useWeeklyCoverAccent"), "primary remaps to access under Weekly Cover")
   assert.ok(button.includes('variant === "primary"') || button.includes('variant == null || variant === "primary"'))
@@ -1610,10 +1617,17 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
     fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
     "utf8",
   )
-  assert.ok(wizard.includes("ACCESS_ACCENT"), "create/edit wizard imports the pink accent")
-  assert.ok(wizard.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "wizard toggles use the shared pink class")
-  assert.ok(wizard.includes('variant="access-secondary"'), "Save as draft is the pink secondary")
+  assert.ok(wizard.includes("ACCESS_BUTTON_VARIANT") || wizard.includes("ACCESS_ACCENT"), "create/edit wizard uses the pink accent")
+  assert.ok(!wizard.includes("Save as draft"), "Flutter WC create has no Save as draft")
   assert.ok(!wizard.includes("#05EB54"), "wizard must not copy Bizzy green")
+
+  const editor = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/NightEditorDialog.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(editor.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "night editor toggles use the shared pink class")
+  assert.ok(editor.includes('variant="access-secondary"'), "Add another Cover stays in the pink family")
+  assert.ok(editor.includes("ACCESS_INK"), "ink on pink fill is #33052A")
 
   const night = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
@@ -1629,4 +1643,51 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   assert.ok(!eventForm.includes('variant="access"'), "event create/edit must stay green")
   assert.ok(!eventForm.includes("WeeklyCoverAccent"), "event form must not wrap the Weekly Cover accent")
   assert.ok(eventForm.includes("#05EB54") || eventForm.includes("<Button"), "event form still uses the green path")
+})
+
+test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker", () => {
+  const files = [
+    "../../components/business/v2/door-access/DoorAccessWizard.tsx",
+    "../../components/business/v2/door-access/WcDaysStep.tsx",
+    "../../components/business/v2/door-access/WcDoorStep.tsx",
+    "../../components/business/v2/door-access/WcReviewStep.tsx",
+    "../../components/business/v2/door-access/WcNightsStep.tsx",
+    "../../components/business/v2/door-access/WcProductsStep.tsx",
+    "../../components/business/v2/door-access/WcDatesStep.tsx",
+    "../../components/business/v2/door-access/NightEditorDialog.tsx",
+    "../../app/business/(dashboard)/create/page.tsx",
+  ]
+  for (const rel of files) {
+    const raw = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
+    const src = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+    assert.ok(!/Stock alerts/.test(src), `${rel} still has stock alerts on WC create`)
+    assert.ok(!/ScanWindow/.test(src), `${rel} still has a scan window on WC create`)
+    assert.ok(!/Save as draft/.test(src), `${rel} still has Save as draft`)
+    assert.ok(!/Choose a venue|Select a venue/.test(src), `${rel} still shows a venue picker`)
+    assert.ok(!/\bVIP\b/.test(src), `${rel} still mentions VIP`)
+    assert.ok(!/Program name/.test(src), `${rel} still asks for a program name`)
+    assert.ok(!/promo code/i.test(src), `${rel} still mentions promo codes`)
+    assert.ok(!/notify_followers_on_publish:\s*true/.test(src), `${rel} still blasts followers`)
+  }
+
+  const wizard = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(wizard.includes("weekday_edits"), "create still writes weekday_edits")
+  assert.ok(wizard.includes("date_edits"), "create still writes date_edits")
+  assert.ok(wizard.includes("template_tickets"), "create still writes template_tickets")
+  assert.ok(wizard.includes("derivedWeeklyCoverName"), "create derives {Venue} Cover")
+  assert.ok(wizard.includes("date_range_end: isEdit"), "create sends date_range_end null")
+  assert.ok(wizard.includes("WcProgressBar"), "pink progress bar on screens 2-9")
+  assert.ok(wizard.includes("Look it over") || wizard.includes("WcReviewStep"), "review is Look it over")
+  assert.ok(wizard.includes('isEdit && initialProducts ? STEP_DAYS : STEP_SELL'), "edit skips Sell when products exist")
+
+  const create = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/create/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(create.includes("Low Maintenance Option"))
+  assert.ok(create.includes("What are you setting up?"))
+  assert.ok(create.includes("ACCESS_INK"))
 })
