@@ -30,10 +30,11 @@ import { RecurringTierEditor, type RecurringTierRow } from "@/components/busines
 import { Button } from "@/components/business/v2/ui/button"
 
 /**
- * Night override drafts the same ticket fields as create-series Add ticket
- * tier (RecurringTierEditor): name, type, price, quantity per night,
- * description, scan window, max per person. Hide and sold out stay on the
- * ticket cards. Drag writes sort_order. Save night is the only persist.
+ * Night override drafts the create-series ticket fields (RecurringTierEditor)
+ * except name and description. Flutter keeps those derived (Cover / Skip the
+ * Line) and does not offer a rename. Price, quantity, scan window, and max
+ * per person still draft here. Hide and sold out stay on the ticket cards.
+ * Drag writes sort_order. Save night is the only persist.
  *
  * Do not PUT /business/events/:id/tickets.
  */
@@ -319,6 +320,7 @@ function NightOverrideTickets({
             }}
             allowAdd={false}
             allowRemove={false}
+            showIdentityFields={false}
           />
           {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
           <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{NIGHT_TICKET_DRAFT_HINT}</p>

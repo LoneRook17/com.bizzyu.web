@@ -38,6 +38,8 @@ import {
   daysQuestion,
   defaultTierDescription,
   derivedWeeklyCoverName,
+  weeklyCoverProgramDescription,
+  weeklyCoverProgramName,
   flutterWizardStep,
   emptyTier,
   firstConfiguredNight,
@@ -623,6 +625,28 @@ test("create derives {Venue} Cover and never asks for a typed name", () => {
   assert.equal(derivedWeeklyCoverName("  The Bar  "), "The Bar Cover")
   assert.equal(derivedWeeklyCoverName(""), "Weekly Cover")
   assert.equal(derivedWeeklyCoverName(null), "Weekly Cover")
+})
+
+test("create ignores a leftover typed name; edit keeps the saved name", () => {
+  assert.equal(
+    weeklyCoverProgramName({ isEdit: false, venueName: "The Dungeon", existingName: "Luke Custom Cover" }),
+    "The Dungeon Cover",
+  )
+  assert.equal(
+    weeklyCoverProgramName({ isEdit: false, venueName: "The Dungeon", existingName: "" }),
+    "The Dungeon Cover",
+  )
+  assert.equal(
+    weeklyCoverProgramName({ isEdit: true, venueName: "The Dungeon", existingName: "Saved Custom Cover" }),
+    "Saved Custom Cover",
+  )
+  assert.equal(
+    weeklyCoverProgramName({ isEdit: true, venueName: "The Dungeon", existingName: "  " }),
+    "The Dungeon Cover",
+  )
+  assert.equal(weeklyCoverProgramDescription({ isEdit: false, existingDescription: "typed blurb" }), null)
+  assert.equal(weeklyCoverProgramDescription({ isEdit: true, existingDescription: "saved blurb" }), "saved blurb")
+  assert.equal(weeklyCoverProgramDescription({ isEdit: true, existingDescription: null }), null)
 })
 
 test("days question and unset night subtitle follow the product pick", () => {
