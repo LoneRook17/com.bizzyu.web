@@ -18,6 +18,12 @@ interface TicketInfo {
   instance_start_time: string
   instance_end_time: string
   instance_status: string
+  // Server-computed redemption window + zone (services LineSkipTicketService).
+  // Optional: an older API response simply omits them and the page derives.
+  doors_open?: string | null
+  scan_opens_at?: string | null
+  window_closes_at?: string | null
+  venue_timezone?: string | null
   is_redeemed: number
   redeemed_at: string | null
   price_paid_cents: number

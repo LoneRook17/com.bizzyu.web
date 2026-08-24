@@ -43,6 +43,15 @@ export interface LineSkipWindowInput {
   instance_date?: string | null
   instance_start_time?: string | null
   instance_end_time?: string | null
+
+  // Server-computed window and zone, matching the guest check-in GET's contract.
+  // When present these WIN: the server is the one authority, and the zone means
+  // the comparison stops assuming Eastern. Absent on an older API response, in
+  // which case the window is derived below exactly as before.
+  doors_open?: string | null
+  scan_opens_at?: string | null
+  window_closes_at?: string | null
+  venue_timezone?: string | null
 }
 
 /** Pure digit arithmetic on a wall clock. Treats the stamp as UTC so no zone
@@ -70,6 +79,18 @@ export function lineSkipWindowStamps(ticket: LineSkipWindowInput): {
   opens: string | null
   closes: string | null
 } {
+  // Server first. It computes the same window from the same 3-hour lead, and
+  // unlike the client it does not have to guess the night's timezone.
+  const serverOpens = wallClockStamp(ticket.scan_opens_at)
+  const serverCloses = wallClockStamp(ticket.window_closes_at)
+  if (serverOpens || serverCloses) {
+    return {
+      doors: wallClockStamp(ticket.doors_open),
+      opens: serverOpens,
+      closes: serverCloses,
+    }
+  }
+
   const date = String(ticket.instance_date ?? "").slice(0, 10)
   const start = String(ticket.instance_start_time ?? "").trim()
   const end = String(ticket.instance_end_time ?? "").trim()
@@ -103,7 +124,10 @@ export function lineSkipWindowState(
   const { opens, closes } = lineSkipWindowStamps(ticket)
   if (!opens && !closes) return "unknown"
 
-  const current = nowWallClockStamp(LINE_SKIP_ASSUMED_ZONE, now)
+  // The night's real zone when the server sent one; otherwise the historical
+  // Eastern assumption, which is what this page always had.
+  const zone = String(ticket.venue_timezone ?? "").trim() || LINE_SKIP_ASSUMED_ZONE
+  const current = nowWallClockStamp(zone, now)
   if (!current) return "unknown"
 
   if (opens && current < opens) return "not_open"

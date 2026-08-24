@@ -105,3 +105,43 @@ test("the client gates the confirm button on the window, not just on redeeming",
   // And the old mislabel must not come back.
   assert.doesNotMatch(client, /Redemption opens at \{formatTime\(ticket\.instance_start_time\)\}/)
 })
+
+// ── Server-computed window (services now returns it, as TF-CHECKIN does) ──
+
+test("server stamps win over client derivation", () => {
+  // Deliberately contradictory: if the client re-derived from the raw times it
+  // would say 6:00 PM. The server said 7:30 PM, and the server is authority.
+  const withServer = {
+    ...night,
+    doors_open: "2026-08-29 21:00:00",
+    scan_opens_at: "2026-08-29 19:30:00",
+    window_closes_at: "2026-08-30 02:00:00",
+  }
+  const { opens } = lineSkipWindowStamps(withServer)
+  assert.equal(opens, "2026-08-29 19:30:00")
+
+  const notice = lineSkipWindowNotice(withServer, easternAt("2026-08-29T18:00:00"))
+  assert.ok(notice)
+  assert.match(notice.detail, /Check-in opens at 7:30 PM/)
+})
+
+test("an older response with no server fields still derives locally", () => {
+  const { opens } = lineSkipWindowStamps(night)
+  assert.equal(opens, "2026-08-29 18:00:00")
+})
+
+test("the night's own timezone is used when the server sends one", () => {
+  // 21:00 Pacific is 00:00 Eastern the next day. If the page still assumed
+  // Eastern it would call this closed; with the real zone it is open.
+  const pacific = {
+    instance_date: "2026-08-29",
+    instance_start_time: "21:00:00",
+    instance_end_time: "23:59:00",
+    scan_opens_at: "2026-08-29 18:00:00",
+    window_closes_at: "2026-08-29 23:59:00",
+    venue_timezone: "America/Los_Angeles",
+  }
+  // 2026-08-29 20:00 Pacific = real instant during the window.
+  const during = new Date("2026-08-29T20:00:00-07:00")
+  assert.equal(lineSkipWindowState(pacific, during), "open")
+})
