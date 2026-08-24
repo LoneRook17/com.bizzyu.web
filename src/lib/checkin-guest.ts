@@ -1,3 +1,5 @@
+import { wallClockStamp, nowWallClockStamp, stampClock } from "./wall-clock.ts"
+
 // Guest camera check-in on /checkin/[uuid].
 //
 // Weekly Cover nights (access_kind door_access / weekly_cover, redemption
@@ -136,48 +138,6 @@ function truthyFlag(value: boolean | number | undefined): boolean {
 // keeps getting bitten by.
 // ---------------------------------------------------------------------------
 
-/** "YYYY-MM-DD HH:MM:SS", digits exactly as the server wrote them. */
-function wallClockStamp(value: string | null | undefined): string | null {
-  const raw = String(value ?? "").trim()
-  if (!raw) return null
-  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/)
-  if (!match) return null
-  const [, y, mo, d, h, mi, s] = match
-  return `${y}-${mo}-${d} ${h}:${mi}:${s ?? "00"}`
-}
-
-/** Now, as a wall clock in the event's zone, in the same shape. */
-function nowWallClockStamp(zone: string | null | undefined, now: Date): string | null {
-  const build = (timeZone?: string) => {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      ...(timeZone ? { timeZone } : {}),
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).formatToParts(now)
-    const at = (type: string) => parts.find((p) => p.type === type)?.value ?? ""
-    // Some engines render midnight as hour 24 under hour12:false.
-    const hour = at("hour") === "24" ? "00" : at("hour")
-    const stamp = `${at("year")}-${at("month")}-${at("day")} ${hour}:${at("minute")}:${at("second")}`
-    return wallClockStamp(stamp)
-  }
-  try {
-    return build(zone || undefined)
-  } catch {
-    // An unknown IANA zone throws. The viewer's own clock is a better answer
-    // than refusing to render a working button.
-    try {
-      return build()
-    } catch {
-      return null
-    }
-  }
-}
-
 /**
  * Where the clock sits against the event's scan window.
  *
@@ -207,14 +167,6 @@ export function guestCheckinWindowBlocks(
 }
 
 /** 12-hour clock as written on the stamp. Never converted. */
-function stampClock(stamp: string | null): string | null {
-  if (!stamp) return null
-  const hour = Number(stamp.slice(11, 13))
-  const minute = stamp.slice(14, 16)
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return null
-  return `${hour % 12 || 12}:${minute} ${hour >= 12 ? "PM" : "AM"}`
-}
-
 /** "Fri, Aug 22", added only when the stamp is not today in the event's zone. */
 function stampDayQualifier(stamp: string | null, current: string | null): string {
   if (!stamp || !current || stamp.slice(0, 10) === current.slice(0, 10)) return ""
