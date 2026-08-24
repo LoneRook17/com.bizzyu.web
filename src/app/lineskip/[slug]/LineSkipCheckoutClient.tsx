@@ -601,6 +601,7 @@ export default function LineSkipCheckoutClient({
     setAttendeeName("")
     setUserName(null)
     setHasAccount(false)
+    setSmsOptIn(true)
   }
 
   const closeCheckout = () => {
@@ -1132,6 +1133,10 @@ export default function LineSkipCheckoutClient({
           <div className="mt-8 border-t border-white/5 pt-6 text-center">
             <p className="text-sm text-gray-600">
               Powered by <span className="font-semibold text-gray-400">Bizzy</span>
+              {" · "}
+              <a href="/terms" className="hover:text-gray-400">Terms</a>
+              {" · "}
+              <a href="/privacy" className="hover:text-gray-400">Privacy</a>
             </p>
           </div>
         </div>
@@ -1448,6 +1453,15 @@ export default function LineSkipCheckoutClient({
               <p className="mt-3 text-center text-[11px] leading-relaxed text-white/30">
                 By purchasing, you agree that all sales are final. No refunds or exchanges.
                 If the night is cancelled by the venue, you will receive a full refund.
+                You also agree to the{" "}
+                <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/25 hover:text-white/55">
+                  Terms
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/25 hover:text-white/55">
+                  Privacy Policy
+                </a>
+                .
               </p>
             </>
           )}
@@ -1502,6 +1516,10 @@ export default function LineSkipCheckoutClient({
             <a href="https://bizzyu.com" className="font-semibold text-gray-400 transition hover:text-white">
               Bizzy
             </a>
+            {" · "}
+            <a href="/terms" className="hover:text-gray-400">Terms</a>
+            {" · "}
+            <a href="/privacy" className="hover:text-gray-400">Privacy</a>
           </p>
         </div>
       </div>
@@ -1633,12 +1651,24 @@ export default function LineSkipCheckoutClient({
                 )}
 
                 <label className="mt-4 flex items-start gap-2.5 cursor-pointer select-none">
+                  <span
+                    className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[3px] border"
+                    style={{
+                      backgroundColor: smsOptIn ? ACCESS : "transparent",
+                      borderColor: smsOptIn ? ACCESS : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    {smsOptIn && (
+                      <svg className="h-3 w-3 text-black" viewBox="0 0 12 12" fill="none" aria-hidden>
+                        <path d="M2.2 6.3 4.7 8.8 9.8 3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
                   <input
                     type="checkbox"
                     checked={smsOptIn}
                     onChange={(e) => setSmsOptIn(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer"
-                    style={{ accentColor: ACCESS }}
+                    className="sr-only"
                   />
                   <span className="text-xs text-white/50 leading-snug">
                     Keep me posted by text. I agree to receive SMS marketing messages about this venue&apos;s events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out anytime. Unchecking won&apos;t affect your purchase.

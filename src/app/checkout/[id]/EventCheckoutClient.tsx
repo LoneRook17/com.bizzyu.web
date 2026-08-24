@@ -333,6 +333,8 @@ export default function EventCheckoutClient({
   const [userName, setUserName] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // Matches the app: pre-selected, unchecking does not block purchase.
+  const [smsOptIn, setSmsOptIn] = useState(true)
   // Venue payout account not ready (#9): sales at this venue are paused.
   // Rendered as a full pause notice in place of the purchase CTA.
   const [venueBlock, setVenueBlock] = useState<VenueStripeBlock | null>(null)
@@ -484,6 +486,7 @@ export default function EventCheckoutClient({
     setOtpCode("")
     setAttendeeName("")
     setUserName(null)
+    setSmsOptIn(true)
   }
 
   const closeCheckout = () => {
@@ -602,6 +605,7 @@ export default function EventCheckoutClient({
           // correct .pkpass through the public session-id-gated route.
           successUrl: `${window.location.origin}/checkout/${eventId}?success=1&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: window.location.href,
+          sms_opt_in: smsOptIn,
           ...(trackingCode ? { tracking_code: trackingCode } : {}),
         }),
       })
@@ -996,6 +1000,19 @@ export default function EventCheckoutClient({
                         {ctaLabel}
                       </span>
                     </button>
+                    <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
+                      By purchasing, you agree that all sales are final. No refunds or exchanges.
+                      If the event is cancelled by the organizer, you will receive a refund of the ticket face value.
+                      You also agree to the{" "}
+                      <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                        Terms
+                      </a>{" "}
+                      and{" "}
+                      <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                        Privacy Policy
+                      </a>
+                      .
+                    </p>
                   )}
                 </div>
               </div>
@@ -1007,6 +1024,10 @@ export default function EventCheckoutClient({
           <div className="mx-auto max-w-6xl px-4 py-6 text-center">
             <p className="text-sm text-gray-600">
               Powered by <span className="font-semibold text-gray-400">Bizzy</span>
+              {" · "}
+              <a href="/terms" className="hover:text-gray-400">Terms</a>
+              {" · "}
+              <a href="/privacy" className="hover:text-gray-400">Privacy</a>
             </p>
           </div>
         </footer>
@@ -1098,6 +1119,31 @@ export default function EventCheckoutClient({
                   <p className="mt-3 text-xs text-red-400">{checkoutError}</p>
                 )}
 
+                <label className="mt-4 flex items-start gap-2.5 cursor-pointer select-none">
+                  <span
+                    className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[3px] border"
+                    style={{
+                      backgroundColor: smsOptIn ? EVENT_FILL : "transparent",
+                      borderColor: smsOptIn ? EVENT_FILL : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    {smsOptIn && (
+                      <svg className="h-3 w-3 text-black" viewBox="0 0 12 12" fill="none" aria-hidden>
+                        <path d="M2.2 6.3 4.7 8.8 9.8 3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={smsOptIn}
+                    onChange={(e) => setSmsOptIn(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <span className="text-xs text-white/50 leading-snug">
+                    Keep me posted by text. I agree to receive SMS marketing messages about this event and the organizer&apos;s future events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out. Unchecking won&apos;t affect your purchase.
+                  </span>
+                </label>
+
                 <button
                   onClick={sendCode}
                   disabled={checkoutLoading || phone.length < 10}
@@ -1182,6 +1228,17 @@ export default function EventCheckoutClient({
                 >
                   {checkoutLoading ? "Verifying..." : "Verify & Pay"}
                 </button>
+                <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
+                  By continuing, you agree that all sales are final. If the event is cancelled by the organizer, you will receive a refund of the ticket face value. You also agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                    Terms
+                  </a>{" "}
+                  and{" "}
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                    Privacy Policy
+                  </a>
+                  .
+                </p>
 
                 <button
                   onClick={() => {

@@ -16,6 +16,7 @@
      and the Flutter / checkout weekly theme. Use for Weekly Cover CTAs only. */
   --color-access: #FF3ED1;
   --color-access-deep: #D10EA3;
+  --color-access-ink: #33052A;
   /* Accessible green for SMALL text on white. Brand #05EB54 is only 1.61:1
      against white. It fails WCAG AA for text at any size, so it may fill
      shapes but must never letter them. This darker green is 5.05:1. Use for
