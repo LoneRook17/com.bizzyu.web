@@ -1,6 +1,9 @@
 import { Metadata } from "next"
 import { after } from "next/server"
 import { headers } from "next/headers"
+import { readAccessKind } from "@/lib/business/door-access"
+import { looksLikeWeeklyCoverName } from "@/lib/business/weekly-cover-label"
+import { weeklyCoverCheckoutPath } from "@/lib/venuePublic"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -11,6 +14,7 @@ interface EventPreview {
   name?: string
   description?: string | null
   flyer_image_url?: string | null
+  access_kind?: string | null
 }
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
@@ -138,7 +142,13 @@ export default async function EventCheckoutRedirect({ params, searchParams }: Pa
   }
 
   const qs = buildQueryString(sp)
-  const target = `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${id}${qs ? `?${qs}` : ""}`
+  const preview = await getEventPreview(id)
+  const isCover =
+    readAccessKind(preview?.access_kind) === "door_access" ||
+    looksLikeWeeklyCoverName(preview?.name)
+  const target = isCover
+    ? `${weeklyCoverCheckoutPath(Number(id))}${qs ? `?${qs}` : ""}`
+    : `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${id}${qs ? `?${qs}` : ""}`
   return (
     <>
       <meta httpEquiv="refresh" content={`0;url=${target}`} />
