@@ -31,6 +31,8 @@ import {
   VENUE_EVENT_LOOKAHEAD,
   venueCheckoutTiersUrl,
   venueNightCheckoutHref,
+  weeklyCoverCheckoutPath,
+  nightsForCoverSeed,
   weeklyAccessPriceLines,
   applySharedProgramPrices,
   eventFromPrice,
@@ -324,7 +326,7 @@ test("no flyer and no venue photo stays empty so the icon tile can stand in", ()
   )
 })
 
-test("venue page copies the event checkout chrome, not line-skip pink", () => {
+test("venue page copies the in-app venue board, not event-checkout chrome", () => {
   const src = join(process.cwd(), "src")
   const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
   const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
@@ -337,11 +339,12 @@ test("venue page copies the event checkout chrome, not line-skip pink", () => {
     "venue page must not show the door scan note under the description",
   )
   assert.ok(client.includes("resolveVenueEventImageUrl"), "rows must resolve flyer then venue photo")
-  assert.ok(client.includes("flyer-glow"), "venue photo uses the event-checkout flyer glow")
-  assert.ok(client.includes("font-[family-name:var(--font-fira)]"), "Fira matches event checkout")
-  assert.ok(client.includes("EVENT_FILL"), "CTAs use event green, not line-skip pink")
-  assert.ok(!client.includes("#FF3ED1"), "venue page must not use the line-skip accent")
-  assert.ok(client.includes("UpcomingRow"), "nights render as checkout-style cards")
+  assert.ok(client.includes("aspect-square"), "hero is the in-app 1:1 venue photo")
+  assert.ok(client.includes("Happening Tonight"), "today's group uses the tonight label")
+  assert.ok(client.includes("UpcomingRow"), "nights render as compact in-app rows")
+  assert.ok(!client.includes("flyer-glow"), "venue board is not event-checkout chrome")
+  assert.ok(!client.includes("EVENT_FILL"), "venue board is not event-checkout chrome")
+  assert.ok(!client.includes("lg:grid-cols-5"), "venue board is not the event-checkout 2/5 + 3/5 grid")
   assert.ok(!client.includes("pricedCtaLabel"), "top-level venue CTAs must not include prices")
   assert.ok(!client.includes("business.logo_image_url"), "venue page must not show the business logo")
   assert.ok(
@@ -722,23 +725,27 @@ test("Fri 28 date chip is From $5 when the program has Cover and Skip the Line",
   assert.equal(nightChipPrice(nights[0], template), "From $5")
 })
 
-test("venue nights checkout through venueNightCheckoutHref like the event checkout", () => {
+test("venue nights: named events checkout, Weekly Cover opens the series page", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("UpcomingRow"), "must render checkout-style night cards")
-  assert.ok(client.includes("venueNightCheckoutHref"), "rows share the checkout href helper")
+  assert.ok(client.includes("UpcomingRow"), "must render compact in-app night rows")
+  assert.ok(client.includes("venueNightCheckoutHref"), "named events share the checkout href helper")
   assert.ok(
     client.includes("venueNightCheckoutHref(checkoutBaseUrl, event.event_id)"),
-    "a night row must checkout that night without forcing a ticket_id",
+    "a named-event row must checkout that night without forcing a ticket_id",
+  )
+  assert.ok(client.includes("weeklyCoverCheckoutPath"), "Weekly Cover rows open the series page")
+  assert.ok(
+    client.includes("weeklyCoverCheckoutPath(event.event_id)"),
+    "a Weekly Cover row must open /cover/:eventId, not Laravel checkout",
   )
   assert.ok(!client.includes("WeeklyAccessProgramCard"), "venue does not use a program card")
   assert.ok(!client.includes("Get access"), "venue page must not use the legacy Get access label")
-  assert.ok(client.includes("Get Tickets"), "night cards use the event-checkout Get Tickets label")
   assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
   assert.ok(!client.includes('type="date"'), "do not ship a calendar date input")
   assert.ok(!client.includes("<select"), "do not ship a dropdown")
 })
 
-test("top venue CTAs omit price and the hero matches event checkout", () => {
+test("top venue CTAs omit price and the hero matches the in-app venue", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("eventFromPrice"), "event rows must retain their pricing")
   assert.ok(!client.includes("pricedCtaLabel"), "Website / Instagram must not include a price")
@@ -746,8 +753,9 @@ test("top venue CTAs omit price and the hero matches event checkout", () => {
   assert.ok(!client.includes("headerAccessPrice"), "header must not resolve cover prices")
   assert.ok(client.includes("Happening Tonight"), "today's group uses the tonight label")
   assert.ok(client.includes("Directions") || client.includes("venue.address"), "address stays outbound")
-  assert.ok(client.includes("flyer-glow"), "hero uses the event-checkout flyer glow")
-  assert.ok(client.includes("lg:grid-cols-5"), "layout matches event checkout 2/5 + 3/5")
+  assert.ok(client.includes("aspect-square"), "hero is the in-app 1:1 venue photo")
+  assert.ok(!client.includes("flyer-glow"), "hero is not the event-checkout flyer glow")
+  assert.ok(!client.includes("lg:grid-cols-5"), "layout is not event-checkout 2/5 + 3/5")
   assert.ok(!client.includes("business.logo_image_url"), "venue identity must not show the business logo")
   const page = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/page.tsx"), "utf8")
   assert.ok(
@@ -756,7 +764,7 @@ test("top venue CTAs omit price and the hero matches event checkout", () => {
   )
 })
 
-test("venue upcoming rows use ticket cards, not line-skip glass", () => {
+test("venue upcoming rows use in-app cards, not line-skip glass", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
   assert.ok(client.includes("UpcomingRow"), "event and Weekly Cover nights share a card")
   assert.ok(client.includes("h-16 w-16"), "thumbs stay compact beside the title")
@@ -768,7 +776,61 @@ test("venue upcoming rows use ticket cards, not line-skip glass", () => {
   const row = client.slice(rowStart)
   assert.ok(row.includes("object-cover"), "row thumb crops the artwork")
   assert.ok(row.includes("WEEKLY_ACCESS_TYPE_LABEL"), "Weekly Cover label sits on the card")
-  assert.ok(row.includes("Get Tickets"), "each night uses the event-checkout CTA")
+  assert.ok(row.includes("weeklyCoverCheckoutPath"), "Weekly Cover rows go to the series page")
+})
+
+test("weeklyCoverCheckoutPath is the series page", () => {
+  assert.equal(weeklyCoverCheckoutPath(621), "/cover/621")
+})
+
+test("nightsForCoverSeed returns every night in the same series", () => {
+  const nights = [
+    coverNight(621, "2026-08-24 21:00:00", { recurring_series_id: 10 }),
+    coverNight(623, "2026-08-26 21:00:00", { recurring_series_id: 10 }),
+    coverNight(625, "2026-08-28 21:00:00", { recurring_series_id: 11, name: "Late Cover" }),
+  ]
+  assert.deepEqual(
+    nightsForCoverSeed(nights, 623).map((night) => night.event_id),
+    [621, 623],
+  )
+  assert.deepEqual(
+    nightsForCoverSeed(nights, 625).map((night) => night.event_id),
+    [625],
+  )
+})
+
+test("Weekly Cover series page copies the line-skip checkout format", () => {
+  const client = readFileSync(
+    join(process.cwd(), "src/app/cover/[id]/WeeklyCoverCheckoutClient.tsx"),
+    "utf8",
+  )
+  const page = readFileSync(join(process.cwd(), "src/app/cover/[id]/page.tsx"), "utf8")
+  assert.ok(client.includes("ACCESS_CTA"), "CTAs use the magenta access gradient")
+  assert.ok(client.includes("ls-rise"), "entrance matches line-skip")
+  assert.ok(client.includes("ls-hero-img"), "hero zoom matches line-skip")
+  assert.ok(client.includes("Pick your night"), "later nights use the line-skip picker heading")
+  assert.ok(client.includes("Happening Tonight"), "tonight group matches line-skip")
+  assert.ok(client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "product name is Weekly Cover")
+  assert.ok(client.includes("/checkout/"), "Get Weekly Cover pays through event checkout")
+  assert.ok(!client.includes("dev.bizzy-deals.com"), "must not bounce to Laravel checkout")
+  assert.ok(page.includes("nightsForCoverSeed"), "one series page lists every night in the group")
+})
+
+test("event checkout paints Weekly Cover magenta", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/app/checkout/[id]/EventCheckoutClient.tsx"),
+    "utf8",
+  )
+  assert.ok(src.includes("looksLikeWeeklyCoverName"), "name is the leftover Weekly Cover signal")
+  assert.ok(src.includes("isDoorAccessKind"), "access_kind door_access is magenta")
+  assert.ok(src.includes("const fill = cover ? ACCESS : EVENT_FILL"), "Weekly Cover uses ACCESS, named events stay green")
+})
+
+test("event checkout landing sends Weekly Cover nights to /cover", () => {
+  const src = readFileSync(join(process.cwd(), "src/app/event/[id]/checkout/page.tsx"), "utf8")
+  assert.ok(src.includes("weeklyCoverCheckoutPath"), "door nights must not stay on Laravel green")
+  assert.ok(src.includes("looksLikeWeeklyCoverName"), "name is the leftover Weekly Cover signal")
+  assert.ok(src.includes("LARAVEL_CHECKOUT_BASE_URL"), "named events still go to Laravel checkout")
 })
 
 async function withFetch<T>(

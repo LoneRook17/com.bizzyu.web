@@ -13,11 +13,11 @@
 //     → app/event/[id]/checkout/page.tsx  (OG tags from services GET /ui/events/:id,
 //       which is models.events.getById — no access_kind filter, no status filter)
 //     → meta-refresh + location.replace
-//     → {CHECKOUT_REDIRECT_BASE_URL}/checkout/:id
-//     → Laravel PublicController::checkout → Event::findOrFail (no access_kind
-//       filter, no status filter) → the checkout blade.
-// Nothing on that path reads access_kind, so a door_access night resolves
-// exactly as a one-off event does.
+//     → named events: {CHECKOUT_REDIRECT_BASE_URL}/checkout/:id (Laravel)
+//     → Weekly Cover / door_access: /cover/:id (same page format as /lineskip/:slug)
+// Share URLs stay /event/:id/checkout so AASA still opens the app. The web
+// landing reads access_kind / Weekly Cover name and routes door nights to
+// the magenta series page instead of Laravel green checkout.
 //
 // venuePageUrl() is the program-level surface: bizzyu.com/venue/:id lists the
 // venue's `status='published'` future events (again no access_kind filter), so
