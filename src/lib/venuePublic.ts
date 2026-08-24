@@ -1,4 +1,9 @@
-import { looksLikeWeeklyCoverName, readAccessKind, resolveProgramImageUrl } from "./business/door-access.ts"
+import {
+  isDoorAccessKind,
+  looksLikeWeeklyCoverName,
+  readAccessKind,
+  resolveProgramImageUrl,
+} from "./business/door-access.ts"
 
 // Public /venue/:id board data.
 //
@@ -132,10 +137,21 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
   }
 }
 
+/**
+ * Public venue WC detection. Same signals as event checkout:
+ * access_kind door_access / weekly_cover (via isDoorAccessKind), or a
+ * Weekly Cover name leftover when the wire still says event.
+ */
+export function isVenueWeeklyCoverNight(event: {
+  access_kind?: string | null
+  name?: string | null
+}): boolean {
+  return isDoorAccessKind(event.access_kind) || looksLikeWeeklyCoverName(event.name)
+}
+
 /** Door-access nights stay listable even when core stamped them draft. */
 export function shouldListOnVenuePage(event: VenueEvent): boolean {
-  if (event.access_kind === "door_access") return true
-  if (looksLikeWeeklyCoverName(event.name)) return true
+  if (isVenueWeeklyCoverNight(event)) return true
   if (!event.status) return true
   return LIVE_ONE_OFF_STATUSES.has(event.status.toLowerCase())
 }
