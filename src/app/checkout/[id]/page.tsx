@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import EventCheckoutClient from "./EventCheckoutClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
@@ -35,7 +36,18 @@ async function getEventData(eventId: string) {
       cache: "no-store",
     })
     if (!res.ok) return null
-    return res.json()
+    const data = await res.json()
+    if (data?.event?.promotion_enabled !== undefined) return data
+    try {
+      const uiRes = await fetch(`${API_URL}/ui/events/${eventId}`, { cache: "no-store" })
+      if (uiRes.ok) {
+        const ui = await uiRes.json()
+        data.event = { ...data.event, promotion_enabled: ui.promotion_enabled }
+      }
+    } catch {
+      // Checkout still renders if the public event payload is missing.
+    }
+    return data
   } catch {
     return null
   }
@@ -70,23 +82,9 @@ function buildQueryString(sp: Record<string, string | string[] | undefined>): st
   return params.toString()
 }
 
-export default async function EventCheckoutPage({ params, searchParams }: PageProps) {
+export default async function EventCheckoutPage({ params }: PageProps) {
   const { id } = await params
-  const sp = await searchParams
+  const data = await getEventData(id)
 
-  const qs = buildQueryString(sp)
-  const target = `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${id}${qs ? `?${qs}` : ""}`
-  return (
-    <>
-      <meta httpEquiv="refresh" content={`0;url=${target}`} />
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.location.replace(${JSON.stringify(target)})`,
-        }}
-      />
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", fontFamily: "system-ui, sans-serif", color: "#666" }}>
-        <p>Redirecting to checkout…</p>
-      </div>
-    </>
-  )
+  return <EventCheckoutClient eventId={id} initialData={data} />
 }

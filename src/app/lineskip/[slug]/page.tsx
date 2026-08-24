@@ -26,11 +26,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const heroImage = data?.venue?.photo_url || data?.business?.logo_image_url
 
   return {
-    title: `${displayName} - Line Skips | Bizzy`,
-    description: `Skip the line at ${displayName}. Cover included.`,
+    title: `${displayName} - Skip the Line | Bizzy`,
+    description: `Skip the Line at ${displayName}. Cover included.`,
     openGraph: {
-      title: `${displayName} - Line Skips | Bizzy`,
-      description: `Skip the line at ${displayName}. Cover included.`,
+      title: `${displayName} - Skip the Line | Bizzy`,
+      description: `Skip the Line at ${displayName}. Cover included.`,
       images: heroImage ? [heroImage] : [],
     },
   }

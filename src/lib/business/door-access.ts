@@ -535,7 +535,40 @@ export type RedemptionMode = (typeof REDEMPTION_MODES)[number]
  * is the stable identity a per-night override keys off, because a restamp
  * deletes and recreates the underlying tickets rows.
  */
-export interface DoorAccessTemplateTier {
+/**
+ * A surge rung as services STORES and ECHOES it (svc migration 033).
+ *
+ * Note the asymmetry, and do not try to tidy it: clients WRITE
+ * `{after_sold, price_usd}` — `thresholdFromStep` accepts either spelling — and
+ * read back `{threshold_sold, price_cents, price_usd}`. `surgeStepsFromWire` in
+ * weekly-cover-nights.ts is the one place that reconciles them.
+ */
+export interface DoorAccessSurgeStepWire {
+  threshold_sold?: number
+  after_sold?: number
+  price_cents?: number
+  price_usd?: number
+}
+
+/**
+ * Surge and product-kind fields, carried on both template rows and night rows.
+ *
+ * These are optional because older services builds omit them, and because the
+ * normalizers below must not invent a value that would then be written back as
+ * an intent the host never expressed.
+ */
+export interface DoorAccessTierProductFields {
+  /** "cover" | "skip" — what the tier IS, independent of what it is named. */
+  kind?: string
+  /** Skip tiers: buying it also grants entry. */
+  includes_cover?: boolean
+  /** Per-tier 21+. Any 21+ tier lights the night's badge. */
+  is_21_plus?: boolean
+  surge_enabled?: boolean
+  surge_steps?: DoorAccessSurgeStepWire[]
+}
+
+export interface DoorAccessTemplateTier extends DoorAccessTierProductFields {
   tier_key: string
   name: string
   description: string | null
@@ -603,7 +636,7 @@ export interface DoorAccessProgram extends DoorAccessProgramSummary {
  * night's overrides. `is_overridden` is server-computed, so the editor never
  * has to diff against the template to know what to mark.
  */
-export interface DoorAccessNightTier {
+export interface DoorAccessNightTier extends DoorAccessTierProductFields {
   tier_key: string
   name: string
   description: string | null
@@ -656,6 +689,19 @@ export interface DoorAccessNight {
   start_time: string
   end_time: string
   tiers: DoorAccessNightTier[]
+  /** Per-night 21+, when services echoes it. Undefined = inherit the program. */
+  is_21_plus?: boolean
+  /**
+   * The RESOLVED artwork for this night: its own override, else the program
+   * flyer, else the venue photo. Not proof the night owns one — read it through
+   * `nightOwnFlyer`, never directly, or a save stamps the program's flyer back
+   * as a per-night override and pins it onto every night.
+   */
+  flyer_image_url?: string | null
+  /** The unambiguous signal: an actual override row exists for this night. */
+  flyer_image_url_override?: string | null
+  /** The night's own name, when it has one. */
+  name?: string | null
 }
 
 export interface DoorAccessSeries {
@@ -785,8 +831,37 @@ export function normalizeDays(v: unknown): number[] {
     .sort((a, b) => a - b)
 }
 
+/**
+ * Carry surge / kind / includes_cover / 21+ through a normalizer.
+ *
+ * A key that is ABSENT stays absent — that is the whole contract with services'
+ * sparse writes. Defaulting `surge_enabled` to false here would turn "leave the
+ * stored ladder alone" into "clear it" on the next save.
+ */
+function productFields(raw: Record<string, unknown>): DoorAccessTierProductFields {
+  const out: DoorAccessTierProductFields = {}
+  if (raw.kind != null && String(raw.kind).trim() !== "") out.kind = String(raw.kind)
+  if ("includes_cover" in raw) out.includes_cover = bool(raw.includes_cover)
+  if ("is_21_plus" in raw) out.is_21_plus = bool(raw.is_21_plus)
+  if ("surge_enabled" in raw) out.surge_enabled = bool(raw.surge_enabled)
+  if (Array.isArray(raw.surge_steps)) {
+    out.surge_steps = raw.surge_steps
+      .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
+      .map((s) => {
+        const step: DoorAccessSurgeStepWire = {}
+        if (s.threshold_sold != null) step.threshold_sold = num(s.threshold_sold)
+        if (s.after_sold != null) step.after_sold = num(s.after_sold)
+        if (s.price_cents != null) step.price_cents = num(s.price_cents)
+        if (s.price_usd != null) step.price_usd = num(s.price_usd)
+        return step
+      })
+  }
+  return out
+}
+
 export function normalizeTemplateTier(raw: Record<string, unknown>): DoorAccessTemplateTier {
   return {
+    ...productFields(raw),
     tier_key: str(raw.tier_key),
     name: str(raw.name),
     description: raw.description == null ? null : str(raw.description),
@@ -875,6 +950,7 @@ export function normalizeProgram(raw: Record<string, unknown>): DoorAccessProgra
 
 export function normalizeNightTier(raw: Record<string, unknown>): DoorAccessNightTier {
   return {
+    ...productFields(raw),
     tier_key: str(raw.tier_key),
     name: str(raw.name),
     description: raw.description == null ? null : str(raw.description),
@@ -926,6 +1002,19 @@ export function normalizeNight(raw: Record<string, unknown>): DoorAccessNight {
     start_time: str(raw.start_time),
     end_time: str(raw.end_time),
     tiers,
+    // Absent stays absent: the weekday editor needs to tell "this night says
+    // nothing about 21+" from "this night says no".
+    ...("is_21_plus" in raw ? { is_21_plus: bool(raw.is_21_plus) } : {}),
+    ...("flyer_image_url" in raw
+      ? { flyer_image_url: raw.flyer_image_url == null ? null : str(raw.flyer_image_url) }
+      : {}),
+    ...("flyer_image_url_override" in raw
+      ? {
+          flyer_image_url_override:
+            raw.flyer_image_url_override == null ? null : str(raw.flyer_image_url_override),
+        }
+      : {}),
+    ...("name" in raw ? { name: raw.name == null ? null : str(raw.name) } : {}),
   }
 }
 
