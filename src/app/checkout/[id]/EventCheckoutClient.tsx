@@ -486,6 +486,7 @@ export default function EventCheckoutClient({
     setOtpCode("")
     setAttendeeName("")
     setUserName(null)
+    setSmsOptIn(true)
   }
 
   const closeCheckout = () => {
@@ -1119,12 +1120,24 @@ export default function EventCheckoutClient({
                 )}
 
                 <label className="mt-4 flex items-start gap-2.5 cursor-pointer select-none">
+                  <span
+                    className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[3px] border"
+                    style={{
+                      backgroundColor: smsOptIn ? EVENT_FILL : "transparent",
+                      borderColor: smsOptIn ? EVENT_FILL : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    {smsOptIn && (
+                      <svg className="h-3 w-3 text-black" viewBox="0 0 12 12" fill="none" aria-hidden>
+                        <path d="M2.2 6.3 4.7 8.8 9.8 3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
                   <input
                     type="checkbox"
                     checked={smsOptIn}
                     onChange={(e) => setSmsOptIn(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer"
-                    style={{ accentColor: EVENT_FILL }}
+                    className="sr-only"
                   />
                   <span className="text-xs text-white/50 leading-snug">
                     Keep me posted by text. I agree to receive SMS marketing messages about this event and the organizer&apos;s future events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out. Unchecking won&apos;t affect your purchase.
