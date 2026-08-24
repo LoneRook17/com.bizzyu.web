@@ -10,6 +10,7 @@ import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice
 import { isDoorAccessKind } from "@/lib/business/door-access"
 import { looksLikeWeeklyCoverName } from "@/lib/business/weekly-cover-label"
 import { ACCESS, EVENT, EVENT_FILL } from "@/lib/checkout/surfaces"
+import { ticketIdFromSearch } from "@/lib/venuePublic"
 
 const API_URL = getApiBaseUrl()
 
@@ -361,6 +362,19 @@ export default function EventCheckoutClient({
       setTrackingCode(readRefCookie())
     }
   }, [])
+
+  // Venue / share links pass ?ticket_id= so the matching tier starts selected.
+  useEffect(() => {
+    if (typeof window === "undefined" || tickets.length === 0) return
+    const wanted = ticketIdFromSearch(window.location.search)
+    if (wanted == null) return
+    const ticket = tickets.find((row) => row.ticket_id === wanted)
+    if (!ticket) return
+    setQuantities((prev) => {
+      if (Object.values(prev).some((qty) => qty > 0)) return prev
+      return { [wanted]: 1 }
+    })
+  }, [tickets])
 
   // ─── Fetch event data if not provided by server ─────────────────────────
 
