@@ -299,7 +299,7 @@ export function formatAccessTierLabel(tier: VenueAccessTier): string {
 }
 
 /**
- * Laravel checkout preselect. Sibling core reads this exact query name.
+ * Event checkout preselect. /checkout/:id and Laravel both read this name.
  * Example: /checkout/621?ticket_id=678
  */
 export const VENUE_CHECKOUT_TICKET_PARAM = "ticket_id"
@@ -314,19 +314,11 @@ export function venueNightCheckoutHref(
   return id != null ? `${base}?${VENUE_CHECKOUT_TICKET_PARAM}=${id}` : base
 }
 
-/** Public Weekly Cover series checkout — same page format as /lineskip/:slug. */
-export function weeklyCoverCheckoutPath(eventId: number): string {
-  return `/cover/${eventId}`
-}
-
-/** All nights in the same Weekly Cover series as [seedId]. */
-export function nightsForCoverSeed(events: VenueEvent[], seedId: number): VenueEvent[] {
-  const door = events.filter((event) => event.access_kind === "door_access")
-  const groups = groupWeeklyAccessNights(door)
-  const hit = groups.find((group) => group.some((night) => night.event_id === seedId))
-  if (hit) return hit
-  const seed = events.find((event) => event.event_id === seedId)
-  return seed && seed.access_kind === "door_access" ? [seed] : []
+/** Read the venue/event checkout preselect from a query string or search. */
+export function ticketIdFromSearch(search: string): number | undefined {
+  const raw = search.startsWith("?") ? search.slice(1) : search
+  const params = new URLSearchParams(raw)
+  return parseTicketIdValue(params.get(VENUE_CHECKOUT_TICKET_PARAM) ?? params.get("ticketId"))
 }
 
 function finitePrices(tiers: VenueAccessTier[]): number[] {
