@@ -85,6 +85,13 @@ Grounded in a code-behavior trace (2026-07-03). Re-verify when flows change.
 - One-time use; valid only for the specific night/time window purchased.
 - Same refund policy as tickets: final sale unless the venue cancels the night, in
   which case unredeemed passes are automatically refunded in full.
+- **"Skip the line" can mean two different things.** A line skip is the product above,
+  bought for a specific night from the venue's line-skip listing. Separately, a venue can
+  name one of its normal event ticket tiers something like "Skip the Line". That one is
+  just a ticket: it lives with the event, it's scanned by staff with the in-app scanner
+  rather than a camera, and it doesn't automatically include cover unless the venue says
+  so. If a student isn't sure which one they bought, have them check the Wallet tab: it
+  shows what the purchase actually was. Don't guess between the two.
 
 ## Profile & leaderboard
 
