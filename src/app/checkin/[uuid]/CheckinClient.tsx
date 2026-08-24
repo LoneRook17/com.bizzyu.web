@@ -10,7 +10,10 @@ import {
   guestCheckinAccent,
   guestCheckinFooterCopy,
   guestCheckinTypeLabel,
+  guestCheckinWindowNotice,
   guestTicketIsRedeemable,
+  GUEST_CHECKIN_SCANNER_ONLY_BODY,
+  GUEST_CHECKIN_SCANNER_ONLY_HEADLINE,
 } from "@/lib/checkin-guest"
 import {
   checkinTransportRefusal,
@@ -36,6 +39,15 @@ interface TicketInfo {
   event_status: string
   access_kind?: string | null
   redemption_mode?: string | null
+  /**
+   * Event-level scan window. Optional: an older API omits all four and the
+   * page then behaves exactly as it did before the window existed.
+   * Wall-clock strings in `event_timezone`, never absolute instants.
+   */
+  doors_open?: string | null
+  scan_opens_at?: string | null
+  window_closes_at?: string | null
+  event_timezone?: string | null
 }
 
 interface RedeemResult {
@@ -293,11 +305,46 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
     )
   }
 
-  const canCheckIn =
-    !!ticket &&
-    guestCameraCheckinEnabled(ticket) &&
-    guestTicketIsRedeemable(ticket)
+  // Three separate questions, deliberately not one boolean.
+  //
+  //   cameraEligible: can this KIND of pass be redeemed from a camera at all?
+  //                   Weekly Cover yes, ordinary event tickets no (the server
+  //                   refuses the camera_tap surface for them).
+  //   passIsGood:     is the pass itself still good (not redeemed, refunded
+  //                   or cancelled)?
+  //   windowNotice:   can we scan RIGHT NOW, on the clock?
+  //
+  // They produce three different screens: a static dead end, the existing red
+  // status screens, and a visibly disabled button with a neutral notice.
+  const cameraEligible = !!ticket && guestCameraCheckinEnabled(ticket)
+  const passIsGood = !!ticket && guestTicketIsRedeemable(ticket)
+  const canCheckIn = cameraEligible && passIsGood
+  // Null unless the pass is otherwise checkable and the clock says no.
+  const windowNotice = ticket && canCheckIn ? guestCheckinWindowNotice(ticket) : null
+  const outOfWindow = windowNotice !== null
   const accent = ticket ? guestCheckinAccent(ticket) : null
+
+  // A redeemed, refunded or cancelled pass keeps the screen it has today,
+  // whatever kind it is. Only an otherwise-fine ticket that this page is not
+  // allowed to scan gets the dead end, and it gets no pass details and nothing
+  // tappable, because there is nothing here for the reader to do.
+  if (ticket && !cameraEligible && passIsGood) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6">
+        <div className="w-full max-w-md text-center">
+          <img src="/images/bizzy-logo.png" alt="Bizzy" className="mx-auto mb-6 h-8 opacity-80" />
+          <div className="rounded-2xl bg-white/5 border border-white/10 p-6 backdrop-blur-sm">
+            <h1 className="mb-2 text-xl font-bold text-white">
+              {GUEST_CHECKIN_SCANNER_ONLY_HEADLINE}
+            </h1>
+            <p className="text-sm leading-snug text-white/60">
+              {GUEST_CHECKIN_SCANNER_ONLY_BODY}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6">
@@ -358,17 +405,46 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
                 <p className="text-sm font-semibold text-red-400">Event Cancelled</p>
               </div>
             )}
+            {/*
+              Neutral, never red. The pass is good and the guest did nothing
+              wrong; they are simply early, or the night is over. This is the
+              first screen, so the reason arrives before the press instead of
+              as a red result overlay after it.
+            */}
+            {windowNotice && (
+              <div className="rounded-lg bg-white/5 border border-white/15 p-3 text-center">
+                <p className="text-sm font-semibold text-white/80">{windowNotice.headline}</p>
+                {windowNotice.detail && (
+                  <p className="mt-0.5 text-xs leading-snug text-white/50">{windowNotice.detail}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
+        {/*
+          Out of window renders the CTA visibly DISABLED rather than hiding it,
+          so the reader can see there is a check-in and that it is not open yet.
+          Redeemed / refunded / cancelled keep the older hidden-CTA behaviour.
+        */}
         {canCheckIn && (
           <button
             onClick={() => setOverlay("confirming")}
-            className="w-full rounded-xl px-4 py-4 text-lg font-bold text-white transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
-            style={{
-              backgroundImage: `linear-gradient(to bottom right, ${accent?.accentDeep ?? "#2ECB4E"}, ${accent?.accent ?? "#05EB54"})`,
-              boxShadow: `0 10px 15px -3px ${(accent?.accent ?? "#05EB54")}40`,
-            }}
+            disabled={outOfWindow}
+            aria-disabled={outOfWindow}
+            className={
+              outOfWindow
+                ? "w-full cursor-not-allowed rounded-xl bg-white/10 px-4 py-4 text-lg font-bold text-white/40"
+                : "w-full rounded-xl px-4 py-4 text-lg font-bold text-white transition-all hover:brightness-110 hover:scale-[1.02] active:scale-[0.98]"
+            }
+            style={
+              outOfWindow
+                ? undefined
+                : {
+                    backgroundImage: `linear-gradient(to bottom right, ${accent?.accentDeep ?? "#2ECB4E"}, ${accent?.accent ?? "#05EB54"})`,
+                    boxShadow: `0 10px 15px -3px ${(accent?.accent ?? "#05EB54")}40`,
+                  }
+            }
           >
             Check In
           </button>
