@@ -1656,6 +1656,7 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     "../../components/business/v2/door-access/WcDatesStep.tsx",
     "../../components/business/v2/door-access/NightEditorDialog.tsx",
     "../../app/business/(dashboard)/create/page.tsx",
+    "../../components/business/v2/create/CreateChoiceCards.tsx",
   ]
   for (const rel of files) {
     const raw = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
@@ -1720,12 +1721,19 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     fileURLToPath(new URL("../../app/business/(dashboard)/create/page.tsx", import.meta.url)),
     "utf8",
   )
-  assert.ok(create.includes("Low Maintenance Option"))
   assert.ok(create.includes("What are you setting up?"))
-  assert.ok(create.includes("inAppChoiceSurfaceStyle"), "choice cards use the in-app dark surface")
-  assert.ok(create.includes("InAppIconTile"), "choice cards use a colored icon tile, not a neon fill")
-  assert.ok(!/backgroundColor:\s*fill/.test(create), "do not neon-fill Event / Weekly Cover cards")
-  assert.ok(!create.includes("ACCESS_INK"), "create cards are dark + outline, not pink-ink-on-neon")
+  assert.ok(create.includes("CreateChoiceCards"), "create page mounts the in-app choice cards")
+  assert.ok(!create.includes("ACCESS_INK"), "create page is not pink-ink-on-neon")
+
+  const cards = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/create/CreateChoiceCards.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(cards.includes("Low Maintenance Option"))
+  assert.ok(cards.includes("inAppChoiceSurfaceStyle"), "choice cards use the in-app dark surface")
+  assert.ok(cards.includes("InAppIconTile"), "choice cards use a colored icon tile, not a neon fill")
+  assert.ok(!/backgroundColor:\s*fill/.test(cards), "do not neon-fill Event / Weekly Cover cards")
+  assert.ok(!cards.includes("ACCESS_INK"), "create cards are dark + outline, not pink-ink-on-neon")
 
   const choiceChrome = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/create/in-app-choice.tsx", import.meta.url)),
