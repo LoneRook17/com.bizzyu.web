@@ -1058,6 +1058,29 @@ export function validateAllNights(opts: {
   return errors
 }
 
+/**
+ * Flyer shown on Look it over for one weekday draft.
+ *
+ * Own artwork only (`flyerImageUrl`). Inherited venue/program photos stay in
+ * the night editor as a fallback, not as a per-night flyer. Empty string means
+ * the review shows a placeholder; Publish is unaffected.
+ */
+export function reviewFlyerUrl(draft: NightDraft | undefined | null): string {
+  return (draft?.flyerImageUrl ?? "").trim()
+}
+
+/**
+ * Same weekday selection as the text preview (EVERY WEDNESDAY, prices, times).
+ * A missing day, an unset night, or a night with no own flyer all return "".
+ */
+export function reviewFlyerUrlForDay(
+  weekdayEdits: Record<number, NightDraft>,
+  day: number | null | undefined
+): string {
+  if (day == null) return ""
+  return reviewFlyerUrl(weekdayEdits[day])
+}
+
 /** A one-line summary for a weekday card: "Cover $10 · Skip $20 · Surge". */
 export function nightPriceSummary(draft: NightDraft | undefined): string {
   if (!draft) return ""

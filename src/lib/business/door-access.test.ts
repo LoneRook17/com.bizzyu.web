@@ -1144,6 +1144,7 @@ test("create wizard posts a program flyer only from the first night, never a typ
   const src = readFileSync(wizardPath, "utf8")
   const editor = readFileSync(editorPath, "utf8")
   assert.ok(src.includes("flyer_image_url: flyer || null"), "create posts the first night flyer or null")
+  assert.ok(!src.includes("reviewFlyerUrl"), "Publish does not change how the program flyer is chosen")
   assert.ok(!src.includes("ImageUpload"), "program-level flyer upload is gone from create")
   const caption = "Venue photo. Nights use this until you add a flyer."
   assert.ok(editor.includes(caption), "night editor still previews the venue photo")
@@ -1707,6 +1708,10 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   ).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
   assert.ok(!/<Input\b/.test(review), "Review must not offer a rename")
   assert.ok(!/contentEditable/.test(review), "Review name is display text, not editable")
+  assert.ok(review.includes("reviewFlyerUrlForDay"), "review flyer follows the selected weekday")
+  assert.ok(review.includes("ReviewFlyerPreview"), "Look it over shows the night flyer")
+  assert.ok(review.includes("No flyer"), "a night without a flyer shows a placeholder")
+  assert.ok(!review.includes("inheritedFlyerUrl"), "review must not treat the venue photo as a flyer")
 
   const nightTickets = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/NightTicketsEditor.tsx", import.meta.url)),
