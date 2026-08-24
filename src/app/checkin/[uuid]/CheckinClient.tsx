@@ -121,7 +121,13 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
           redeemed_at: data.ticket?.redeemed_at ?? ticket?.redeemed_at ?? null,
         },
         refusal: resolveCheckinRefusal(
-          { ...data, status },
+          {
+            ...data,
+            status,
+            // Night start from the ticket page. The redeem body may only
+            // send window_opens_at (scan-window clock / 17:00 default).
+            event_start: data.event_start ?? ticket?.start_date_time ?? null,
+          },
           {
             httpStatus: res.status,
             // What the page already loaded, so the fallback path still has
