@@ -898,7 +898,9 @@ export default function EventCheckoutClient({
                 </div>
               </div>
 
-              {event.description && <AboutBlock text={event.description} />}
+              {event.description?.trim() && (
+                <AboutBlock text={event.description.trim()} />
+              )}
 
               <div>
                 <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">Select Tickets</h3>
