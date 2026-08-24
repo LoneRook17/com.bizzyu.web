@@ -9,10 +9,11 @@ import { EmptyState } from "@/components/business/v2/ui/empty-state"
 /**
  * Flutter CreateChoicePage. "What are you setting up?"
  *
- * Dark charcoal cards with a thin green / pink outline — not neon-filled
- * blocks. Event is the green tile; Weekly Cover is the pink tile with the
- * Low Maintenance Option chip. The dashboard is already scoped to a venue,
- * so this is Flutter screen 1 with the venue picker skipped.
+ * Thin green / pink outline — not neon-filled blocks. Event is the green
+ * tile; Weekly Cover is the pink tile with the Low Maintenance Option chip.
+ * Light uses dash white / ink; dark keeps the in-app charcoal. The
+ * dashboard is already scoped to a venue, so this is Flutter screen 1
+ * with the venue picker skipped.
  */
 export default function CreateFunnelPage() {
   const { user } = useAuth()

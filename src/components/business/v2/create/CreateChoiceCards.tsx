@@ -8,15 +8,18 @@ import {
   WEEKLY_ACCESS_TYPE_LABEL,
 } from "@/lib/business/door-access"
 import {
-  IN_APP_CHOICE_BODY,
-  IN_APP_CHOICE_TITLE,
+  IN_APP_CHOICE_BODY_CLASS,
+  IN_APP_CHOICE_SURFACE_CLASS,
+  IN_APP_CHOICE_TITLE_CLASS,
   InAppIconTile,
   inAppChoiceSurfaceStyle,
 } from "@/components/business/v2/create/in-app-choice"
+import { cn } from "@/lib/v2/utils"
 
 /**
- * Flutter CreateChoicePage cards. Dark charcoal + thin green/pink outline.
- * Selected is a colored check — the card never fills with neon.
+ * Flutter CreateChoicePage cards. Thin green / pink outline, icon tile,
+ * colored check. Fill and type follow the dashboard ThemeProvider
+ * (white / ink in light, charcoal / white in dark). Never neon-filled.
  */
 export function CreateChoiceCards() {
   return (
@@ -77,7 +80,10 @@ export function ChoiceCard({
     <Link
       href={href}
       style={inAppChoiceSurfaceStyle(accent, true)}
-      className="flex flex-col rounded-2xl border p-6 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 [&:hover_.choice-hover-check]:opacity-100 [&:focus-visible_.choice-hover-check]:opacity-100"
+      className={cn(
+        IN_APP_CHOICE_SURFACE_CLASS,
+        "flex flex-col rounded-2xl border p-6 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 [&:hover_.choice-hover-check]:opacity-100 [&:focus-visible_.choice-hover-check]:opacity-100",
+      )}
     >
       <div className="flex items-center gap-3">
         <InAppIconTile accent={accent} icon={icon} />
@@ -93,7 +99,7 @@ export function ChoiceCard({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <h2 className="text-xl font-semibold" style={{ color: IN_APP_CHOICE_TITLE }}>
+        <h2 className={cn("text-xl font-semibold", IN_APP_CHOICE_TITLE_CLASS)}>
           {title}
         </h2>
         {tag && (
@@ -105,7 +111,7 @@ export function ChoiceCard({
           </span>
         )}
       </div>
-      <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: IN_APP_CHOICE_BODY }}>
+      <p className={cn("mt-1.5 text-[14px] leading-relaxed", IN_APP_CHOICE_BODY_CLASS)}>
         {blurb}
       </p>
 
@@ -113,7 +119,7 @@ export function ChoiceCard({
         {bullets.map((bullet) => (
           <li key={bullet} className="flex items-start gap-2">
             <Check className="mt-0.5 size-4 shrink-0" style={{ color: accent }} />
-            <span className="text-[13px] leading-snug" style={{ color: IN_APP_CHOICE_BODY }}>
+            <span className={cn("text-[13px] leading-snug", IN_APP_CHOICE_BODY_CLASS)}>
               {bullet}
             </span>
           </li>

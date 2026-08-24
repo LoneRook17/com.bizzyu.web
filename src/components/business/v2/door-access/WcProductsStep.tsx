@@ -5,8 +5,9 @@ import { cn } from "@/lib/v2/utils"
 import { ACCESS_ACCENT, ACCESS_INK } from "@/lib/business/door-access"
 import { WC_PRODUCTS, WC_PRODUCT_COPY, type WcProducts } from "@/lib/business/weekly-cover-nights"
 import {
-  IN_APP_CHOICE_BODY,
-  IN_APP_CHOICE_TITLE,
+  IN_APP_CHOICE_BODY_CLASS,
+  IN_APP_CHOICE_SURFACE_CLASS,
+  IN_APP_CHOICE_TITLE_CLASS,
   InAppIconTile,
   InAppSelectedCheck,
   inAppChoiceSurfaceStyle,
@@ -64,6 +65,7 @@ export function WcProductsStep({
               onClick={() => onChange(product)}
               style={inAppChoiceSurfaceStyle(ACCESS_ACCENT, selected)}
               className={cn(
+                IN_APP_CHOICE_SURFACE_CLASS,
                 "group flex items-center gap-4 rounded-xl border px-5 py-4 text-left transition-shadow",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-access/40",
                 selected && "shadow-sm"
@@ -73,7 +75,7 @@ export function WcProductsStep({
 
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">
-                  <span className="text-[17px] font-semibold" style={{ color: IN_APP_CHOICE_TITLE }}>
+                  <span className={cn("text-[17px] font-semibold", IN_APP_CHOICE_TITLE_CLASS)}>
                     {copy.title}
                   </span>
                   {featured && (
@@ -85,7 +87,7 @@ export function WcProductsStep({
                     </span>
                   )}
                 </span>
-                <span className="mt-0.5 block text-[13.5px] leading-snug" style={{ color: IN_APP_CHOICE_BODY }}>
+                <span className={cn("mt-0.5 block text-[13.5px] leading-snug", IN_APP_CHOICE_BODY_CLASS)}>
                   {copy.blurb}
                 </span>
               </span>
