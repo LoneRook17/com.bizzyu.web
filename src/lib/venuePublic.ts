@@ -314,6 +314,21 @@ export function venueNightCheckoutHref(
   return id != null ? `${base}?${VENUE_CHECKOUT_TICKET_PARAM}=${id}` : base
 }
 
+/** Public Weekly Cover series checkout — same page format as /lineskip/:slug. */
+export function weeklyCoverCheckoutPath(eventId: number): string {
+  return `/cover/${eventId}`
+}
+
+/** All nights in the same Weekly Cover series as [seedId]. */
+export function nightsForCoverSeed(events: VenueEvent[], seedId: number): VenueEvent[] {
+  const door = events.filter((event) => event.access_kind === "door_access")
+  const groups = groupWeeklyAccessNights(door)
+  const hit = groups.find((group) => group.some((night) => night.event_id === seedId))
+  if (hit) return hit
+  const seed = events.find((event) => event.event_id === seedId)
+  return seed && seed.access_kind === "door_access" ? [seed] : []
+}
+
 function finitePrices(tiers: VenueAccessTier[]): number[] {
   return tiers.map((tier) => Number(tier.price_usd)).filter((n) => Number.isFinite(n))
 }

@@ -7,7 +7,9 @@ import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
 import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
-import { EVENT, EVENT_FILL } from "@/lib/checkout/surfaces"
+import { isDoorAccessKind } from "@/lib/business/door-access"
+import { looksLikeWeeklyCoverName } from "@/lib/business/weekly-cover-label"
+import { ACCESS, EVENT, EVENT_FILL } from "@/lib/checkout/surfaces"
 
 const API_URL = getApiBaseUrl()
 
@@ -46,6 +48,7 @@ interface EventInfo {
   is_21_plus: boolean
   flyer_image_url: string | null
   promotion_enabled?: boolean | number
+  access_kind?: string | null
 }
 
 interface TicketTier {
@@ -170,6 +173,7 @@ function TicketCard({
   unavailable,
   isSoldOut,
   status,
+  accent,
   onSelect,
   onAdjustQty,
 }: {
@@ -178,6 +182,7 @@ function TicketCard({
   unavailable: boolean
   isSoldOut: boolean
   status: string | null
+  accent: string
   onSelect: () => void
   onAdjustQty: (val: number) => void
 }) {
@@ -214,8 +219,8 @@ function TicketCard({
     <div
       className="cursor-pointer rounded-2xl border bg-[#141420] p-5 transition-[border-color,box-shadow] duration-200"
       style={{
-        borderColor: selected ? EVENT_FILL : "#1e1e2e",
-        boxShadow: selected ? "0 0 20px rgba(5, 235, 84, 0.15)" : undefined,
+        borderColor: selected ? accent : "#1e1e2e",
+        boxShadow: selected ? `0 0 20px ${accent}26` : undefined,
       }}
       onClick={onSelect}
     >
@@ -226,7 +231,7 @@ function TicketCard({
             checked={selected}
             readOnly
             className="h-5 w-5 cursor-pointer"
-            style={{ accentColor: EVENT_FILL }}
+            style={{ accentColor: accent }}
           />
           <div>
             <h4 className="text-lg font-bold text-white">{ticket.name}</h4>
@@ -365,7 +370,11 @@ export default function EventCheckoutClient({
       const res = await fetch(`${API_URL}/ui/events/${eventId}`)
       if (!res.ok) return base
       const ui = await res.json()
-      return { ...base, promotion_enabled: ui.promotion_enabled }
+      return {
+        ...base,
+        promotion_enabled: ui.promotion_enabled,
+        access_kind: base.access_kind ?? ui.access_kind ?? null,
+      }
     } catch {
       return base
     }
@@ -661,6 +670,12 @@ export default function EventCheckoutClient({
     )
   }
 
+  const cover = event
+    ? isDoorAccessKind(event.access_kind) || looksLikeWeeklyCoverName(event.name)
+    : false
+  const fill = cover ? ACCESS : EVENT_FILL
+  const accent = cover ? ACCESS : EVENT
+
   if (error || !event) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-6">
@@ -689,9 +704,9 @@ export default function EventCheckoutClient({
           <div className="mb-6 text-center">
             <div
               className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full"
-              style={{ backgroundColor: `${EVENT}20` }}
+              style={{ backgroundColor: `${accent}20` }}
             >
-              <svg className="h-10 w-10" style={{ color: EVENT }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-10 w-10" style={{ color: accent }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
@@ -700,7 +715,7 @@ export default function EventCheckoutClient({
           </div>
           <div
             className="mb-6 overflow-hidden rounded-2xl"
-            style={{ backgroundColor: `${EVENT}15`, border: `1px solid ${EVENT}40` }}
+            style={{ backgroundColor: `${accent}15`, border: `1px solid ${accent}40` }}
           >
             <div className="p-6">
               <h2 className="mb-4 text-lg font-bold text-white">{event.name}</h2>
@@ -755,7 +770,7 @@ export default function EventCheckoutClient({
             <a
               href={`bizzy://event/${eventId}`}
               className="mb-2.5 block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
-              style={{ backgroundColor: EVENT_FILL }}
+              style={{ backgroundColor: fill }}
             >
               Open in the Bizzy app
             </a>
@@ -794,9 +809,9 @@ export default function EventCheckoutClient({
       <style>{`
         .bg-blur-flyer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
         .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(80px) saturate(1.5); opacity: 0.15; transform: scale(1.2); }
-        .flyer-glow { box-shadow: 0 0 60px rgba(5, 235, 84, 0.2), 0 0 120px rgba(5, 235, 84, 0.1); }
-        .qty-btn { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #1e1e2e; border: 1px solid #2d2d3f; color: #33f77c; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .qty-btn:hover:not(:disabled) { background: #05EB54; border-color: #05EB54; color: white; }
+        .flyer-glow { box-shadow: 0 0 60px ${cover ? "rgba(255, 62, 209, 0.2)" : "rgba(5, 235, 84, 0.2)"}, 0 0 120px ${cover ? "rgba(255, 62, 209, 0.1)" : "rgba(5, 235, 84, 0.1)"}; }
+        .qty-btn { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #1e1e2e; border: 1px solid #2d2d3f; color: ${cover ? ACCESS : "#33f77c"}; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .qty-btn:hover:not(:disabled) { background: ${fill}; border-color: ${fill}; color: ${cover ? "#000" : "white"}; }
         .qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
       `}</style>
 
@@ -817,7 +832,7 @@ export default function EventCheckoutClient({
                 <a
                   href={`bizzy://event/${event.event_id}`}
                   className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition hover:opacity-90"
-                  style={{ backgroundColor: EVENT_FILL }}
+                  style={{ backgroundColor: fill }}
                 >
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
@@ -937,6 +952,7 @@ export default function EventCheckoutClient({
                           unavailable={unavailable}
                           isSoldOut={isSoldOut}
                           status={status}
+                          accent={fill}
                           onSelect={() => {
                             setQuantities({ [ticket.ticket_id]: qty === 0 ? 1 : qty })
                           }}
@@ -1098,7 +1114,7 @@ export default function EventCheckoutClient({
                   </div>
                   <div className="flex justify-between pt-1 font-extrabold text-white">
                     <span>Total</span>
-                    <span style={{ color: EVENT }}>{feePreview.total === 0 ? "Free" : formatPrice(feePreview.total)}</span>
+                    <span style={{ color: accent }}>{feePreview.total === 0 ? "Free" : formatPrice(feePreview.total)}</span>
                   </div>
                 </div>
               </div>
@@ -1127,8 +1143,8 @@ export default function EventCheckoutClient({
                   <span
                     className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[3px] border"
                     style={{
-                      backgroundColor: smsOptIn ? EVENT_FILL : "transparent",
-                      borderColor: smsOptIn ? EVENT_FILL : "rgba(255,255,255,0.4)",
+                      backgroundColor: smsOptIn ? fill : "transparent",
+                      borderColor: smsOptIn ? fill : "rgba(255,255,255,0.4)",
                     }}
                   >
                     {smsOptIn && (
@@ -1152,7 +1168,7 @@ export default function EventCheckoutClient({
                   onClick={sendCode}
                   disabled={checkoutLoading || phone.length < 10}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
-                  style={{ backgroundColor: EVENT_FILL }}
+                  style={{ backgroundColor: fill }}
                 >
                   {checkoutLoading ? "Sending..." : "Continue"}
                 </button>
@@ -1182,7 +1198,7 @@ export default function EventCheckoutClient({
                   onClick={submitName}
                   disabled={!attendeeName.trim()}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
-                  style={{ backgroundColor: EVENT_FILL }}
+                  style={{ backgroundColor: fill }}
                 >
                   Continue
                 </button>
@@ -1228,7 +1244,7 @@ export default function EventCheckoutClient({
                   onClick={verifyAndPurchase}
                   disabled={checkoutLoading || otpCode.length < 6}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
-                  style={{ backgroundColor: EVENT_FILL }}
+                  style={{ backgroundColor: fill }}
                 >
                   {checkoutLoading ? "Verifying..." : "Verify & Pay"}
                 </button>

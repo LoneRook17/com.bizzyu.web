@@ -42,7 +42,11 @@ async function getEventData(eventId: string) {
       const uiRes = await fetch(`${API_URL}/ui/events/${eventId}`, { cache: "no-store" })
       if (uiRes.ok) {
         const ui = await uiRes.json()
-        data.event = { ...data.event, promotion_enabled: ui.promotion_enabled }
+        data.event = {
+          ...data.event,
+          promotion_enabled: ui.promotion_enabled,
+          access_kind: data.event?.access_kind ?? ui.access_kind ?? null,
+        }
       }
     } catch {
       // Checkout still renders if the public event payload is missing.
