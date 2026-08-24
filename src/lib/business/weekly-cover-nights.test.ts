@@ -51,6 +51,8 @@ import {
   nightUnsetSubtitle,
   nightOwnFlyer,
   nightToWire,
+  reviewFlyerUrl,
+  reviewFlyerUrlForDay,
   paidPricesFromDraft,
   productsFromTiers,
   resolveTierKey,
@@ -123,6 +125,29 @@ test("an inherited flyer is never mistaken for the night's own", () => {
     nightOwnFlyer({ flyer_image_url_override: "https://cdn/program.jpg" }, program),
     "https://cdn/program.jpg"
   )
+})
+
+test("Look it over flyer is the night's own artwork, not the inherited venue photo", () => {
+  assert.equal(
+    reviewFlyerUrl(night({ flyerImageUrl: "https://cdn/wed.jpg", inheritedFlyerUrl: "https://cdn/venue.jpg" })),
+    "https://cdn/wed.jpg"
+  )
+  assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" })), "")
+  assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "   ", inheritedFlyerUrl: "https://cdn/venue.jpg" })), "")
+  assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "", flyerRemoved: true })), "")
+  assert.equal(reviewFlyerUrl(undefined), "")
+  assert.equal(reviewFlyerUrl(null), "")
+})
+
+test("Look it over flyer follows the selected weekday", () => {
+  const edits = {
+    3: night({ flyerImageUrl: "https://cdn/wed.jpg" }),
+    5: night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" }),
+  }
+  assert.equal(reviewFlyerUrlForDay(edits, 3), "https://cdn/wed.jpg")
+  assert.equal(reviewFlyerUrlForDay(edits, 5), "", "Friday has no own flyer, so review shows a placeholder")
+  assert.equal(reviewFlyerUrlForDay(edits, 1), "", "an unpicked Monday is empty, not a throw")
+  assert.equal(reviewFlyerUrlForDay(edits, null), "")
 })
 
 test("copying a weekday onto another does not carry its artwork", () => {
