@@ -1666,6 +1666,15 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     assert.ok(!/Choose a venue|Select a venue/.test(src), `${rel} still shows a venue picker`)
     assert.ok(!/\bVIP\b/.test(src), `${rel} still mentions VIP`)
     assert.ok(!/Program name/.test(src), `${rel} still asks for a program name`)
+    assert.ok(!/id=["']da_name["']/.test(src), `${rel} still has da_name`)
+    assert.ok(!/id=["']da_description["']/.test(src), `${rel} still has da_description`)
+    assert.ok(!/htmlFor=["']da_name["']/.test(src), `${rel} still labels da_name`)
+    assert.ok(!/setName\s*\(/.test(src), `${rel} still has a typed name setter`)
+    assert.ok(!/const \[name,/.test(src), `${rel} still holds typed name state`)
+    assert.ok(!/Name the program/.test(src), `${rel} still has a Details name heading`)
+    assert.ok(!/Give the program a name/.test(src), `${rel} still requires a typed name`)
+    assert.ok(!/Every night is created with this name/.test(src), `${rel} still invites a rename`)
+    assert.ok(!/step === ["']details["']/.test(src), `${rel} still has a Details step`)
     assert.ok(!/promo code/i.test(src), `${rel} still mentions promo codes`)
     assert.ok(!/notify_followers_on_publish:\s*true/.test(src), `${rel} still blasts followers`)
   }
@@ -1677,11 +1686,35 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(wizard.includes("weekday_edits"), "create still writes weekday_edits")
   assert.ok(wizard.includes("date_edits"), "create still writes date_edits")
   assert.ok(wizard.includes("template_tickets"), "create still writes template_tickets")
-  assert.ok(wizard.includes("derivedWeeklyCoverName"), "create derives {Venue} Cover")
+  assert.ok(wizard.includes("weeklyCoverProgramName"), "create derives {Venue} Cover; edit keeps the saved name")
+  assert.ok(!wizard.includes("RecurringTierEditor"), "wizard must not mount the series Name/Description editor")
   assert.ok(wizard.includes("date_range_end: isEdit"), "create sends date_range_end null")
   assert.ok(wizard.includes("WcProgressBar"), "pink progress bar on screens 2-9")
   assert.ok(wizard.includes("Look it over") || wizard.includes("WcReviewStep"), "review is Look it over")
   assert.ok(wizard.includes('isEdit && initialProducts ? STEP_DAYS : STEP_SELL'), "edit skips Sell when products exist")
+
+  const days = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/WcDaysStep.tsx", import.meta.url)),
+    "utf8",
+  ).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+  assert.ok(!/<Input\b/.test(days), "Days has no name/title input")
+  assert.ok(!/<input\b/.test(days), "Days has no raw text input")
+
+  const review = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/WcReviewStep.tsx", import.meta.url)),
+    "utf8",
+  ).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+  assert.ok(!/<Input\b/.test(review), "Review must not offer a rename")
+  assert.ok(!/contentEditable/.test(review), "Review name is display text, not editable")
+
+  const nightTickets = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/NightTicketsEditor.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(
+    nightTickets.includes("showIdentityFields={false}"),
+    "night review-edit must not show ticket name/description inputs",
+  )
 
   const create = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/create/page.tsx", import.meta.url)),

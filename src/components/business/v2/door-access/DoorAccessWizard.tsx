@@ -18,7 +18,8 @@ import {
 import {
   cheapestPaidPrice,
   dateEditsToWire,
-  derivedWeeklyCoverName,
+  weeklyCoverProgramDescription,
+  weeklyCoverProgramName,
   firstConfiguredNight,
   flutterWizardStep,
   hasPaidPrice,
@@ -168,9 +169,15 @@ export function DoorAccessWizard({
   const currentVenue = venues.find((v) => v.id === venueId) ?? selectedVenue ?? null
   const scopedVenueName = venueName || currentVenue?.name || ""
   const scopedVenueAddress = venueAddress || currentVenue?.address || ""
-  const derivedName = isEdit
-    ? (initialData?.name || derivedWeeklyCoverName(scopedVenueName))
-    : derivedWeeklyCoverName(scopedVenueName)
+  const programName = weeklyCoverProgramName({
+    isEdit,
+    venueName: scopedVenueName,
+    existingName: initialData?.name,
+  })
+  const programDescription = weeklyCoverProgramDescription({
+    isEdit,
+    existingDescription: initialData?.description,
+  })
 
   const fallbackTiers = useMemo(
     () => (products ? seedTiersForProducts(products) : templateTiersToDrafts(initialData?.template_tickets ?? [])),
@@ -233,8 +240,8 @@ export function DoorAccessWizard({
       Object.values(weekdayEdits).some((n) => n.is21Plus || n.tiers.some((t) => t.is_21_plus)) ||
       Object.values(dateEdits).some((n) => n.is21Plus || n.tiers.some((t) => t.is_21_plus))
     return {
-      name: derivedName,
-      description: isEdit ? (initialData?.description ?? null) : null,
+      name: programName,
+      description: programDescription,
       venue_name: scopedVenueName,
       venue_address: scopedVenueAddress,
       ...(venueId != null ? { venue_id: venueId } : currentVenue?.id != null ? { venue_id: currentVenue.id } : {}),
@@ -449,7 +456,7 @@ export function DoorAccessWizard({
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
             {saved
               ? "The template is saved. Upcoming nights that still follow it will pick up the new defaults."
-              : `${derivedName} is live and selling.`}
+              : `${programName} is live and selling.`}
           </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
@@ -591,7 +598,7 @@ export function DoorAccessWizard({
             <WcReviewStep
               products={products}
               venueName={scopedVenueName}
-              derivedName={derivedName}
+              derivedName={programName}
               daysOfWeek={daysOfWeek}
               weekdayEdits={weekdayEdits}
               dateEdits={dateEdits}

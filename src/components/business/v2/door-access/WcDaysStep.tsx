@@ -7,10 +7,10 @@ import { daysQuestion, type WcProducts } from "@/lib/business/weekly-cover-night
 import { ISO_DAYS } from "@/components/business/v2/recurring/schedule"
 
 /**
- * Flutter days step. MTWTFSS chips only. No name, description, program 21+,
- * hours, date range, or flyer — those are not questions the app asks on create.
- * The dashboard is already scoped to a venue, so the picker is skipped and the
- * venue shows as a read-only card.
+ * Flutter days step. MTWTFSS chips only. No name input, no description input,
+ * no rename — create derives `{Venue} Cover`. No program 21+, hours, date
+ * range, or flyer. The dashboard is already scoped to a venue, so the picker
+ * is skipped and the venue shows as a read-only card.
  */
 export function WcDaysStep({
   products,

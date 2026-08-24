@@ -106,11 +106,14 @@ export function RecurringTierEditor({
   onChange,
   allowAdd = true,
   allowRemove = true,
+  showIdentityFields = true,
 }: {
   tiers: RecurringTierRow[]
   onChange: (tiers: RecurringTierRow[]) => void
   allowAdd?: boolean
   allowRemove?: boolean
+  /** Named event series keep Name + Description. Weekly Cover does not. */
+  showIdentityFields?: boolean
 }) {
   const update = (index: number, patch: Partial<RecurringTierRow>) => {
     const next = [...tiers]
@@ -128,10 +131,12 @@ export function RecurringTierEditor({
       {tiers.map((tier, i) => (
         <div key={i} className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-800/50 p-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="col-span-2 md:col-span-1">
-              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Name</Label>
-              <Input value={tier.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="e.g. GA, VIP" />
-            </div>
+            {showIdentityFields ? (
+              <div className="col-span-2 md:col-span-1">
+                <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Name</Label>
+                <Input value={tier.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="e.g. GA, VIP" />
+              </div>
+            ) : null}
             <div>
               <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Type</Label>
               <Select value={tier.ticket_type} onChange={(e) => update(i, { ticket_type: e.target.value as "paid" | "free" })}>
@@ -166,21 +171,23 @@ export function RecurringTierEditor({
             </div>
           </div>
 
-          <div className="mt-3">
-            <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
-              Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
-            </Label>
-            <Textarea
-              value={tier.description}
-              onChange={(e) => update(i, { description: e.target.value })}
-              rows={2}
-              maxLength={TICKET_DESCRIPTION_MAX}
-              placeholder="What's included in this tier? e.g. Includes a free drink"
-            />
-            <p className="mt-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
-              {tier.description.length}/{TICKET_DESCRIPTION_MAX}
-            </p>
-          </div>
+          {showIdentityFields ? (
+            <div className="mt-3">
+              <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+                Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+              </Label>
+              <Textarea
+                value={tier.description}
+                onChange={(e) => update(i, { description: e.target.value })}
+                rows={2}
+                maxLength={TICKET_DESCRIPTION_MAX}
+                placeholder="What's included in this tier? e.g. Includes a free drink"
+              />
+              <p className="mt-1 text-right text-[11px] text-neutral-400 dark:text-neutral-500">
+                {tier.description.length}/{TICKET_DESCRIPTION_MAX}
+              </p>
+            </div>
+          ) : null}
 
           <ScanWindowToggle
             info={<ScanWindowInfo weekly />}

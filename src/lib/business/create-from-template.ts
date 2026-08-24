@@ -1,9 +1,10 @@
 /**
  * Create-from-template.
  *
- * L5: opening create with ?from= must actually apply the source (name, venue,
+ * L5: opening create with ?from= must actually apply the source (venue,
  * tickets/tiers, flyer, promoter/stock settings, artwork). The old Duplicate
- * call created a row that often arrived empty.
+ * call created a row that often arrived empty. Weekly Cover create never
+ * copies a typed program name — Flutter derives `{Venue} Cover`.
  *
  * L6: a Weekly Cover / door_access source stays on the Weekly Cover wizard
  * (`/business/door-access/new?from=`), never EventForm or /business/recurring.
@@ -13,6 +14,7 @@
 import { isDoorAccessKind, programHref, programIdFromOwnedEvent } from "./door-access.ts"
 import type { DoorAccessProgram, DoorAccessTemplateTier } from "./door-access.ts"
 import type { EventDetail, EventFormData, TicketTier } from "./types.ts"
+import { derivedWeeklyCoverName } from "./weekly-cover-nights.ts"
 
 export function eventCreateFromHref(eventId: number): string {
   return `/business/events/new?from=${eventId}`
@@ -98,6 +100,8 @@ export function stripTemplateTierKeys(tiers: DoorAccessTemplateTier[]): DoorAcce
 /**
  * Prefill the Weekly Cover wizard from an existing program.
  * New series: today as start, open end, new tier keys minted on create.
+ * Name is re-derived (`{Venue} Cover`); a typed leftover from the source
+ * program must not become the new series name.
  */
 export function applyProgramAsCreateTemplate(
   program: DoorAccessProgram,
@@ -105,6 +109,8 @@ export function applyProgramAsCreateTemplate(
 ): DoorAccessProgram {
   return {
     ...program,
+    name: derivedWeeklyCoverName(program.venue_name),
+    description: null,
     date_range_start: today,
     date_range_end: null,
     template_tickets: stripTemplateTierKeys(program.template_tickets ?? []),
