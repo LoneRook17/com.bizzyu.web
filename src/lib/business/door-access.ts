@@ -490,6 +490,12 @@ export const EVENT_ACCENT = "#05EB54"
 export const ACCESS_ACCENT = "#FF3ED1"
 /** Gradient partner for ACCESS_ACCENT — same pair as checkout / venue Weekly Cover. */
 export const ACCESS_ACCENT_DEEP = "#D10EA3"
+/**
+ * Ink on a pink fill. Flutter WC create uses this on filled pink chips,
+ * cards, and primary CTAs — white-on-pink fails the same contrast the
+ * green path already refuses for body text.
+ */
+export const ACCESS_INK = "#33052A"
 /** v2 Button variant for Weekly Cover primary CTAs. */
 export const ACCESS_BUTTON_VARIANT = "access" as const
 

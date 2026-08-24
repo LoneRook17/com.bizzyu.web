@@ -13,7 +13,7 @@ const buttonVariants = cva(
       variant: {
         primary: "bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white shadow-md shadow-[#05EB54]/25 hover:brightness-110",
         /** Weekly Cover primary — ACCESS_ACCENT / --color-access, not Bizzy green. */
-        access: "bg-gradient-to-br from-access-deep to-access text-white shadow-md shadow-access/25 hover:brightness-110 focus-visible:ring-access/40",
+        access: "bg-gradient-to-br from-access-deep to-access text-[#33052A] shadow-md shadow-access/25 hover:brightness-110 focus-visible:ring-access/40",
         secondary: "bg-white text-neutral-700 border border-neutral-300 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-700 dark:hover:bg-neutral-800",
         "access-secondary": "bg-white text-access border border-access/40 shadow-sm hover:bg-access/10 dark:bg-neutral-900 dark:text-access dark:border-access/50 dark:hover:bg-access/15",
         ghost: "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
