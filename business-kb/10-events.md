@@ -69,8 +69,13 @@ so you're notified as tickets run low, without watching the dashboard.
 
 1. Go to the event → **Manage → "Cancel event"**.
 2. Provide a reason for the cancellation.
-3. If **paid tickets were sold**, the request goes to the Bizzy admin team for approval.
-   If there are **no paid tickets**, it cancels immediately.
+3. If there is **money that would have to be refunded**, the request goes to the Bizzy
+   admin team for approval. If there is nothing to refund, it cancels immediately.
+
+- "Money that would have to be refunded" means at least one paid order that is still
+  refundable. An event whose only tickets were **free**, or whose paid orders have
+  **already been fully refunded**, has nothing left to return, so it cancels straight
+  away instead of waiting on review.
 
 - You can't cancel an event that has already ended.
 - When an event is cancelled, **every ticket holder is refunded in full** (ticket price

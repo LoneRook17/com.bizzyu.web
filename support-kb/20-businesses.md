@@ -96,8 +96,10 @@ apply to business/venue users.
 - Refunds happen only when the business cancels an event or a line-skip night: every
   buyer is then refunded in full (price + fees) automatically through Stripe, and the
   money is pulled back from the business's Stripe account.
-- Cancelling an event with paid tickets sold requires Bizzy admin approval; with no
-  paid tickets it cancels immediately. Events that already ended can't be cancelled.
+- Cancelling an event requires Bizzy admin approval when there is still money to refund.
+  If the event only had free tickets, or every paid order was already refunded, there's
+  nothing to return and it cancels immediately. Events that already ended can't be
+  cancelled.
 - Repeated cancellations trigger review: a 3rd cancellation within 90 days flags the
   account for review by the Bizzy team.
 
