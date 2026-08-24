@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
-import { EVENT_FILL } from "@/lib/checkout/surfaces"
+import { ACCESS, EVENT_FILL } from "@/lib/checkout/surfaces"
 import {
   eventCalendarDate,
   eventFromPrice,
   fetchVenuePublicData,
   formatAccessTierLabel,
+  isVenueWeeklyCoverNight,
   mergeVenueEvents,
   resolveNightTiers,
   resolveVenueEventImageUrl,
@@ -353,6 +354,20 @@ export default function VenuePageClient({
   )
 }
 
+function nightRowTheme(cover: boolean) {
+  return {
+    fill: cover ? ACCESS : EVENT_FILL,
+    card: cover
+      ? "border-access/40 hover:border-access/50 hover:shadow-[0_0_20px_rgba(255,62,209,0.15)]"
+      : "border-[#1e1e2e] hover:border-[#05EB54]/50 hover:shadow-[0_0_20px_rgba(5,235,84,0.15)]",
+    chip: cover
+      ? "border-access/40 hover:border-access/50"
+      : "border-[#1e1e2e] hover:border-[#05EB54]/50",
+    price: cover ? "text-access" : "text-[#33f77c]",
+    icon: cover ? "text-access/40" : "text-[#05EB54]/40",
+  }
+}
+
 function UpcomingRow({
   event,
   venue,
@@ -360,7 +375,8 @@ function UpcomingRow({
   event: VenueEvent
   venue: VenueData["venue"]
 }) {
-  const door = event.access_kind === "door_access"
+  const cover = isVenueWeeklyCoverNight(event)
+  const theme = nightRowTheme(cover)
   const image = resolveVenueEventImageUrl(event, venue)
   const price = rowPriceLabel(event)
   // Same-origin event checkout as /checkout/673 — WC and named events share it.
@@ -368,13 +384,15 @@ function UpcomingRow({
   const tiers = resolveNightTiers(event)
 
   return (
-    <div className="rounded-2xl border border-[#1e1e2e] bg-[#141420] p-5 transition-[border-color,box-shadow] duration-200 hover:border-[#05EB54]/50 hover:shadow-[0_0_20px_rgba(5,235,84,0.15)]">
+    <div
+      className={`rounded-2xl border bg-[#141420] p-5 transition-[border-color,box-shadow] duration-200 ${theme.card}`}
+    >
       <a href={href} className="flex items-center gap-4">
         <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]">
           {image ? (
             <img src={image} alt="" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-[#05EB54]/40">
+            <div className={`flex h-full w-full items-center justify-center ${theme.icon}`}>
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
               </svg>
@@ -382,8 +400,8 @@ function UpcomingRow({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          {door && (
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#33f77c]">
+          {cover && (
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-access">
               {WEEKLY_ACCESS_TYPE_LABEL}
             </p>
           )}
@@ -392,11 +410,13 @@ function UpcomingRow({
         </div>
         <div className="shrink-0 text-right">
           {price && (
-            <p className={`text-xl font-bold ${price === "Free" ? "text-[#33f77c]" : "text-white"}`}>
+            <p className={`text-xl font-bold ${price === "Free" ? theme.price : "text-white"}`}>
               {price}
             </p>
           )}
-          <p className="mt-1 text-xs font-semibold text-[#05EB54]">Get Tickets</p>
+          <p className="mt-1 text-xs font-semibold" style={{ color: theme.fill }}>
+            Get Tickets
+          </p>
         </div>
       </a>
       {tiers.length > 0 && (
@@ -408,7 +428,7 @@ function UpcomingRow({
               <a
                 key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
                 href={venueNightCheckoutHref("", event.event_id, tier.ticket_id)}
-                className="rounded-full border border-[#1e1e2e] bg-[#0a0a0f] px-3 py-1.5 text-sm font-semibold text-white hover:border-[#05EB54]/50"
+                className={`rounded-full border bg-[#0a0a0f] px-3 py-1.5 text-sm font-semibold text-white ${theme.chip}`}
               >
                 {label}
               </a>

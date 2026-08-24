@@ -14,6 +14,7 @@ import {
   formatNightChipLabel,
   groupWeeklyAccessNights,
   isCoverOnlyFallback,
+  isVenueWeeklyCoverNight,
   lookaheadIds,
   mergeVenueEvents,
   needsWeeklyAccessTierEnrichment,
@@ -73,6 +74,17 @@ test("toVenueEvent aliases weekly_cover to door_access like Flutter readAccessKi
   assert.ok(row)
   assert.equal(row.access_kind, "door_access")
   assert.equal(shouldListOnVenuePage(row), true)
+})
+
+test("isVenueWeeklyCoverNight is door_access, weekly_cover, or a Weekly Cover name", () => {
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: "door_access", name: "Friday" }), true)
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: "weekly_cover", name: "Friday" }), true)
+  assert.equal(
+    isVenueWeeklyCoverNight({ access_kind: "event", name: "The Dungeon Weekly Cover" }),
+    true,
+  )
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: "event", name: "Rumble" }), false)
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: null, name: "Rumble" }), false)
 })
 
 test("toVenueEvent treats a Weekly Cover name as pink door_access when access_kind is event", () => {
@@ -350,8 +362,22 @@ test("venue page copies the event checkout chrome, not line-skip pink", () => {
   assert.ok(client.includes("resolveVenueEventImageUrl"), "rows must resolve flyer then venue photo")
   assert.ok(client.includes("flyer-glow"), "venue photo uses the event-checkout flyer glow")
   assert.ok(client.includes("font-[family-name:var(--font-fira)]"), "Fira matches event checkout")
-  assert.ok(client.includes("EVENT_FILL"), "CTAs use event green, not line-skip pink")
-  assert.ok(!client.includes("#FF3ED1"), "venue page must not use the line-skip accent")
+  assert.ok(client.includes("EVENT_FILL"), "named events and page chrome stay event green")
+  assert.ok(client.includes("ACCESS"), "Weekly Cover rows use the shared WC pink token")
+  assert.ok(client.includes("isVenueWeeklyCoverNight"), "row pink is gated on the venue WC helper")
+  assert.ok(client.includes("text-access"), "WC chip / type label use the access pink token")
+  assert.ok(client.includes("border-access/40"), "WC row and tier chips use a pink border")
+  assert.ok(!client.includes("ACCESS_CTA"), "venue must not copy the line-skip CTA gradient")
+  const rowStart = client.indexOf("function nightRowTheme")
+  assert.ok(rowStart >= 0, "nightRowTheme must exist")
+  const chrome = client.slice(0, rowStart)
+  const row = client.slice(rowStart)
+  assert.ok(chrome.includes("EVENT_FILL"), "Open in App stays event green")
+  assert.ok(chrome.includes("rgba(5, 235, 84"), "hero flyer glow stays event green")
+  assert.ok(!chrome.includes("text-access"), "page chrome is not restyled pink")
+  assert.ok(row.includes("const cover = isVenueWeeklyCoverNight(event)"), "only WC rows go pink")
+  assert.ok(row.includes("cover ? ACCESS : EVENT_FILL"), "WC Get Tickets is ACCESS, named stays green")
+  assert.ok(row.includes("text-access"), "WEEKLY COVER chip is pink, not green")
   assert.ok(client.includes("UpcomingRow"), "nights render as checkout-style cards")
   assert.ok(!client.includes("pricedCtaLabel"), "top-level venue CTAs must not include prices")
   assert.ok(!client.includes("business.logo_image_url"), "venue page must not show the business logo")
@@ -781,13 +807,17 @@ test("venue upcoming rows use ticket cards, not line-skip glass", () => {
   assert.ok(!client.includes("FlyerFrame"), "nights are not full portrait flyer frames")
   assert.ok(!client.includes("relative h-48 w-full"), "flyer box must not be a short wide strip")
   assert.ok(!client.includes("ACCESS_CTA"), "venue must not copy the line-skip CTA gradient")
-  const rowStart = client.indexOf("function UpcomingRow")
-  assert.ok(rowStart >= 0, "UpcomingRow must exist")
+  const rowStart = client.indexOf("function nightRowTheme")
+  assert.ok(rowStart >= 0, "nightRowTheme must exist")
   const row = client.slice(rowStart)
+  assert.ok(row.includes("function UpcomingRow"), "event and Weekly Cover nights share a card")
   assert.ok(row.includes("object-cover"), "row thumb crops the artwork")
   assert.ok(row.includes("WEEKLY_ACCESS_TYPE_LABEL"), "Weekly Cover label sits on the card")
   assert.ok(row.includes("Get Tickets"), "each night uses the event-checkout CTA")
   assert.ok(row.includes("formatAccessTierLabel"), "WC ticket prices sit on the card")
+  assert.ok(row.includes("isVenueWeeklyCoverNight"), "WC pink uses the venue helper")
+  assert.ok(row.includes("border-access/40"), "WC card and chips get the pink border")
+  assert.ok(row.includes("text-access"), "WC type label and free price use access pink")
 })
 
 test("event checkout paints Weekly Cover magenta", () => {
