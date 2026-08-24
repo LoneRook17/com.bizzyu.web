@@ -19,10 +19,30 @@ import {
   updateDoorAccessProgram,
   withDoorAccessProgramKind,
   usdPrice,
+  type DoorAccessNight,
   type DoorAccessProgram,
   type RedemptionMode,
 } from "@/lib/business/door-access"
-import { applySaveAsDraftFlag, promoterToggleDisabled, willDraftOnCreate } from "@/lib/business/create-publish"
+import {
+  cheapestPaidPrice,
+  dateEditsToWire,
+  hasPaidPrice,
+  nightLabelFor,
+  nightPriceSummary,
+  paidPricesFromDraft,
+  productsFromTiers,
+  productsPhrase,
+  seedTiersForProducts,
+  templateTicketsFromNights,
+  templateTiersToDrafts,
+  trimMoney,
+  validateAllNights,
+  weekdayEditsFromNights,
+  weekdayEditsToWire,
+  type NightDraft,
+  type WcProducts,
+} from "@/lib/business/weekly-cover-nights"
+import { applySaveAsDraftFlag, willDraftOnCreate } from "@/lib/business/create-publish"
 import {
   WEEKLY_COVER_CHECKBOX_CLASS,
   WEEKLY_COVER_RADIO_CLASS,
@@ -39,52 +59,64 @@ import {
   lowstockInputToStored,
   lowstockValueToInput,
 } from "@/components/business/v2/events/EventForm"
-import { ISO_DAYS, upcomingScheduleDates, scheduleSentence } from "@/components/business/v2/recurring/schedule"
-import {
-  RecurringTierEditor,
-  EMPTY_RECURRING_TIER,
-  templateToTierRows,
-  tierRowsToTemplate,
-  type RecurringTierRow,
-} from "@/components/business/v2/recurring/RecurringTierEditor"
+import { ISO_DAYS, isoDayFull, upcomingScheduleDates, scheduleSentence } from "@/components/business/v2/recurring/schedule"
+import { WcProductsStep } from "@/components/business/v2/door-access/WcProductsStep"
+import { WcNightsStep } from "@/components/business/v2/door-access/WcNightsStep"
+import { WcDatesStep } from "@/components/business/v2/door-access/WcDatesStep"
 
 /**
- * D2-A — the Door Access CREATION wizard, the thing DASH-A left out.
+ * The Weekly Cover CREATION wizard.
  *
- * Runs the same three-step spine as the event path (F10: Details → Access &
- * pricing → Review) against the SPINE's create endpoints, so the two products
- * feel like one flow with a fork rather than two dashboards:
+ * WHAT CHANGED AND WHY. This used to be a three-step template builder: one
+ * `template_tickets` list, one price for every night of every weekday, forever.
+ * Per-night pricing existed only after the program was created, one night at a
+ * time. The app has shipped a per-weekday and per-date model for a while, so the
+ * two clients were writing different documents to the same endpoints — a host who
+ * built a program on their phone could not see or edit its Thursday price here,
+ * and a host who built one here could not price a game day at all.
  *
- *   POST /business/door-access/validate-step   step 1 + step 2 pre-flight
- *   POST /business/door-access                 create: the whole draft, committed once
- *   PUT  /business/door-access/:id             edit: the same template fields, for this program
+ * Six steps now, matching the app:
  *
- * The pre-flight matters: `validate-step` runs the EXACT rules the create path
- * will run, so "Next" is authoritative instead of a client-side guess the
- * server contradicts two screens later. Client validation still runs first —
- * it's the fast, per-field half; the server's is the true one.
+ *   0  Sell     what the program sells — Cover / Skip the Line / Both
+ *   1  Details  the venue, the nights of the week, the range, the default window
+ *   2  Nights   each picked weekday's own prices, surge, hours, 21+, flyer
+ *   3  Dates    game days that beat their weekday default
+ *   4  Extras   promoter program, stock alerts
+ *   5  Review
  *
- * WHAT THIS SCREEN DOES NOT DO. Creation sets the TEMPLATE only. Per-night
- * overrides (a holiday price, a closed Tuesday) live on the series page at
- * /business/door-access/:id, keyed off the date — deliberately not duplicated
- * here, where there are no nights to override yet.
+ * Recurrence moves ahead of pricing because pricing is now SCOPED to it: you
+ * cannot ask "what does Friday cost" before knowing Friday is one of the nights.
  *
- * D-F10.4: Publish is the default CTA and POSTs live. Save as draft is the
- * only path that sends `save_as_draft: true`. Stripe Connect is not a draft
- * reason — approved hosts publish even without it.
+ * WHAT THIS SCREEN STILL DOES NOT DO. Editing a single night after the fact —
+ * closing one Tuesday, marking a tier sold out — stays on the program page at
+ * /business/door-access/:id, which has the richer per-night editor. Creation sets
+ * the weekly shape plus the game days the host already knows about.
+ *
+ * D-F10.4: Publish is the default CTA and POSTs live. Save as draft is the only
+ * path that sends `save_as_draft: true`. Stripe Connect is not a draft reason —
+ * approved hosts publish paid programs without it and we hold the money.
  *
  * ROUTING INDEPENDENCE (D2-6): nothing here reads or requires a "Door Access"
- * nav entry. This page is reached from the create funnel and from Events rows,
- * and it keeps working when D2-B deletes the sidebar item.
+ * nav entry. Reached from /business/create and from Events rows.
  */
 
 const NAME_MAX_LENGTH = 100
 
 const DOOR_ACCESS_STEPS = [
+  { key: "sell", label: "Sell" },
   { key: "details", label: "Details" },
-  { key: "access", label: "Access & pricing" },
+  { key: "nights", label: "Nights" },
+  { key: "dates", label: "Dates" },
+  { key: "extras", label: "Extras" },
   { key: "review", label: "Review" },
 ] as const
+
+const STEP_SELL = 0
+const STEP_DETAILS = 1
+const STEP_NIGHTS = 2
+const STEP_DATES = 3
+const STEP_EXTRAS = 4
+const STEP_REVIEW = 5
 
 interface CreateResponse {
   program: DoorAccessProgram & { id: number }
@@ -96,34 +128,32 @@ interface CreateResponse {
  * V5 REDEMPTION — what a Door Access program's door ALWAYS does.
  *
  * Module scope, not state: it is a property of the product, not a field of this
- * form. Kept only so the Review step can SHOW the host what their door will do —
- * the value is derived server-side and this wizard no longer sends one.
+ * form. Kept only so Review can SHOW the host what their door will do — the
+ * value is derived server-side and this wizard does not send one.
  */
 const DOOR_ACCESS_REDEMPTION_MODE: RedemptionMode = "camera_tap"
-
-function seedTiers(program?: DoorAccessProgram, asNew = false): RecurringTierRow[] {
-  if (!program?.template_tickets.length) {
-    return [{ ...EMPTY_RECURRING_TIER, name: "Cover" }]
-  }
-  const rows = templateToTierRows(program.template_tickets)
-  if (!asNew) return rows
-  return rows.map((row) => {
-    const next = { ...row }
-    delete next.tier_key
-    return next
-  })
-}
 
 export function DoorAccessWizard({
   mode = "create",
   programId,
   initialData,
+  initialNights = [],
   stripeOnboarded = true,
   isPending = false,
 }: {
   mode?: "create" | "edit"
   programId?: number
   initialData?: DoorAccessProgram
+  /**
+   * The program's scheduled nights, on edit.
+   *
+   * These are what the weekday editors hydrate FROM. Services accepts a
+   * `weekday_edits` map on a write and never echoes it back on a GET, so a
+   * weekday editor seeded from the program row opens on template defaults and
+   * the host's saved Thursday price is invisible — then the next save pushes the
+   * template back over it. The nights themselves are the only durable record.
+   */
+  initialNights?: DoorAccessNight[]
   stripeOnboarded?: boolean
   isPending?: boolean
 }) {
@@ -134,8 +164,16 @@ export function DoorAccessWizard({
 
   const todayStr = new Date().toLocaleDateString("en-CA")
 
-  const [step, setStep] = useState(0)
-  const [furthest, setFurthest] = useState(0)
+  // Edit opens on Details: the product is already implied by the saved tiers, so
+  // re-asking "what are you selling?" is a question with a known answer.
+  const [step, setStep] = useState(isEdit ? STEP_DETAILS : STEP_SELL)
+  const [furthest, setFurthest] = useState(isEdit ? STEP_REVIEW : STEP_SELL)
+
+  // ── Step 0: what it sells ────────────────────────────────────────────────
+  const [products, setProducts] = useState<WcProducts | null>(() => {
+    if (!initialData?.template_tickets.length) return null
+    return productsFromTiers(templateTiersToDrafts(initialData.template_tickets))
+  })
 
   // ── Step 1: details ──────────────────────────────────────────────────────
   const [name, setName] = useState(initialData?.name ?? "")
@@ -151,8 +189,14 @@ export function DoorAccessWizard({
   const [is21Plus, setIs21Plus] = useState(!!initialData?.is_21_plus)
   const [flyerImageUrl, setFlyerImageUrl] = useState(initialData?.flyer_image_url ?? "")
 
-  // ── Step 2: access & pricing ─────────────────────────────────────────────
-  const [tiers, setTiers] = useState<RecurringTierRow[]>(() => seedTiers(initialData, !isEdit))
+  // ── Steps 2 & 3: the per-night layer ─────────────────────────────────────
+  const [weekdayEdits, setWeekdayEdits] = useState<Record<number, NightDraft>>(() => {
+    if (!isEdit || !initialData) return {}
+    return weekdayEditsFromNights({ program: initialData, nights: initialNights })
+  })
+  const [dateEdits, setDateEdits] = useState<Record<string, NightDraft>>({})
+
+  // ── Step 4: extras ───────────────────────────────────────────────────────
   const [promotionEnabled, setPromotionEnabled] = useState(!!initialData?.promotion_enabled)
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">(
     initialData?.promotion_commission_type ?? "percent"
@@ -170,6 +214,7 @@ export function DoorAccessWizard({
   const [lowstockNotifyTeam, setLowstockNotifyTeam] = useState(!!initialData?.lowstock_notify_business_team)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [nightErrors, setNightErrors] = useState<string[]>([])
   const [serverError, setServerError] = useState("")
   const [checking, setChecking] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -192,6 +237,20 @@ export function DoorAccessWizard({
     }
   }, [selectedVenue, isEdit, venueId])
 
+  // Dropping a weekday drops its prices with it — leaving them behind would send
+  // a `weekday_edits` key that is not on the schedule, which services 400s.
+  useEffect(() => {
+    setWeekdayEdits((prev) => {
+      const next: Record<number, NightDraft> = {}
+      let changed = false
+      for (const [key, draft] of Object.entries(prev)) {
+        if (daysOfWeek.includes(Number(key))) next[Number(key)] = draft
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [daysOfWeek])
+
   const currentVenue = venues.find((v) => v.id === venueId) ?? null
 
   const previewDates = useMemo(
@@ -199,19 +258,57 @@ export function DoorAccessWizard({
     [daysOfWeek, dateRangeStart, dateRangeEnd]
   )
 
-  const templateTiers = useMemo(() => tierRowsToTemplate(tiers), [tiers])
-  const paidTiers = templateTiers.filter((t) => (t.price_usd ?? 0) > 0)
-  const hasPaidTier = paidTiers.length > 0
+  /**
+   * `template_tickets`, derived from the first configured night rather than from
+   * a separate editor.
+   *
+   * The template is what every night inherits, so it has to carry real prices: if
+   * a per-night override ever fails to apply, the program still sells at a real
+   * price instead of free. The product pick's $0 placeholders are the fallback so
+   * the payload stays well-formed before any night is set up.
+   */
+  const fallbackTiers = useMemo(
+    () => (products ? seedTiersForProducts(products) : templateTiersToDrafts(initialData?.template_tickets ?? [])),
+    [products, initialData]
+  )
 
-  const promoToggleDisabled = promoterToggleDisabled(hasPaidTier)
-  const promoDisabledReason = promoToggleDisabled
-    ? "Add a paid access tier to enable the promoter program."
-    : ""
+  const templateTiers = useMemo(
+    () => templateTicketsFromNights({ daysOfWeek, weekdayEdits, fallbackTiers }),
+    [daysOfWeek, weekdayEdits, fallbackTiers]
+  )
+
+  /**
+   * Every paid price the program can charge — template, each weekday, each game
+   * day, and every surge rung. The same universe services counts in
+   * `paidPricesFromNightEdits`, deliberately: a narrower answer here refuses the
+   * host locally and the payload's prices never get the chance to be read, which
+   * is the "my nights are priced but the promoter toggle says free" bug.
+   */
+  const paidPrices = useMemo(
+    () => paidPricesFromDraft({ templateTickets: templateTiers, weekdayEdits, dateEdits }),
+    [templateTiers, weekdayEdits, dateEdits]
+  )
+  const hasPaidTier = hasPaidPrice(paidPrices)
+  const cheapestPaid = cheapestPaidPrice(paidPrices)
+
+  /**
+   * The promoter gate. BOTH conditions, because services enforces both:
+   * `validateAndNormalizePromotion` throws "Connect Stripe before enabling the
+   * Promoter Program" without a payout path, and "at least one paid ticket"
+   * without a price. Gating on the price alone let the host tick the box and
+   * then eat a 400 they could not act on from step 4.
+   */
+  const promoToggleDisabled = !hasPaidTier || !stripeOnboarded
+  const promoDisabledReason = !hasPaidTier
+    ? "Price at least one night before you can run a promoter program."
+    : !stripeOnboarded
+      ? "Connect Stripe before enabling the promoter program. Promoters need a payout path to sell into."
+      : ""
   const willDraft = willDraftOnCreate(isPending)
 
-  // Promotion is silently dropped rather than left dangling if the tiers stop
-  // qualifying — the server would 400 on it, and the host has no way to see
-  // why from step 3.
+  // Promotion is silently dropped rather than left dangling if the program stops
+  // qualifying — the server would 400 on it, and the host has no way to see why
+  // from the Review step.
   useEffect(() => {
     if (promoToggleDisabled && promotionEnabled) setPromotionEnabled(false)
   }, [promoToggleDisabled, promotionEnabled])
@@ -240,9 +337,12 @@ export function DoorAccessWizard({
   })
 
   const salesPayload = (): Record<string, unknown> => {
+    const weekday = weekdayEditsToWire(weekdayEdits, daysOfWeek)
+    const dates = dateEditsToWire(dateEdits, daysOfWeek)
+
     const payload: Record<string, unknown> = {
       // `template_tickets` — the same field name the series template uses, so
-      // one editor serves both. The server mints each tier_key.
+      // one reader serves both. Derived from the first configured night.
       template_tickets: templateTiers,
       // V5 REDEMPTION — not sent: services derives camera_tap from the
       // program's kind and discards anything a client posts here.
@@ -250,6 +350,13 @@ export function DoorAccessWizard({
       notify_followers_on_publish: false,
       promotion_enabled: false,
     }
+
+    // The per-night layer. Services folds `weekday_edits` into a by-date map and
+    // then lets `date_edits` overwrite those entries, so a game day beats its
+    // weekday default inside one request — which is why both travel together
+    // rather than as two calls whose order would decide the winner.
+    if (Object.keys(weekday).length > 0) payload.weekday_edits = weekday
+    if (Object.keys(dates).length > 0) payload.date_edits = dates
 
     if (promotionEnabled && !promoToggleDisabled) {
       const { value } = commissionInputToStored(commissionType, promotionValueInput)
@@ -292,26 +399,31 @@ export function DoorAccessWizard({
     return Object.keys(errs).length === 0
   }
 
-  const validateAccess = (): boolean => {
+  const validateNights = (): boolean => {
+    const problems = validateAllNights({
+      daysOfWeek,
+      weekdayEdits,
+      dateEdits,
+      dayLabel: isoDayFull,
+    })
+    setNightErrors(problems)
+    return problems.length === 0
+  }
+
+  const validateExtras = (): boolean => {
     const errs: Record<string, string> = {}
-    if (tiers.length === 0) errs.tiers = "Add at least one access tier"
-    for (const tier of tiers) {
-      if (!tier.name.trim()) {
-        errs.tiers = "Every access tier needs a name"
-        break
-      }
-      if (tier.valid_from_time && tier.valid_until_time) {
-        const from = tier.valid_from_day_offset * 1440 + toMinutes(tier.valid_from_time)
-        const until = tier.valid_until_day_offset * 1440 + toMinutes(tier.valid_until_time)
-        if (from >= until) {
-          errs.tiers = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
-          break
-        }
-      }
-    }
     if (promotionEnabled && !promoToggleDisabled) {
       const { error } = commissionInputToStored(commissionType, promotionValueInput)
       if (error) errs.promotion_commission_value = error
+      // Services caps a fixed commission at half the cheapest paid price. Saying
+      // so here beats a 400 the host has to translate.
+      if (!error && commissionType === "fixed" && cheapestPaid != null) {
+        const cap = cheapestPaid / 2
+        const entered = parseFloat(promotionValueInput)
+        if (Number.isFinite(entered) && entered > cap) {
+          errs.promotion_commission_value = `A fixed commission can't be more than half the cheapest paid price ($${trimMoney(cap)}).`
+        }
+      }
     }
     if (lowstockEnabled) {
       const { error } = lowstockInputToStored(lowstockType, lowstockValueInput)
@@ -335,7 +447,10 @@ export function DoorAccessWizard({
       await apiClient.post("/business/door-access/validate-step", {
         step: stepNumber,
         ...(isEdit && programId != null ? { program_id: programId } : {}),
-        ...(stepNumber === 1 ? detailsPayload() : salesPayload()),
+        // Step 2 needs the details too: the promoter gate reads the payload's
+        // per-night edits, and `weekday_edits` keys are checked against
+        // `days_of_week`.
+        ...(stepNumber === 1 ? detailsPayload() : { ...detailsPayload(), ...salesPayload() }),
       })
       return true
     } catch (err) {
@@ -356,14 +471,30 @@ export function DoorAccessWizard({
   }
 
   const handleNext = async () => {
-    if (step === 0) {
+    if (step === STEP_SELL) {
+      if (!products) {
+        setServerError("Pick what this program sells.")
+        return
+      }
+      goTo(STEP_DETAILS)
+    } else if (step === STEP_DETAILS) {
       if (!validateDetails()) return
       if (!(await preflight(1))) return
-      goTo(1)
-    } else if (step === 1) {
-      if (!validateAccess()) return
+      goTo(STEP_NIGHTS)
+    } else if (step === STEP_NIGHTS) {
+      if (!validateNights()) return
       if (!(await preflight(2))) return
-      goTo(2)
+      goTo(STEP_DATES)
+    } else if (step === STEP_DATES) {
+      if (!validateNights()) {
+        setStep(STEP_NIGHTS)
+        return
+      }
+      goTo(STEP_EXTRAS)
+    } else if (step === STEP_EXTRAS) {
+      if (!validateExtras()) return
+      if (!(await preflight(2))) return
+      goTo(STEP_REVIEW)
     }
   }
 
@@ -393,6 +524,12 @@ export function DoorAccessWizard({
       )
       const id = Number(data.program?.id)
       // Publish (not Save as draft) restamps so nights are not left draft.
+      //
+      // The empty body is deliberate: create already wrote the template AND the
+      // per-night overrides, so this is a restamp trigger, not a second write.
+      // Re-sending the payload would re-apply the night edits and, on a program
+      // whose first generation already ran, overwrite nights the host had not
+      // asked to touch.
       let restamped = false
       if (!saveAsDraft && Number.isFinite(id) && id > 0) {
         try {
@@ -402,8 +539,20 @@ export function DoorAccessWizard({
             return
           }
           restamped = true
-        } catch {
-          // Create already committed; nightly restamp can still catch up.
+        } catch (err) {
+          // Create already committed, so this is not a failure of the program —
+          // but it IS the reason tonight might not be on the schedule yet, and
+          // the nightly job is what will fix it. Say so instead of navigating
+          // as if nothing happened.
+          setGenerationNotice({
+            id,
+            message:
+              err instanceof ApiError
+                ? err.message
+                : "The program saved, but scheduling tonight's nights did not finish. The nightly job will pick them up.",
+            kind: "created",
+          })
+          return
         }
       }
       if (data.generation_error && !saveAsDraft && !restamped) {
@@ -431,7 +580,7 @@ export function DoorAccessWizard({
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
             {saved
               ? "The template is saved. Upcoming nights that still follow it will pick up the new defaults."
-              : `\u201c${name.trim()}\u201d is live and selling on ${scheduleSentence(daysOfWeek).toLowerCase()}.`}
+              : `“${name.trim()}” is live and selling on ${scheduleSentence(daysOfWeek).toLowerCase()}.`}
           </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
@@ -449,6 +598,8 @@ export function DoorAccessWizard({
     )
   }
 
+  const nightsConfigured = daysOfWeek.filter((d) => weekdayEdits[d]).length
+
   return (
     <div className="flex max-w-3xl flex-col gap-5">
       <Link
@@ -464,7 +615,7 @@ export function DoorAccessWizard({
         </h1>
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isEdit
-            ? "Change the name, nights, door hours, default prices, and flyer. Every night that still follows this program picks up the new defaults."
+            ? "Change the nights, each night's prices and hours, and the flyer. Every night that still follows this program picks up the new defaults."
             : "Set your nights and prices once. Every night is created for you and sells ahead."}
         </p>
       </div>
@@ -477,111 +628,32 @@ export function DoorAccessWizard({
         accent={ACCESS_ACCENT}
       />
 
-      {step === 0 && (
+      {step === STEP_SELL && (
+        <Card>
+          <CardContent className="pt-6">
+            <WcProductsStep
+              value={products}
+              onChange={(next) => {
+                setServerError("")
+                setProducts(next)
+                // Nights the host has not built yet re-seed from the new choice
+                // on their own, because the editor seeds from `products` when it
+                // opens. A night they already priced is theirs and is left alone
+                // rather than silently rewritten by a change of mind here.
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {step === STEP_DETAILS && (
         <>
-          <Card>
-            <CardHeader><CardTitle>Basics</CardTitle></CardHeader>
-            <CardContent className="space-y-4 pt-0">
-              <div>
-                <Label htmlFor="da_name" className="mb-1.5 block">Program name</Label>
-                <Input
-                  id="da_name"
-                  value={name}
-                  onChange={(e) => { setName(e.target.value.slice(0, NAME_MAX_LENGTH)); setErrors((p) => ({ ...p, name: "" })) }}
-                  placeholder="e.g. Friday Cover"
-                  maxLength={NAME_MAX_LENGTH}
-                  className={cn(errors.name && errClass)}
-                />
-                {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
-                <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-                  Every night is created with this name.
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="da_description" className="mb-1.5 block">
-                  Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
-                </Label>
-                <Textarea
-                  id="da_description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                  placeholder="What people get for their cover…"
-                />
-              </div>
-              <label className="flex w-fit cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={is21Plus}
-                  onChange={(e) => setIs21Plus(e.target.checked)}
-                  className={WEEKLY_COVER_CHECKBOX_CLASS}
-                />
-                <span className="text-sm text-neutral-700 dark:text-neutral-300">21+ only</span>
-              </label>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Where</CardTitle></CardHeader>
-            <CardContent className="space-y-4 pt-0">
-              {venues.length > 0 && (
-                <div>
-                  <Label htmlFor="da_venue" className="mb-1.5 block">Venue</Label>
-                  <Select
-                    id="da_venue"
-                    value={venueId ?? ""}
-                    onChange={(e) => {
-                      const id = Number(e.target.value)
-                      if (!id) return
-                      const v = venues.find((vv) => vv.id === id)
-                      setVenueId(id)
-                      setVenueName(v?.name ?? venueName)
-                      setVenueAddress(v?.address ?? venueAddress)
-                      setSelectedVenue(id)
-                      setErrors((p) => ({ ...p, venue_name: "" }))
-                    }}
-                  >
-                    <option value="" disabled>Select a venue</option>
-                    {venues.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </Select>
-                  {errors.venue_name && !currentVenue && (
-                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>
-                  )}
-                </div>
-              )}
-              <div>
-                <Label htmlFor="da_venue_name" className="mb-1.5 block">Location name</Label>
-                <Input
-                  id="da_venue_name"
-                  value={venueName}
-                  onChange={(e) => { setVenueName(e.target.value); setErrors((p) => ({ ...p, venue_name: "" })) }}
-                  placeholder="e.g. The Main Room"
-                  disabled={!!currentVenue}
-                />
-                {!currentVenue && errors.venue_name && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="da_venue_address" className="mb-1.5 block">Address</Label>
-                <Input
-                  id="da_venue_address"
-                  value={venueAddress}
-                  onChange={(e) => setVenueAddress(e.target.value)}
-                  placeholder="Street address"
-                  disabled={!!currentVenue}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader className="flex-col items-start gap-1">
               <CardTitle>The nights it runs</CardTitle>
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Pick the nights, and every one of them is created for you as its own night on the schedule.
+                Pick the nights you have {productsPhrase(products)}. Each one gets its own prices on the next
+                screen, and every night is created for you on the schedule.
               </p>
             </CardHeader>
             <CardContent className="space-y-4 pt-0">
@@ -664,7 +736,7 @@ export function DoorAccessWizard({
                   />
                   {errors.end_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_time}</p>}
                   <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-                    Ends past midnight? No problem. It rolls into the next morning.
+                    The starting point for every night. You can change any night&apos;s hours on the next screen.
                   </p>
                 </div>
               </div>
@@ -691,10 +763,111 @@ export function DoorAccessWizard({
           </Card>
 
           <Card>
+            <CardHeader><CardTitle>Basics</CardTitle></CardHeader>
+            <CardContent className="space-y-4 pt-0">
+              <div>
+                <Label htmlFor="da_name" className="mb-1.5 block">Program name</Label>
+                <Input
+                  id="da_name"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value.slice(0, NAME_MAX_LENGTH)); setErrors((p) => ({ ...p, name: "" })) }}
+                  placeholder="e.g. Friday Cover"
+                  maxLength={NAME_MAX_LENGTH}
+                  className={cn(errors.name && errClass)}
+                />
+                {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
+                <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                  Every night is created with this name.
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="da_description" className="mb-1.5 block">
+                  Description <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
+                </Label>
+                <Textarea
+                  id="da_description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="What people get for their cover…"
+                />
+              </div>
+              <label className="flex w-fit cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={is21Plus}
+                  onChange={(e) => setIs21Plus(e.target.checked)}
+                  className={WEEKLY_COVER_CHECKBOX_CLASS}
+                />
+                <span className="text-sm text-neutral-700 dark:text-neutral-300">21+ only</span>
+              </label>
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                Applies to every night. You can make a single night or a single price 21+ on the next screen.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Where</CardTitle></CardHeader>
+            <CardContent className="space-y-4 pt-0">
+              {venues.length > 0 && (
+                <div>
+                  <Label htmlFor="da_venue" className="mb-1.5 block">Venue</Label>
+                  <Select
+                    id="da_venue"
+                    value={venueId ?? ""}
+                    onChange={(e) => {
+                      const id = Number(e.target.value)
+                      if (!id) return
+                      const v = venues.find((vv) => vv.id === id)
+                      setVenueId(id)
+                      setVenueName(v?.name ?? venueName)
+                      setVenueAddress(v?.address ?? venueAddress)
+                      setSelectedVenue(id)
+                      setErrors((p) => ({ ...p, venue_name: "" }))
+                    }}
+                  >
+                    <option value="" disabled>Select a venue</option>
+                    {venues.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </Select>
+                  {errors.venue_name && !currentVenue && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>
+                  )}
+                </div>
+              )}
+              <div>
+                <Label htmlFor="da_venue_name" className="mb-1.5 block">Location name</Label>
+                <Input
+                  id="da_venue_name"
+                  value={venueName}
+                  onChange={(e) => { setVenueName(e.target.value); setErrors((p) => ({ ...p, venue_name: "" })) }}
+                  placeholder="e.g. The Main Room"
+                  disabled={!!currentVenue}
+                />
+                {!currentVenue && errors.venue_name && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="da_venue_address" className="mb-1.5 block">Address</Label>
+                <Input
+                  id="da_venue_address"
+                  value={venueAddress}
+                  onChange={(e) => setVenueAddress(e.target.value)}
+                  placeholder="Street address"
+                  disabled={!!currentVenue}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader className="flex-col items-start gap-1">
               <CardTitle>Flyer image</CardTitle>
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Optional. Used on every night. Without one, the venue photo stands in.
+                Optional. Used on every night that doesn&apos;t have its own. Without one, the venue photo stands in.
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -709,43 +882,61 @@ export function DoorAccessWizard({
         </>
       )}
 
-      {step === 1 && (
+      {step === STEP_NIGHTS && (
         <>
           <Card>
-            <CardHeader className="flex-col items-start gap-1">
-              <CardTitle>Access tiers</CardTitle>
-              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                Cover, line skip, VIP. Price them all. Every night gets a fresh set of these, and the numbers here are
-                per night. You can change one night&apos;s price later from the program page.
-              </p>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <RecurringTierEditor
-                tiers={tiers}
-                onChange={(t) => { setTiers(t); setErrors((p) => ({ ...p, tiers: "" })) }}
+            <CardContent className="pt-6">
+              <WcNightsStep
+                daysOfWeek={daysOfWeek}
+                products={products}
+                weekdayEdits={weekdayEdits}
+                onChange={(next) => { setWeekdayEdits(next); setNightErrors([]) }}
+                defaultStartTime={startTime}
+                defaultEndTime={endTime}
+                programIs21Plus={is21Plus}
+                venueName={venueName}
+                inheritedFlyerUrl={flyerImageUrl || currentVenue?.photo_url || ""}
               />
-              {errors.tiers && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tiers}</p>}
-              {hasPaidTier && !stripeOnboarded && !isPending && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                    Connect Stripe to receive payments instantly
-                  </p>
-                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                    You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          {/* V5 REDEMPTION — the check-in card is GONE from this wizard too, and
-              here the question was even emptier than on the event form: this
-              wizard builds Door Access and nothing else, and Door Access is sold
-              on "no staff setup — scan with any phone camera". Offering "Bizzy
-              scanner" let a host configure a program to demand tooling its own
-              pitch says it doesn't need. The server now derives camera + tap from
-              program_kind, so there is nothing left to ask. */}
+          {hasPaidTier && !stripeOnboarded && !isPending && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/40">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                Connect Stripe to receive payments instantly
+              </p>
+              <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                You can still publish paid programs without it. We hold what you earn until you connect, then we send
+                it all right away.
+              </p>
+            </div>
+          )}
+        </>
+      )}
 
+      {step === STEP_DATES && (
+        <Card>
+          <CardContent className="pt-6">
+            <WcDatesStep
+              daysOfWeek={daysOfWeek}
+              products={products}
+              rangeStart={dateRangeStart}
+              rangeEnd={dateRangeEnd}
+              dateEdits={dateEdits}
+              weekdayEdits={weekdayEdits}
+              onChange={(next) => { setDateEdits(next); setNightErrors([]) }}
+              defaultStartTime={startTime}
+              defaultEndTime={endTime}
+              programIs21Plus={is21Plus}
+              venueName={venueName}
+              inheritedFlyerUrl={flyerImageUrl || currentVenue?.photo_url || ""}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {step === STEP_EXTRAS && (
+        <>
           <Card>
             <CardHeader className="flex-col items-start gap-1">
               <CardTitle>Promoter program</CardTitle>
@@ -811,6 +1002,11 @@ export function DoorAccessWizard({
                       value={promotionValueInput}
                       onChange={(e) => { setPromotionValueInput(e.target.value); setErrors((p) => ({ ...p, promotion_commission_value: "" })) }}
                     />
+                    {commissionType === "fixed" && cheapestPaid != null && (
+                      <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                        Up to ${trimMoney(cheapestPaid / 2)}, half your cheapest paid price.
+                      </p>
+                    )}
                     {errors.promotion_commission_value && (
                       <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.promotion_commission_value}</p>
                     )}
@@ -890,19 +1086,20 @@ export function DoorAccessWizard({
         </>
       )}
 
-      {step === 2 && (
+      {step === STEP_REVIEW && (
         <>
           <Card>
             <CardHeader><CardTitle>Review</CardTitle></CardHeader>
             <CardContent className="space-y-3 pt-0">
               <ReviewRow label="Program" value={name.trim() || "-"} />
+              <ReviewRow label="Selling" value={nightLabelFor(products)} />
               <ReviewRow label="Venue" value={venueName.trim() || "-"} />
               <ReviewRow label="Nights" value={formatDays(daysOfWeek) || "-"} />
               <ReviewRow
                 label="Runs"
                 value={`${dateRangeStart || "-"} → ${dateRangeEnd || "no end date"}`}
               />
-              <ReviewRow label="Door window" value={`${fmtTime(startTime)} - ${fmtTime(endTime)}`} />
+              <ReviewRow label="Default door window" value={`${fmtTime(startTime)} - ${fmtTime(endTime)}`} />
               {/* Shown, not chosen — the host sees what their door will do. */}
               <ReviewRow label="Check-in" value={redemptionModeLabel(DOOR_ACCESS_REDEMPTION_MODE)} />
               <ReviewRow label="Age" value={is21Plus ? "21+ only" : "All ages"} />
@@ -910,7 +1107,67 @@ export function DoorAccessWizard({
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Access tiers</CardTitle></CardHeader>
+            <CardHeader className="flex-col items-start gap-1">
+              <CardTitle>Each night</CardTitle>
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+                {nightsConfigured} of {daysOfWeek.length} nights set up.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {[...daysOfWeek].sort((a, b) => a - b).map((day) => {
+                const draft = weekdayEdits[day]
+                return (
+                  <div
+                    key={day}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 px-3 py-2.5 dark:border-neutral-800"
+                  >
+                    <span className="min-w-0 truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      {isoDayFull(day)}
+                    </span>
+                    <span className="shrink-0 text-sm text-neutral-600 dark:text-neutral-400">
+                      {draft
+                        ? `${nightPriceSummary(draft)} · ${fmtTime(draft.startTime)} - ${fmtTime(draft.endTime)}`
+                        : "Not set up"}
+                    </span>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+
+          {Object.keys(dateEdits).length > 0 && (
+            <Card>
+              <CardHeader className="flex-col items-start gap-1">
+                <CardTitle>Game days</CardTitle>
+                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+                  These dates beat their weekly price. Everything else keeps the weekly default.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-0">
+                {Object.keys(dateEdits).sort().map((date) => (
+                  <div
+                    key={date}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-access/30 bg-access/[0.04] px-3 py-2.5"
+                  >
+                    <span className="min-w-0 truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                      {date}
+                    </span>
+                    <span className="shrink-0 text-sm text-neutral-600 dark:text-neutral-400">
+                      {nightPriceSummary(dateEdits[date])}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader className="flex-col items-start gap-1">
+              <CardTitle>What every night starts from</CardTitle>
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+                The program template, taken from your first set-up night. A night without its own price sells at these.
+              </p>
+            </CardHeader>
             <CardContent className="space-y-2 pt-0">
               {templateTiers.map((tier, i) => (
                 <div
@@ -947,13 +1204,24 @@ export function DoorAccessWizard({
             </p>
             <p className={cn("mt-0.5", isEdit || !willDraft ? "text-neutral-600 dark:text-neutral-400" : undefined)}>
               {isEdit
-                ? "Name, nights, door hours, default prices, and flyer apply to every night that still follows this program. A night you already customized keeps its own price and hours."
+                ? "Nights, prices, hours, and the flyer apply to every night that still follows this program. A night you already customised on the program page keeps its own price and hours."
                 : willDraft
                   ? "Publishing may stay a draft until you're approved. You can also save as a draft on purpose."
-                  : "Each night is created on your schedule and starts selling. To change a single night's price or close one, open the program afterwards."}
+                  : "Each night is created on your schedule and starts selling. To close a single night or mark a price sold out, open the program afterwards."}
             </p>
           </div>
         </>
+      )}
+
+      {nightErrors.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400">
+          <p className="mb-1 font-semibold">Fix these before you continue</p>
+          <ul className="flex flex-col gap-1">
+            {nightErrors.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {serverError && (
@@ -963,7 +1231,7 @@ export function DoorAccessWizard({
       )}
 
       <div className="flex items-center justify-between gap-3">
-        {step > 0 ? (
+        {step > (isEdit ? STEP_DETAILS : STEP_SELL) ? (
           <Button variant="secondary" size="lg" onClick={() => goTo(step - 1)} disabled={checking || submitting}>
             Back
           </Button>
@@ -973,10 +1241,10 @@ export function DoorAccessWizard({
           </Button>
         )}
 
-        {step < 2 ? (
+        {step < STEP_REVIEW ? (
           <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={handleNext} disabled={checking}>
             {checking && <Loader2 className="animate-spin" />}
-            Next
+            {step === STEP_DATES && Object.keys(dateEdits).length === 0 ? "Skip for now" : "Next"}
           </Button>
         ) : isEdit ? (
           <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={() => handlePublish(false)} disabled={submitting}>
@@ -1007,9 +1275,4 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
       <span className="min-w-0 text-right text-sm font-medium text-neutral-900 dark:text-neutral-100">{value}</span>
     </div>
   )
-}
-
-function toMinutes(t: string): number {
-  const [h, m] = t.split(":").map(Number)
-  return h * 60 + (m || 0)
 }

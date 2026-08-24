@@ -7,12 +7,14 @@ import { Lock, Zap } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import {
+  DEFAULT_SERIES_LOOKAHEAD_DAYS,
   loadDoorAccessSeriesForPath,
   MISSING_PROGRAM_ID_DESCRIPTION,
   MISSING_PROGRAM_ID_TITLE,
   parseProgramPathId,
   programEditHref,
   WEEKLY_ACCESS_SECTION_LABEL,
+  type DoorAccessNight,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
 import type { BusinessProfile } from "@/lib/business/types"
@@ -35,6 +37,17 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
   const router = useRouter()
   const { user } = useAuth()
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
+  /**
+   * The program's scheduled nights.
+   *
+   * The weekday editors hydrate from THESE, not from the program row: services
+   * takes a `weekday_edits` map on a write and never echoes it back on a GET, so
+   * a weekday editor seeded from the program opens on template defaults and the
+   * host's saved Thursday price is invisible, and then the next save pushes the
+   * template back over it. The nights are the only durable record of "Thursdays
+   * are $15".
+   */
+  const [nights, setNights] = useState<DoorAccessNight[]>([])
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
   const [loading, setLoading] = useState(programId != null)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +68,7 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
       let redirected = false
       try {
         const [loaded] = await Promise.all([
-          loadDoorAccessSeriesForPath(programId),
+          loadDoorAccessSeriesForPath(programId, DEFAULT_SERIES_LOOKAHEAD_DAYS),
           apiClient
             .get<BusinessProfile>("/business/profile")
             .then((p) => {
@@ -72,7 +85,10 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
           if (!cancelled) setError("Could not load this program.")
           return
         }
-        if (!cancelled) setProgram(loaded.series.program)
+        if (!cancelled) {
+          setProgram(loaded.series.program)
+          setNights(loaded.series.nights)
+        }
       } catch {
         if (!cancelled) setError("Could not load this program.")
       } finally {
@@ -147,6 +163,7 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
         mode="edit"
         programId={program.id || programId}
         initialData={program}
+        initialNights={nights}
         stripeOnboarded={profile?.stripe_connect_onboarded ?? true}
         isPending={isPending}
       />
