@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
+import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
 import {
   eventCalendarDate,
   eventFromPrice,
   fetchVenuePublicData,
   mergeVenueEvents,
   resolveVenueEventImageUrl,
+  venueNightCheckoutHref,
   type VenueData,
   type VenueEvent,
 } from "@/lib/venuePublic"
@@ -18,6 +20,11 @@ const POLL_INTERVAL_MS = 25000
 const EVENT_GREEN = "#05EB54"
 const ACCESS_PINK = "#FF3ED1"
 const PAGE_BG = "#0a0a0f"
+
+const pageFont = {
+  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+  backgroundColor: PAGE_BG,
+} as const
 
 interface VenuePageClientProps {
   venueId: string
@@ -38,11 +45,20 @@ function parseCalendarDay(iso: string): Date | null {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
 }
 
-function formatDayHeader(key: string, todayKey: string | null): string {
-  if (todayKey && key === todayKey) return "Tonight"
+/** Matches in-app `eventDayLabel` / HappeningTonightLabel. */
+function formatDayHeader(key: string, todayKey: string | null): {
+  text: string
+  tonight: boolean
+} {
+  if (todayKey && key === todayKey) {
+    return { text: "Happening Tonight", tonight: true }
+  }
   const d = parseCalendarDay(key)
-  if (!d) return key
-  return d.toLocaleDateString("en-US", { weekday: "long" })
+  if (!d) return { text: key, tonight: false }
+  return {
+    text: d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }).toUpperCase(),
+    tonight: false,
+  }
 }
 
 function formatEventTime(dateStr: string) {
@@ -55,12 +71,26 @@ function hrefAbs(raw: string): string {
   return raw.startsWith("http") ? raw : `https://${raw}`
 }
 
+/** Same handle cleanup the iOS venue page uses. */
+function instagramHandle(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  let s = raw.trim()
+  if (!s) return null
+  const urlMatch = /instagram\.com\/+([^/?#\s]+)/i.exec(s)
+  if (urlMatch) {
+    s = urlMatch[1] ?? ""
+  } else {
+    s = s.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split(/[/?#]/)[0] ?? ""
+  }
+  s = s.replace(/^@+/, "").replace(/\s+/g, "").replace(/[^A-Za-z0-9._]/g, "")
+  if (!s) return null
+  return s.slice(0, 30)
+}
+
 function groupUpcoming(events: VenueEvent[], todayKey: string | null) {
-  const today = todayKey ? parseCalendarDay(todayKey) : new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    new Date().getDate(),
-  )
+  const today = todayKey
+    ? parseCalendarDay(todayKey)
+    : new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
   const weekEnd = today ? new Date(today) : null
   if (weekEnd) weekEnd.setDate(weekEnd.getDate() + 7)
 
@@ -87,6 +117,11 @@ function groupUpcoming(events: VenueEvent[], todayKey: string | null) {
   }
   later.sort((a, b) => a.start_date_time.localeCompare(b.start_date_time))
   return { days, later }
+}
+
+/** App venue rows show `$5` / `Free`, not `From $5`. */
+function rowPriceLabel(event: VenueEvent): string {
+  return eventFromPrice(event).replace(/^From /, "")
 }
 
 export default function VenuePageClient({
@@ -141,8 +176,8 @@ export default function VenuePageClient({
 
   const { venue, business, events, deals } = data
   const heroImage = venue.venuePhotoUrl
-  const instagram = venue.instagram || business.instagram
-  const website = venue.website || business.website
+  const instagram = instagramHandle(venue.instagram || business.instagram)
+  const website = (venue.website || business.website)?.trim() || null
   const mapsUrl = venue.address
     ? `https://maps.google.com/?q=${encodeURIComponent(`${venue.name}, ${venue.address}`)}`
     : null
@@ -211,6 +246,7 @@ export default function VenuePageClient({
       )}
 
       <div className="relative z-10 mx-auto max-w-lg px-4 pb-28">
+        {/* Inset 1:1 hero: same crop as the in-app venue photo */}
         <div className="relative mt-2 aspect-square overflow-hidden rounded-xl bg-black/30">
           {heroImage ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -231,7 +267,7 @@ export default function VenuePageClient({
           </h1>
         </div>
 
-        <div className="mt-3.5 grid grid-cols-3 gap-2.5">
+        <div className="mt-3.5 flex gap-2.5">
           <ActionLink
             href={mapsUrl}
             label="Directions"
@@ -240,51 +276,62 @@ export default function VenuePageClient({
               <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             }
           />
-          <ActionLink
-            href={website ? hrefAbs(website) : null}
-            label="Website"
-            disabled={!website}
-            icon={
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-            }
-          />
-          <ActionLink
-            href={instagram ? `https://instagram.com/${instagram.replace(/^@/, "")}` : null}
-            label="Instagram"
-            disabled={!instagram}
-            icon={
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8a5 5 0 015-5h8a5 5 0 015 5v8a5 5 0 01-5 5H8a5 5 0 01-5-5V8zm13.5-1.5h.01M12 9a3 3 0 100 6 3 3 0 000-6z" />
-            }
-          />
+          {website && (
+            <ActionLink
+              href={hrefAbs(website)}
+              label="Website"
+              icon={
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              }
+            />
+          )}
+          {instagram && (
+            <ActionLink
+              href={`https://instagram.com/${instagram}`}
+              label="Instagram"
+              icon={
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8a5 5 0 015-5h8a5 5 0 015 5v8a5 5 0 01-5 5H8a5 5 0 01-5-5V8zm13.5-1.5h.01M12 9a3 3 0 100 6 3 3 0 000-6z" />
+              }
+            />
+          )}
         </div>
 
         {venue.description?.trim() && (
           <p className="mt-5 text-[15px] leading-relaxed text-white/55">{venue.description.trim()}</p>
         )}
 
-        {days.map(([key, rows]) => (
-          <section key={key} className="mt-7">
-            <p className="mb-3 text-[13px] font-bold uppercase tracking-[1.2px] text-white/45">
-              {formatDayHeader(key, todayKey)}
-            </p>
-            <div className="space-y-2">
-              {rows.map((event) => (
-                <UpcomingRow
-                  key={event.event_id}
-                  event={event}
-                  venue={venue}
-                  checkoutBaseUrl={checkoutBaseUrl}
-                  tonight={todayKey != null && eventCalendarDate(event.start_date_time) === todayKey}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
+        {days.map(([key, rows]) => {
+          const header = formatDayHeader(key, todayKey)
+          return (
+            <section key={key} className="mt-7">
+              <p
+                className={
+                  header.tonight
+                    ? "mb-3 text-[22px] font-bold leading-tight tracking-tight text-[#05EB54]"
+                    : "mb-3 text-[13px] font-bold uppercase tracking-[1.2px] text-white/45"
+                }
+              >
+                {header.text}
+              </p>
+              <div className="space-y-2.5">
+                {rows.map((event) => (
+                  <UpcomingRow
+                    key={event.event_id}
+                    event={event}
+                    venue={venue}
+                    checkoutBaseUrl={checkoutBaseUrl}
+                    tonight={header.tonight}
+                  />
+                ))}
+              </div>
+            </section>
+          )
+        })}
 
         {later.length > 0 && (
           <section className="mt-7">
             <p className="mb-3 text-[13px] font-bold uppercase tracking-[1.2px] text-white/45">Later</p>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {later.map((event) => (
                 <UpcomingRow
                   key={event.event_id}
@@ -373,11 +420,6 @@ export default function VenuePageClient({
   )
 }
 
-const pageFont = {
-  fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-  backgroundColor: PAGE_BG,
-} as const
-
 function ActionLink({
   href,
   label,
@@ -390,20 +432,20 @@ function ActionLink({
   icon: ReactNode
 }) {
   const className =
-    "flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-3 text-[12px] font-semibold text-white/80"
+    "flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-white/55 bg-white/[0.14] px-2 text-[13px] font-extrabold text-white backdrop-blur-md"
   const body = (
     <>
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         {icon}
       </svg>
-      {label}
+      <span className="truncate">{label}</span>
     </>
   )
   if (disabled || !href) {
-    return <span className={`${className} cursor-default opacity-35`}>{body}</span>
+    return <span className={`${className} cursor-default border-white/20 bg-white/[0.06] text-white/35`}>{body}</span>
   }
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={`${className} hover:border-white/25 hover:bg-white/[0.07]`}>
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`${className} hover:bg-white/[0.2]`}>
       {body}
     </a>
   )
@@ -423,16 +465,23 @@ function UpcomingRow({
   const door = event.access_kind === "door_access"
   const accent = door ? ACCESS_PINK : EVENT_GREEN
   const image = resolveVenueEventImageUrl(event, venue)
-  const price = eventFromPrice(event)
-  const href = `${checkoutBaseUrl.replace(/\/$/, "")}/checkout/${event.event_id}`
+  const price = rowPriceLabel(event)
+  const href = venueNightCheckoutHref(checkoutBaseUrl, event.event_id)
 
   return (
     <a
       href={href}
-      className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-2 pr-3 ring-1 ring-white/8"
-      style={tonight ? { boxShadow: `0 0 0 1px ${accent}99` } : undefined}
+      className="flex items-center gap-3 rounded-[14px] bg-white/[0.06] p-2.5 pr-3 ring-1 ring-white/10"
+      style={
+        tonight
+          ? {
+              boxShadow: `0 0 22px 1px ${EVENT_GREEN}73, 0 0 40px 4px ${EVENT_GREEN}2e`,
+              outline: `1px solid ${EVENT_GREEN}8c`,
+            }
+          : undefined
+      }
     >
-      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-black/40">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[10px] bg-black/40">
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={image} alt="" className="h-full w-full object-cover" />
@@ -441,23 +490,21 @@ function UpcomingRow({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-[15px] font-extrabold text-white">{event.name}</p>
-          {door && (
-            <span
-              className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black tracking-wide text-black"
-              style={{ backgroundColor: ACCESS_PINK }}
-            >
-              WEEKLY COVER
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 text-[13px] font-medium text-white/45">
+        {door && (
+          <span
+            className="mb-1 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-extrabold tracking-[0.6px]"
+            style={{ backgroundColor: `${ACCESS_PINK}29`, color: ACCESS_PINK }}
+          >
+            {WEEKLY_ACCESS_TYPE_LABEL}
+          </span>
+        )}
+        <p className="truncate text-[15.5px] font-bold text-white">{event.name}</p>
+        <p className="mt-0.5 text-[12.5px] font-medium text-white/45">
           {formatEventTime(event.start_date_time)}
         </p>
       </div>
       {price && (
-        <p className="shrink-0 text-[15px] font-extrabold" style={{ color: accent }}>
+        <p className="shrink-0 text-[17px] font-extrabold" style={{ color: accent }}>
           {price}
         </p>
       )}
