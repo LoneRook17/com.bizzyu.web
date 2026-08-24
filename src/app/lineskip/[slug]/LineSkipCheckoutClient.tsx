@@ -1132,6 +1132,10 @@ export default function LineSkipCheckoutClient({
           <div className="mt-8 border-t border-white/5 pt-6 text-center">
             <p className="text-sm text-gray-600">
               Powered by <span className="font-semibold text-gray-400">Bizzy</span>
+              {" · "}
+              <a href="/terms" className="hover:text-gray-400">Terms</a>
+              {" · "}
+              <a href="/privacy" className="hover:text-gray-400">Privacy</a>
             </p>
           </div>
         </div>
@@ -1448,6 +1452,15 @@ export default function LineSkipCheckoutClient({
               <p className="mt-3 text-center text-[11px] leading-relaxed text-white/30">
                 By purchasing, you agree that all sales are final. No refunds or exchanges.
                 If the night is cancelled by the venue, you will receive a full refund.
+                You also agree to the{" "}
+                <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/25 hover:text-white/55">
+                  Terms
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/25 hover:text-white/55">
+                  Privacy Policy
+                </a>
+                .
               </p>
             </>
           )}
@@ -1502,6 +1515,10 @@ export default function LineSkipCheckoutClient({
             <a href="https://bizzyu.com" className="font-semibold text-gray-400 transition hover:text-white">
               Bizzy
             </a>
+            {" · "}
+            <a href="/terms" className="hover:text-gray-400">Terms</a>
+            {" · "}
+            <a href="/privacy" className="hover:text-gray-400">Privacy</a>
           </p>
         </div>
       </div>
