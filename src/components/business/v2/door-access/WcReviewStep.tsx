@@ -1,19 +1,22 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { Image as ImageIcon } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ACCESS_ACCENT, ACCESS_INK, fmtTime, usdPrice } from "@/lib/business/door-access"
 import {
   nightLabelFor,
   nightPriceSummary,
+  reviewFlyerUrlForDay,
   type NightDraft,
   type WcProducts,
 } from "@/lib/business/weekly-cover-nights"
 import { ISO_DAYS, isoDayFull } from "@/components/business/v2/recurring/schedule"
 
 /**
- * Flutter "Look it over". Day chips switch the preview; Publish is the only
- * CTA. Game-day overrides stay listed under the weekly default so a host who
- * priced a Saturday game still sees it before they send the POST.
+ * Flutter "Look it over". Day chips switch the preview (copy + flyer); Publish
+ * is the only CTA. Game-day overrides stay listed under the weekly default so a
+ * host who priced a Saturday game still sees it before they send the POST.
  */
 export function WcReviewStep({
   products,
@@ -41,6 +44,7 @@ export function WcReviewStep({
   const sorted = [...daysOfWeek].sort((a, b) => a - b)
   const day = previewDay != null && daysOfWeek.includes(previewDay) ? previewDay : sorted[0] ?? null
   const draft = day != null ? weekdayEdits[day] : undefined
+  const flyerUrl = reviewFlyerUrlForDay(weekdayEdits, day)
   const dateKeys = Object.keys(dateEdits).sort()
 
   return (
@@ -84,7 +88,8 @@ export function WcReviewStep({
 
       {day != null ? (
         <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <ReviewFlyerPreview url={flyerUrl} dayName={isoDayFull(day)} />
+          <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
             Every {isoDayFull(day)}
           </p>
           <p className="mt-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
@@ -140,6 +145,45 @@ export function WcReviewStep({
         {promotionEnabled ? `Promoter on. ${commissionSummary}` : "Promoter off."} At the door:
         any phone camera, tap Check In.
       </p>
+    </div>
+  )
+}
+
+/**
+ * Night flyer for the selected day chip. A missing or broken URL is a
+ * placeholder so Look it over never blocks Publish.
+ */
+function ReviewFlyerPreview({ url, dayName }: { url: string; dayName: string }) {
+  const [broken, setBroken] = useState(false)
+
+  useEffect(() => {
+    setBroken(false)
+  }, [url])
+
+  const showImage = url !== "" && !broken
+
+  return (
+    <div
+      className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
+      aria-label={`${dayName} flyer preview`}
+    >
+      {showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt={`${dayName} flyer`}
+          className="mx-auto block max-h-[420px] w-auto max-w-full object-contain"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <div className="flex min-h-[200px] w-full flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+          <span className="flex size-11 items-center justify-center rounded-full bg-neutral-200/80 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+            <ImageIcon className="size-5" aria-hidden />
+          </span>
+          <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">No flyer</p>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">This night has no flyer yet.</p>
+        </div>
+      )}
     </div>
   )
 }
