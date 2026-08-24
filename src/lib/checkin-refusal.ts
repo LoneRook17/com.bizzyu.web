@@ -7,9 +7,10 @@
 // paying guest or a free entry.
 //
 // The server now sends `reason` on every refusal: a distinct `code`, a
-// `headline`, and one line of `guidance`. This module prefers that, and falls
-// back to deriving the same shape locally when the server has not been
-// upgraded yet. That fallback is not optional: web deploys and API deploys are
+// `headline`, and one line of `guidance`. This module prefers that, except
+// for the too-early scan window, where the API has labeled the window-open
+// clock as doors. That case always uses local copy plus the night-start
+// door time. The fallback is not optional: web deploys and API deploys are
 // separate, so this page WILL run against an older API, and on that day it
 // still must not print "ERROR".
 //
@@ -40,6 +41,8 @@ export interface CheckinRedeemPayload {
   valid_until?: string | null
   event_start?: string | null
   event_end?: string | null
+  /** Night start / door time. Prefer this over `window_opens_at`. */
+  doors_open_at?: string | null
   ticket?: { redeemed_at?: string | null; event_name?: string | null } | null
 }
 
@@ -54,6 +57,9 @@ export interface CheckinFallbackContext {
 
 /** The one status that means "let them in". Never a refusal. */
 export const CHECKIN_SUCCESS_STATUS = "redeemed_now"
+
+/** Too-early scan. Exact door-screen title. Spelled Window, never Widnow. */
+export const OUTSIDE_REDEMPTION_WINDOW_HEADLINE = "Outside of Redemption Window"
 
 function clean(value: string | null | undefined): string | null {
   const trimmed = String(value ?? "").trim()
@@ -86,6 +92,62 @@ function isToday(date: Date): boolean {
     date.getMonth() === now.getMonth() &&
     date.getDate() === now.getDate()
   )
+}
+
+/**
+ * Hour:minute as written on the stamp, as a 12-hour clock.
+ *
+ * Door time is a wall clock ("9:00 PM"), not an instant. A 21:00 night
+ * start must stay 9:00 PM even when the API tags the same digits UTC
+ * (`...T21:00:00.000Z`), which would otherwise render as 5:00 PM on
+ * an Eastern door phone.
+ */
+function wallClockTime(value: string | null | undefined): string | null {
+  const raw = clean(value)
+  if (!raw) return null
+  const match = raw.match(/(?:[T\s])(\d{1,2}):(\d{2})/) ?? raw.match(/^(\d{1,2}):(\d{2})/)
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = match[2]
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return null
+  const suffix = hour >= 12 ? "PM" : "AM"
+  const h12 = hour % 12 || 12
+  return `${h12}:${minute} ${suffix}`
+}
+
+function isScanWindowNotOpen(payload: CheckinRedeemPayload): boolean {
+  const code = clean(payload.reason?.code) ?? clean(payload.reason_code)
+  if (code === "scan_window_not_open") return true
+  return clean(payload.status) === "event_not_active" && payload.window_side === "not_open"
+}
+
+/**
+ * Actual doors: night start / door time. Never `window_opens_at`.
+ *
+ * That field is the scan-window open (doors minus 3 hours, or a 17:00
+ * default). Printing it as "Doors open at 5:00 PM" on a 9:00 PM night
+ * is the bug on the guest check-in fail screen.
+ */
+function doorsOpenStamp(payload: CheckinRedeemPayload, ctx: CheckinFallbackContext): string | null {
+  for (const candidate of [payload.doors_open_at, ctx.eventStart, payload.event_start]) {
+    const stamp = clean(candidate)
+    if (stamp && wallClockTime(stamp)) return stamp
+  }
+  return null
+}
+
+function tooEarlyRedemptionRefusal(
+  payload: CheckinRedeemPayload,
+  ctx: CheckinFallbackContext,
+): CheckinRefusal {
+  const doors = wallClockTime(doorsOpenStamp(payload, ctx))
+  return {
+    code: "scan_window_not_open",
+    headline: OUTSIDE_REDEMPTION_WINDOW_HEADLINE,
+    guidance: doors
+      ? `Doors open at ${doors}. You can scan up to 3 hours before doors open.`
+      : "You can scan up to 3 hours before doors open. The pass is good, so ask them to come back then.",
+  }
 }
 
 /**
@@ -145,15 +207,11 @@ function fallbackRefusal(
       // The collapse, seen from the client side: one status, two opposite
       // instructions, and no field saying which. Newer servers send
       // `window_side`; use it when it is there.
-      const opens = parseServerTime(payload.window_opens_at ?? payload.event_start)
+      const opens = parseServerTime(payload.event_start)
       const closes = parseServerTime(payload.window_closes_at ?? payload.event_end)
 
       if (payload.window_side === "not_open") {
-        return {
-          code: "scan_window_not_open",
-          headline: opens ? `Doors open at ${clockTime(opens)}` : "Doors are not open yet",
-          guidance: "Scanning has not started. The pass is good, so ask them to come back later.",
-        }
+        return tooEarlyRedemptionRefusal(payload, ctx)
       }
       if (payload.window_side === "closed") {
         return {
@@ -237,14 +295,22 @@ function fallbackRefusal(
 /**
  * The refusal to show, or null when the guest is admitted.
  *
- * Server copy always wins when present, so wording can be fixed by deploying
- * the API alone. `code` is the only thing the UI should branch on.
+ * Server copy wins for most refusals, so wording can be fixed by deploying
+ * the API alone. The too-early scan window is the exception: the API has
+ * been labeling `window_opens_at` as doors, which is the 3-hour window
+ * start or a 17:00 default, not night start. That case always uses the
+ * local title and the actual doors clock. `code` is the only thing the
+ * UI should branch on.
  */
 export function resolveCheckinRefusal(
   payload: CheckinRedeemPayload,
   ctx: CheckinFallbackContext = {},
 ): CheckinRefusal | null {
   if (clean(payload.status) === CHECKIN_SUCCESS_STATUS) return null
+
+  if (isScanWindowNotOpen(payload)) {
+    return tooEarlyRedemptionRefusal(payload, ctx)
+  }
 
   const served = payload.reason
   const headline = clean(served?.headline)
