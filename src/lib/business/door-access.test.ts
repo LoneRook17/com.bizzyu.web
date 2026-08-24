@@ -1730,17 +1730,28 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     "utf8",
   )
   assert.ok(cards.includes("Low Maintenance Option"))
-  assert.ok(cards.includes("inAppChoiceSurfaceStyle"), "choice cards use the in-app dark surface")
+  assert.ok(cards.includes("inAppChoiceSurfaceStyle"), "choice cards use the in-app surface")
+  assert.ok(cards.includes("IN_APP_CHOICE_SURFACE_CLASS"), "choice cards use light/dark fill tokens")
+  assert.ok(cards.includes("IN_APP_CHOICE_TITLE_CLASS"), "choice titles follow dash light/dark type")
+  assert.ok(cards.includes("IN_APP_CHOICE_BODY_CLASS"), "choice body follows dash light/dark type")
   assert.ok(cards.includes("InAppIconTile"), "choice cards use a colored icon tile, not a neon fill")
   assert.ok(!/backgroundColor:\s*fill/.test(cards), "do not neon-fill Event / Weekly Cover cards")
-  assert.ok(!cards.includes("ACCESS_INK"), "create cards are dark + outline, not pink-ink-on-neon")
+  assert.ok(!cards.includes("ACCESS_INK"), "create cards are outlined, not pink-ink-on-neon")
+  assert.ok(!cards.includes("useTheme"), "choice cards use dark: classes, not a one-off switcher")
 
   const choiceChrome = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/create/in-app-choice.tsx", import.meta.url)),
     "utf8",
   )
-  assert.ok(choiceChrome.includes('IN_APP_CHOICE_FILL = "#111114"'), "in-app create cards stay near-black / charcoal")
-  assert.ok(choiceChrome.includes("backgroundColor: IN_APP_CHOICE_FILL"), "card fill is charcoal, not the neon accent")
+  assert.ok(choiceChrome.includes('IN_APP_CHOICE_FILL = "#111114"'), "dark create cards stay near-black / charcoal")
+  assert.ok(choiceChrome.includes('IN_APP_CHOICE_FILL_LIGHT = "#FFFFFF"'), "light create cards are white, not charcoal")
+  assert.ok(choiceChrome.includes('IN_APP_CHOICE_TITLE_LIGHT = "#171717"'), "light titles are dash ink / neutral-900")
+  assert.ok(choiceChrome.includes('IN_APP_CHOICE_BODY_LIGHT = "#525252"'), "light body is dash muted / neutral-600")
+  assert.ok(choiceChrome.includes("bg-white dark:bg-[#111114]"), "fill switches through .v2-dark, not a second layout")
+  assert.ok(choiceChrome.includes("text-neutral-900 dark:text-white"), "titles are ink in light, white in dark")
+  assert.ok(choiceChrome.includes("text-neutral-600 dark:text-neutral-400"), "body is muted grey in light, grey in dark")
+  assert.ok(!choiceChrome.includes("backgroundColor: IN_APP_CHOICE_FILL"), "inline charcoal fill would lock out light mode")
+  assert.ok(!choiceChrome.includes("useTheme"), "chrome uses dark: classes, not a one-off switcher")
 
   const sell = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/WcProductsStep.tsx", import.meta.url)),
@@ -1750,5 +1761,9 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(sell.includes("Zap"), "Line skip uses a bolt icon")
   assert.ok(sell.includes("Sparkles"), "Both uses sparkles")
   assert.ok(!sell.includes("charAt(0)"), "Sell tiles must not use letter tiles W / S / B")
-  assert.ok(sell.includes("inAppChoiceSurfaceStyle"), "Sell tiles stay dark + thin colored border")
+  assert.ok(sell.includes("inAppChoiceSurfaceStyle"), "Sell tiles keep the thin colored border")
+  assert.ok(sell.includes("IN_APP_CHOICE_SURFACE_CLASS"), "Sell tiles use the same light/dark fill")
+  assert.ok(sell.includes("IN_APP_CHOICE_TITLE_CLASS"), "Sell titles follow dash light/dark type")
+  assert.ok(sell.includes("IN_APP_CHOICE_BODY_CLASS"), "Sell body follows dash light/dark type")
+  assert.ok(!sell.includes("useTheme"), "Sell tiles use dark: classes, not a one-off switcher")
 })
