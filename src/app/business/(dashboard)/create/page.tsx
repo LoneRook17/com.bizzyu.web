@@ -1,23 +1,30 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronRight, Check, DoorOpen, PartyPopper, Lock } from "lucide-react"
+import { Check, DoorOpen, PartyPopper, Lock, type LucideIcon } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   ACCESS_ACCENT,
-  ACCESS_INK,
   EVENT_ACCENT,
   EVENT_TYPE_LABEL,
   WEEKLY_ACCESS_CREATION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
 } from "@/lib/business/door-access"
+import {
+  IN_APP_CHOICE_BODY,
+  IN_APP_CHOICE_TITLE,
+  InAppIconTile,
+  InAppSelectedCheck,
+  inAppChoiceSurfaceStyle,
+} from "@/components/business/v2/create/in-app-choice"
 import RequireVenue from "@/components/business/v2/RequireVenue"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 
 /**
  * Flutter CreateChoicePage. "What are you setting up?"
  *
- * Event is the green card. Weekly Cover is the pink card with the
+ * Dark charcoal cards with a thin green / pink outline — not neon-filled
+ * blocks. Event is the green tile; Weekly Cover is the pink tile with the
  * Low Maintenance Option chip. The dashboard is already scoped to a venue,
  * so this is Flutter screen 1 with the venue picker skipped.
  */
@@ -45,8 +52,7 @@ export default function CreateFunnelPage() {
         <ChoiceCard
           href="/business/events/new"
           kindLabel={EVENT_TYPE_LABEL}
-          fill={EVENT_ACCENT}
-          ink="#0A1F0E"
+          accent={EVENT_ACCENT}
           icon={PartyPopper}
           title="An event"
           blurb="One night with a name: a show, a party, a mixer. Sell tickets or let people in free."
@@ -61,8 +67,7 @@ export default function CreateFunnelPage() {
         <ChoiceCard
           href="/business/door-access/new"
           kindLabel={WEEKLY_ACCESS_TYPE_LABEL}
-          fill={ACCESS_ACCENT}
-          ink={ACCESS_INK}
+          accent={ACCESS_ACCENT}
           icon={DoorOpen}
           title={WEEKLY_ACCESS_CREATION_LABEL}
           tag="Low Maintenance Option"
@@ -81,9 +86,8 @@ export default function CreateFunnelPage() {
 function ChoiceCard({
   href,
   kindLabel,
-  fill,
-  ink,
-  icon: Icon,
+  accent,
+  icon,
   title,
   tag,
   blurb,
@@ -91,9 +95,8 @@ function ChoiceCard({
 }: {
   href: string
   kindLabel: string
-  fill: string
-  ink: string
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
+  accent: string
+  icon: LucideIcon
   title: string
   tag?: string
   blurb: string
@@ -102,42 +105,45 @@ function ChoiceCard({
   return (
     <Link
       href={href}
-      style={{ backgroundColor: fill, color: ink, borderColor: fill }}
-      className="group flex flex-col rounded-2xl border p-6 transition-shadow hover:shadow-md"
+      style={inAppChoiceSurfaceStyle(accent, true)}
+      className="group flex flex-col rounded-2xl border p-6 transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
     >
       <div className="flex items-center gap-3">
-        <span
-          className="flex size-12 shrink-0 items-center justify-center rounded-xl"
-          style={{ backgroundColor: `${ink}1a` }}
-        >
-          <Icon className="size-6" style={{ color: ink }} />
-        </span>
-        <span className="flex-1 text-[13px] font-extrabold uppercase tracking-wider" style={{ color: ink }}>
+        <InAppIconTile accent={accent} icon={icon} />
+        <span className="flex-1 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: accent }}>
           {kindLabel}
         </span>
-        <ChevronRight className="size-5 shrink-0 opacity-70 transition-transform group-hover:translate-x-0.5" />
+        <InAppSelectedCheck
+          accent={accent}
+          selected={false}
+          className="group-hover:opacity-100 group-focus-visible:opacity-100"
+        />
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
-        <h2 className="text-xl font-semibold" style={{ color: ink }}>
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <h2 className="text-xl font-semibold" style={{ color: IN_APP_CHOICE_TITLE }}>
           {title}
         </h2>
         {tag && (
           <span
-            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-            style={{ backgroundColor: `${ink}1a`, color: ink }}
+            className="rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
+            style={{ borderColor: accent, color: accent }}
           >
             {tag}
           </span>
         )}
       </div>
-      <p className="mt-1.5 text-[14px] leading-relaxed opacity-90">{blurb}</p>
+      <p className="mt-1.5 text-[14px] leading-relaxed" style={{ color: IN_APP_CHOICE_BODY }}>
+        {blurb}
+      </p>
 
       <ul className="mt-5 flex flex-col gap-2">
         {bullets.map((bullet) => (
           <li key={bullet} className="flex items-start gap-2">
-            <Check className="mt-0.5 size-4 shrink-0" style={{ color: ink }} />
-            <span className="text-[13px] leading-snug">{bullet}</span>
+            <Check className="mt-0.5 size-4 shrink-0" style={{ color: accent }} />
+            <span className="text-[13px] leading-snug" style={{ color: IN_APP_CHOICE_BODY }}>
+              {bullet}
+            </span>
           </li>
         ))}
       </ul>

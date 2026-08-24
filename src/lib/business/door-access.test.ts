@@ -1722,5 +1722,25 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   )
   assert.ok(create.includes("Low Maintenance Option"))
   assert.ok(create.includes("What are you setting up?"))
-  assert.ok(create.includes("ACCESS_INK"))
+  assert.ok(create.includes("inAppChoiceSurfaceStyle"), "choice cards use the in-app dark surface")
+  assert.ok(create.includes("InAppIconTile"), "choice cards use a colored icon tile, not a neon fill")
+  assert.ok(!/backgroundColor:\s*fill/.test(create), "do not neon-fill Event / Weekly Cover cards")
+  assert.ok(!create.includes("ACCESS_INK"), "create cards are dark + outline, not pink-ink-on-neon")
+
+  const choiceChrome = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/create/in-app-choice.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(choiceChrome.includes('IN_APP_CHOICE_FILL = "#111114"'), "in-app create cards stay near-black / charcoal")
+  assert.ok(choiceChrome.includes("backgroundColor: IN_APP_CHOICE_FILL"), "card fill is charcoal, not the neon accent")
+
+  const sell = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/WcProductsStep.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(sell.includes("DoorOpen"), "Cover uses a door icon")
+  assert.ok(sell.includes("Zap"), "Line skip uses a bolt icon")
+  assert.ok(sell.includes("Sparkles"), "Both uses sparkles")
+  assert.ok(!sell.includes("charAt(0)"), "Sell tiles must not use letter tiles W / S / B")
+  assert.ok(sell.includes("inAppChoiceSurfaceStyle"), "Sell tiles stay dark + thin colored border")
 })
