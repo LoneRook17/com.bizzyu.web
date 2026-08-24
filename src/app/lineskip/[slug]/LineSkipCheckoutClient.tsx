@@ -19,22 +19,19 @@ import {
 } from "@/lib/lineskip-pi/client"
 import {
   LineSkipSoldOutError,
-  LineSkipVenueBlockedError,
   type LineSkipCompleteResponse,
   type LineSkipPiBreakdown,
 } from "@/lib/lineskip-pi/types"
 import { nightAvailability, remainingCapacity } from "@/lib/lineskip/availability"
 import { CHECKOUT_PANEL_CLASS } from "@/lib/lineskip/checkout-modal"
-import { orderSummaryRows } from "@/lib/lineskip/order-summary"
+import { ACCESS, ACCESS_CTA, ACCESS_LIGHT, GLASS, GLASS_SOFT } from "@/lib/checkout/surfaces"
 import { isLineSkipSuccessArrival } from "@/lib/lineskip/success-params"
 import { fireConfetti } from "./success/confetti"
 
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 const API_URL = getApiBaseUrl()
-// Line skips are the "VIP" product - gold accents instead of Bizzy green to
-// differentiate them from events/deals across the whole flow.
-const GOLD = "#D4AF37"
-const GOLD_LIGHT = "#F0CD6E"
+// Door access / Weekly Cover / skip — magenta, matching the app (D-P5).
+// Named events stay green. Never gold.
 
 // Dev-only scenario switch for the PI mock. MOCK_ENABLED is a build-time
 // constant, so in a prod build this is `null` and the dynamic import behind it
@@ -159,17 +156,177 @@ function getDiscountedPrice(priceCents: number, promo: PromoInfo | null): number
   return Math.max(0, priceCents - Math.round(promo.discount_value * 100))
 }
 
-/** Weekday/day calendar chip for night cards. */
-function NightChip({ dateStr }: { dateStr: string }) {
-  const d = new Date(dateStr + "T00:00:00")
-  const dow = d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()
-  const day = d.getDate()
+function instanceDateOnly(inst: LineSkipInstance): string {
+  return typeof inst.date === "string" ? inst.date.substring(0, 10) : inst.date
+}
+
+function easternParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now)
+  const n = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((p) => p.type === type)?.value)
+  return { year: n("year"), month: n("month"), day: n("day"), hour: n("hour") }
+}
+
+function ymd(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
+/** Calendar date in America/New_York — "day of" on the checkout list. */
+function calendarTodayKey(now = new Date()): string {
+  const p = easternParts(now)
+  return ymd(p.year, p.month, p.day)
+}
+
+/** Nightlife day rolls at 05:00 ET — still used so a 1 AM Saturday night counts. */
+function nightlifeTodayKey(now = new Date()): string {
+  const p = easternParts(now)
+  let date = new Date(p.year, p.month - 1, p.day)
+  if (p.hour < 5) {
+    date = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1)
+  }
+  return ymd(date.getFullYear(), date.getMonth() + 1, date.getDate())
+}
+
+function isDayOf(dateStr: string): boolean {
+  return dateStr === calendarTodayKey() || dateStr === nightlifeTodayKey()
+}
+
+function NightCard({
+  inst,
+  tonight,
+  isSelected,
+  promo,
+  quantity,
+  onSelect,
+  onAdjustQty,
+}: {
+  inst: LineSkipInstance
+  tonight: boolean
+  isSelected: boolean
+  promo: PromoInfo | null
+  quantity: number
+  onSelect: () => void
+  onAdjustQty: (val: number) => void
+}) {
+  const [descOpen, setDescOpen] = useState(false)
+  const discountedPrice = getDiscountedPrice(inst.price_cents, promo)
+  const isSoldOut = nightAvailability(inst) === "sold_out"
+  const remaining = remainingCapacity(inst)
+  const dateOnly = instanceDateOnly(inst)
+  const description =
+    inst.line_skip_description?.trim() ||
+    `Walk past the line from ${formatTime(inst.start_time)} to ${formatTime(inst.end_time)}.`
+  const descLong = description.length > 72
+  const descShown = descOpen || !descLong ? description : `${description.slice(0, 72).trimEnd()}…`
+
   return (
-    <div className="w-14 shrink-0 overflow-hidden rounded-xl bg-black/40 text-center ring-1 ring-white/10">
-      <p className="py-0.5 text-[10px] font-extrabold tracking-widest text-black" style={{ backgroundColor: GOLD }}>
-        {dow}
-      </p>
-      <p className="py-1.5 text-xl font-extrabold leading-none text-white">{day}</p>
+    <div className={tonight ? "" : "space-y-1.5"}>
+      {!tonight && (
+        <p className="px-0.5 text-xs font-extrabold tracking-tight text-white/50">
+          {formatDate(dateOnly)}
+        </p>
+      )}
+
+      <div
+        className={`${GLASS} overflow-hidden transition-all duration-300 ${
+          tonight ? "ls-tonight" : ""
+        } ${
+          isSoldOut
+            ? "opacity-50"
+            : isSelected
+              ? ""
+              : "cursor-pointer hover:-translate-y-0.5"
+        }`}
+        style={
+          isSelected
+            ? { borderColor: `${ACCESS}99`, boxShadow: `0 0 0 1px ${ACCESS}55, 0 24px 60px -20px ${ACCESS}40` }
+            : tonight
+              ? { borderColor: `${ACCESS}88`, boxShadow: `0 0 0 1px ${ACCESS}44, 0 22px 48px -12px ${ACCESS}70` }
+              : undefined
+        }
+        onClick={() => !isSoldOut && onSelect()}
+      >
+        <div className={tonight ? "px-4 py-3" : "px-3.5 py-2.5"}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h3 className={`font-extrabold leading-none text-white ${tonight ? "text-lg" : "text-[15px]"}`}>
+                  Skip the Line Pass
+                </h3>
+                <span
+                  className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.5px]"
+                  style={{ backgroundColor: `${ACCESS}1f`, color: ACCESS }}
+                >
+                  Cover included
+                </span>
+              </div>
+              <p className={`mt-1.5 leading-snug text-white/50 ${tonight ? "text-sm" : "text-xs"}`}>
+                {descShown}
+                {descLong && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      className="font-bold underline-offset-2 hover:underline"
+                      style={{ color: ACCESS }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDescOpen((open) => !open)
+                      }}
+                    >
+                      {descOpen ? "See less" : "See more"}
+                    </button>
+                  </>
+                )}
+              </p>
+              {isSoldOut && (
+                <span className="mt-1 inline-block text-[10px] font-bold text-white/40">Sold out</span>
+              )}
+            </div>
+            <p
+              className={`shrink-0 font-extrabold leading-none ${tonight ? "text-xl" : "text-lg"}`}
+              style={{ color: promo ? ACCESS : "white" }}
+            >
+              {promo && (
+                <span className="mr-1.5 text-xs font-semibold text-white/40 line-through">
+                  {formatPrice(inst.price_cents)}
+                </span>
+              )}
+              {formatPrice(promo ? discountedPrice : inst.price_cents)}
+            </p>
+          </div>
+
+          {isSelected && !isSoldOut && (
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-white/15 bg-white/[0.04] px-3 py-1.5">
+              <span className="text-xs font-semibold text-white/70">How many?</span>
+              <div className="flex items-center gap-1 rounded-md bg-white/5 ring-1 ring-white/10">
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAdjustQty(quantity - 1) }}
+                  className="px-2.5 py-1 text-base font-bold text-white/60 transition-colors hover:text-white disabled:opacity-40"
+                  disabled={quantity <= 1}
+                >
+                  −
+                </button>
+                <span className="w-6 text-center text-sm font-extrabold text-white">{quantity}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onAdjustQty(quantity + 1) }}
+                  className="px-2.5 py-1 text-base font-bold text-white/60 transition-colors hover:text-white disabled:opacity-40"
+                  disabled={remaining !== null && quantity >= remaining}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -652,17 +809,6 @@ export default function LineSkipCheckoutClient({
             setCheckoutStep("sold_out_unpaid")
             return
           }
-          // LSK-18: a venue whose Connect account can't take charges gets the
-          // same friendly paused-sales screen here as on the session and free
-          // paths above. Before this the code was discarded in client.ts, so
-          // this fell through to setCheckoutError and the buyer saw a raw error
-          // string in the generic banner.
-          if (e instanceof LineSkipVenueBlockedError) {
-            setVenueBlock(e.block)
-            setCheckoutStep("idle")
-            setCheckoutError("")
-            return
-          }
           setCheckoutError(e instanceof Error ? e.message : "Could not start payment")
           setCheckoutStep("phone")
         }
@@ -840,7 +986,7 @@ export default function LineSkipCheckoutClient({
         <div className="text-center">
           <div
             className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/20"
-            style={{ borderTopColor: GOLD }}
+            style={{ borderTopColor: ACCESS }}
           />
           <p className="text-white/60">Loading...</p>
         </div>
@@ -877,22 +1023,22 @@ export default function LineSkipCheckoutClient({
           <div className="mb-8 text-center">
             <div
               className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full"
-              style={{ backgroundColor: `${GOLD}1f`, border: `1px solid ${GOLD}33` }}
+              style={{ backgroundColor: `${ACCESS}1f`, border: `1px solid ${ACCESS}33` }}
             >
-              <svg className="h-10 w-10" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-10 w-10" style={{ color: ACCESS }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
             <h1 className="text-3xl font-extrabold text-white">You&apos;re all set!</h1>
             <p className="mt-1 text-white/60">
-              Your Line Skip{freeSuccessData.count > 1 ? "s are" : " is"} confirmed for{" "}
+              Your Skip the Line{freeSuccessData.count > 1 ? "s are" : " is"} confirmed for{" "}
               {freeSuccessData.venue_name || freeSuccessData.business_name}
             </p>
           </div>
 
           {/* Get your line skips in the app */}
           <div className="mb-6 rounded-2xl border border-[#1e1e2e] bg-[#141420] p-6 text-center">
-            <h2 className="mb-2 text-2xl font-extrabold text-white">Get your Line Skips in the app</h2>
+            <h2 className="mb-2 text-2xl font-extrabold text-white">Get your Skip the Line in the app</h2>
             <p className="mb-6 text-sm text-gray-400">
               Sign up with the <span className="font-semibold text-white">same phone number</span> you used at checkout.
             </p>
@@ -902,7 +1048,7 @@ export default function LineSkipCheckoutClient({
               target="_blank"
               rel="noreferrer"
               className="flex w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-4 text-lg font-extrabold text-black transition hover:brightness-110 active:scale-[0.98]"
-              style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 16px 40px -12px ${GOLD}80` }}
+              style={{ background: `${ACCESS_CTA}`, boxShadow: `0 16px 40px -12px ${ACCESS}80` }}
             >
               <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
@@ -932,8 +1078,8 @@ export default function LineSkipCheckoutClient({
           </div>
 
           {/* Details card */}
-          <div className="mb-6 overflow-hidden rounded-2xl border" style={{ borderColor: `${GOLD}40`, backgroundColor: `${GOLD}0d` }}>
-            <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: GOLD }}>
+          <div className="mb-6 overflow-hidden rounded-2xl border" style={{ borderColor: `${ACCESS}40`, backgroundColor: `${ACCESS}0d` }}>
+            <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: ACCESS }}>
               <span className="text-sm font-extrabold text-black/80">LINE SKIP</span>
               <span className="rounded-full bg-black/10 px-3 py-0.5 text-xs font-bold text-black/70">INCLUDES COVER</span>
             </div>
@@ -953,7 +1099,7 @@ export default function LineSkipCheckoutClient({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-white/50">Line Skips</span>
+                  <span className="text-white/50">Skip the Line</span>
                   <span className="font-semibold text-white">{freeSuccessData.count}</span>
                 </div>
               </div>
@@ -976,10 +1122,10 @@ export default function LineSkipCheckoutClient({
             href={`/lineskip/${freeSuccessData.venue_id}`}
             className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-[#1e1e2e] bg-[#141420] px-6 py-4 text-lg font-extrabold text-white transition hover:bg-[#1e1e2e] active:scale-[0.98]"
           >
-            <svg className="h-5 w-5" style={{ color: GOLD }} fill="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" style={{ color: ACCESS }} fill="currentColor" viewBox="0 0 24 24">
               <path d="M13 2L4.094 12.688c-.391.469-.063 1.187.547 1.187H10l-1 8.125 8.906-10.688c.391-.469.063-1.187-.547-1.187H14l-1-8.125z" />
             </svg>
-            Buy more Line Skips
+            Buy more Skip the Line
           </a>
 
           {/* Footer */}
@@ -1004,6 +1150,8 @@ export default function LineSkipCheckoutClient({
   const availableCount = instances.filter(
     (i) => !(i.capacity !== null && i.tickets_sold >= i.capacity)
   ).length
+  const tonightNights = instances.filter((i) => isDayOf(instanceDateOnly(i)))
+  const laterNights = instances.filter((i) => !isDayOf(instanceDateOnly(i)))
 
   const isOutcomeStep =
     checkoutStep === "finalizing" ||
@@ -1014,24 +1162,38 @@ export default function LineSkipCheckoutClient({
   // ─── Render: Main Page ───────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white font-[family-name:var(--font-fira)]">
+    <div className="relative min-h-screen bg-[#0a0a0f] text-white font-[family-name:var(--font-fira)]">
       {/* Page-scoped animations (globals.css is intentionally untouched) */}
       <style>{`
         @keyframes lsRise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes lsHeroZoom { from { transform: scale(1); } to { transform: scale(1.08); } }
         @keyframes lsFloat { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, -25px); } }
+        @keyframes lsTonightPulse { 0%, 100% { box-shadow: 0 0 0 0 ${ACCESS}66; } 50% { box-shadow: 0 0 0 6px ${ACCESS}00; } }
         .ls-rise { animation: lsRise 0.6s cubic-bezier(0.21, 0.65, 0.36, 1) both; }
         .ls-hero-img { animation: lsHeroZoom 24s ease-in-out infinite alternate; }
         .ls-blob { animation: lsFloat 14s ease-in-out infinite; }
+        .ls-tonight-pulse { animation: lsTonightPulse 2.2s ease-in-out infinite; }
         .ls-kb-shift { transition: transform 0.2s ease-out; will-change: transform; }
         @media (prefers-reduced-motion: reduce) {
-          .ls-rise, .ls-hero-img, .ls-blob { animation: none; }
+          .ls-rise, .ls-hero-img, .ls-blob, .ls-tonight-pulse { animation: none; }
           .ls-kb-shift { transition: none; }
         }
       `}</style>
 
-      {/* Sticky header */}
-      <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0f]/70 backdrop-blur-xl">
+      {heroImage && (
+        <div aria-hidden className="pointer-events-none fixed inset-0 overflow-hidden">
+          <img
+            src={heroImage}
+            alt=""
+            className="h-full w-full scale-[1.55] object-cover opacity-55 blur-[64px]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/35 to-[#0a0a0f]/85" />
+        </div>
+      )}
+
+      <div className="relative z-10">
+      {/* Sticky header — venue name + map, no street address (app event chrome). */}
+      <header className="sticky top-0 z-40 bg-[#0a0a0f]/45 backdrop-blur-xl">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-5 py-3">
           <a href="https://bizzyu.com" className="flex shrink-0 items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1039,64 +1201,53 @@ export default function LineSkipCheckoutClient({
           </a>
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-bold leading-tight text-white">{displayName}</p>
-            {displayAddress && <p className="truncate text-xs text-gray-400">{displayAddress}</p>}
           </div>
+          {mapsUrl && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Directions"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 01.553-.894L9 2m0 18l6-3m-6 3V2m6 15l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4" />
+              </svg>
+            </a>
+          )}
           {availableCount > 0 && (
             <a
               href="#nights"
               className="hidden shrink-0 rounded-full px-4 py-2 text-sm font-extrabold text-black shadow-lg transition hover:brightness-110 active:scale-[0.97] sm:inline-block"
-              style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 8px 24px -8px ${GOLD}80` }}
+              style={{ background: `${ACCESS_CTA}`, boxShadow: `0 8px 24px -8px ${ACCESS}80` }}
             >
-              Skip the line
+              Skip the Line
             </a>
           )}
         </div>
       </header>
 
-      {/* Hero */}
-      <div className="relative w-full overflow-hidden">
-        {heroImage ? (
+      {/* Inset story card — same shape as the app event flyer + title wash. */}
+      <div className="ls-rise mx-auto max-w-3xl px-4 pt-2">
+        <div className="overflow-hidden rounded-[18px]">
           <div className="relative h-[280px] w-full sm:h-[360px]">
-            <img src={heroImage} alt={displayName} className="ls-hero-img h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/55 to-black/20" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0f]/60 via-transparent to-transparent" />
-          </div>
-        ) : (
-          <div className="relative h-56 w-full overflow-hidden bg-[#0d0d14] sm:h-72">
-            <div className="ls-blob absolute -left-20 top-0 h-72 w-72 rounded-full blur-3xl" style={{ backgroundColor: `${GOLD}26` }} />
-            <div className="ls-blob absolute right-0 top-10 h-80 w-80 rounded-full blur-3xl" style={{ backgroundColor: `${GOLD}1a`, animationDelay: "-7s" }} />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] to-transparent" />
-          </div>
-        )}
-
-        <div className="absolute inset-x-0 bottom-0 px-5 pb-7">
-          <div className="ls-rise mx-auto max-w-3xl">
-            <p className="mb-1.5 inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-[0.2em]" style={{ color: GOLD }}>
-              <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M13 2L4.094 12.688c-.391.469-.063 1.187.547 1.187H10l-1 8.125 8.906-10.688c.391-.469.063-1.187-.547-1.187H14l-1-8.125z" />
-              </svg>
-              Skip the line
-            </p>
-            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white drop-shadow-lg sm:text-5xl">
-              {displayName}
-            </h1>
-            {venue && business.name !== venue.name && (
-              <p className="mt-1 text-sm font-medium text-white/60">{business.name}</p>
+            {heroImage ? (
+              <img src={heroImage} alt={displayName} className="ls-hero-img h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 overflow-hidden bg-[#0d0d14]">
+                <div className="ls-blob absolute -left-20 top-0 h-72 w-72 rounded-full blur-3xl" style={{ backgroundColor: `${ACCESS}26` }} />
+                <div className="ls-blob absolute right-0 top-10 h-80 w-80 rounded-full blur-3xl" style={{ backgroundColor: `${ACCESS}1a`, animationDelay: "-7s" }} />
+              </div>
             )}
-            {mapsUrl && (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-gray-200 ring-1 ring-white/15 backdrop-blur-sm transition hover:bg-white/15 hover:text-white"
-              >
-                <svg className="h-4 w-4 shrink-0" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="truncate">{displayAddress}</span>
-              </a>
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 px-5 pb-5">
+              <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
+                {displayName}
+              </h1>
+              {venue && business.name !== venue.name && (
+                <p className="mt-1 text-sm font-medium italic text-white/70">at {business.name}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1104,172 +1255,105 @@ export default function LineSkipCheckoutClient({
       {/* Content. Extra mobile bottom padding whenever the sticky CTA bar is
           mounted, so the last night card / footer can scroll clear of it. */}
       <div className={`mx-auto max-w-3xl px-5 ${selectedInstance && !venueBlock ? "pb-44 sm:pb-24" : "pb-24"}`}>
-        {/* Includes Cover banner */}
-        <div
-          className="ls-rise mt-7 flex items-center gap-4 rounded-2xl px-5 py-4"
-          style={{ backgroundColor: `${GOLD}12`, border: `1px solid ${GOLD}40`, animationDelay: "0.1s" }}
-        >
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-black"
-            style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+        {/* Product title sits under the flyer, then the compact cover chip. */}
+        <div className="ls-rise mt-6" style={{ animationDelay: "0.1s" }}>
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            Skip the Line
+          </h2>
+          <span
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-extrabold uppercase tracking-[0.6px]"
+            style={{ backgroundColor: `${ACCESS}1f`, color: ACCESS }}
           >
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M13 2L4.094 12.688c-.391.469-.063 1.187.547 1.187H10l-1 8.125 8.906-10.688c.391-.469.063-1.187-.547-1.187H14l-1-8.125z" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-base font-extrabold" style={{ color: GOLD }}>
-              Cover included
-            </p>
-            <p className="text-sm text-white/50">Walk straight past the line, your cover charge is part of the price.</p>
-          </div>
+            Cover included
+          </span>
+          <p className="mt-2 text-sm text-white/50">
+            Walk straight past the line. Cover is part of the price.
+          </p>
         </div>
 
         {/* Select a Night */}
         <section id="nights" className="ls-rise mt-10 scroll-mt-20" style={{ animationDelay: "0.18s" }}>
-          <div className="mb-5 flex items-center gap-3">
-            <span className="h-6 w-1.5 rounded-full" style={{ background: `linear-gradient(180deg, ${GOLD_LIGHT}, ${GOLD})` }} />
-            <h2 className="text-2xl font-extrabold tracking-tight text-white">Pick your night</h2>
-            {availableCount > 0 && (
-              <span className="rounded-full px-2.5 py-0.5 text-sm font-bold" style={{ backgroundColor: `${GOLD}1f`, color: GOLD }}>
-                {availableCount}
-              </span>
-            )}
-          </div>
-
           {instances.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-3xl border border-dashed border-[#1e1e2e] bg-[#141420]/60 px-6 py-14 text-center">
-              <svg className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="font-bold text-white">No Line Skips in the next 7 days</p>
-              <p className="text-sm text-gray-400">Check back soon, nights are added throughout the week.</p>
-            </div>
+            <>
+              <div className="mb-5 flex items-center gap-3">
+                <span className="h-6 w-1.5 rounded-full" style={{ background: `linear-gradient(180deg, ${ACCESS_LIGHT}, ${ACCESS})` }} />
+                <h2 className="text-2xl font-extrabold tracking-tight text-white">Pick your night</h2>
+              </div>
+              <div className={`flex flex-col items-center gap-2 px-6 py-14 text-center ${GLASS_SOFT}`}>
+                <svg className="h-8 w-8 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="font-bold text-white">Nothing in the next 7 days</p>
+                <p className="text-sm text-white/50">Check back soon, nights are added throughout the week.</p>
+              </div>
+            </>
           ) : (
-            <div className="space-y-4">
-              {instances.map((inst) => {
-                const isSelected = selectedInstanceId === inst.id
-                const promo = getPromoForInstance(inst.id)
-                const discountedPrice = getDiscountedPrice(inst.price_cents, promo)
-                // Customer-facing rule (LS-UI-2): a limited-but-open night reads
-                // exactly like an unlimited one — no count, no bar. `remaining` is
-                // kept ONLY to clamp the quantity stepper, never rendered.
-                const isSoldOut = nightAvailability(inst) === "sold_out"
-                const remaining = remainingCapacity(inst)
-                const dateOnly = typeof inst.date === "string" ? inst.date.substring(0, 10) : inst.date
-
-                return (
-                  <div
-                    key={inst.id}
-                    className={`overflow-hidden rounded-2xl border bg-[#141420] transition-all duration-300 ${
-                      isSoldOut
-                        ? "border-[#1e1e2e] opacity-50"
-                        : isSelected
-                          ? ""
-                          : "cursor-pointer border-[#1e1e2e] hover:-translate-y-0.5"
-                    }`}
-                    style={
-                      isSelected
-                        ? { borderColor: GOLD, boxShadow: `0 0 0 2px ${GOLD}40, 0 24px 60px -20px ${GOLD}40` }
-                        : undefined
-                    }
-                    onClick={() => !isSoldOut && selectInstance(inst.id)}
-                  >
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-4">
-                          <NightChip dateStr={dateOnly} />
-                          <div>
-                            <h3 className="text-lg font-extrabold text-white">{formatDate(dateOnly)}</h3>
-                            <p className="mt-0.5 text-sm font-semibold" style={{ color: GOLD }}>
-                              {formatTime(inst.start_time)} &ndash; {formatTime(inst.end_time)}
-                            </p>
-                            {isSoldOut ? (
-                              <span className="mt-1.5 inline-block rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-bold text-gray-400">
-                                Sold out
-                              </span>
-                            ) : (
-                              // Never disclose remaining counts: limited and unlimited
-                              // nights both read "Available" (LS-UI-2).
-                              <span className="mt-1.5 inline-block text-xs font-semibold text-white/40">Available</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {promo ? (
-                            <div>
-                              <span className="text-sm text-white/40 line-through">{formatPrice(inst.price_cents)}</span>
-                              <p className="text-2xl font-extrabold" style={{ color: GOLD }}>
-                                {formatPrice(discountedPrice)}
-                              </p>
-                            </div>
-                          ) : (
-                            <p className="text-2xl font-extrabold text-white">{formatPrice(inst.price_cents)}</p>
-                          )}
-                          {/* Selection indicator */}
-                          <div className="mt-2 flex justify-end">
-                            <div
-                              className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-colors ${
-                                isSelected ? "border-transparent" : "border-white/20"
-                              }`}
-                              style={isSelected ? { backgroundColor: GOLD } : undefined}
-                            >
-                              {isSelected && (
-                                <svg className="h-3.5 w-3.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Capacity bar removed (LS-UI-2): a progress bar discloses how
-                          full a night is, which is a remaining-count signal. */}
-
-                      {/* Quantity selector (shown when selected) */}
-                      {isSelected && !isSoldOut && (
-                        <div className="mt-4 flex items-center justify-between rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3">
-                          <span className="text-sm font-semibold text-white/70">How many?</span>
-                          <div className="flex items-center gap-1 rounded-lg bg-white/5 ring-1 ring-white/10">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); adjustQty(quantity - 1) }}
-                              className="px-3.5 py-2 text-lg font-bold text-white/60 transition-colors hover:text-white disabled:opacity-40"
-                              disabled={quantity <= 1}
-                            >
-                              −
-                            </button>
-                            <span className="w-8 text-center text-base font-extrabold text-white">{quantity}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); adjustQty(quantity + 1) }}
-                              className="px-3.5 py-2 text-lg font-bold text-white/60 transition-colors hover:text-white disabled:opacity-40"
-                              disabled={remaining !== null && quantity >= remaining}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+            <>
+              {tonightNights.length > 0 && (
+                <div className="mb-6">
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="h-6 w-1.5 rounded-full" style={{ background: `linear-gradient(180deg, ${ACCESS_LIGHT}, ${ACCESS})` }} />
+                    <h2 className="text-2xl font-extrabold tracking-tight text-white">Happening Tonight</h2>
                   </div>
-                )
-              })}
-            </div>
+                  <div className="space-y-4">
+                    {tonightNights.map((inst) => (
+                      <NightCard
+                        key={inst.id}
+                        inst={inst}
+                        tonight
+                        isSelected={selectedInstanceId === inst.id}
+                        promo={getPromoForInstance(inst.id)}
+                        quantity={quantity}
+                        onSelect={() => selectInstance(inst.id)}
+                        onAdjustQty={adjustQty}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {laterNights.length > 0 && (
+                <div>
+                  <div className="mb-3 flex items-center gap-3">
+                    <span className="h-6 w-1.5 rounded-full bg-white/30" />
+                    <h2 className="text-xl font-extrabold tracking-tight text-white">
+                      {tonightNights.length > 0 ? "Coming up" : "Pick your night"}
+                    </h2>
+                    {availableCount > 0 && tonightNights.length === 0 && (
+                      <span className="rounded-full px-2.5 py-0.5 text-sm font-bold" style={{ backgroundColor: `${ACCESS}1f`, color: ACCESS }}>
+                        {availableCount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    {laterNights.map((inst) => (
+                      <NightCard
+                        key={inst.id}
+                        inst={inst}
+                        tonight={false}
+                        isSelected={selectedInstanceId === inst.id}
+                        promo={getPromoForInstance(inst.id)}
+                        quantity={quantity}
+                        onSelect={() => selectInstance(inst.id)}
+                        onAdjustQty={adjustQty}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Promo Code Input */}
           {selectedInstanceId && (
             <div className="mt-6">
               {promoApplied ? (
-                <div
-                  className="flex items-center justify-between rounded-2xl px-5 py-3.5"
-                  style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}30` }}
-                >
+                <div className={`flex items-center justify-between px-5 py-3.5 ${GLASS_SOFT}`}>
                   <div className="flex items-center gap-2">
-                    <svg className="h-4 w-4" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-4 w-4" style={{ color: ACCESS }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                     </svg>
-                    <span className="text-sm font-extrabold" style={{ color: GOLD }}>
+                    <span className="text-sm font-extrabold" style={{ color: ACCESS }}>
                       {promoApplied[0].code}
                     </span>
                     <span className="text-xs text-white/50">
@@ -1293,7 +1377,7 @@ export default function LineSkipCheckoutClient({
                     value={promoInput}
                     onChange={(e) => handlePromoInputChange(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && applyPromo()}
-                    className="flex-1 rounded-xl border border-[#1e1e2e] bg-[#141420] px-4 py-3 text-sm font-semibold text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF37]/60"
+                    className="flex-1 rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-semibold text-white placeholder-white/30 outline-none backdrop-blur-xl transition-colors focus:border-[#FF3ED1]/60"
                   />
                   <button
                     onClick={applyPromo}
@@ -1310,16 +1394,16 @@ export default function LineSkipCheckoutClient({
 
           {/* Price Breakdown */}
           {selectedInstanceId && fees && (
-            <div className="mt-6 rounded-2xl border border-[#1e1e2e] bg-[#141420] p-6">
+            <div className={`mt-6 p-6 ${GLASS}`}>
               <h3 className="mb-4 text-sm font-extrabold uppercase tracking-wider text-white/60">Order summary</h3>
               <div className="space-y-2.5 text-sm">
                 <div className="flex justify-between text-white/70">
-                  <span>Line Skip {quantity > 1 ? `× ${quantity}` : ""}</span>
+                  <span>Skip the Line {quantity > 1 ? `× ${quantity}` : ""}</span>
                   <span>{formatPrice(fees.subtotal)}</span>
                 </div>
 
                 {fees.discount > 0 && (
-                  <div className="flex justify-between font-semibold" style={{ color: GOLD }}>
+                  <div className="flex justify-between font-semibold" style={{ color: ACCESS }}>
                     <span>Promo discount</span>
                     <span>-{formatPrice(fees.discount)}</span>
                   </div>
@@ -1341,7 +1425,7 @@ export default function LineSkipCheckoutClient({
 
                 <div className="flex justify-between text-lg font-extrabold text-white">
                   <span>Total</span>
-                  <span style={{ color: GOLD }}>{fees.total === 0 ? "Free" : formatPrice(fees.total)}</span>
+                  <span style={{ color: ACCESS }}>{fees.total === 0 ? "Free" : formatPrice(fees.total)}</span>
                 </div>
               </div>
             </div>
@@ -1357,11 +1441,9 @@ export default function LineSkipCheckoutClient({
               <button
                 onClick={startCheckout}
                 className="mt-6 w-full rounded-2xl py-4 text-lg font-extrabold text-black transition hover:brightness-110 active:scale-[0.99]"
-                style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 16px 40px -12px ${GOLD}80` }}
+                style={{ background: `${ACCESS_CTA}`, boxShadow: `0 16px 40px -12px ${ACCESS}80` }}
               >
-                {fees && fees.total > 0
-                  ? `Get Line Skip: ${formatPrice(fees.total)}`
-                  : "Get Line Skip: Free"}
+                {quantity > 1 ? "Buy Tickets" : "Buy Ticket"}
               </button>
               <p className="mt-3 text-center text-[11px] leading-relaxed text-white/30">
                 By purchasing, you agree that all sales are final. No refunds or exchanges.
@@ -1387,15 +1469,15 @@ export default function LineSkipCheckoutClient({
             NEXT app build; on the current build this scheme is a no-op, so the
             App Store link stays as the fallback. */}
         {venue?.venue_id && (
-          <div className="mt-16 rounded-2xl border border-[#1e1e2e] bg-[#141420] p-6 text-center">
-            <h2 className="mb-2 text-xl font-extrabold text-white">Get your Line Skips in the app</h2>
+          <div className={`mt-16 p-6 text-center ${GLASS}`}>
+            <h2 className="mb-2 text-xl font-extrabold text-white">Get your Skip the Line in the app</h2>
             <p className="mb-5 text-sm text-gray-400">
               Manage your passes and skip the line from the Bizzy app.
             </p>
             <a
               href={`bizzy://lineskip/${venue.venue_id}`}
               className="mb-3 flex w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-3.5 text-base font-extrabold text-black transition hover:brightness-110 active:scale-[0.98]"
-              style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 16px 40px -12px ${GOLD}80` }}
+              style={{ background: `${ACCESS_CTA}`, boxShadow: `0 16px 40px -12px ${ACCESS}80` }}
             >
               <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
@@ -1445,16 +1527,9 @@ export default function LineSkipCheckoutClient({
             <button
               onClick={startCheckout}
               className="w-full rounded-2xl py-3.5 text-base font-extrabold text-black transition hover:brightness-110 active:scale-[0.99]"
-              style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 12px 32px -10px ${GOLD}80` }}
+              style={{ background: `${ACCESS_CTA}`, boxShadow: `0 12px 32px -10px ${ACCESS}80` }}
             >
-              {/* No price here (LSK-24). This bar floats over the night list,
-                  where each card shows its ticket price; printing the
-                  fee-inclusive total right next to a $1 card read as a
-                  bait-and-switch. The in-flow CTA can still show the total
-                  because it sits directly under the order summary that explains
-                  it — this one has no such context, so it is a pure CTA. The
-                  full breakdown is one tap away, on the phone step. */}
-              Get Line Skip
+              {quantity > 1 ? "Buy Tickets" : "Buy Ticket"}
             </button>
           </div>
         </div>
@@ -1504,68 +1579,36 @@ export default function LineSkipCheckoutClient({
             {selectedInstance && checkoutStep !== "pay" && !isOutcomeStep && (
             <div
               className="mb-5 rounded-xl px-4 py-3"
-              style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}25` }}
+              style={{ backgroundColor: `${ACCESS}10`, border: `1px solid ${ACCESS}25` }}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-white">
-                    {formatDate(typeof selectedInstance.date === "string" ? selectedInstance.date.substring(0, 10) : selectedInstance.date)}
-                  </p>
-                  <p className="text-xs text-white/50">
-                    {formatTime(selectedInstance.start_time)} - {formatTime(selectedInstance.end_time)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-white/40">
-                    {quantity} ticket{quantity > 1 ? "s" : ""}
-                  </p>
-                </div>
-              </div>
-
-              {/* Cost breakdown (LSK-25). Until now this card showed a bare
-                  total, so the service fee first appeared as a line item on the
-                  payment step — after the buyer had committed. The events
-                  checkout shows Subtotal / Service Fee / Total up front; this is
-                  the line-skip equivalent, in this card's own visual language
-                  rather than a port of the Blade markup.
-
-                  The figures are the SAME `fees` object that drives the payment
-                  request and the in-page order summary — nothing is recomputed
-                  here, so the three cannot disagree. */}
-              {fees && (
-                <div className="mt-3 border-t border-white/10 pt-3 space-y-1.5 text-xs">
-                  {orderSummaryRows(fees, quantity).map((row) =>
-                    row.kind === "total" ? (
-                      <div
-                        key={row.kind}
-                        className="flex justify-between border-t border-white/10 pt-2 mt-2 text-sm font-extrabold text-white"
-                      >
-                        <span>{row.label}</span>
-                        <span style={{ color: GOLD }}>
-                          {row.free ? "Free" : formatPrice(row.cents)}
-                        </span>
+              {(() => {
+                const dateOnly = instanceDateOnly(selectedInstance)
+                const dayName = new Date(dateOnly + "T00:00:00").toLocaleDateString("en-US", { weekday: "long" })
+                return (
+                  <>
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-white">Skip the Line Pass</p>
+                      <p className="mt-0.5 text-xs font-semibold text-white/55">{dayName}</p>
+                    </div>
+                    {fees && (
+                      <div className="mt-2.5 space-y-1 text-xs text-white/55">
+                        <div className="flex justify-between">
+                          <span>Skip the Line Pass{quantity > 1 ? ` × ${quantity}` : ""}</span>
+                          <span>{formatPrice(fees.subtotal - fees.discount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Service fee</span>
+                          <span>{fees.service_fee === 0 ? "Free" : formatPrice(fees.service_fee)}</span>
+                        </div>
+                        <div className="flex justify-between pt-1 font-extrabold text-white">
+                          <span>Total</span>
+                          <span style={{ color: ACCESS }}>{fees.total === 0 ? "Free" : formatPrice(fees.total)}</span>
+                        </div>
                       </div>
-                    ) : (
-                      <div
-                        key={row.kind}
-                        className="flex justify-between"
-                        style={row.kind === "discount" ? { color: GOLD } : undefined}
-                      >
-                        <span className={row.kind === "discount" ? "font-semibold" : "text-white/50"}>
-                          {row.label}
-                        </span>
-                        <span className={row.kind === "discount" ? "font-semibold" : "text-white/70"}>
-                          {row.free
-                            ? "Free"
-                            : row.cents < 0
-                              ? `-${formatPrice(Math.abs(row.cents))}`
-                              : formatPrice(row.cents)}
-                        </span>
-                      </div>
-                    ),
-                  )}
-                </div>
-              )}
+                    )}
+                  </>
+                )
+              })()}
             </div>
             )}
 
@@ -1573,7 +1616,7 @@ export default function LineSkipCheckoutClient({
             {checkoutStep === "phone" && (
               <div>
                 <label className="mb-2 block text-sm font-semibold text-white/60">Phone Number</label>
-                <div className="flex items-center gap-2 rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 transition-colors focus-within:border-[#D4AF37]/60">
+                <div className="flex items-center gap-2 rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 transition-colors focus-within:border-[#FF3ED1]/60">
                   <span className="text-sm text-white/40">+1</span>
                   <input
                     ref={focusInputRef}
@@ -1595,7 +1638,7 @@ export default function LineSkipCheckoutClient({
                     checked={smsOptIn}
                     onChange={(e) => setSmsOptIn(e.target.checked)}
                     className="mt-0.5 h-4 w-4 flex-shrink-0 cursor-pointer"
-                    style={{ accentColor: GOLD }}
+                    style={{ accentColor: ACCESS }}
                   />
                   <span className="text-xs text-white/50 leading-snug">
                     Keep me posted by text. I agree to receive SMS marketing messages about this venue&apos;s events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out anytime. Unchecking won&apos;t affect your purchase.
@@ -1606,7 +1649,7 @@ export default function LineSkipCheckoutClient({
                   onClick={sendCode}
                   disabled={checkoutLoading || phone.length < 10}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
-                  style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+                  style={{ background: `${ACCESS_CTA}` }}
                 >
                   {checkoutLoading ? "Sending..." : "Continue"}
                 </button>
@@ -1626,7 +1669,7 @@ export default function LineSkipCheckoutClient({
                   placeholder="Full name"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF37]/60"
+                  className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-colors focus:border-[#FF3ED1]/60"
                 />
 
                 {checkoutError && (
@@ -1637,7 +1680,7 @@ export default function LineSkipCheckoutClient({
                   onClick={submitName}
                   disabled={!attendeeName.trim()}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
-                  style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+                  style={{ background: `${ACCESS_CTA}` }}
                 >
                   Continue
                 </button>
@@ -1673,7 +1716,7 @@ export default function LineSkipCheckoutClient({
                   placeholder="000000"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white placeholder-white/20 outline-none transition-colors focus:border-[#D4AF37]/60"
+                  className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white placeholder-white/20 outline-none transition-colors focus:border-[#FF3ED1]/60"
                 />
 
                 {checkoutError && (
@@ -1684,7 +1727,7 @@ export default function LineSkipCheckoutClient({
                   onClick={verifyCode}
                   disabled={checkoutLoading || otpCode.length < 6}
                   className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
-                  style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+                  style={{ background: `${ACCESS_CTA}` }}
                 >
                   {checkoutLoading ? "Verifying..." : "Verify & Pay"}
                 </button>
@@ -1707,7 +1750,7 @@ export default function LineSkipCheckoutClient({
               <div className="py-8 text-center">
                 <div
                   className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/20"
-                  style={{ borderTopColor: GOLD }}
+                  style={{ borderTopColor: ACCESS }}
                 />
                 <p className="text-sm text-white/60">Setting up your payment...</p>
               </div>
@@ -1734,9 +1777,9 @@ export default function LineSkipCheckoutClient({
               <div className="py-8 text-center">
                 <div
                   className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/20"
-                  style={{ borderTopColor: GOLD }}
+                  style={{ borderTopColor: ACCESS }}
                 />
-                <p className="text-sm text-white/60">Confirming your Line Skip...</p>
+                <p className="text-sm text-white/60">Confirming your Skip the Line...</p>
                 <p className="mt-1 text-xs text-white/30">Don&apos;t close this page.</p>
               </div>
             )}
@@ -1751,7 +1794,7 @@ export default function LineSkipCheckoutClient({
                 </div>
                 <h3 className="text-lg font-extrabold text-white">This night just sold out</h3>
                 <p className="mt-2 text-sm text-white/60">
-                  The last Line Skip went while you were checking out.
+                  The last Skip the Line went while you were checking out.
                   <span className="mt-1 block font-semibold text-white/80">
                     You have not been charged.
                   </span>
@@ -1763,7 +1806,7 @@ export default function LineSkipCheckoutClient({
                     fetchData()
                   }}
                   className="mt-5 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110"
-                  style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+                  style={{ background: `${ACCESS_CTA}` }}
                 >
                   Pick another night
                 </button>
@@ -1780,12 +1823,12 @@ export default function LineSkipCheckoutClient({
                 </div>
                 <h3 className="text-lg font-extrabold text-white">This night just sold out</h3>
                 <p className="mt-2 text-sm text-white/60">
-                  The last Line Skip went as your payment went through, so we couldn&apos;t
+                  The last Skip the Line went as your payment went through, so we couldn&apos;t
                   issue your pass.
                 </p>
                 <div
                   className="mt-4 rounded-xl px-4 py-3 text-sm font-semibold"
-                  style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}30`, color: GOLD }}
+                  style={{ backgroundColor: `${ACCESS}10`, border: `1px solid ${ACCESS}30`, color: ACCESS }}
                 >
                   You have not been charged — your refund is already on its way.
                 </div>
@@ -1799,7 +1842,7 @@ export default function LineSkipCheckoutClient({
                     fetchData()
                   }}
                   className="mt-5 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110"
-                  style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
+                  style={{ background: `${ACCESS_CTA}` }}
                 >
                   Pick another night
                 </button>
@@ -1813,15 +1856,15 @@ export default function LineSkipCheckoutClient({
               <div className="py-4 text-center">
                 <div
                   className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full"
-                  style={{ backgroundColor: `${GOLD}1f`, border: `1px solid ${GOLD}33` }}
+                  style={{ backgroundColor: `${ACCESS}1f`, border: `1px solid ${ACCESS}33` }}
                 >
-                  <svg className="h-7 w-7" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="h-7 w-7" style={{ color: ACCESS }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
                   </svg>
                 </div>
                 <h3 className="text-lg font-extrabold text-white">Your payment went through</h3>
                 <p className="mt-2 text-sm text-white/60">
-                  We&apos;re still finishing up your Line Skip
+                  We&apos;re still finishing up your Skip the Line
                   {quantity > 1 ? "s" : ""}.
                   <span className="mt-1 block font-semibold text-white/80">
                     Check your texts &mdash; your pass{quantity > 1 ? "es" : ""} will arrive in a
@@ -1844,6 +1887,7 @@ export default function LineSkipCheckoutClient({
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
