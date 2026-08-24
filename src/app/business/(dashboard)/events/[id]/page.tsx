@@ -214,11 +214,11 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
             </Card>
           )}
 
-          {event.description && (
+          {event.description?.trim() && (
             <Card>
               <CardHeader><CardTitle>About</CardTitle></CardHeader>
               <CardContent className="pt-0">
-                <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{event.description}</p>
+                <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{event.description.trim()}</p>
               </CardContent>
             </Card>
           )}

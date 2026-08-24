@@ -324,22 +324,24 @@ test("no flyer and no venue photo stays empty so the icon tile can stand in", ()
   )
 })
 
-test("venue page gives Weekly Access a full-width contained image treatment", () => {
+test("venue page copies the event checkout chrome, not line-skip pink", () => {
   const src = join(process.cwd(), "src")
   const page = readFileSync(join(src, "app/venue/[venueId]/page.tsx"), "utf8")
   const client = readFileSync(join(src, "app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("WEEKLY_ACCESS_SECTION_LABEL"), "section heading must use the Weekly Cover label")
+  assert.ok(client.includes("WEEKLY_ACCESS_TYPE_LABEL"), "row chip must use the Weekly Cover label")
   assert.ok(!client.includes('title="Door Access"'), "section heading still says Door Access")
-  assert.ok(client.includes("WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()"), "badge must use the Weekly Cover label")
   assert.ok(!client.includes("weekly access"), "badge must not say weekly access")
   assert.ok(!client.includes("door access ${"), "badge still says door access")
   assert.ok(
     !client.includes("Scan with any phone camera at the door."),
     "venue page must not show the door scan note under the description",
   )
-  assert.ok(client.includes("resolveVenueEventImageUrl"), "Weekly Access cards must resolve flyer then venue photo")
-  assert.ok(client.includes("aspect-[4/5]"), "Weekly Access image needs a natural portrait frame")
-  assert.ok(client.includes("object-contain object-center"), "Weekly Access image must not be stretched or cropped")
+  assert.ok(client.includes("resolveVenueEventImageUrl"), "rows must resolve flyer then venue photo")
+  assert.ok(client.includes("flyer-glow"), "venue photo uses the event-checkout flyer glow")
+  assert.ok(client.includes("font-[family-name:var(--font-fira)]"), "Fira matches event checkout")
+  assert.ok(client.includes("EVENT_FILL"), "CTAs use event green, not line-skip pink")
+  assert.ok(!client.includes("#FF3ED1"), "venue page must not use the line-skip accent")
+  assert.ok(client.includes("UpcomingRow"), "nights render as checkout-style cards")
   assert.ok(!client.includes("pricedCtaLabel"), "top-level venue CTAs must not include prices")
   assert.ok(!client.includes("business.logo_image_url"), "venue page must not show the business logo")
   assert.ok(
@@ -720,68 +722,33 @@ test("Fri 28 date chip is From $5 when the program has Cover and Skip the Line",
   assert.equal(nightChipPrice(nights[0], template), "From $5")
 })
 
-test("venue Weekly Cover uses date-only night chips and Door Tickets labels", () => {
+test("venue nights checkout through venueNightCheckoutHref like the event checkout", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("WeeklyAccessProgramCard"), "must render one program card")
-  assert.ok(client.includes("groupWeeklyAccessNights"), "nights must group into programs")
-  assert.ok(client.includes("formatNightChipLabel"), "upcoming nights are chips")
-  assert.ok(!client.includes("nightChipPrice"), "calendar chips must not show a Cover or From price")
-  assert.ok(client.includes("min-h-11"), "chips must be large tap targets")
-  assert.ok(client.includes("text-[15px]"), "chip type must be 14-16px")
-  assert.ok(!client.includes("rounded-full px-3.5 py-1.5"), "chips must not be tiny pills")
-  assert.ok(client.includes("weeklyAccessPriceLines"), "card must show Cover or real tiers")
+  assert.ok(client.includes("UpcomingRow"), "must render checkout-style night cards")
+  assert.ok(client.includes("venueNightCheckoutHref"), "rows share the checkout href helper")
   assert.ok(
-    client.includes("weeklyAccessPriceLines([selected], template)"),
-    "Weekly Cover card must show the selected night price",
+    client.includes("venueNightCheckoutHref(checkoutBaseUrl, event.event_id)"),
+    "a night row must checkout that night without forcing a ticket_id",
   )
-  assert.ok(client.includes("resolveNightTiers"), "2+ tiers read the selected night tickets")
-  assert.ok(client.includes("tiers.length > 0"), "every real tier renders as a chip")
-  assert.ok(client.includes("flex-1 flex-wrap"), "tier chips fill the card's empty right side")
-  assert.ok(client.includes("min-w-[5.5rem] flex-1"), "two tiers share the chips row, no giant void")
-  assert.ok(client.includes("formatAccessTierLabel"), "tier chips use the payload names")
-  assert.ok(client.includes("venueNightCheckoutHref"), "tier chips and Door Tickets share the checkout href helper")
-  assert.ok(
-    client.includes("venueNightCheckoutHref(checkoutBaseUrl, selected.event_id, tier.ticket_id)"),
-    "a tier chip must preselect that ticket",
-  )
-  const cardStart = client.indexOf("function WeeklyAccessProgramCard")
-  const cardEnd = client.indexOf("export default function VenuePageClient")
-  const card = client.slice(cardStart, cardEnd)
-  const cta = card.slice(card.indexOf("mt-6 flex lg:mt-auto"))
-  assert.ok(
-    cta.includes("venueNightCheckoutHref(checkoutBaseUrl, selected.event_id)"),
-    "Select Door Tickets must checkout the selected night",
-  )
-  assert.ok(!cta.includes("tier.ticket_id"), "Select Door Tickets must not force a ticket_id")
-  assert.ok(client.includes("Door Tickets"), "door CTA must name Door Tickets")
-  assert.ok(client.includes("Select Door Tickets"), "night CTA must ask the visitor to select Door Tickets")
+  assert.ok(!client.includes("WeeklyAccessProgramCard"), "venue does not use a program card")
   assert.ok(!client.includes("Get access"), "venue page must not use the legacy Get access label")
+  assert.ok(client.includes("Get Tickets"), "night cards use the event-checkout Get Tickets label")
   assert.ok(!/<select[\s>]/.test(client), "do not ship a dropdown")
   assert.ok(!client.includes('type="date"'), "do not ship a calendar date input")
   assert.ok(!client.includes("<select"), "do not ship a dropdown")
 })
 
-test("top venue CTAs and happening-today pills omit price while the hero contains its photo", () => {
+test("top venue CTAs omit price and the hero matches event checkout", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("eventFromPrice"), "event cards must retain their pricing")
-  assert.ok(!client.includes("pricedCtaLabel"), "Get tickets / Door Tickets must not include a price")
+  assert.ok(client.includes("eventFromPrice"), "event rows must retain their pricing")
+  assert.ok(!client.includes("pricedCtaLabel"), "Website / Instagram must not include a price")
   assert.ok(!client.includes("headerEventPrice"), "header must not resolve event prices")
   assert.ok(!client.includes("headerAccessPrice"), "header must not resolve cover prices")
-  const todayStart = client.indexOf("{hasToday && (")
-  const todayEnd = client.indexOf("SECTION ONE: Events")
-  assert.ok(todayStart >= 0 && todayEnd > todayStart, "happening-today section must exist")
-  const today = client.slice(todayStart, todayEnd)
-  assert.ok(!today.includes("fromPrice"), "event pills must not show From $N")
-  assert.ok(!today.includes("coverPrice"), "access pills must not show Cover $N")
-  const heroStart = client.indexOf("Full-bleed venue hero")
-  const heroEnd = client.indexOf('className="mx-auto max-w-5xl px-5 pb-24"')
-  assert.ok(heroStart >= 0 && heroEnd > heroStart, "venue header block must exist")
-  const hero = client.slice(heroStart, heroEnd)
-  assert.ok(hero.includes("object-contain"), "full venue photo must show, not a cover crop")
-  assert.ok(!hero.includes("object-cover"), "header must not crop the venue photo")
-  assert.ok(hero.includes("Get tickets"), "Get tickets sits beside or below the photo")
-  assert.ok(!hero.includes("business.logo_image_url"), "venue identity must not show the business logo")
-  assert.ok(!hero.includes("—"), "header must not use an em dash")
+  assert.ok(client.includes("Happening Tonight"), "today's group uses the tonight label")
+  assert.ok(client.includes("Directions") || client.includes("venue.address"), "address stays outbound")
+  assert.ok(client.includes("flyer-glow"), "hero uses the event-checkout flyer glow")
+  assert.ok(client.includes("lg:grid-cols-5"), "layout matches event checkout 2/5 + 3/5")
+  assert.ok(!client.includes("business.logo_image_url"), "venue identity must not show the business logo")
   const page = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/page.tsx"), "utf8")
   assert.ok(
     page.includes("CHECKOUT_BASE_URL"),
@@ -789,23 +756,19 @@ test("top venue CTAs and happening-today pills omit price while the hero contain
   )
 })
 
-test("venue event and Weekly Access flyers are full portrait frames, not wide crops", () => {
+test("venue upcoming rows use ticket cards, not line-skip glass", () => {
   const client = readFileSync(join(process.cwd(), "src/app/venue/[venueId]/VenuePageClient.tsx"), "utf8")
-  assert.ok(client.includes("FlyerFrame"), "event and Weekly Access cards share a flyer frame")
-  assert.ok(client.includes("object-contain"), "full flyer must show, not a cover crop")
-  assert.ok(
-    client.includes("h-auto w-full object-contain"),
-    "flyer img must size to the photo, not fill a crop box",
-  )
+  assert.ok(client.includes("UpcomingRow"), "event and Weekly Cover nights share a card")
+  assert.ok(client.includes("h-16 w-16"), "thumbs stay compact beside the title")
+  assert.ok(!client.includes("FlyerFrame"), "nights are not full portrait flyer frames")
   assert.ok(!client.includes("relative h-48 w-full"), "flyer box must not be a short wide strip")
-  const frameStart = client.indexOf("function FlyerFrame")
-  const frameEnd = client.indexOf("function DateChip")
-  assert.ok(frameStart >= 0 && frameEnd > frameStart, "FlyerFrame must sit above DateChip")
-  const frame = client.slice(frameStart, frameEnd)
-  assert.ok(frame.includes("h-auto w-full"), "FlyerFrame must grow with the photo")
-  assert.ok(!frame.includes("overflow-hidden"), "FlyerFrame must not clip the flyer")
-  assert.ok(frame.includes("object-contain"), "FlyerFrame image must contain")
-  assert.ok(!frame.includes("object-cover"), "FlyerFrame must not crop with object-cover")
+  assert.ok(!client.includes("ACCESS_CTA"), "venue must not copy the line-skip CTA gradient")
+  const rowStart = client.indexOf("function UpcomingRow")
+  assert.ok(rowStart >= 0, "UpcomingRow must exist")
+  const row = client.slice(rowStart)
+  assert.ok(row.includes("object-cover"), "row thumb crops the artwork")
+  assert.ok(row.includes("WEEKLY_ACCESS_TYPE_LABEL"), "Weekly Cover label sits on the card")
+  assert.ok(row.includes("Get Tickets"), "each night uses the event-checkout CTA")
 })
 
 async function withFetch<T>(

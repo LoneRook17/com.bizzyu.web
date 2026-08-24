@@ -70,6 +70,36 @@ export function derivedWeeklyCoverName(venueName: string | null | undefined): st
   return venue === "" ? "Weekly Cover" : `${venue} Cover`
 }
 
+/**
+ * Program name for a Weekly Cover write.
+ *
+ * CREATE always derives `{Venue} Cover`. A typed leftover, a clone's source
+ * name, or `initialData.name` must not win. EDIT keeps the saved name (the app
+ * does not re-derive or show a name field on Sell/Days).
+ */
+export function weeklyCoverProgramName(opts: {
+  isEdit: boolean
+  venueName?: string | null
+  existingName?: string | null
+}): string {
+  if (opts.isEdit) {
+    const existing = (opts.existingName ?? "").trim()
+    if (existing !== "") return existing
+  }
+  return derivedWeeklyCoverName(opts.venueName)
+}
+
+/** CREATE sends null. EDIT keeps whatever is already saved. */
+export function weeklyCoverProgramDescription(opts: {
+  isEdit: boolean
+  existingDescription?: string | null
+}): string | null {
+  if (!opts.isEdit) return null
+  if (opts.existingDescription == null) return null
+  const trimmed = String(opts.existingDescription).trim()
+  return trimmed === "" ? null : trimmed
+}
+
 /** Flutter days-step title, specialized when they picked only one product. */
 export function daysQuestion(products: WcProducts | null): string {
   if (products === "cover") return "What days do you have cover?"

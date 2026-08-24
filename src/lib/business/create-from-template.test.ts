@@ -100,10 +100,26 @@ test("applying a Weekly Cover program resets the window and drops source tier ke
   } as unknown as DoorAccessProgram
   const applied = applyProgramAsCreateTemplate(program, "2026-08-23")
   assert.equal(applied.name, "Weekly Cover")
+  assert.equal(applied.description, null)
   assert.equal(applied.date_range_start, "2026-08-23")
   assert.equal(applied.date_range_end, null)
   assert.equal(applied.template_tickets[0].name, "Cover")
   assert.equal(applied.template_tickets[0].tier_key, "")
+})
+
+test("WC create-from-template drops a typed program name and description", () => {
+  const program = {
+    id: 9,
+    name: "Luke Custom Cover",
+    description: "typed blurb",
+    venue_name: "The Dungeon",
+    date_range_start: "2026-01-01",
+    date_range_end: "2026-06-01",
+    template_tickets: [],
+  } as unknown as DoorAccessProgram
+  const applied = applyProgramAsCreateTemplate(program, "2026-08-23")
+  assert.equal(applied.name, "The Dungeon Cover")
+  assert.equal(applied.description, null)
 })
 
 test("stripTicketIds leaves a usable new-ticket payload", () => {
