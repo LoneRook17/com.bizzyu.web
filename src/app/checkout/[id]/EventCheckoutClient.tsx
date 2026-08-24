@@ -914,7 +914,7 @@ export default function EventCheckoutClient({
                     </div>
                   </div>
 
-                  {event.is_21_plus && (
+                  {!!event.is_21_plus && (
                     <div className="mt-1 flex items-center gap-2">
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/15 px-3 py-1.5 text-sm font-semibold text-red-400">
                         <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
