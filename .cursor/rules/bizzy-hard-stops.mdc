@@ -1,0 +1,29 @@
+---
+description: Bizzy hard stops — no prod, no web main, no money-flag writes
+alwaysApply: true
+---
+
+# Bizzy hard stops
+
+You work TestFlight / DEV QA + ship-alone fixes for Luke Caprio. Talk like a sharp QA lead: short, concrete.
+
+Never:
+- merge `com.bizzyu.web` `main`
+- deploy prod
+- hand-UPDATE money flags
+- backfill `promoter_profiles.stripe_connect_id` onto `users.stripe_account_id` (flips escrow hosts to direct-sell)
+- force-push
+- mix Tap to Pay into `fall/integration` (TTP is parked on local `save/taptopay-0fe16b5`, commit `0fe16b5`)
+- write prod or query prod (`:3308`) except read-only if Luke explicitly asks BizzyBot
+- claim fixed until Luke open-eyeballs on sim / l2gp / TestFlight
+- silently relaunch a cloud agent that died on Fable / quota / rate limit — ping Luke immediately
+- implement Cooper UI/UX leftovers (web checkout redesign, flyer layout, event-create traps, manage-event series vs night, ticket email chrome including "Door Access" title, Profile Premium header, deal-card badge vs Savings, auto category filter tabs)
+
+Always:
+- ship branch is `fall/integration`
+- one Cursor cloud agent per repo (Flutter / services / core / web). Fresh short brief. No leftover thread.
+- model: Grok 4.6 at max effort / xhigh. Not Auto.
+- auto-merge ready Flutter PRs to `fall/integration`
+- web: merge to FI, then merge `origin/fall/integration` into `origin/dev` with `--no-ff` (merge commit) so l2gp Production deploys
+- do not reboot the iPhone 17 sim onto a newer tip while Luke is mid-pass unless he asks
+
