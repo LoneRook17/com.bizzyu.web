@@ -190,6 +190,13 @@ export interface EventListItem {
    * error — which is also the correct reading of a missing value.
    */
   access_kind?: 'event' | 'door_access' | null
+  /**
+   * Services' explicit product stamp on event payloads: `'weekly_cover'` is
+   * one night of a Weekly Cover program, `'event'` is everything else.
+   * Authoritative when present. Optional so an older payload degrades to the
+   * access_kind reading above rather than a type error.
+   */
+  product_kind?: 'weekly_cover' | 'event' | null
   total_attendees: number
   total_revenue: number
   ticket_sales_count: number
@@ -520,9 +527,15 @@ export interface EventOverviewItem {
   /**
    * Same pink flag as EventListItem. Weekly Cover nights are real events
    * rows with `'door_access'`; one-off events are `'event'` (or omitted on
-   * older overview payloads). Analytics buckets on this, then event id.
+   * older overview payloads). Analytics buckets on product_kind first,
+   * then this, then event id.
    */
   access_kind?: "event" | "door_access" | null
+  /**
+   * Services' explicit product stamp. Authoritative when present; an older
+   * overview payload omits it and identification falls back to access_kind.
+   */
+  product_kind?: "weekly_cover" | "event" | null
 }
 
 export interface EventsOverview {
@@ -855,6 +868,13 @@ export interface RecurringSeriesListItem {
   date_range_end: string | null // null = runs until suspended
   is_active: number | boolean
   type: 'Ticketed' | 'Free' | 'RSVP'
+  /** 'door_access' marks a Weekly Cover series. Omitted on older payloads. */
+  program_kind?: string | null
+  /**
+   * Services' explicit product stamp. The signal for a Weekly Cover series
+   * that still says program_kind='event' (the old name-regex is gone).
+   */
+  product_kind?: 'weekly_cover' | 'event' | null
   venue_id: number | null
   venue_name: string
   start_time: string // "HH:MM:SS"

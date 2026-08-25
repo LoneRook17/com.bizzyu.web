@@ -13,15 +13,17 @@ import { wallClockStamp, nowWallClockStamp, stampClock } from "./wall-clock.ts"
 // in-app scanner, not a live Check In that only fails after the press.
 //
 // Camera eligibility is a KIND question and is answered by
-// isWeeklyCoverCheckinTicket, never by a raw access_kind test: the public
-// endpoint omits access_kind on older rows and the predicate has the name
-// fallback for exactly that.
+// isWeeklyCoverCheckinTicket, never by a raw access_kind test: product_kind
+// is the explicit stamp when services sends it, and an older payload without
+// it falls back to access_kind (isDoorAccessKind). The Weekly Cover NAME
+// fallback is gone — a pass is what the wire says it is.
 
-import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP, isDoorAccessKind } from "./business/door-access.ts"
-import { looksLikeWeeklyCoverName } from "./business/weekly-cover-label.ts"
+import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP, isWeeklyCoverProduct } from "./business/door-access.ts"
 
 export type GuestCheckinTicket = {
   access_kind?: string | null
+  /** Services' explicit product stamp. Missing on older payloads. */
+  product_kind?: string | null
   redemption_mode?: string | null
   is_redeemed?: boolean | number
   is_refunded?: boolean | number
@@ -61,25 +63,27 @@ export const GUEST_CHECKIN_EVENT_TYPE_LABEL = "Entry"
 
 type GuestCheckinKindFields = Pick<
   GuestCheckinTicket,
-  "access_kind" | "redemption_mode" | "event_name" | "ticket_name"
+  "access_kind" | "product_kind" | "redemption_mode" | "event_name" | "ticket_name"
 >
 
 /**
  * Public GET /checkin/:uuid often omits access_kind. Night Cover nights
- * still have to render as Cover, not a green Entry chip.
+ * still have to render as Cover, not a green Entry chip. (Night Cover is a
+ * separate product — product_kind covers Weekly Cover only.)
  */
 export function looksLikeNightCoverName(name: string | null | undefined): boolean {
   return /night\s*cover/i.test(String(name ?? ""))
 }
 
-function looksLikeCoverCheckinName(name: string | null | undefined): boolean {
-  return looksLikeWeeklyCoverName(name) || looksLikeNightCoverName(name)
-}
-
 export function isWeeklyCoverCheckinTicket(ticket: GuestCheckinKindFields): boolean {
   if (ticket.redemption_mode === "camera_tap") return true
-  if (isDoorAccessKind(ticket.access_kind) || ticket.access_kind === "night_cover") return true
-  return looksLikeCoverCheckinName(ticket.event_name) || looksLikeCoverCheckinName(ticket.ticket_name)
+  if (ticket.access_kind === "night_cover") return true
+  if (looksLikeNightCoverName(ticket.event_name) || looksLikeNightCoverName(ticket.ticket_name)) {
+    return true
+  }
+  // Weekly Cover: product_kind decides when present; an old payload falls
+  // back to access_kind ONLY. No /weekly\s*cover/i name fallback.
+  return isWeeklyCoverProduct(ticket)
 }
 
 export function guestCheckinAccent(ticket: GuestCheckinKindFields): {

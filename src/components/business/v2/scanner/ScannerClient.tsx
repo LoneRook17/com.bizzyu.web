@@ -7,8 +7,7 @@ import {
   ArrowLeft, CalendarDays, Camera, CheckCircle2, ChevronRight, ScanLine, XCircle,
 } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
-import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP, isDoorAccessKind } from "@/lib/business/door-access"
-import { looksLikeWeeklyCoverName } from "@/lib/business/weekly-cover-label"
+import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP, isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { cn } from "@/lib/v2/utils"
 import type { EventListItem } from "@/lib/business/types"
@@ -229,9 +228,9 @@ export default function ScannerClient() {
   }, [stopScanner])
 
   const selectedEvent = events.find((e) => e.event_id === selectedEventId)
-  const weeklyCoverScan =
-    !!selectedEvent &&
-    (isDoorAccessKind(selectedEvent.access_kind) || looksLikeWeeklyCoverName(selectedEvent.name))
+  // product_kind when services sends it, access_kind on older payloads.
+  // Never the event's name.
+  const weeklyCoverScan = !!selectedEvent && isWeeklyCoverProduct(selectedEvent)
   const isLineSkip = result?.type === "line_skip"
 
   const getResultClasses = () => {

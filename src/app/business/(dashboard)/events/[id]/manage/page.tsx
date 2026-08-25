@@ -10,7 +10,7 @@ import {
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-links"
-import { ACCESS_ACCENT } from "@/lib/business/door-access"
+import { ACCESS_ACCENT, isWeeklyCoverProduct } from "@/lib/business/door-access"
 import type { EventDetail } from "@/lib/business/types"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
@@ -130,7 +130,9 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // reject a door-access pass with "Door Access passes are scanned with the
   // camera at the door". Surfacing a scanner here would be advertising a
   // dead end. Check-in history is kind-agnostic — both kinds redeem, both log.
-  const isDoorAccess = event.access_kind === "door_access"
+  // product_kind is the stamp when services sends it; an older payload falls
+  // back to access_kind. Never a raw access_kind test, never the name.
+  const isDoorAccess = isWeeklyCoverProduct(event)
 
   // At the Door — everything you touch on the night itself.
   const atTheDoorTiles: Tile[] = [

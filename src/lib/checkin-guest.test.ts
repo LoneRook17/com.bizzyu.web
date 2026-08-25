@@ -37,11 +37,27 @@ test("Weekly Cover / door_access / camera_tap tickets are camera check-in ticket
   assert.equal(isWeeklyCoverCheckinTicket({ redemption_mode: "native_scan" }), false)
   assert.equal(
     isWeeklyCoverCheckinTicket({
+      product_kind: "weekly_cover",
+      access_kind: "event",
+    }),
+    true,
+    "mis-tagged WC nights check in as Weekly Cover via services' product stamp",
+  )
+  assert.equal(
+    isWeeklyCoverCheckinTicket({
+      product_kind: "event",
+      access_kind: "door_access",
+    }),
+    false,
+    "an explicit product_kind=event outranks a stale access_kind",
+  )
+  assert.equal(
+    isWeeklyCoverCheckinTicket({
       access_kind: "event",
       event_name: "The Dungeon Weekly Cover (Escrow Test)",
     }),
-    true,
-    "mis-tagged WC nights still check in as Weekly Cover",
+    false,
+    "the Weekly Cover NAME is no longer a product signal",
   )
 })
 
@@ -69,10 +85,15 @@ test("Weekly Cover check-in chrome is pink Cover, named events stay green Entry"
     accentDeep: ACCESS_ACCENT_DEEP,
   })
   assert.deepEqual(
-    guestCheckinAccent({ event_name: "The Dungeon Weekly Cover (Escrow Test)" }),
+    guestCheckinAccent({ product_kind: "weekly_cover", access_kind: "event" }),
     { accent: ACCESS_ACCENT, accentDeep: ACCESS_ACCENT_DEEP },
   )
   assert.equal(guestCheckinAccent({ access_kind: "event" }).accent, EVENT_CHECKIN_ACCENT)
+  assert.equal(
+    guestCheckinAccent({ event_name: "The Dungeon Weekly Cover (Escrow Test)" }).accent,
+    EVENT_CHECKIN_ACCENT,
+    "a WC-sounding name without a WC stamp stays green Entry",
+  )
   assert.equal(guestCheckinTypeLabel({ access_kind: "door_access" }), "Cover")
   assert.equal(guestCheckinTypeLabel({ access_kind: "weekly_cover" }), "Cover")
   assert.equal(guestCheckinTypeLabel({ event_name: "Night Cover" }), "Cover")
@@ -105,13 +126,19 @@ test("camera check-in is WC only: an event ticket is a dead end, not a live butt
   assert.equal(guestCameraCheckinEnabled({}), false, "an unidentifiable pass is not camera-eligible")
 })
 
-test("a nullable access_kind still reaches WC check-in through the name fallback", () => {
+test("a nullable access_kind still reaches WC check-in through product_kind", () => {
   // The whole reason this gate reuses isWeeklyCoverCheckinTicket instead of
   // testing access_kind: older rows have it NULL and a raw test would brick
-  // check-in on a real Weekly Cover night.
+  // check-in on a real Weekly Cover night. The stamp is product_kind now —
+  // the Weekly Cover NAME fallback is gone.
+  assert.equal(
+    guestCameraCheckinEnabled({ access_kind: null, product_kind: "weekly_cover" }),
+    true,
+  )
   assert.equal(
     guestCameraCheckinEnabled({ access_kind: null, event_name: "The Dungeon Weekly Cover" }),
-    true,
+    false,
+    "a WC-sounding name without a WC stamp cannot open camera check-in",
   )
   assert.equal(guestCameraCheckinEnabled({ event_name: "Night Cover", ticket_name: "Cover" }), true)
   assert.equal(guestCameraCheckinEnabled({ redemption_mode: "camera_tap" }), true)
