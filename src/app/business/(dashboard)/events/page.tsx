@@ -23,10 +23,9 @@ import {
   weeklyCoverProgramsForDash,
   weeklyCoverRowsForVenue,
   weeklyCoverSeriesIds,
-  weeklyCoverSeriesIdsNeedingActivityProbe,
-  isSeriesActive,
   type EventTypeFilter,
 } from "@/lib/business/events-list"
+import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Button } from "@/components/business/v2/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/business/v2/ui/tabs"
@@ -93,8 +92,8 @@ export default function V2EventsPage() {
   // one, so a failure here must never take the page down with it.
   const [series, setSeries] = useState<RecurringSeriesListItem[]>([])
   // Host-deleted series omitted from both list endpoints still carry
-  // published nights. Probe GET /business/recurring-series/:id for those
-  // ids only; unknown / 404 stays active (series-23 fallback).
+  // published nights. Probe every recurring_series_id; unknown / 404
+  // stays active (series-23 fallback).
   const [probedInactiveIds, setProbedInactiveIds] = useState<number[]>([])
 
   const [showVenueModal, setShowVenueModal] = useState(false)
@@ -197,33 +196,19 @@ export default function V2EventsPage() {
   const wcSeriesIds = weeklyCoverSeriesIds(venuePrograms, venueSeries)
 
   useEffect(() => {
-    const scopedPrograms = weeklyCoverRowsForVenue(programs, scopedVenueId, selectedVenue?.name)
-    const scopedSeries = weeklyCoverRowsForVenue(series, scopedVenueId, selectedVenue?.name)
-    const known = [...scopedPrograms.map((p) => p.id), ...scopedSeries.map((s) => s.id)]
-    const toProbe = weeklyCoverSeriesIdsNeedingActivityProbe(
-      events,
-      known,
-      weeklyCoverSeriesIds(scopedPrograms, scopedSeries),
-    )
-    if (toProbe.length === 0) {
-      setProbedInactiveIds((prev) => (prev.length === 0 ? prev : []))
-      return
-    }
+    // Always resolve is_active for every series FK on this page. Skipping
+    // ids that are merely "known" left series 66 live when the list omitted
+    // the flag or nights were not WC-stamped (green SeriesGroupRow leak).
     let cancelled = false
-    Promise.all(
-      toProbe.map((id) =>
-        apiClient
-          .get<{ series?: { is_active?: unknown } }>(`/business/recurring-series/${id}`)
-          .then((data) => ({ id, inactive: !isSeriesActive(data.series?.is_active) }))
-          .catch(() => ({ id, inactive: false })),
-      ),
-    ).then((rows) => {
-      if (!cancelled) setProbedInactiveIds(rows.filter((row) => row.inactive).map((row) => row.id))
-    })
+    probeInactiveSeriesIds(events, (id) => apiClient.get(`/business/recurring-series/${id}`)).then(
+      (ids) => {
+        if (!cancelled) setProbedInactiveIds(ids)
+      },
+    )
     return () => {
       cancelled = true
     }
-  }, [events, programs, series, scopedVenueId, selectedVenue?.name])
+  }, [events])
 
   const inactiveWcIds = [
     ...new Set([

@@ -43,6 +43,71 @@ export function isSeriesActive(is_active: unknown): boolean {
   return !(is_active === false || is_active === 0 || is_active === "0")
 }
 
+/** Explicit 0/false/"0" → false, explicit 1/true/"1" → true, else unknown. */
+export function readIsActiveFlag(value: unknown): boolean | null {
+  if (value === false || value === 0 || value === "0") return false
+  if (value === true || value === 1 || value === "1") return true
+  return null
+}
+
+/**
+ * Series activity on a public event / checkout payload.
+ * Does NOT read a top-level event `is_active` — that is the night, not the series.
+ */
+export function readSeriesActiveFromPublicEvent(payload: unknown): boolean | null {
+  if (!payload || typeof payload !== "object") return null
+  const row = payload as Record<string, unknown>
+  const event =
+    row.event && typeof row.event === "object" ? (row.event as Record<string, unknown>) : row
+  for (const key of ["series_is_active", "recurring_series_is_active", "is_series_active"] as const) {
+    const parsed = readIsActiveFlag(event[key] ?? row[key])
+    if (parsed !== null) return parsed
+  }
+  for (const nestKey of ["series", "recurring_series", "program"] as const) {
+    const nest = event[nestKey] ?? row[nestKey]
+    if (nest && typeof nest === "object") {
+      const parsed = readIsActiveFlag((nest as Record<string, unknown>).is_active)
+      if (parsed !== null) return parsed
+    }
+  }
+  return null
+}
+
+/** GET /business/recurring-series/:id — `{ series }` or a bare series row. */
+export function seriesActiveFromRecurringResponse(data: unknown): boolean | null {
+  if (!data || typeof data !== "object") return null
+  const row = data as Record<string, unknown>
+  const series = row.series
+  if (series && typeof series === "object") {
+    return readIsActiveFlag((series as Record<string, unknown>).is_active)
+  }
+  return readIsActiveFlag(row.is_active)
+}
+
+export function unwrapRecurringSeriesRow(data: unknown): Record<string, unknown> | null {
+  if (!data || typeof data !== "object") return null
+  const row = data as Record<string, unknown>
+  if (row.series && typeof row.series === "object") return row.series as Record<string, unknown>
+  return row
+}
+
+/**
+ * Web checkout / /event/:id → Laravel.
+ * Host-ended WC is never buyable (cover, skip, or both). Guest catalog omission
+ * is the same signal the app uses when the detail payload omits series_is_active.
+ * Catalog unknown does not fail a live WC night (outage must not blank checkout).
+ */
+export function weeklyCoverWebSaleOpen(input: {
+  isWeeklyCover: boolean
+  seriesActive: boolean | null
+  listedOnPublicCatalog?: boolean | null
+}): boolean {
+  if (!input.isWeeklyCover) return true
+  if (input.seriesActive === false) return false
+  if (input.listedOnPublicCatalog === false) return false
+  return true
+}
+
 export function normalizeEventStatus(status: string | null | undefined): string {
   return String(status ?? "").trim().toLowerCase()
 }
@@ -105,6 +170,23 @@ export function shouldListWeeklyCoverNightOnGuest(
   status: string | null | undefined,
 ): boolean {
   return isLiveEventStatus(status) && !isApprovedCanceledStatus(status)
+}
+
+/**
+ * Lookahead /ui/events/:id must not resurrect a host-ended series the
+ * guest catalog already omitted. Unknown series activity is allowed when
+ * the night was already listed, or when it is unpublished (draft escrow
+ * lookahead). A leftover published night is not filled back in.
+ */
+export function shouldKeepLookaheadWeeklyCoverNight(
+  seriesActive: boolean | null,
+  onPublishedList: boolean,
+  status?: string | null,
+): boolean {
+  if (seriesActive === false) return false
+  if (seriesActive === true) return true
+  if (onPublishedList) return true
+  return !isLiveEventStatus(status)
 }
 
 export function inactiveSeriesIdSet(

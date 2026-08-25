@@ -4,7 +4,11 @@ import {
   readProductKind,
   resolveProgramImageUrl,
 } from "./business/door-access.ts"
-import { shouldListWeeklyCoverNightOnGuest } from "./business/weekly-cover-visibility.ts"
+import {
+  readSeriesActiveFromPublicEvent,
+  shouldKeepLookaheadWeeklyCoverNight,
+  shouldListWeeklyCoverNightOnGuest,
+} from "./business/weekly-cover-visibility.ts"
 
 // Public /venue/:id board data.
 //
@@ -43,6 +47,8 @@ export interface VenueEvent {
   status?: string | null
   venue_id?: number | null
   recurring_series_id?: number | null
+  /** Explicit series activity when the public payload sends it. */
+  series_is_active?: boolean | null
   tickets: VenueAccessTier[]
   /** Program template tiers when the night row itself has no tickets. */
   template_tickets?: VenueAccessTier[]
@@ -138,6 +144,7 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
     status: typeof row.status === "string" ? row.status : null,
     venue_id: row.venue_id == null ? null : Number(row.venue_id),
     recurring_series_id: seriesId != null && Number.isFinite(seriesId) ? seriesId : null,
+    series_is_active: readSeriesActiveFromPublicEvent(row),
     tickets: parseVenueAccessTiers(row.tickets ?? row.ticket_tiers ?? row.tiers),
     template_tickets: parseVenueAccessTiers(
       row.template_tickets ?? row.program_tickets ?? row.program_template_tickets ?? row.tiers,
@@ -159,7 +166,11 @@ export function isVenueWeeklyCoverNight(event: {
 
 /** Live one-offs and live WC nights only. Unpublished / canceled WC stays off. */
 export function shouldListOnVenuePage(event: VenueEvent): boolean {
-  if (isVenueWeeklyCoverNight(event)) return shouldListWeeklyCoverNightOnGuest(event.status)
+  if (isVenueWeeklyCoverNight(event)) {
+    if (!shouldListWeeklyCoverNightOnGuest(event.status)) return false
+    if (event.series_is_active === false) return false
+    return true
+  }
   if (!event.status) return true
   return LIVE_ONE_OFF_STATUSES.has(event.status.toLowerCase())
 }
@@ -189,6 +200,10 @@ function pickRicherEvent(a: VenueEvent, b: VenueEvent): VenueEvent {
     status: b.status ?? a.status,
     venue_id: b.venue_id ?? a.venue_id,
     recurring_series_id: b.recurring_series_id ?? a.recurring_series_id,
+    series_is_active:
+      a.series_is_active === false || b.series_is_active === false
+        ? false
+        : (b.series_is_active ?? a.series_is_active),
     tickets: pickRicherTiers(a.tickets, b.tickets),
     template_tickets: pickRicherTiers(a.template_tickets ?? [], b.template_tickets ?? []),
   }
@@ -694,12 +709,13 @@ export async function fetchVenuePublicData(
   const listed = asEventList((venueRaw as { events?: unknown }).events)
   const catalog = asEventList(await fetchJson(`${base}/ui/events`))
   const forVenue = catalog.filter((e) => eventMatchesVenue(e, venueId))
+  const publishedListIds = new Set([...listed, ...forVenue].map((event) => event.event_id))
 
   const seeds = eventIdSeeds([...listed, ...forVenue, ...catalog])
   const venueSeed = Math.max(0, ...eventIdSeeds([...listed, ...forVenue]))
   const catalogSeed = Math.max(0, ...eventIdSeeds(catalog))
   const doorAccessIds = [...listed, ...forVenue]
-    .filter((event) => event.access_kind === "door_access")
+    .filter((event) => isVenueWeeklyCoverNight(event) || event.recurring_series_id != null)
     .map((event) => event.event_id)
   const ids = new Set<number>([
     ...lookaheadIds(venueSeed),
@@ -710,17 +726,36 @@ export async function fetchVenuePublicData(
     if (!doorAccessIds.includes(id)) ids.delete(id)
   }
 
+  const endedFromDetail = new Set<number>()
   const details = await Promise.all(
     [...ids].map(async (id) => {
       const raw = await fetchJson(`${base}/ui/events/${id}`)
       if (!raw || typeof raw !== "object") return null
       const event = toVenueEvent(eventPayload(raw))
       if (!event || !eventMatchesVenue(event, venueId)) return null
+      if (isVenueWeeklyCoverNight(event) && event.series_is_active === false) {
+        endedFromDetail.add(event.event_id)
+        return null
+      }
+      if (
+        isVenueWeeklyCoverNight(event) &&
+        !shouldKeepLookaheadWeeklyCoverNight(
+          event.series_is_active ?? null,
+          publishedListIds.has(event.event_id),
+          event.status,
+        )
+      ) {
+        return null
+      }
       return event
     }),
   )
 
-  let events = mergeVenueEvents(listed, forVenue, details.filter((e): e is VenueEvent => e != null))
+  let events = mergeVenueEvents(
+    listed.filter((event) => !endedFromDetail.has(event.event_id)),
+    forVenue.filter((event) => !endedFromDetail.has(event.event_id)),
+    details.filter((e): e is VenueEvent => e != null),
+  )
   events = await enrichWeeklyAccessTiers(base, events, checkoutBase)
   events = applySharedProgramPrices(events)
   events = await fillMissingTicketIds(base, events, checkoutBase)

@@ -55,11 +55,13 @@ export function homeUpcoming(
   const entries: UpcomingEntry[] = events
     .filter((event) => {
       if (isApprovedCanceledStatus(event.status)) return false
-      if (!isWeeklyCoverProduct(event)) return true
-      // Sold night of a host-deleted series is a one-off pending-cancel card.
       const seriesId = Number(event.recurring_series_id)
-      if (!Number.isFinite(seriesId) || !inactive.has(seriesId)) return false
-      return weeklyCoverNightNeedsPendingCancel(event, false)
+      const ended = Number.isFinite(seriesId) && inactive.has(seriesId)
+      // Unstamped leftover nights of a host-ended series still arrive as
+      // green event rows. 0-sales nights leave; sold nights stay pending-cancel.
+      if (ended) return weeklyCoverNightNeedsPendingCancel(event, false)
+      if (!isWeeklyCoverProduct(event)) return true
+      return false
     })
     .map((event) => ({
       kind: "event",

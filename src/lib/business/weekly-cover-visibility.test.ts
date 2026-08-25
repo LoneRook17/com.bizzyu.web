@@ -1,14 +1,21 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import {
   inactiveSeriesIdSet,
   isApprovedCanceledStatus,
   isSeriesActive,
+  readIsActiveFlag,
+  readSeriesActiveFromPublicEvent,
+  seriesActiveFromRecurringResponse,
+  shouldKeepLookaheadWeeklyCoverNight,
   shouldListWeeklyCoverNightOnGuest,
   weeklyCoverNightHasSales,
   weeklyCoverNightNeedsPendingCancel,
   weeklyCoverNightVisibleOnDash,
   weeklyCoverProgramVisibleOnDash,
+  weeklyCoverWebSaleOpen,
 } from "./weekly-cover-visibility.ts"
 
 const unsold = { status: "published", ticket_sales_count: 0 }
@@ -64,6 +71,51 @@ test("guest lists hide unpublished and canceled WC nights", () => {
   assert.equal(shouldListWeeklyCoverNightOnGuest("cancelled"), false)
   assert.equal(shouldListWeeklyCoverNightOnGuest("unpublished"), false)
   assert.equal(shouldListWeeklyCoverNightOnGuest("pending_approval"), false)
+})
+
+test("readSeriesActiveFromPublicEvent does not treat event is_active as series activity", () => {
+  assert.equal(readIsActiveFlag(0), false)
+  assert.equal(readIsActiveFlag(1), true)
+  assert.equal(readIsActiveFlag(undefined), null)
+  assert.equal(readSeriesActiveFromPublicEvent({ event_id: 774, is_active: 1, series_is_active: 0 }), false)
+  assert.equal(readSeriesActiveFromPublicEvent({ event_id: 774, is_active: 0 }), null)
+  assert.equal(readSeriesActiveFromPublicEvent({ event: { series: { is_active: 0 } } }), false)
+  assert.equal(seriesActiveFromRecurringResponse({ series: { is_active: 0 } }), false)
+  assert.equal(seriesActiveFromRecurringResponse({ is_active: 1 }), true)
+  assert.equal(seriesActiveFromRecurringResponse({}), null)
+})
+
+test("weeklyCoverWebSaleOpen: ended WC never sells; catalog unknown does not blank live WC", () => {
+  assert.equal(weeklyCoverWebSaleOpen({ isWeeklyCover: true, seriesActive: false }), false)
+  assert.equal(
+    weeklyCoverWebSaleOpen({ isWeeklyCover: true, seriesActive: null, listedOnPublicCatalog: false }),
+    false,
+  )
+  assert.equal(weeklyCoverWebSaleOpen({ isWeeklyCover: true, seriesActive: true }), true)
+  assert.equal(weeklyCoverWebSaleOpen({ isWeeklyCover: true, seriesActive: null }), true)
+  assert.equal(weeklyCoverWebSaleOpen({ isWeeklyCover: false, seriesActive: false }), true)
+})
+
+test("lookahead does not resurrect a leftover published night of an ended series", () => {
+  assert.equal(shouldKeepLookaheadWeeklyCoverNight(false, true, "published"), false)
+  assert.equal(shouldKeepLookaheadWeeklyCoverNight(null, false, "published"), false)
+  assert.equal(shouldKeepLookaheadWeeklyCoverNight(true, false, "published"), true)
+  assert.equal(shouldKeepLookaheadWeeklyCoverNight(null, true, "published"), true)
+  assert.equal(
+    shouldKeepLookaheadWeeklyCoverNight(null, false, "draft"),
+    true,
+    "draft escrow lookahead still fills in when series activity is unknown",
+  )
+})
+
+test("manage hub fail-closes an ended unsold series instead of a live editor", () => {
+  const hub = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/events/[id]/manage/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(hub.includes("seriesActiveFromRecurringResponse"))
+  assert.ok(hub.includes("endedUnsold"))
+  assert.ok(hub.includes("This series has ended"))
 })
 
 test("inactiveSeriesIdSet only collects explicit offs", () => {

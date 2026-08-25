@@ -1614,6 +1614,7 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(!/["'`]\/weekly-cover/.test(eventsPage), "do not rename the API path")
   assert.ok(eventsPage.includes("eventAccessGroupsForPrograms"), "empty programs list still shows stamped nights")
   assert.ok(eventsPage.includes("inactiveWeeklyCoverSeriesIds"), "host-deleted series do not resurrect from published nights")
+  assert.ok(eventsPage.includes("probeInactiveSeriesIds"), "every recurring_series_id is probed for is_active=0")
   assert.ok(eventsPage.includes("weeklyCoverProgramsForDash"), "ended / deleted programs leave the live list")
   assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
   const accessRow = readFileSync(
@@ -1633,6 +1634,7 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(!programPage.includes("fetchDoorAccessProgramsSafe"), "program page must not swallow 404s as []")
   assert.ok(home.includes("programHref(soonestNight.program.id)"))
   assert.ok(home.includes("programHref(p.id)"))
+  assert.ok(home.includes("probeInactiveSeriesIds"), "Home also probes leftover nights of a host-ended series")
 })
 
 test("parseProgramPathId treats empty, undefined, NaN, and <=0 as missing", () => {

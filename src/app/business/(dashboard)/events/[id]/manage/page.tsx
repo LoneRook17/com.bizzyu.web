@@ -18,7 +18,8 @@ import {
   weeklyCoverNightEditHref,
 } from "@/lib/business/door-access"
 import {
-  isSeriesActive,
+  seriesActiveFromRecurringResponse,
+  weeklyCoverNightHasSales,
   weeklyCoverNightNeedsPendingCancel,
 } from "@/lib/business/weekly-cover-visibility"
 import type { EventDetail } from "@/lib/business/types"
@@ -98,14 +99,21 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     apiClient
       .get<EventDetail>(`/business/events/${id}`)
-      .then((row) => {
+      .then(async (row) => {
         setEvent(row)
-        const seriesId = programIdFromOwnedEvent(row)
-        if (seriesId == null) return
-        apiClient
-          .get<{ series?: { is_active?: unknown } }>(`/business/recurring-series/${seriesId}`)
-          .then((data) => setSeriesActive(isSeriesActive(data.series?.is_active)))
-          .catch(() => {})
+        const fromStamp = programIdFromOwnedEvent(row)
+        const fromFk = row.recurring_series_id != null ? Number(row.recurring_series_id) : NaN
+        const seriesId = fromStamp ?? (Number.isFinite(fromFk) && fromFk > 0 ? fromFk : null)
+        if (seriesId == null) {
+          setSeriesActive(true)
+          return
+        }
+        try {
+          const data = await apiClient.get<unknown>(`/business/recurring-series/${seriesId}`)
+          setSeriesActive(seriesActiveFromRecurringResponse(data) !== false)
+        } catch {
+          setSeriesActive(true)
+        }
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load event"))
       .finally(() => setLoading(false))
@@ -142,6 +150,18 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // moved this predicate into public-links so Door Access nights apply it too.
   const pendingCancel = weeklyCoverNightNeedsPendingCancel(event, seriesActive)
   const isLive = isPubliclyLinkable(event.status) && seriesActive && !pendingCancel
+  const endedUnsold = !seriesActive && !weeklyCoverNightHasSales(event) && !pendingCancel
+
+  if (endedUnsold) {
+    return (
+      <EmptyState
+        icon={CalendarOff}
+        title="This series has ended"
+        description="Cover and Skip the Line are no longer on sale for this night."
+        action={<Button asChild variant="secondary"><Link href="/business/events">Back to events</Link></Button>}
+      />
+    )
+  }
 
   // V5 REDEMPTION §5 — the door surface follows the event's KIND, not a stored
   // preference. A door-access night sells a pass redeemed by camera + tap, so

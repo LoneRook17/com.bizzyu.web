@@ -172,6 +172,18 @@ export function groupEventRows(
       continue
     }
     const seriesId = event.recurring_series_id
+    if (seriesId != null) {
+      const listed = byId.get(seriesId)
+      const ended = inactive.has(seriesId) || (listed != null && !isSeriesActive(listed.is_active))
+      // Unstamped leftover nights of a host-ended series still arrive as
+      // green Event / Series rows. 0-sales nights must leave; sold nights
+      // stay as one-offs (same pending-cancel rule as a WC stamp).
+      if (ended && !weeklyCoverNightVisibleOnDash(event, false)) continue
+      if (ended && weeklyCoverNightNeedsPendingCancel(event, false)) {
+        rows.push({ kind: "single", key: `event-${event.event_id}`, event })
+        continue
+      }
+    }
     if (seriesId == null) {
       rows.push({ kind: "single", key: `event-${event.event_id}`, event })
       continue
@@ -341,12 +353,19 @@ export function inactiveWeeklyCoverSeriesIds(
   return [...inactive].filter((id) => wcIds.has(id) || programs.some((p) => p.id === id))
 }
 
-/**
- * WC program ids that appear on stamped nights but are on neither the
- * door-access list nor the recurring-series list. The Events page probes
- * GET /business/recurring-series/:id for an explicit is_active=0. A 404
- * or omitted flag stays unknown (series-23 fallback), never inferred.
- */
+/** Every series FK on this page of GET /business/events. */
+export function recurringSeriesIdsOnEvents(
+  events: readonly { recurring_series_id?: number | string | null }[],
+): number[] {
+  const ids = new Set<number>()
+  for (const event of events) {
+    if (event.recurring_series_id == null || event.recurring_series_id === "") continue
+    const id = Number(event.recurring_series_id)
+    if (Number.isFinite(id) && id > 0) ids.add(id)
+  }
+  return [...ids]
+}
+
 export function weeklyCoverSeriesIdsNeedingActivityProbe(
   events: readonly {
     product_kind?: string | null

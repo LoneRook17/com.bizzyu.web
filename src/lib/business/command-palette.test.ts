@@ -101,6 +101,25 @@ test("command palette does not list Weekly Cover nights or cancelled events", ()
   )
 })
 
+test("command palette drops unstamped leftover nights of a host-ended series", () => {
+  assert.deepEqual(
+    buildEventItems(
+      [
+        {
+          event_id: 774,
+          name: "The Devil Dungeon Cover",
+          access_kind: "event",
+          recurring_series_id: 66,
+          status: "published",
+        },
+        { event_id: 1, name: "Friday", status: "published" },
+      ],
+      [66],
+    ).map((item) => item.id),
+    ["event:1"],
+  )
+})
+
 test("event and deal builders point at existing manage surfaces", () => {
   assert.deepEqual(buildEventItems([{ event_id: 9, name: "Escrow Test", venue_name: "The Dungeon", status: "draft" }]), [
     {

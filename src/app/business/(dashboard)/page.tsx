@@ -26,7 +26,11 @@ import {
 } from "@/lib/business/door-access"
 import { homeUpcoming, nextAccessNight } from "@/lib/business/home-upcoming"
 import { inactiveWeeklyCoverSeriesIds } from "@/lib/business/events-list"
-import { isApprovedCanceledStatus } from "@/lib/business/weekly-cover-visibility"
+import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
+import {
+  isApprovedCanceledStatus,
+  weeklyCoverNightNeedsPendingCancel,
+} from "@/lib/business/weekly-cover-visibility"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
@@ -89,6 +93,7 @@ export default function V2HomePage() {
   // degrade to [] — a business that runs no door access, or a build where the
   // endpoint is down, gets exactly the homepage it had before.
   const [programs, setPrograms] = useState<DoorAccessProgramSummary[]>([])
+  const [probedInactiveIds, setProbedInactiveIds] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -133,6 +138,18 @@ export default function V2HomePage() {
     return () => { cancelled = true }
   }, [needsSetup, venuesLoading])
 
+  useEffect(() => {
+    let cancelled = false
+    probeInactiveSeriesIds(events, (id) => apiClient.get(`/business/recurring-series/${id}`)).then(
+      (ids) => {
+        if (!cancelled) setProbedInactiveIds(ids)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [events])
+
   if (needsSetup) return <TrialHome />
 
   const firstName = user?.full_name?.split(" ")[0]
@@ -162,7 +179,9 @@ export default function V2HomePage() {
   // events do. Presence-gated exactly like every other product here — a
   // business with no programs sees no trace of them.
   const activePrograms = config.showLineSkips ? programs.filter((p) => p.is_active) : []
-  const inactiveWcIds = inactiveWeeklyCoverSeriesIds(programs, [], events)
+  const inactiveWcIds = [
+    ...new Set([...inactiveWeeklyCoverSeriesIds(programs, [], events), ...probedInactiveIds]),
+  ]
   const showAccessSection = activePrograms.length > 0
   const nextNights = activePrograms
     .map(nextAccessNight)
@@ -184,7 +203,14 @@ export default function V2HomePage() {
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
   const nextEvent = showEventsSection
-    ? events.find((event) => !isWeeklyCoverProduct(event) && !isApprovedCanceledStatus(event.status))
+    ? events.find((event) => {
+        if (isApprovedCanceledStatus(event.status) || isWeeklyCoverProduct(event)) return false
+        const seriesId = Number(event.recurring_series_id)
+        if (inactiveWcIds.includes(seriesId) && !weeklyCoverNightNeedsPendingCancel(event, false)) {
+          return false
+        }
+        return true
+      })
     : undefined
   if (nextEvent) {
     attention.push({

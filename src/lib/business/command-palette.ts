@@ -1,6 +1,9 @@
 import { canAccessPayouts, type BusinessRole } from "./payouts-access.ts"
 import { isWeeklyCoverProduct } from "./door-access.ts"
-import { isApprovedCanceledStatus } from "./weekly-cover-visibility.ts"
+import {
+  isApprovedCanceledStatus,
+  weeklyCoverNightNeedsPendingCancel,
+} from "./weekly-cover-visibility.ts"
 
 export type PaletteItemKind = "page" | "event" | "deal"
 
@@ -116,10 +119,26 @@ export function buildEventItems(
     status?: string
     product_kind?: string | null
     access_kind?: string | null
+    recurring_series_id?: number | string | null
+    ticket_sales_count?: number | null
+    passes_sold?: number | null
+    paid_orders?: number | null
+    total_revenue?: number | string | null
+    cancellation_status?: string | null
   }>,
+  inactiveSeriesIds: readonly number[] = [],
 ): PaletteItem[] {
+  const inactive = new Set(inactiveSeriesIds)
   return events
-    .filter((event) => !isWeeklyCoverProduct(event) && !isApprovedCanceledStatus(event.status))
+    .filter((event) => {
+      if (isApprovedCanceledStatus(event.status)) return false
+      if (isWeeklyCoverProduct(event)) return false
+      const seriesId = Number(event.recurring_series_id)
+      if (Number.isFinite(seriesId) && inactive.has(seriesId)) {
+        return weeklyCoverNightNeedsPendingCancel(event, false)
+      }
+      return true
+    })
     .map((event) => ({
       id: `event:${event.event_id}`,
       kind: "event" as const,

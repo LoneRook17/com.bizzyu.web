@@ -127,6 +127,14 @@ test("sold night of a host-deleted WC series stays on Home as a pending-cancel o
   assert.deepEqual(out.map((e) => e.key), ["event-775", "event-1"])
 })
 
+test("unstamped leftover nights of a host-ended series leave Home", () => {
+  const leftover = ev(774, "2026-08-25 21:00:00")
+  leftover.access_kind = "event"
+  leftover.recurring_series_id = 66
+  const out = homeUpcoming([leftover, ev(1, "2026-09-05 21:00:00")], [], 4, [66])
+  assert.deepEqual(out.map((e) => e.key), ["event-1"])
+})
+
 test("cancelled nights do not appear on Home", () => {
   const dead = ev(2, "2026-09-03 21:00:00")
   dead.status = "cancelled"
