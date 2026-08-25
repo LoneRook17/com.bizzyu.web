@@ -21,6 +21,15 @@ import {
   type DoorAccessProgramSummary,
 } from "./door-access.ts"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
+import {
+  inactiveSeriesIdSet,
+  isSeriesActive,
+  weeklyCoverNightNeedsPendingCancel,
+  weeklyCoverNightVisibleOnDash,
+  weeklyCoverProgramVisibleOnDash,
+} from "./weekly-cover-visibility.ts"
+
+export { isSeriesActive } from "./weekly-cover-visibility.ts"
 
 /** The segment's three positions. `all` is the default — one combined list. */
 export const EVENT_TYPE_FILTERS = [
@@ -79,6 +88,12 @@ export type DoorAccessEventNight = {
   product_kind?: string | null
   recurring_series_id?: number | string | null
   event_id?: number
+  status?: string | null
+  ticket_sales_count?: number | null
+  passes_sold?: number | null
+  paid_orders?: number | null
+  total_revenue?: number | string | null
+  cancellation_status?: string | null
 }
 
 export type DoorAccessEventGroup = {
@@ -118,24 +133,57 @@ export type DoorAccessEventGroup = {
  * renders — doorAccessGroupsFromEvents groups it by the same helper, so it
  * shows as a pink Weekly Cover row instead. A WC night with NO series id has
  * no program to route to and stays green, which is the honest degrade.
+ *
+ * Host-deleted series (is_active=0): unsold nights are dropped. Sold nights
+ * stay as green one-off cards with pending-cancellation treatment until
+ * admin refund completes. Approved-canceled nights leave (rule 3).
  */
 export function groupEventRows(
   events: EventListItem[],
   series: RecurringSeriesListItem[] = [],
   wcSeriesIds: readonly number[] = [],
+  inactiveWcSeriesIds: readonly number[] = [],
 ): EventRow[] {
   const byId = new Map<number, RecurringSeriesListItem>()
   for (const s of series) byId.set(s.id, s)
   const weeklyIds = new Set(wcSeriesIds)
+  const inactive = new Set(inactiveWcSeriesIds)
 
   const rows: EventRow[] = []
   const groupIndex = new Map<number, number>()
 
   for (const event of events) {
-    if (isDoorAccessKind(event.access_kind)) continue
-    if (programIdFromOwnedEvent(event) != null) continue
-    if (event.recurring_series_id != null && weeklyIds.has(event.recurring_series_id)) continue
+    const programId = listedWeeklyCoverProgramId(event, wcSeriesIds)
+    const isWc =
+      isDoorAccessKind(event.access_kind) ||
+      programId != null ||
+      (event.recurring_series_id != null && weeklyIds.has(event.recurring_series_id))
+    if (isWc) {
+      const seriesId = programId ?? Number(event.recurring_series_id)
+      const listed = Number.isFinite(seriesId) ? byId.get(seriesId) : undefined
+      // Explicit is_active=0 on the series list counts even if this id was
+      // omitted from inactiveWcSeriesIds (unstamped WC series, door-access
+      // GET dropped the program). Omitted series stays unknown/active.
+      const seriesActive = !inactive.has(seriesId) && isSeriesActive(listed?.is_active)
+      if (!weeklyCoverNightVisibleOnDash(event, seriesActive)) continue
+      if (!seriesActive && weeklyCoverNightNeedsPendingCancel(event, false)) {
+        rows.push({ kind: "single", key: `event-${event.event_id}`, event })
+      }
+      continue
+    }
     const seriesId = event.recurring_series_id
+    if (seriesId != null) {
+      const listed = byId.get(seriesId)
+      const ended = inactive.has(seriesId) || (listed != null && !isSeriesActive(listed.is_active))
+      // Unstamped leftover nights of a host-ended series still arrive as
+      // green Event / Series rows. 0-sales nights must leave; sold nights
+      // stay as one-offs (same pending-cancel rule as a WC stamp).
+      if (ended && !weeklyCoverNightVisibleOnDash(event, false)) continue
+      if (ended && weeklyCoverNightNeedsPendingCancel(event, false)) {
+        rows.push({ kind: "single", key: `event-${event.event_id}`, event })
+        continue
+      }
+    }
     if (seriesId == null) {
       rows.push({ kind: "single", key: `event-${event.event_id}`, event })
       continue
@@ -178,10 +226,15 @@ export function eventListHref(
   event: EventListItem,
   programs: readonly ListedProgramRef[] = [],
   wcSeriesIds: readonly number[] = [],
+  inactiveWcSeriesIds: readonly number[] = [],
 ): string {
   const programId =
     programIdFromOwnedEvent(event) ?? programIdFromWeeklyCoverSeries(event, wcSeriesIds)
   if (programId == null) return `/business/events/${event.event_id}`
+  // Sold night of a host-deleted series is a one-off pending-cancel card.
+  if (inactiveWcSeriesIds.includes(programId) && weeklyCoverNightNeedsPendingCancel(event, false)) {
+    return `/business/events/${event.event_id}`
+  }
   const working = workingProgramIdForEventGroup(
     { programId, name: event.name, events: [event] },
     programs,
@@ -224,6 +277,18 @@ function programIdFromWeeklyCoverSeries(
   return wcSeriesIds.includes(id) ? id : null
 }
 
+/** Program id for a stamped WC night, or null when this row is a named event. */
+export function listedWeeklyCoverProgramId(
+  event: {
+    product_kind?: string | null
+    access_kind?: string | null
+    recurring_series_id?: number | string | null
+  },
+  wcSeriesIds: readonly number[] = [],
+): number | null {
+  return programIdFromOwnedEvent(event) ?? programIdFromWeeklyCoverSeries(event, wcSeriesIds)
+}
+
 export type WeeklyCoverSeriesRef = {
   id: number
   name?: string
@@ -231,6 +296,8 @@ export type WeeklyCoverSeriesRef = {
   access_kind?: string | null
   /** Services' explicit product stamp. Missing on older payloads. */
   product_kind?: string | null
+  /** 0/false after host series delete. Missing on older payloads = unknown. */
+  is_active?: number | boolean | string | null
 }
 
 /**
@@ -246,7 +313,7 @@ export function isWeeklyCoverSeriesRef(series: WeeklyCoverSeriesRef): boolean {
 
 /** Listed door-access ids plus recurring series that are Weekly Cover. */
 export function weeklyCoverSeriesIds(
-  programs: readonly ListedProgramRef[],
+  programs: readonly { id: number }[],
   series: readonly WeeklyCoverSeriesRef[] = [],
 ): number[] {
   const ids = new Set<number>()
@@ -257,6 +324,88 @@ export function weeklyCoverSeriesIds(
     if (row.id > 0 && isWeeklyCoverSeriesRef(row)) ids.add(row.id)
   }
   return [...ids]
+}
+
+/**
+ * Series ids we KNOW are host-deleted / ended (is_active=0).
+ * Door-access GET and recurring-series both carry the flag. An omitted
+ * series (program_kind=event) is NOT treated as inactive — that is the
+ * series-23 fallback, not a cancel.
+ *
+ * A recurring-series row can lack WC stamps and still be series 66. If a
+ * stamped WC night points at that id, the explicit is_active=0 counts.
+ */
+export function inactiveWeeklyCoverSeriesIds(
+  programs: readonly { id: number; is_active?: unknown }[],
+  series: readonly WeeklyCoverSeriesRef[] = [],
+  events: readonly {
+    product_kind?: string | null
+    access_kind?: string | null
+    recurring_series_id?: number | string | null
+  }[] = [],
+): number[] {
+  const wcIds = new Set(weeklyCoverSeriesIds(programs, series))
+  for (const event of events) {
+    const id = listedWeeklyCoverProgramId(event, [...wcIds])
+    if (id != null) wcIds.add(id)
+  }
+  const inactive = inactiveSeriesIdSet(programs, series)
+  return [...inactive].filter((id) => wcIds.has(id) || programs.some((p) => p.id === id))
+}
+
+/** Every series FK on this page of GET /business/events. */
+export function recurringSeriesIdsOnEvents(
+  events: readonly { recurring_series_id?: number | string | null }[],
+): number[] {
+  const ids = new Set<number>()
+  for (const event of events) {
+    if (event.recurring_series_id == null || event.recurring_series_id === "") continue
+    const id = Number(event.recurring_series_id)
+    if (Number.isFinite(id) && id > 0) ids.add(id)
+  }
+  return [...ids]
+}
+
+export function weeklyCoverSeriesIdsNeedingActivityProbe(
+  events: readonly {
+    product_kind?: string | null
+    access_kind?: string | null
+    recurring_series_id?: number | string | null
+  }[],
+  knownIds: readonly number[],
+  wcSeriesIds: readonly number[] = [],
+): number[] {
+  const known = new Set(knownIds)
+  const ids = new Set<number>()
+  for (const event of events) {
+    const id = listedWeeklyCoverProgramId(event, wcSeriesIds)
+    if (id != null && !known.has(id)) ids.add(id)
+  }
+  return [...ids]
+}
+
+/** Active programs only. Ended / host-deleted series are not a live row. */
+export function weeklyCoverProgramsForDash<T extends { is_active?: unknown }>(
+  programs: readonly T[],
+): T[] {
+  return programs.filter((program) => weeklyCoverProgramVisibleOnDash(program))
+}
+
+/**
+ * Sold nights of a host-deleted series, for the Weekly Cover segment
+ * (green EventCards; the Events half already gets them from groupEventRows).
+ */
+export function pendingCancelWeeklyCoverNights(
+  events: EventListItem[],
+  wcSeriesIds: readonly number[] = [],
+  inactiveWcSeriesIds: readonly number[] = [],
+): EventListItem[] {
+  const inactive = new Set(inactiveWcSeriesIds)
+  return events.filter((event) => {
+    const programId = listedWeeklyCoverProgramId(event, wcSeriesIds)
+    if (programId == null || !inactive.has(programId)) return false
+    return weeklyCoverNightVisibleOnDash(event, false)
+  })
 }
 
 function eventDateOnly(value: string | null | undefined): string | null {
@@ -406,13 +555,16 @@ export function eventAccessGroupsForPrograms(
   events: EventListItem[],
   programs: readonly ListedProgramRef[],
   wcSeriesIds: readonly number[] = [],
+  inactiveWcSeriesIds: readonly number[] = [],
 ): DoorAccessEventGroup[] {
   const listedIds = new Set(programs.map((program) => program.id))
+  const inactive = new Set(inactiveWcSeriesIds)
   const seen = new Set<number>()
   const rows: DoorAccessEventGroup[] = []
-  for (const group of doorAccessGroupsFromEvents(events, wcSeriesIds)) {
+  for (const group of doorAccessGroupsFromEvents(events, wcSeriesIds, inactiveWcSeriesIds)) {
     const workingId = workingProgramIdForEventGroup(group, programs)
     if (workingId == null) continue
+    if (inactive.has(workingId)) continue
     if (listedIds.has(workingId)) continue
     if (seen.has(workingId)) continue
     seen.add(workingId)
@@ -425,13 +577,18 @@ export function eventAccessGroupsForPrograms(
 export function doorAccessGroupsFromEvents(
   events: DoorAccessEventNight[],
   wcSeriesIds: readonly number[] = [],
+  inactiveWcSeriesIds: readonly number[] = [],
 ): DoorAccessEventGroup[] {
+  const inactive = new Set(inactiveWcSeriesIds)
   const groups = new Map<number, DoorAccessEventGroup>()
   const order: number[] = []
   for (const event of events) {
     const programId =
       programIdFromOwnedEvent(event) ?? programIdFromWeeklyCoverSeries(event, wcSeriesIds)
     if (programId == null) continue
+    const seriesActive = !inactive.has(programId)
+    if (!weeklyCoverNightVisibleOnDash(event, seriesActive)) continue
+    if (!seriesActive) continue
     const existing = groups.get(programId)
     if (existing) {
       existing.events.push(event)

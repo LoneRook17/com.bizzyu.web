@@ -25,6 +25,11 @@
 // api-client.ts pulls the `@/` alias, which the runner cannot resolve, so it
 // stays behind a lazy import in the fetch helpers.
 
+import {
+  isSeriesActive,
+  weeklyCoverNightNeedsPendingCancel,
+} from "./weekly-cover-visibility.ts"
+
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
 export {
@@ -1550,10 +1555,13 @@ export type NightChip = { label: string; variant: "neutral" | "warning" | "dange
  * closed AND customized AND unstamped at once, and a host needs to see all
  * three because each has a different fix.
  */
-export function nightChips(night: DoorAccessNight): NightChip[] {
+export function nightChips(night: DoorAccessNight, seriesActive = true): NightChip[] {
   const chips: NightChip[] = []
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
+  if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
+    chips.push({ label: "Cancellation pending", variant: "warning" })
+  }
   if (night.has_override) chips.push({ label: "Overridden", variant: "info" })
   // "Customized" means this date is Custom — a leftover generic-event stamp
   // or a one-date edit. It stays a warning chip. The night editor still
@@ -1570,11 +1578,15 @@ export function nightChips(night: DoorAccessNight): NightChip[] {
  * the list unreadable. Cards only say something when it changes what a host
  * does next: buyable now, or not generated yet.
  */
-export function nightPreviewChip(night: DoorAccessNight): NightChip | null {
+export function nightPreviewChip(night: DoorAccessNight, seriesActive = true): NightChip | null {
   if (!night.is_stamped || night.event_id == null) {
     return { label: "Not generated", variant: "neutral" }
   }
   if (night.is_closed || night.status === "cancelled") return null
+  if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
+    return { label: "Cancellation pending", variant: "warning" }
+  }
+  if (!seriesActive) return null
   const status = (night.status ?? "").toLowerCase()
   if (status === "published" || status === "approved" || status === "active") {
     return { label: "On sale", variant: "info" }
@@ -2007,13 +2019,18 @@ function clockMinutes(hhmm: string): number {
 /**
  * Can this night still be edited here?
  *
- * Only a cancelled night is done. A Custom night EDITS HERE — individual
- * night edit is Custom WC, never a green Event. Freezing it read-only here
- * while the event surfaces also refuse it would leave the night with no
- * editor at all. Series/program save does not alter this night.
+ * A cancelled night is done. A host-deleted series is not editable as live
+ * either — sold nights wait on admin refund (pending-cancel), unsold nights
+ * should already have left the dash. A Custom night of an ACTIVE series
+ * EDITS HERE — never a green Event.
  */
-export function nightIsEditable(night: DoorAccessNight): boolean {
-  return night.status !== "cancelled"
+export function nightIsEditable(
+  night: DoorAccessNight,
+  program?: { is_active?: unknown } | null,
+): boolean {
+  if (night.status === "cancelled") return false
+  if (program != null && !isSeriesActive(program.is_active)) return false
+  return true
 }
 
 /**

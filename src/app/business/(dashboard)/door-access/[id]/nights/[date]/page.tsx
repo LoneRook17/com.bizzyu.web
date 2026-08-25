@@ -198,8 +198,8 @@ export default function DoorAccessNightPage({
     )
   }
 
-  const editable = canEdit && nightIsEditable(night)
-  const chips = nightChips(night)
+  const editable = canEdit && nightIsEditable(night, program)
+  const chips = nightChips(night, program.is_active)
   const dirty = !!(draft && baseline && nightDraftIsDirty(draft, baseline))
 
   return (
@@ -249,9 +249,13 @@ export default function DoorAccessNightPage({
       />
 
       {/* Why this night can't be edited here. Stated, never a dead form. */}
-      {!nightIsEditable(night) && (
+      {!nightIsEditable(night, program) && (
         <Notice tone="warning">
-          This night is cancelled. Cancelled nights can&apos;t be re-priced.
+          {night.status === "cancelled"
+            ? "This night is cancelled. Cancelled nights can't be re-priced."
+            : !program.is_active && (night.passes_sold > 0 || night.paid_orders > 0)
+              ? "Cancellation pending. This night stays until admin refunds complete. It is not live or editable."
+              : "This program is no longer active. This night is not live or editable."}
         </Notice>
       )}
 

@@ -104,6 +104,44 @@ test("door_access nights are not green event rows on Home", () => {
   assert.ok(out.every((e) => e.kind !== "event" || e.event.event_id !== 24))
 })
 
+test("product_kind weekly_cover nights with stale access_kind stay off Home events", () => {
+  const cover = ev(775, "2026-09-04 21:00:00")
+  cover.access_kind = "event"
+  cover.product_kind = "weekly_cover"
+  cover.recurring_series_id = 66
+  const out = homeUpcoming([cover, ev(1, "2026-09-05 21:00:00")], [])
+  assert.deepEqual(out.map((e) => e.key), ["event-1"])
+})
+
+test("sold night of a host-deleted WC series stays on Home as a pending-cancel one-off", () => {
+  const sold = ev(775, "2026-09-04 21:00:00")
+  sold.access_kind = "door_access"
+  sold.product_kind = "weekly_cover"
+  sold.recurring_series_id = 66
+  sold.ticket_sales_count = 4
+  const unsold = ev(774, "2026-09-02 21:00:00")
+  unsold.access_kind = "door_access"
+  unsold.product_kind = "weekly_cover"
+  unsold.recurring_series_id = 66
+  const out = homeUpcoming([sold, unsold, ev(1, "2026-09-05 21:00:00")], [], 4, [66])
+  assert.deepEqual(out.map((e) => e.key), ["event-775", "event-1"])
+})
+
+test("unstamped leftover nights of a host-ended series leave Home", () => {
+  const leftover = ev(774, "2026-08-25 21:00:00")
+  leftover.access_kind = "event"
+  leftover.recurring_series_id = 66
+  const out = homeUpcoming([leftover, ev(1, "2026-09-05 21:00:00")], [], 4, [66])
+  assert.deepEqual(out.map((e) => e.key), ["event-1"])
+})
+
+test("cancelled nights do not appear on Home", () => {
+  const dead = ev(2, "2026-09-03 21:00:00")
+  dead.status = "cancelled"
+  const out = homeUpcoming([dead, ev(1, "2026-09-05 21:00:00")], [])
+  assert.deepEqual(out.map((e) => e.key), ["event-1"])
+})
+
 test("no programs at all ⇒ byte-identical to the events-only list it replaced", () => {
   const events = [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-02 21:00:00")]
   const out = homeUpcoming(events, [])

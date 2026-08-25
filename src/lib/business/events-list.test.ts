@@ -9,6 +9,11 @@ import {
   recoverProgramIdFromLookups,
   weeklyCoverSeriesIds,
   weeklyCoverVisibleForVenue,
+  inactiveWeeklyCoverSeriesIds,
+  pendingCancelWeeklyCoverNights,
+  weeklyCoverSeriesIdsNeedingActivityProbe,
+  recurringSeriesIdsOnEvents,
+  weeklyCoverProgramsForDash,
   weeklyCoverRowsForVenue,
   eventAccessGroupsForVenue,
   isWeeklyCoverSeriesRef,
@@ -620,6 +625,171 @@ test("a partial series LABELS its sums and stubs the total it cannot compute", (
   assert.equal(pending?.value, "-", "a stub is a dash, never a zero")
   assert.match(pending?.hint ?? "", /12 nights/)
   assert.match(pending?.hint ?? "", /recurring-series/)
+})
+
+test("host-deleted WC series with 0 sales leaves the dash (program + night cards)", () => {
+  const nights = [
+    ev(774, "2026-09-02 21:00:00", 66, {
+      name: "The Devil Dungeon Cover",
+      product_kind: "weekly_cover",
+      access_kind: "door_access",
+    }),
+    ev(775, "2026-09-04 21:00:00", 66, {
+      name: "The Devil Dungeon Cover",
+      product_kind: "weekly_cover",
+      access_kind: "door_access",
+    }),
+    ev(776, "2026-09-09 21:00:00", 66, {
+      name: "The Devil Dungeon Cover",
+      product_kind: "weekly_cover",
+      access_kind: "door_access",
+    }),
+  ]
+  const inactive = [66]
+  assert.deepEqual(groupEventRows(nights, [], [66], inactive), [])
+  assert.deepEqual(doorAccessGroupsFromEvents(nights, [66], inactive), [])
+  assert.deepEqual(eventAccessGroupsForPrograms(nights, [], [66], inactive), [])
+  assert.deepEqual(
+    eventAccessGroupsForPrograms(
+      nights,
+      [{ id: 66, name: "The Devil Dungeon Cover", venue_name: "The Devil Dungeon", next_night_date: null, date_range_start: "2026-09-01", date_range_end: null }],
+      [66],
+      inactive,
+    ),
+    [],
+    "listed inactive program does not keep a fallback row",
+  )
+  assert.deepEqual(
+    weeklyCoverProgramsForDash([{ id: 66, is_active: 0 }, { id: 23, is_active: 1 }]),
+    [{ id: 23, is_active: 1 }],
+  )
+})
+
+test("host-deleted WC series with sales keeps only sold nights as pending-cancel one-offs", () => {
+  const unsold = ev(774, "2026-09-02 21:00:00", 66, {
+    name: "The Devil Dungeon Cover",
+    product_kind: "weekly_cover",
+    ticket_sales_count: 0,
+  })
+  const sold = ev(775, "2026-09-04 21:00:00", 66, {
+    name: "The Devil Dungeon Cover",
+    product_kind: "weekly_cover",
+    ticket_sales_count: 4,
+  })
+  const rows = groupEventRows([unsold, sold], [], [66], [66])
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].kind, "single")
+  if (rows[0].kind !== "single") return
+  assert.equal(rows[0].event.event_id, 775)
+  assert.equal(eventListHref(sold, [], [66], [66]), "/business/events/775")
+  assert.equal(eventListHref(unsold, [], [66], [66]), "/business/door-access/66")
+  assert.deepEqual(
+    pendingCancelWeeklyCoverNights([unsold, sold], [66], [66]).map((e) => e.event_id),
+    [775],
+  )
+  assert.deepEqual(eventAccessGroupsForPrograms([unsold, sold], [], [66], [66]), [])
+})
+
+test("single-night cancel after approve drops only that night; the series stays", () => {
+  const live = ev(774, "2026-09-02 21:00:00", 66, {
+    name: "The Devil Dungeon Cover",
+    product_kind: "weekly_cover",
+    status: "published",
+  })
+  const cancelled = ev(775, "2026-09-04 21:00:00", 66, {
+    name: "The Devil Dungeon Cover",
+    product_kind: "weekly_cover",
+    status: "cancelled",
+    ticket_sales_count: 2,
+  })
+  const groups = doorAccessGroupsFromEvents([live, cancelled], [66], [])
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].programId, 66)
+  assert.deepEqual(groups[0].events.map((e) => e.event_id), [774])
+  assert.deepEqual(groupEventRows([live, cancelled], [], [66], []), [])
+})
+
+test("inactiveWeeklyCoverSeriesIds reads is_active from programs and WC series refs", () => {
+  assert.deepEqual(
+    inactiveWeeklyCoverSeriesIds(
+      [{ id: 66, is_active: 0 }],
+      [{ id: 66, product_kind: "weekly_cover", is_active: 0 }, { id: 7, name: "Trivia", is_active: 0 }],
+    ),
+    [66],
+  )
+  assert.deepEqual(
+    inactiveWeeklyCoverSeriesIds([], [{ id: 66, program_kind: "door_access", is_active: 0 }]),
+    [66],
+  )
+  assert.deepEqual(
+    inactiveWeeklyCoverSeriesIds([{ id: 23, is_active: 1 }], [{ id: 23, product_kind: "weekly_cover" }]),
+    [],
+    "omitted is_active is not a delete",
+  )
+  assert.deepEqual(
+    inactiveWeeklyCoverSeriesIds(
+      [],
+      [{ id: 66, name: "The Devil Dungeon Cover", is_active: 0 }],
+      [ev(774, "2026-09-02 21:00:00", 66, { product_kind: "weekly_cover" })],
+    ),
+    [66],
+    "unstamped series row still counts when a WC night points at it",
+  )
+  assert.deepEqual(
+    weeklyCoverSeriesIdsNeedingActivityProbe(
+      [ev(774, "2026-09-02 21:00:00", 66, { product_kind: "weekly_cover" })],
+      [],
+    ),
+    [66],
+  )
+  assert.deepEqual(
+    weeklyCoverSeriesIdsNeedingActivityProbe(
+      [ev(774, "2026-09-02 21:00:00", 66, { product_kind: "weekly_cover" })],
+      [66],
+    ),
+    [],
+    "known list ids are not probed",
+  )
+})
+
+test("groupEventRows honors series-list is_active=0 without an inactive id hint", () => {
+  const nights = [
+    ev(774, "2026-09-02 21:00:00", 66, {
+      name: "The Devil Dungeon Cover",
+      product_kind: "weekly_cover",
+    }),
+  ]
+  assert.deepEqual(
+    groupEventRows(nights, [series(66, "The Devil Dungeon Cover", { is_active: 0 })], [66], []),
+    [],
+  )
+})
+
+test("unstamped leftover nights of a host-ended series leave the dash", () => {
+  const nights = [
+    ev(774, "2026-08-25 21:00:00", 66, {
+      name: "The Devil Dungeon Cover",
+      access_kind: "event",
+    }),
+    ev(775, "2026-08-27 21:00:00", 66, { name: "The Devil Dungeon Cover" }),
+    ev(776, "2026-09-01 21:00:00", 66, { name: "The Devil Dungeon Cover" }),
+  ]
+  assert.deepEqual(groupEventRows(nights, [], [], [66]), [])
+  assert.deepEqual(
+    groupEventRows(nights, [series(66, "The Devil Dungeon Cover", { is_active: 0 })], [], []),
+    [],
+    "series-list is_active=0 drops leftover nights even without a WC stamp",
+  )
+  const sold = ev(775, "2026-08-27 21:00:00", 66, {
+    name: "The Devil Dungeon Cover",
+    access_kind: "event",
+    ticket_sales_count: 2,
+  })
+  const rows = groupEventRows([nights[0], sold], [], [], [66])
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].kind, "single")
+  if (rows[0].kind === "single") assert.equal(rows[0].event.event_id, 775)
+  assert.deepEqual(recurringSeriesIdsOnEvents(nights), [66])
 })
 
 test("the missing aggregates are registered, not just commented", () => {

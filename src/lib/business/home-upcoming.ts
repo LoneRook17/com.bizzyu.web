@@ -15,7 +15,11 @@
 // isDoorAccessKind is a pure helper in door-access.ts (api-client stays behind
 // a lazy import), so `node --test` can load this module without a browser.
 import type { EventListItem } from "./types"
-import { isDoorAccessKind, type DoorAccessProgramSummary } from "./door-access.ts"
+import { isWeeklyCoverProduct, type DoorAccessProgramSummary } from "./door-access.ts"
+import {
+  isApprovedCanceledStatus,
+  weeklyCoverNightNeedsPendingCancel,
+} from "./weekly-cover-visibility.ts"
 
 export type UpcomingEntry =
   | { kind: "event"; key: string; sortKey: string; event: EventListItem }
@@ -45,9 +49,20 @@ export function homeUpcoming(
   events: EventListItem[],
   programs: DoorAccessProgramSummary[],
   limit = 4,
+  inactiveWcSeriesIds: readonly number[] = [],
 ): UpcomingEntry[] {
+  const inactive = new Set(inactiveWcSeriesIds)
   const entries: UpcomingEntry[] = events
-    .filter((event) => !isDoorAccessKind(event.access_kind))
+    .filter((event) => {
+      if (isApprovedCanceledStatus(event.status)) return false
+      const seriesId = Number(event.recurring_series_id)
+      const ended = Number.isFinite(seriesId) && inactive.has(seriesId)
+      // Unstamped leftover nights of a host-ended series still arrive as
+      // green event rows. 0-sales nights leave; sold nights stay pending-cancel.
+      if (ended) return weeklyCoverNightNeedsPendingCancel(event, false)
+      if (!isWeeklyCoverProduct(event)) return true
+      return false
+    })
     .map((event) => ({
       kind: "event",
       key: `event-${event.event_id}`,

@@ -73,7 +73,7 @@ test("toVenueEvent aliases weekly_cover to door_access like Flutter readAccessKi
   })
   assert.ok(row)
   assert.equal(row.access_kind, "door_access")
-  assert.equal(shouldListOnVenuePage(row), true)
+  assert.equal(shouldListOnVenuePage(row), false, "draft WC nights stay off the guest list")
 })
 
 test("isVenueWeeklyCoverNight is product_kind, else the access_kind fallback", () => {
@@ -104,7 +104,7 @@ test("toVenueEvent treats product_kind=weekly_cover as pink door_access when acc
   assert.ok(row)
   assert.equal(row.access_kind, "door_access")
   assert.equal(row.product_kind, "weekly_cover")
-  assert.equal(shouldListOnVenuePage(row), true)
+  assert.equal(shouldListOnVenuePage(row), false, "unpublished WC nights stay off the guest list")
   const namedEvent = toVenueEvent({
     event_id: 1,
     name: "Rumble",
@@ -257,8 +257,20 @@ test("toVenueEvent drops a row with no id or name", () => {
   assert.equal(toVenueEvent({ event_id: 1 }), null)
 })
 
-test("shouldListOnVenuePage keeps published one-offs and draft door-access nights", () => {
+test("shouldListOnVenuePage keeps published one-offs and live WC nights only", () => {
   assert.equal(shouldListOnVenuePage(event()), true)
+  assert.equal(
+    shouldListOnVenuePage(
+      event({
+        event_id: 621,
+        name: "Weekly Cover",
+        access_kind: "door_access",
+        status: "published",
+        flyer_image_url: null,
+      }),
+    ),
+    true,
+  )
   assert.equal(
     shouldListOnVenuePage(
       event({
@@ -269,7 +281,19 @@ test("shouldListOnVenuePage keeps published one-offs and draft door-access night
         flyer_image_url: null,
       }),
     ),
-    true,
+    false,
+    "unpublished WC nights stay off the guest list",
+  )
+  assert.equal(
+    shouldListOnVenuePage(
+      event({
+        event_id: 775,
+        name: "The Devil Dungeon Cover",
+        access_kind: "door_access",
+        status: "cancelled",
+      }),
+    ),
+    false,
   )
   assert.equal(
     shouldListOnVenuePage(event({ event_id: 618, name: "Paid Event", status: "draft" })),
@@ -277,6 +301,19 @@ test("shouldListOnVenuePage keeps published one-offs and draft door-access night
   )
   // Venue-endpoint rows often omit status. Those stay.
   assert.equal(shouldListOnVenuePage(event({ status: null })), true)
+  assert.equal(
+    shouldListOnVenuePage(
+      event({
+        event_id: 774,
+        name: "The Devil Dungeon Cover",
+        access_kind: "door_access",
+        status: "published",
+        series_is_active: false,
+      }),
+    ),
+    false,
+    "a leftover published night of a host-ended series stays off the venue board",
+  )
 })
 
 test("mergeVenueEvents dedupes by id, keeps door-access, sorts by start", () => {
@@ -286,12 +323,19 @@ test("mergeVenueEvents dedupes by id, keeps door-access, sorts by start", () => 
     name: "Weekly Cover",
     start_date_time: "2026-08-24 21:00:00",
     access_kind: "door_access",
-    status: "draft",
+    status: "published",
     flyer_image_url: null,
     min_ticket_price: null,
   })
   const draftOneOff = event({ event_id: 618, name: "Paid Event", status: "draft" })
-  const merged = mergeVenueEvents([rumble], [cover, rumble, draftOneOff])
+  const cancelledCover = event({
+    event_id: 776,
+    name: "Weekly Cover",
+    start_date_time: "2026-08-25 21:00:00",
+    access_kind: "door_access",
+    status: "cancelled",
+  })
+  const merged = mergeVenueEvents([rumble], [cover, rumble, draftOneOff, cancelledCover])
   assert.deepEqual(
     merged.map((e) => e.event_id),
     [620, 621],
@@ -416,7 +460,7 @@ function coverNight(eventId: number, start: string, extra: Partial<VenueEvent> =
     name: "Weekly Cover",
     start_date_time: start,
     access_kind: "door_access",
-    status: "draft",
+    status: "published",
     flyer_image_url: null,
     min_ticket_price: "5.00",
     ...extra,
@@ -855,6 +899,19 @@ test("event checkout paints Weekly Cover magenta", () => {
   )
   assert.ok(src.includes("const fill = cover ? ACCESS : EVENT_FILL"), "Weekly Cover uses ACCESS, named events stay green")
   assert.ok(src.includes("ticketIdFromSearch"), "venue ?ticket_id= must auto-select that ticket")
+  assert.ok(src.includes("saleClosed"), "host-ended WC must not start checkout")
+  assert.ok(src.includes("weeklyCoverSaleOpenForPayloads"), "direct /checkout/:id fail-closes from public payloads")
+  assert.ok(src.includes("This night is no longer on sale"), "ended series shows a closed sale, not tiers")
+})
+
+test("direct /event/:id fail-closes ended WC instead of a Laravel bounce", () => {
+  const page = readFileSync(join(process.cwd(), "src/app/event/[id]/page.tsx"), "utf8")
+  const config = readFileSync(join(process.cwd(), "next.config.ts"), "utf8")
+  const checkout = readFileSync(join(process.cwd(), "src/app/checkout/[id]/page.tsx"), "utf8")
+  assert.ok(page.includes("weeklyCoverSaleOpenForPayloads"), "/event/:id must inspect series activity")
+  assert.ok(page.includes("This night is no longer on sale"))
+  assert.ok(!/source:\s*"\/event\/:id/.test(config), "next.config must not 307 /event/:id to Laravel")
+  assert.ok(checkout.includes("saleClosed"), "/checkout/:id computes saleClosed on the server")
 })
 
 test("event checkout landing sends every night to /checkout/:id, not /cover", () => {
@@ -934,7 +991,7 @@ const DUNGEON_ONE_COVER_ROW = {
   flyer_image_url: null,
   min_ticket_price: "5.00",
   access_kind: "door_access",
-  status: "draft",
+  status: "published",
   venue_id: 990198,
   tickets: [{ name: "Cover", price_usd: 5 }],
 }
@@ -1078,4 +1135,39 @@ test("a regular one-off with one ticket is not replaced by a richer checkout lis
   assert.ok(row)
   assert.deepEqual(row!.tickets, [{ name: "General Admission", price_usd: 5, ticket_id: 500 }])
   assert.equal(needsWeeklyAccessTierEnrichment(row!), false)
+})
+
+test("venue board drops a leftover published WC night when the detail says the series ended", async () => {
+  const leftover = {
+    event_id: 774,
+    name: "The Devil Dungeon Cover",
+    start_date_time: "2026-08-25 21:00:00",
+    end_date_time: "2026-08-26 02:00:00",
+    venue_name: "The Devil Dungeon",
+    flyer_image_url: null,
+    min_ticket_price: "5.00",
+    access_kind: "door_access",
+    product_kind: "weekly_cover",
+    status: "published",
+    venue_id: 990198,
+    recurring_series_id: 66,
+    tickets: [{ name: "Cover", price_usd: 5 }],
+  }
+  const data = await withFetch(async (url: string | URL | Request) => {
+    const u = String(url)
+    if (u.includes("/ui/venues/venue/")) {
+      return jsonResponse({ ...DUNGEON_VENUE_SHELL, events: [leftover] })
+    }
+    if (u.endsWith("/ui/events") || u.endsWith("/ui/events/")) return jsonResponse([])
+    if (/\/ui\/events\/774(?:\?|$)/.test(u)) {
+      return jsonResponse({ ...leftover, series_is_active: 0 })
+    }
+    return jsonResponse(null, false, 404)
+  }, () => fetchVenuePublicData("990198", "https://api.test"))
+  assert.ok(data)
+  assert.equal(
+    data!.events.some((row) => row.event_id === 774),
+    false,
+    "lookahead/detail is_active=0 must remove the night the venue list still published",
+  )
 })
