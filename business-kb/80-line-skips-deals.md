@@ -34,17 +34,18 @@ a QR code at the door, and walk to the front with **guaranteed entry**.
 "Skip the line" is an ordinary English phrase, and owners use it loosely. When someone
 says it, they might mean:
 
-- **A Bizzy line skip**, the product described above, created under **Line skips** in the
-  sidebar. This is the one this pack covers, and the one you should assume by default.
-- **A ticket tier they named "Skip the Line"** on a normal event. That is just a ticket
-  with a name they chose. It behaves like any other ticket: it's created under the event's
-  tickets, it's scanned with the in-app scanner, and none of the line-skip scheduling
-  above applies to it.
+- **A Bizzy line skip**, the standalone product described above (legacy Line skips
+  schedules). Camera scan, includes cover.
+- **A ticket tier they named "Skip the Line"** on a **named event**. That is just a
+  ticket: in-app scanner, cover only if they said so.
+- **A Weekly Cover tier named "Skip the Line"**. Still Weekly Cover for that night
+  (`product_kind` weekly_cover). Camera Check In, not this line-skip schedule.
+  See "Weekly Cover".
 
 If it isn't clear which one an owner means, ask one short question before answering,
-because the scanning method and the setup screens are different. Don't assume a ticket
-named "Skip the Line" is a line skip, and don't send someone to the Line skips screen to
-fix a ticket.
+because the scanning method and the setup screens are different. Don't assume a
+ticket named "Skip the Line" is a line skip, and don't send a Weekly Cover owner
+to the old Line skips screen to fix Cover.
 
 ## Deals
 

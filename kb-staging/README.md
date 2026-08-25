@@ -33,15 +33,22 @@ No `next.config.ts` change is needed as long as you move files **into the two ex
 pack directories**. You only need to touch `outputFileTracingIncludes` if you add a
 genuinely new pack directory.
 
-## Why each file here is parked
+## Shipped out of here (do not copy these drafts)
+
+Weekly Cover is in the live packs (`support-kb/12-weekly-cover.md`,
+`business-kb/16-weekly-cover.md`). The old staging drafts called the guest product
+"Door Access" and said a custom night stopped following template edits. Both are
+wrong for current product: guest name is Weekly Cover / Cover; a custom night stays
+Weekly Cover and a series-wide edit still restamps it. Identify with
+`product_kind` (`weekly_cover` vs `event`), never a title ending in Cover.
+
+## Why each remaining file here is parked
 
 Checked against the production database on 2026-08-24. Each of these features is absent
 from prod at the schema level, not merely turned off, so customers cannot encounter them:
 
 | Feature | Why it is dark on prod |
 |---|---|
-| Weekly Cover | `recurring_event_series.program_kind` column does not exist on prod |
-| Door Access | `events.access_kind` and `events.redemption_mode` do not exist on prod |
 | Surge pricing | `surge_ladders` and `surge_steps` tables do not exist on prod |
 | National Deals | no national columns on `deals` on prod |
 | Host tab / host trust | no host-access columns on `users` on prod |

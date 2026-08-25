@@ -1,16 +1,22 @@
 # Events (lifecycle)
 
-Events are one-time happenings at your venue: concerts, DJ nights, watch parties,
-themed nights. You can sell paid tickets, or offer free tickets (price set to $0).
-Customers buy or reserve right from their phone in the Bizzy app, and you get a QR-code
-scanner to check people in at the door.
+Events are **named**, one-time happenings at your venue: concerts, DJ nights, watch
+parties, themed nights (`product_kind` event). You can sell paid tickets, or offer
+free tickets (price set to $0). Customers buy from the Bizzy app, and staff check
+people in with the **in-app scanner** or a **6-digit door code**.
 
-Running the **same event every week** (like Trivia Tuesdays)? Set up a recurring
-series instead of creating each night by hand, see the "Recurring events" article.
+A title that ends in Cover does **not** make it Weekly Cover. Weekly Cover is a
+different product (`product_kind` weekly_cover, pink). See "Weekly Cover".
+
+Running the **same named event every week** (like Trivia Tuesdays)? That is a
+**recurring named series**: each night is still a green Event. See "Recurring
+events". Do not set that up as Weekly Cover, and do not tell an owner that a
+Weekly Cover custom night has become Trivia Tuesdays.
 
 ## Creating an event
 
-1. Go to **Events** in the sidebar and click **"Create event"**.
+1. Go to **Events** (or Home) and click **Create**, then pick the **green Event**
+   tile (not Weekly Cover).
 2. Add a catchy name and a clear description.
 3. Set the date, time, and location (pre-filled from your venue).
 4. Upload an eye-catching flyer image.
