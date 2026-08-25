@@ -15,11 +15,12 @@
 import type { EventListItem, RecurringSeriesListItem } from "./types"
 import {
   isDoorAccessKind,
+  isWeeklyCoverProduct,
   programHref,
   programIdFromOwnedEvent,
   type DoorAccessProgramSummary,
 } from "./door-access.ts"
-import { looksLikeWeeklyCoverName, WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
+import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 
 /** The segment's three positions. `all` is the default — one combined list. */
 export const EVENT_TYPE_FILTERS = [
@@ -74,6 +75,8 @@ export type DoorAccessEventNight = {
   start_date_time?: string | null
   flyer_image_url?: string
   access_kind?: string | null
+  /** Services' explicit product stamp. Missing on older payloads. */
+  product_kind?: string | null
   recurring_series_id?: number | string | null
   event_id?: number
 }
@@ -217,11 +220,19 @@ export type WeeklyCoverSeriesRef = {
   name?: string
   program_kind?: string | null
   access_kind?: string | null
+  /** Services' explicit product stamp. Missing on older payloads. */
+  product_kind?: string | null
 }
 
+/**
+ * program_kind='door_access' is the series' own flag. product_kind is the
+ * stamp for a WC series that still says program_kind='event' (series 23);
+ * without it an old payload falls back to access_kind. The name-regex
+ * signal is gone — a series named "Weekly Cover" is whatever the wire says.
+ */
 export function isWeeklyCoverSeriesRef(series: WeeklyCoverSeriesRef): boolean {
-  if (isDoorAccessKind(series.program_kind) || isDoorAccessKind(series.access_kind)) return true
-  return looksLikeWeeklyCoverName(series.name)
+  if (isDoorAccessKind(series.program_kind)) return true
+  return isWeeklyCoverProduct(series)
 }
 
 /** Listed door-access ids plus recurring series that are Weekly Cover. */

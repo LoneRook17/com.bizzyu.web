@@ -1,7 +1,7 @@
 import {
-  isDoorAccessKind,
-  looksLikeWeeklyCoverName,
+  isWeeklyCoverProduct,
   readAccessKind,
+  readProductKind,
   resolveProgramImageUrl,
 } from "./business/door-access.ts"
 
@@ -37,6 +37,8 @@ export interface VenueEvent {
   flyer_image_url: string | null
   min_ticket_price: number | string | null
   access_kind?: "event" | "door_access" | null
+  /** Services' explicit product stamp. Missing on older payloads. */
+  product_kind?: "weekly_cover" | "event" | null
   status?: string | null
   venue_id?: number | null
   recurring_series_id?: number | null
@@ -100,8 +102,12 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
   const name = typeof row.name === "string" ? row.name : ""
   if (!eventId || !name) return null
 
+  // product_kind='weekly_cover' still reads as a door night when the row's
+  // access_kind lags behind as 'event'. The old name-regex rewrite is gone:
+  // the wire decides, never the row's name.
+  const productKind = readProductKind(row.product_kind)
   let accessKind = readAccessKind(row.access_kind)
-  if (accessKind !== "door_access" && looksLikeWeeklyCoverName(name)) {
+  if (accessKind !== "door_access" && productKind === "weekly_cover") {
     accessKind = "door_access"
   }
 
@@ -127,6 +133,7 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
     flyer_image_url: typeof row.flyer_image_url === "string" ? row.flyer_image_url : null,
     min_ticket_price: price,
     access_kind: accessKind,
+    product_kind: productKind,
     status: typeof row.status === "string" ? row.status : null,
     venue_id: row.venue_id == null ? null : Number(row.venue_id),
     recurring_series_id: seriesId != null && Number.isFinite(seriesId) ? seriesId : null,
@@ -139,14 +146,14 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
 
 /**
  * Public venue WC detection. Same signals as event checkout:
- * access_kind door_access / weekly_cover (via isDoorAccessKind), or a
- * Weekly Cover name leftover when the wire still says event.
+ * product_kind when services sends it, else access_kind door_access /
+ * weekly_cover (via isDoorAccessKind). Never the night's name.
  */
 export function isVenueWeeklyCoverNight(event: {
+  product_kind?: string | null
   access_kind?: string | null
-  name?: string | null
 }): boolean {
-  return isDoorAccessKind(event.access_kind) || looksLikeWeeklyCoverName(event.name)
+  return isWeeklyCoverProduct(event)
 }
 
 /** Door-access nights stay listable even when core stamped them draft. */
@@ -177,6 +184,7 @@ function pickRicherEvent(a: VenueEvent, b: VenueEvent): VenueEvent {
     flyer_image_url: b.flyer_image_url || a.flyer_image_url,
     min_ticket_price: b.min_ticket_price ?? a.min_ticket_price,
     access_kind: b.access_kind ?? a.access_kind,
+    product_kind: b.product_kind ?? a.product_kind,
     status: b.status ?? a.status,
     venue_id: b.venue_id ?? a.venue_id,
     recurring_series_id: b.recurring_series_id ?? a.recurring_series_id,

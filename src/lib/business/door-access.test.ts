@@ -83,7 +83,8 @@ import {
   programIdFromOwnedEvent,
   eventBelongsToSeries,
   doorAccessSeriesFromOwnedHydration,
-  looksLikeWeeklyCoverName,
+  isWeeklyCoverProduct,
+  readProductKind,
   PROGRAM_KIND_DOOR_ACCESS,
   withDoorAccessProgramKind,
   doorAccessProgramsQuery,
@@ -1311,11 +1312,43 @@ test("create writes stay program_kind=door_access and Save night PUTs publish/re
   assert.ok(nightPage.includes("loadDoorAccessNightForPath"))
 })
 
-test("looksLikeWeeklyCoverName is the leftover signal when access_kind is event", () => {
-  assert.equal(looksLikeWeeklyCoverName("The Dungeon Weekly Cover (Escrow Test)"), true)
-  assert.equal(looksLikeWeeklyCoverName("Weekly Cover"), true)
-  assert.equal(looksLikeWeeklyCoverName("Cover $5"), false)
-  assert.equal(looksLikeWeeklyCoverName("Trivia Tuesdays"), false)
+test("readProductKind accepts only services' two stamps", () => {
+  assert.equal(readProductKind("weekly_cover"), "weekly_cover")
+  assert.equal(readProductKind("event"), "event")
+  assert.equal(readProductKind("door_access"), null, "product_kind is not access_kind")
+  assert.equal(readProductKind(""), null)
+  assert.equal(readProductKind(null), null)
+  assert.equal(readProductKind(undefined), null)
+})
+
+test("product_kind decides; a payload without it falls back to access_kind ONLY", () => {
+  assert.equal(isWeeklyCoverProduct({ product_kind: "weekly_cover", access_kind: "event" }), true)
+  assert.equal(
+    isWeeklyCoverProduct({ product_kind: "event", access_kind: "door_access" }),
+    false,
+    "an explicit product_kind outranks a stale access_kind",
+  )
+  assert.equal(isWeeklyCoverProduct({ access_kind: "door_access" }), true)
+  assert.equal(isWeeklyCoverProduct({ access_kind: "weekly_cover" }), true)
+  assert.equal(isWeeklyCoverProduct({ access_kind: "event" }), false)
+  assert.equal(isWeeklyCoverProduct({}), false)
+})
+
+test("the Weekly Cover NAME is not a product signal anywhere", () => {
+  // The /weekly\s*cover/i regex is deleted. A show named "Weekly Cover
+  // Launch Party" with product_kind='event' is an event, full stop.
+  assert.equal(
+    isWeeklyCoverProduct({ product_kind: "event", access_kind: "event" }),
+    false,
+  )
+  const src = readFileSync(fileURLToPath(new URL("./door-access.ts", import.meta.url)), "utf8")
+  assert.ok(!src.includes("looksLikeWeeklyCoverName"), "name-regex signal stays deleted")
+  const label = readFileSync(
+    fileURLToPath(new URL("./weekly-cover-label.ts", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(!label.includes("weekly\\s*cover"), "the label module keeps display strings only")
+  assert.ok(!label.includes("looksLikeWeeklyCoverName"), "the predicate is gone at the source")
 })
 
 test("hydrate from owned recurring-series 23 does not require access_kind", () => {
@@ -1408,6 +1441,24 @@ test("programIdFromOwnedEvent uses recurring_series_id, never event_id", () => {
   assert.equal(
     programIdFromOwnedEvent({ access_kind: "door_access", recurring_series_id: null }),
     null,
+  )
+  assert.equal(
+    programIdFromOwnedEvent({
+      product_kind: "weekly_cover",
+      access_kind: "event",
+      recurring_series_id: 23,
+    }),
+    23,
+    "product_kind resolves the program when access_kind still says event",
+  )
+  assert.equal(
+    programIdFromOwnedEvent({
+      product_kind: "event",
+      access_kind: "door_access",
+      recurring_series_id: 9,
+    }),
+    null,
+    "an explicit product_kind=event outranks a stale access_kind",
   )
 })
 

@@ -11,10 +11,13 @@
 // is unchanged.
 //
 // Identification, in order:
-//   1. access_kind === 'door_access' on the overview row
+//   1. product_kind on the overview row ('weekly_cover' | 'event'), the
+//      explicit stamp; missing on an older payload falls back to
+//      access_kind (isDoorAccessKind) — both via isWeeklyCoverProduct
 //   2. event_id is a stamped night from GET /business/door-access/:id
-// A missing access_kind on an older payload falls through to (2).
+// A row that neither signal identifies falls through to (2).
 
+import { isWeeklyCoverProduct } from "./door-access.ts"
 import type { EventOverviewItem, EventsOverview } from "./types"
 
 export const EMPTY_EVENTS_OVERVIEW: EventsOverview = {
@@ -27,10 +30,10 @@ export const EMPTY_EVENTS_OVERVIEW: EventsOverview = {
 }
 
 export function isWeeklyAccessEvent(
-  event: { event_id: number; access_kind?: string | null },
+  event: { event_id: number; product_kind?: string | null; access_kind?: string | null },
   weeklyEventIds: Iterable<number> = [],
 ): boolean {
-  if (event.access_kind === "door_access") return true
+  if (isWeeklyCoverProduct(event)) return true
   const ids = weeklyEventIds instanceof Set ? weeklyEventIds : new Set(weeklyEventIds)
   return ids.has(event.event_id)
 }
@@ -45,7 +48,9 @@ export function weeklyEventIdsFromNights(
   return ids
 }
 
-export function splitOverviewEvents<T extends { event_id: number; access_kind?: string | null }>(
+export function splitOverviewEvents<
+  T extends { event_id: number; product_kind?: string | null; access_kind?: string | null },
+>(
   events: T[],
   weeklyEventIds: Iterable<number> = [],
 ): { oneOff: T[]; weekly: T[] } {

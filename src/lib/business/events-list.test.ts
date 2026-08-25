@@ -439,9 +439,32 @@ test("list hrefs door-access/23 when access_kind is still event", () => {
   })
   assert.equal(eventListHref(night, [], [23]), "/business/door-access/23")
   assert.equal(eventListHref(night, [], []), "/business/events/621")
-  assert.deepEqual(weeklyCoverSeriesIds([], [{ id: 23, name: "The Dungeon Weekly Cover (Escrow Test)" }]), [23])
+  // Series 23 says program_kind=event; product_kind is what marks it Weekly
+  // Cover now. A WC-sounding NAME alone is no longer a signal.
+  assert.deepEqual(
+    weeklyCoverSeriesIds([], [
+      { id: 23, name: "The Dungeon Weekly Cover (Escrow Test)", product_kind: "weekly_cover" },
+    ]),
+    [23],
+  )
+  assert.deepEqual(
+    weeklyCoverSeriesIds([], [{ id: 23, name: "The Dungeon Weekly Cover (Escrow Test)" }]),
+    [],
+    "a name-only ref does not mark a series Weekly Cover",
+  )
   assert.equal(isWeeklyCoverSeriesRef({ id: 7, name: "Trivia Tuesdays" }), false)
   assert.equal(isWeeklyCoverSeriesRef({ id: 9, program_kind: "door_access" }), true)
+  assert.equal(isWeeklyCoverSeriesRef({ id: 11, product_kind: "weekly_cover" }), true)
+  assert.equal(
+    isWeeklyCoverSeriesRef({ id: 12, product_kind: "event", access_kind: "door_access" }),
+    false,
+    "an explicit product_kind=event outranks a stale access_kind",
+  )
+  assert.equal(
+    isWeeklyCoverSeriesRef({ id: 13, product_kind: "event", program_kind: "door_access" }),
+    true,
+    "program_kind=door_access is the series' own flag and stays authoritative",
+  )
 
   const skipped = groupEventRows([night], [], [23])
   assert.equal(skipped.length, 0, "WC series 23 nights leave the green Events list")

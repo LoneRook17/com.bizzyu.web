@@ -54,6 +54,24 @@ test("door_access is weekly, event is one-off", () => {
   assert.equal(isWeeklyAccessEvent(rumble), false)
 })
 
+test("product_kind is the explicit stamp and outranks access_kind", () => {
+  assert.equal(
+    isWeeklyAccessEvent(row({ event_id: 24, name: "Weekly Cover", product_kind: "weekly_cover", access_kind: "event" })),
+    true,
+    "a WC night whose row still says access_kind=event buckets on product_kind",
+  )
+  assert.equal(
+    isWeeklyAccessEvent(row({ event_id: 1, name: "Launch Party", product_kind: "event", access_kind: "door_access" })),
+    false,
+    "an explicit product_kind=event outranks a stale access_kind",
+  )
+  assert.equal(
+    isWeeklyAccessEvent(row({ event_id: 5, name: "Weekly Cover Launch Party", product_kind: "event" })),
+    false,
+    "the name is never a signal",
+  )
+})
+
 test("a missing access_kind falls back to stamped night ids", () => {
   const unmarked = row({ event_id: 24, name: "Weekly Cover" })
   assert.equal(isWeeklyAccessEvent(unmarked), false)

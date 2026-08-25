@@ -27,13 +27,10 @@
 
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
-import { looksLikeWeeklyCoverName } from "./weekly-cover-label.ts"
-
 export {
   WEEKLY_ACCESS_CREATION_LABEL,
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
-  looksLikeWeeklyCoverName,
 } from "./weekly-cover-label.ts"
 
 /**
@@ -51,6 +48,34 @@ export function isDoorAccessKind(raw: unknown): boolean {
   return readAccessKind(raw) === "door_access"
 }
 
+/**
+ * Services' explicit product stamp on event/checkout payloads:
+ * `'weekly_cover' | 'event'`. Anything else — including the absent field on
+ * an older payload — is null, never a guess.
+ */
+export function readProductKind(raw: unknown): "weekly_cover" | "event" | null {
+  if (raw === "weekly_cover") return "weekly_cover"
+  if (raw === "event") return "event"
+  return null
+}
+
+/**
+ * Is this row the Weekly Cover product?
+ *
+ * `product_kind` is authoritative when services sends it. An old payload
+ * without it falls back to isDoorAccessKind(access_kind) ONLY — never the
+ * row's name. The /weekly\s*cover/i name signal is gone: a show named
+ * "Weekly Cover Launch Party" is an event if the wire says so.
+ */
+export function isWeeklyCoverProduct(row: {
+  product_kind?: string | null
+  access_kind?: string | null
+}): boolean {
+  const kind = readProductKind(row.product_kind)
+  if (kind != null) return kind === "weekly_cover"
+  return isDoorAccessKind(row.access_kind)
+}
+
 /** Wire program_kind for create/edit. Display copy stays Weekly Cover. */
 export const PROGRAM_KIND_DOOR_ACCESS = "door_access" as const
 
@@ -63,12 +88,16 @@ export function withDoorAccessProgramKind<T extends Record<string, unknown>>(pay
  * A stamped Weekly Cover night's program id is `recurring_series_id`, never
  * `event_id`. GET /business/door-access/:id only accepts a series id with
  * program_kind === 'door_access'. Returns null instead of inventing a program.
+ *
+ * product_kind='weekly_cover' resolves even when the row still says
+ * access_kind='event'; a payload without product_kind needs access_kind.
  */
 export function programIdFromOwnedEvent(event: {
+  product_kind?: string | null
   access_kind?: string | null
   recurring_series_id?: number | string | null
 }): number | null {
-  if (!isDoorAccessKind(event.access_kind)) return null
+  if (!isWeeklyCoverProduct(event)) return null
   if (event.recurring_series_id == null || event.recurring_series_id === "") return null
   const id = Number(event.recurring_series_id)
   if (!Number.isFinite(id) || id <= 0) return null
@@ -83,6 +112,7 @@ export async function resolveDoorAccessProgramIdFromEvent(
   try {
     const api = await client()
     const event = await api.get<{
+      product_kind?: string | null
       access_kind?: string | null
       recurring_series_id?: number | string | null
     }>(`/business/events/${eventId}`)
@@ -100,6 +130,7 @@ type RecoverEventRow = {
   end_date_time?: string
   status?: string | null
   flyer_image_url?: string
+  product_kind?: string | null
   access_kind?: string | null
   recurring_series_id?: number | string | null
   ticket_sales_count?: number
@@ -111,6 +142,7 @@ function recoverEventNight(event: RecoverEventRow) {
     name: String(event.name ?? ""),
     venue_name: event.venue_name,
     start_date_time: event.start_date_time,
+    product_kind: event.product_kind,
     access_kind: event.access_kind,
     recurring_series_id: event.recurring_series_id,
   }
@@ -290,11 +322,14 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
     eventRows = []
   }
 
-  const nameSeriesIds = eventRows
-    .filter((event) => looksLikeWeeklyCoverName(event.name))
+  // A series is Weekly Cover when ANY of its stamped nights says so, so a
+  // sibling night that arrived without product_kind or access_kind still
+  // groups under the same program. The signal is the wire's, never the name.
+  const wcSeriesIds = eventRows
+    .filter((event) => isWeeklyCoverProduct(event))
     .map((event) => Number(event.recurring_series_id))
     .filter((id) => Number.isFinite(id) && id > 0)
-  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight), nameSeriesIds)
+  const groups = doorAccessGroupsFromEvents(eventRows.map(recoverEventNight), wcSeriesIds)
   const eventGroup = groups.find((group) => group.programId === pathId) ?? null
 
   if (listed || eventGroup) {
@@ -334,18 +369,10 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
     const api = await client()
     const event = await api.get<RecoverEventRow>(`/business/events/${pathId}`)
     recoveredEvent = event ?? null
+    // programIdFromOwnedEvent already reads product_kind, falling back to
+    // access_kind. A WC-named night that the wire says is an event stays an
+    // event — the name is no longer a recovery signal.
     eventSeriesId = programIdFromOwnedEvent(event ?? {})
-    if (eventSeriesId == null && recoveredEvent?.recurring_series_id != null) {
-      const seriesId = Number(recoveredEvent.recurring_series_id)
-      if (
-        Number.isFinite(seriesId) &&
-        seriesId > 0 &&
-        (isDoorAccessKind(recoveredEvent.access_kind) ||
-          looksLikeWeeklyCoverName(recoveredEvent.name))
-      ) {
-        eventSeriesId = seriesId
-      }
-    }
   } catch {
     eventSeriesId = null
   }
