@@ -1788,6 +1788,9 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   assert.ok(editor.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "night editor toggles use the shared pink class")
   assert.ok(editor.includes('variant="access-secondary"'), "Add another Cover stays in the pink family")
   assert.ok(editor.includes("ACCESS_INK"), "ink on pink fill is #33052A")
+  assert.ok(editor.includes("applyIncludesCover"), "Cover included toggle rewrites the skip description")
+  assert.ok(editor.includes("syncSkipTierDescriptions"), "Save night re-derives skip blurbs from the toggle")
+  assert.ok(!editor.includes("patchTier(i, { includes_cover:"), "toggle must not flip the flag without the blurb")
 
   const night = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
@@ -1871,6 +1874,8 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(review.includes("ReviewFlyerPreview"), "Look it over shows the night flyer")
   assert.ok(review.includes("No flyer"), "a night without a flyer shows a placeholder")
   assert.ok(!review.includes("inheritedFlyerUrl"), "review must not treat the venue photo as a flyer")
+  assert.ok(review.includes("reviewSkipCoverSuffix"), "skip review suffix follows the Cover included toggle")
+  assert.ok(!/tier\.kind === "skip" && tier\.includes_cover \?/.test(review), "off toggle must still show Cover NOT Included")
 
   const nightTickets = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/NightTicketsEditor.tsx", import.meta.url)),

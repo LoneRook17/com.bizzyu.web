@@ -8,6 +8,7 @@ import {
   nightLabelFor,
   nightPriceSummary,
   reviewFlyerUrlForDay,
+  reviewSkipCoverSuffix,
   type NightDraft,
   type WcProducts,
 } from "@/lib/business/weekly-cover-nights"
@@ -111,7 +112,7 @@ export function WcReviewStep({
                     {tier.quantityInput === "" || tier.quantityInput === "0"
                       ? " · Unlimited"
                       : ` · ${tier.quantityInput}`}
-                    {tier.kind === "skip" && tier.includes_cover ? " · Cover included" : ""}
+                    {tier.kind === "skip" ? reviewSkipCoverSuffix(tier.includes_cover) : ""}
                   </p>
                 ))}
             </div>

@@ -5,12 +5,14 @@ import { Plus, Trash2, X } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ACCESS_ACCENT, ACCESS_INK } from "@/lib/business/door-access"
 import {
+  applyIncludesCover,
   cloneNightDraft,
   defaultTierDescription,
   defaultTierName,
   emptyTier,
   parsePrice,
   surgeStepsToWire,
+  syncSkipTierDescriptions,
   trimMoney,
   validateNightDraft,
   type NightDraft,
@@ -142,14 +144,22 @@ export function NightEditorDialog({
       return { ...d, tiers }
     })
 
+  const toggleIncludesCover = (index: number, on: boolean) =>
+    setDraft((d) => {
+      const tiers = [...d.tiers]
+      tiers[index] = applyIncludesCover(tiers[index], on, { venueName, dayName })
+      return { ...d, tiers }
+    })
+
   const commit = () => {
     const problems = validateNightDraft(draft, dayName ?? "This night")
     if (problems.length > 0) {
       setErrors(problems)
       return
     }
-    const is21 = draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus)
-    onSave({ ...cloneNightDraft(draft), is21Plus: is21 })
+    const synced = syncSkipTierDescriptions(draft, { venueName, dayName })
+    const is21 = synced.is21Plus || synced.tiers.some((t) => !t.is_disabled && t.is_21_plus)
+    onSave({ ...cloneNightDraft(synced), is21Plus: is21 })
     onOpenChange(false)
   }
 
@@ -267,7 +277,7 @@ export function NightEditorDialog({
                             <input
                               type="checkbox"
                               checked={tier.includes_cover}
-                              onChange={(e) => patchTier(i, { includes_cover: e.target.checked })}
+                              onChange={(e) => toggleIncludesCover(i, e.target.checked)}
                               className={WEEKLY_COVER_CHECKBOX_CLASS}
                             />
                             Cover included
