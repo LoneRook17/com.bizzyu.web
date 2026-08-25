@@ -465,7 +465,7 @@ function TemplateTiersCard({ program }: { program: DoorAccessProgram }) {
       <CardHeader>
         <CardTitle>Tiers</CardTitle>
         <span className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          Defaults for every night
+          Weekday defaults. Custom nights keep their own setup.
         </span>
       </CardHeader>
       <CardContent className="pt-0">
