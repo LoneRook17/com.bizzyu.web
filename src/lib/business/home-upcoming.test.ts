@@ -104,6 +104,16 @@ test("door_access nights are not green event rows on Home", () => {
   assert.ok(out.every((e) => e.kind !== "event" || e.event.event_id !== 24))
 })
 
+test("product_kind=weekly_cover nights are not green event rows even when access_kind is event", () => {
+  const cover = ev(621, "2026-08-28 21:00:00")
+  cover.access_kind = "event"
+  cover.product_kind = "weekly_cover"
+  cover.recurring_series_id = 23
+  const out = homeUpcoming([cover, ev(1, "2026-09-05 21:00:00")], [])
+  assert.deepEqual(out.map((e) => e.key), ["event-1"])
+  assert.ok(out.every((e) => e.kind !== "event" || e.event.event_id !== 621))
+})
+
 test("no programs at all ⇒ byte-identical to the events-only list it replaced", () => {
   const events = [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-02 21:00:00")]
   const out = homeUpcoming(events, [])

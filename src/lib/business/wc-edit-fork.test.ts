@@ -211,6 +211,8 @@ test("series-night banner does not tell hosts Custom nights pick up program edit
   const src = read(BANNER)
   assert.ok(src.includes("Changing the whole program will not"), "Custom nights stay as they are")
   assert.ok(!src.includes("program-wide edits still apply"), "old restamp copy is gone")
+  assert.ok(src.includes("GREEN_NIGHT_CUSTOM_COPY"), "green Custom nights use the freeze copy")
+  assert.ok(src.includes("A later series save will not change it"))
 })
 
 test("program create/edit sends the full weekday template and does not restamp Custom nights", () => {

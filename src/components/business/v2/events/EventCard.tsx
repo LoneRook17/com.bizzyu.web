@@ -4,7 +4,7 @@ import Link from "next/link"
 import { CalendarDays, ScanLine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
-import { eventListHref, eventRowStats, type ListedProgramRef } from "@/lib/business/events-list"
+import { eventListHref, eventManageHref, eventRowStats, type ListedProgramRef } from "@/lib/business/events-list"
 import { Button } from "@/components/business/v2/ui/button"
 import {
   HostCardThumbnail,
@@ -57,6 +57,8 @@ export function EventCard({
     .join(" · ")
 
   const href = eventListHref(event, programs, wcSeriesIds)
+  const manageHref = eventManageHref(event, programs, wcSeriesIds)
+  const isWeeklyCoverRow = href.startsWith("/business/door-access/")
 
   return (
     <HostListCard
@@ -86,9 +88,9 @@ export function EventCard({
             <Link href={href}>View</Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>
+            <Link href={manageHref}>Manage</Link>
           </Button>
-          {canScan && (
+          {canScan && !isWeeklyCoverRow && (
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/business/events/${event.event_id}/manage/scanner`}>
                 <ScanLine /> Scan

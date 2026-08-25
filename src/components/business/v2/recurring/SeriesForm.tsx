@@ -29,6 +29,8 @@ import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
 import { ISO_DAYS, upcomingScheduleDates, fmtDateOnlyLong } from "./schedule"
 import { RestampReport } from "./RestampReport"
 import { RecurringTierEditor, EMPTY_RECURRING_TIER, type RecurringTierRow, tierRowsToTemplate, templateToTierRows } from "./RecurringTierEditor"
+import { programEditHref } from "@/lib/business/door-access"
+import { isWeeklyCoverSeriesRef } from "@/lib/business/events-list"
 
 const NAME_MAX_LENGTH = 100
 
@@ -273,7 +275,17 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
     return map
   }, [occurrences])
 
+  useEffect(() => {
+    if (initialData && isWeeklyCoverSeriesRef(initialData)) {
+      router.replace(programEditHref(initialData.id))
+    }
+  }, [initialData, router])
+
   const errClass = "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/30"
+
+  if (initialData && isWeeklyCoverSeriesRef(initialData)) {
+    return null
+  }
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-3xl flex-col gap-5">
