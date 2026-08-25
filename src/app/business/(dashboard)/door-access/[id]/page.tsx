@@ -32,7 +32,7 @@ import {
   PROGRAM_LINK_LABEL,
   EDIT_PROGRAM_LABEL,
   redemptionModeLabel,
-  resolveProgramImageUrl,
+  resolveNightCardImageUrl,
   splitNights,
   usdPrice,
   visibleUpcomingNights,
@@ -41,6 +41,7 @@ import {
   type DoorAccessNight,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
+import { isoWeekdayOfDate, weekdayFlyerByDayFromNights } from "@/lib/business/weekly-cover-nights"
 import { venuePageUrl } from "@/lib/business/public-links"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -65,7 +66,9 @@ import {
  *
  * Nights render as a short strip of preview cards (next 4 upcoming). Far-future
  * ungenerated nights stay behind More nights. A card opens the existing
- * per-night page for price, capacity, or hours on that date only.
+ * per-night page for price, capacity, or hours on that date only. Each card
+ * shows that night's Custom flyer when GET sent one; other nights keep the
+ * weekday / program flyer.
  */
 export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -124,7 +127,10 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   )
   const hiddenCount = Math.max(0, upcoming.length - visibleNights.length)
   const showMoreControl = upcoming.length > DEFAULT_NIGHT_PREVIEW_COUNT || showMoreNights || program?.is_active
-  const flyerUrl = program ? resolveProgramImageUrl(program, venues) : null
+  const weekdayFlyerByDay = useMemo(
+    () => (program ? weekdayFlyerByDayFromNights({ program, nights, today }) : {}),
+    [program, nights, today]
+  )
 
   if (loading && !program) {
     return (
@@ -225,14 +231,22 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {visibleNights.map((night) => (
-              <NightPreviewCard
-                key={night.occurrence_date}
-                night={night}
-                programId={programId}
-                flyerUrl={flyerUrl}
-              />
-            ))}
+            {visibleNights.map((night) => {
+              const weekday = isoWeekdayOfDate(night.occurrence_date)
+              return (
+                <NightPreviewCard
+                  key={night.occurrence_date}
+                  night={night}
+                  programId={programId}
+                  flyerUrl={resolveNightCardImageUrl(
+                    night,
+                    program,
+                    venues,
+                    weekday != null ? weekdayFlyerByDay[weekday] : undefined,
+                  )}
+                />
+              )
+            })}
           </div>
         )}
 

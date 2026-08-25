@@ -1331,7 +1331,7 @@ export function parseIsoDate(iso: string): { y: number; m: number; d: number } |
 }
 
 /**
- * Image for a weekly-access row or night card.
+ * Image for a weekly-access list row (the program, not one night).
  *
  * flyer_image_url wins, including when services already coalesced an empty
  * flyer to the venue photo. If flyer is still empty, use photo_url on the
@@ -1353,6 +1353,41 @@ export function resolveProgramImageUrl(
   if (program.venue_id == null || !venues?.length) return null
   const venue = venues.find((v) => v.id === program.venue_id)
   return nonemptyUrl(venue?.photo_url)
+}
+
+/**
+ * Image on one Weekly Cover program night card.
+ *
+ * DISPLAY only — do not send this URL on a night write. A later edit of one
+ * date is Custom, and the flyer is part of Custom. That night's art wins:
+ * `flyer_image_url_override`, then a present `flyer_image_url`. A night
+ * without its own art keeps the weekday template flyer when one is passed,
+ * else the program flyer / venue photo.
+ *
+ * A present night flyer is never dropped, even when it matches the program
+ * URL. `nightOwnFlyer` is the write-path helper that treats that match as
+ * inherited; using it here would hide Custom art GET already returned.
+ */
+export function resolveNightCardImageUrl(
+  night: {
+    flyer_image_url?: string | null
+    flyer_image_url_override?: string | null
+  },
+  program: {
+    flyer_image_url?: string | null
+    photo_url?: string | null
+    venue_id?: number | null
+  },
+  venues?: Array<{ id: number; photo_url?: string | null }>,
+  weekdayFlyerUrl?: string | null,
+): string | null {
+  const override = nonemptyUrl(night.flyer_image_url_override)
+  if (override) return override
+  const nightFlyer = nonemptyUrl(night.flyer_image_url)
+  if (nightFlyer) return nightFlyer
+  const weekday = nonemptyUrl(weekdayFlyerUrl)
+  if (weekday) return weekday
+  return resolveProgramImageUrl(program, venues)
 }
 
 function nonemptyUrl(v: string | null | undefined): string | null {

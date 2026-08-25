@@ -93,6 +93,7 @@ import {
   readAccessKind,
   nightHref,
   resolveProgramImageUrl,
+  resolveNightCardImageUrl,
   toTimeInput,
   fromTimeInput,
   WEEKLY_ACCESS_TYPE_LABEL,
@@ -1138,6 +1139,103 @@ test("no image at all stays empty so the date-block / icon tile can stand in", (
   )
 })
 
+test("Custom flyer wins over the program flyer on a night card", () => {
+  const program = { flyer_image_url: "https://cdn.example/program.jpg", venue_id: 12 }
+  const venues = [{ id: 12, photo_url: "https://cdn.example/venue.jpg" }]
+  assert.equal(
+    resolveNightCardImageUrl(
+      { flyer_image_url: "https://cdn.example/custom.jpg", flyer_image_url_override: "https://cdn.example/custom.jpg" },
+      program,
+      venues,
+    ),
+    "https://cdn.example/custom.jpg",
+  )
+  assert.equal(
+    resolveNightCardImageUrl(
+      { flyer_image_url: "https://cdn.example/program.jpg", flyer_image_url_override: "https://cdn.example/custom.jpg" },
+      program,
+      venues,
+      "https://cdn.example/thursday.jpg",
+    ),
+    "https://cdn.example/custom.jpg",
+    "override is Custom even when the resolved flyer is still the program poster",
+  )
+  assert.equal(
+    resolveNightCardImageUrl(
+      { flyer_image_url: "https://cdn.example/custom.jpg" },
+      program,
+      venues,
+    ),
+    "https://cdn.example/custom.jpg",
+    "a present night flyer_image_url wins when GET omitted the override key",
+  )
+})
+
+test("a night without its own flyer keeps the weekday flyer, then the program flyer", () => {
+  const program = { flyer_image_url: "https://cdn.example/program.jpg", venue_id: 12 }
+  const venues = [{ id: 12, photo_url: "https://cdn.example/venue.jpg" }]
+  assert.equal(
+    resolveNightCardImageUrl({}, program, venues, "https://cdn.example/thursday.jpg"),
+    "https://cdn.example/thursday.jpg",
+  )
+  assert.equal(
+    resolveNightCardImageUrl({ flyer_image_url: null, flyer_image_url_override: null }, program, venues),
+    "https://cdn.example/program.jpg",
+  )
+  assert.equal(
+    resolveNightCardImageUrl({ flyer_image_url: "", flyer_image_url_override: "   " }, program, venues),
+    "https://cdn.example/program.jpg",
+    "blank strings are not Custom art",
+  )
+})
+
+test("a present night flyer is not dropped when it matches the program URL", () => {
+  const program = { flyer_image_url: "https://cdn.example/program.jpg" }
+  assert.equal(
+    resolveNightCardImageUrl(
+      { flyer_image_url: "https://cdn.example/program.jpg" },
+      program,
+      undefined,
+      "https://cdn.example/thursday.jpg",
+    ),
+    "https://cdn.example/program.jpg",
+    "GET already returned this night's flyer; do not replace it with the weekday template",
+  )
+})
+
+test("two nights on one program can resolve different flyers", () => {
+  const program = { flyer_image_url: "https://cdn.example/and-shorty.jpg" }
+  const tue = resolveNightCardImageUrl(
+    { flyer_image_url: "https://cdn.example/tue-custom.jpg", flyer_image_url_override: "https://cdn.example/tue-custom.jpg" },
+    program,
+  )
+  const thu = resolveNightCardImageUrl({ flyer_image_url: null }, program)
+  assert.equal(tue, "https://cdn.example/tue-custom.jpg")
+  assert.equal(thu, "https://cdn.example/and-shorty.jpg")
+  assert.notEqual(tue, thu)
+})
+
+test("a night with no flyer still falls back to the venue photo", () => {
+  const venues = [{ id: 12, photo_url: "https://cdn.example/venue.jpg" }]
+  assert.equal(
+    resolveNightCardImageUrl({}, { flyer_image_url: null, venue_id: 12 }, venues),
+    "https://cdn.example/venue.jpg",
+  )
+})
+
+test("normalizeNight keeps per-night flyer fields from GET", () => {
+  const n = normalizeNight({
+    occurrence_date: "2026-08-28",
+    flyer_image_url: "https://cdn.example/night.jpg",
+    flyer_image_url_override: "https://cdn.example/custom.jpg",
+  })
+  assert.equal(n.flyer_image_url, "https://cdn.example/night.jpg")
+  assert.equal(n.flyer_image_url_override, "https://cdn.example/custom.jpg")
+  const omitted = normalizeNight({ occurrence_date: "2026-08-25" })
+  assert.equal("flyer_image_url" in omitted, false)
+  assert.equal("flyer_image_url_override" in omitted, false)
+})
+
 test("create wizard posts a program flyer only from the first night, never a typed Details upload", () => {
   const wizardPath = fileURLToPath(
     new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url),
@@ -1166,9 +1264,12 @@ test("list and program page use the flyer/venue image helper", () => {
   const row = readFileSync(rowPath, "utf8")
   const page = readFileSync(pagePath, "utf8")
   assert.ok(row.includes("resolveProgramImageUrl"))
-  assert.ok(page.includes("resolveProgramImageUrl"))
+  assert.ok(page.includes("resolveNightCardImageUrl"), "night cards resolve per night, not one program flyer")
+  assert.ok(page.includes("resolveNightCardImageUrl("), "each card asks for that night's flyer")
+  assert.ok(!page.includes("resolveProgramImageUrl"), "program page must not paint one program flyer on every night")
   assert.ok(!row.includes("src={program.flyer_image_url}"), "list must not bind flyer only")
   assert.ok(!page.includes("flyerUrl={program.flyer_image_url}"), "night cards must not bind flyer only")
+  assert.ok(!page.includes("const flyerUrl = program"), "night cards must not share one program flyer")
 })
 
 test("program page host copy has no em dashes", () => {
@@ -1199,7 +1300,8 @@ test("the program page is look-and-open, with Edit program as a dedicated route"
   assert.ok(src.includes("nightHref("), "cards must keep the existing per-night href")
   assert.ok(src.includes("NightPreviewCard"), "nights render as preview cards")
   assert.ok(src.includes("More nights"), "far-future nights stay behind More nights")
-  assert.ok(src.includes("resolveProgramImageUrl"), "empty flyer still shows the venue photo")
+  assert.ok(src.includes("resolveNightCardImageUrl"), "each night card resolves its own flyer")
+  assert.ok(src.includes("weekdayFlyerByDayFromNights"), "nights without Custom art keep the weekday flyer")
 })
 
 test("Weekly Access has a dedicated program editor, same fields as create", () => {
