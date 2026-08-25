@@ -37,7 +37,12 @@ import {
   dateEditsToWire,
   daysQuestion,
   defaultTierDescription,
+  applyIncludesCover,
   derivedWeeklyCoverName,
+  reviewSkipCoverSuffix,
+  skipCoverIncludedClause,
+  syncSkipTierDescriptions,
+  withSkipCoverClause,
   weeklyCoverProgramDescription,
   weeklyCoverProgramName,
   flutterWizardStep,
@@ -456,14 +461,120 @@ test("the product is read back off a saved program's tiers", () => {
 })
 
 test("a skip tier's blurb says whether cover is included", () => {
-  assert.match(
+  assert.equal(
     defaultTierDescription({ kind: "skip", includesCover: true, venueName: "The Bar", dayName: "Friday" }),
-    /Cover included/
+    "Skip the line at The Bar on Fridays. Cover included."
   )
-  assert.match(
-    defaultTierDescription({ kind: "skip", includesCover: false, venueName: "The Bar" }),
-    /paid separately/
+  assert.equal(
+    defaultTierDescription({ kind: "skip", includesCover: false, venueName: "The Bar", dayName: "Friday" }),
+    "Skip the line at The Bar on Fridays. Cover NOT Included"
   )
+  assert.equal(
+    defaultTierDescription({ kind: "cover", includesCover: false, venueName: "The Bar", dayName: "Friday" }),
+    "Cover at The Bar on Fridays. Grants entry."
+  )
+  assert.equal(skipCoverIncludedClause(true), "Cover included.")
+  assert.equal(skipCoverIncludedClause(false), "Cover NOT Included")
+  assert.equal(reviewSkipCoverSuffix(true), " · Cover included")
+  assert.equal(reviewSkipCoverSuffix(false), " · Cover NOT Included")
+})
+
+test("toggling Cover included rewrites the skip ticket description", () => {
+  const seeded = seedNightDraft({
+    products: "skip",
+    startTime: "21:00",
+    endTime: "02:00",
+    venueName: "The Bar",
+    dayName: "Friday",
+  })
+  assert.equal(seeded.tiers[0].includes_cover, true)
+  assert.equal(seeded.tiers[0].description, "Skip the line at The Bar on Fridays. Cover included.")
+
+  const off = applyIncludesCover(seeded.tiers[0], false, { venueName: "The Bar", dayName: "Friday" })
+  assert.equal(off.includes_cover, false)
+  assert.equal(off.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+
+  const on = applyIncludesCover(off, true, { venueName: "The Bar", dayName: "Friday" })
+  assert.equal(on.includes_cover, true)
+  assert.equal(on.description, "Skip the line at The Bar on Fridays. Cover included.")
+
+  const cover = applyIncludesCover(tier({ kind: "cover", description: "Cover at The Bar on Fridays. Grants entry." }), true, {
+    venueName: "The Bar",
+    dayName: "Friday",
+  })
+  assert.equal(cover.includes_cover, false)
+  assert.equal(cover.description, "Cover at The Bar on Fridays. Grants entry.")
+})
+
+test("create payload skip description follows the Cover included toggle", () => {
+  const venue = { venueName: "The Bar", dayName: "Friday" }
+  const onNight = seedNightDraft({
+    products: "both",
+    startTime: "21:00",
+    endTime: "02:00",
+    ...venue,
+  })
+  const skipOn = onNight.tiers.find((t) => t.kind === "skip")
+  assert.ok(skipOn)
+  skipOn.priceInput = "25"
+  const onWire = weekdayTemplateToWire(onNight)
+  const onSkip = (onWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]).find(
+    (t) => t.kind === "skip"
+  )
+  assert.equal(onSkip?.includes_cover, true)
+  assert.equal(onSkip?.description, "Skip the line at The Bar on Fridays. Cover included.")
+
+  const offNight = syncSkipTierDescriptions(
+    {
+      ...onNight,
+      tiers: onNight.tiers.map((t) => (t.kind === "skip" ? { ...t, includes_cover: false } : t)),
+    },
+    venue
+  )
+  const offWire = weekdayTemplateToWire(offNight)
+  const offSkip = (offWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]).find(
+    (t) => t.kind === "skip"
+  )
+  assert.equal(offSkip?.includes_cover, false)
+  assert.equal(offSkip?.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+
+  const tickets = templateTicketsFromNights({
+    daysOfWeek: [5],
+    weekdayEdits: { 5: offNight },
+    fallbackTiers: seedTiersForProducts("both"),
+  })
+  const skipTicket = tickets.find((t) => t.tier_key === "skip")
+  assert.equal(skipTicket?.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+
+  const coverTicket = tickets.find((t) => t.tier_key === "cover")
+  assert.equal(coverTicket?.description, "Cover at The Bar on Fridays. Grants entry.")
+})
+
+test("tierToWire rewrites a stale Cover included clause when the toggle is off", () => {
+  const staleOff = tier({
+    kind: "skip",
+    includes_cover: false,
+    description: "Skip the line at The Bar on Fridays. Cover included.",
+  })
+  assert.equal(tierToWire(staleOff).description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+  assert.equal(tierToWire(staleOff).includes_cover, false)
+
+  const staleOn = tier({
+    kind: "skip",
+    includes_cover: true,
+    description: "Skip the line at The Bar on Fridays. Cover NOT Included",
+  })
+  assert.equal(tierToWire(staleOn).description, "Skip the line at The Bar on Fridays. Cover included.")
+
+  const oldOffCopy = tier({
+    kind: "skip",
+    includes_cover: false,
+    description: "Skip the line at The Bar on Fridays. Cover not included, paid separately.",
+  })
+  assert.equal(tierToWire(oldOffCopy).description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+
+  assert.equal(withSkipCoverClause("", false), "")
+  assert.equal(withSkipCoverClause("Front door, no wait", false), "Front door, no wait")
 })
 
 // ── 5. Dates never round-trip through a timezone ────────────────────────────

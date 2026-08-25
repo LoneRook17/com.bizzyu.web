@@ -213,6 +213,33 @@ export function defaultTierName(kind: NightTierKind): string {
   return kind === "skip" ? "Skip the Line" : "Cover"
 }
 
+/**
+ * Binding Cover-included clause on a Skip the Line ticket. Exact app copy:
+ * on → `Cover included.` / off → `Cover NOT Included` (no trailing period).
+ */
+export function skipCoverIncludedClause(includesCover: boolean): string {
+  return includesCover ? "Cover included." : "Cover NOT Included"
+}
+
+/** Look it over suffix — same meaning, compact next to price / qty. */
+export function reviewSkipCoverSuffix(includesCover: boolean): string {
+  return includesCover ? " · Cover included" : " · Cover NOT Included"
+}
+
+const SKIP_COVER_CLAUSE =
+  /(?:Cover included\.?|Cover NOT Included|Cover not included, paid separately\.?)\s*$/i
+
+/**
+ * Keep a skip blurb's cover clause aligned with the toggle. Empty and
+ * custom (non-clause) text are left alone so a blank seed still serializes
+ * as null and a host-written line is not overwritten at the wire.
+ */
+export function withSkipCoverClause(description: string, includesCover: boolean): string {
+  const trimmed = description.trim()
+  if (trimmed === "" || !SKIP_COVER_CLAUSE.test(trimmed)) return trimmed
+  return trimmed.replace(SKIP_COVER_CLAUSE, skipCoverIncludedClause(includesCover))
+}
+
 /** The default blurb for a Weekly Cover tier. Says what a guest is buying. */
 export function defaultTierDescription(opts: {
   kind: NightTierKind
@@ -224,9 +251,7 @@ export function defaultTierDescription(opts: {
   const at = venue === "" ? "" : ` at ${venue}`
   const on = opts.dayName ? ` on ${opts.dayName}s` : ""
   if (opts.kind !== "skip") return `Cover${at}${on}. Grants entry.`
-  return opts.includesCover
-    ? `Skip the line${at}${on}. Cover included.`
-    : `Skip the line${at}${on}. Cover not included, paid separately.`
+  return `Skip the line${at}${on}. ${skipCoverIncludedClause(opts.includesCover)}`
 }
 
 // ── Drafts ──────────────────────────────────────────────────────────────────
@@ -285,6 +310,41 @@ export interface NightDraft {
 }
 
 export const EMPTY_SURGE_STEP: SurgeStepDraft = { afterSoldInput: "10", priceInput: "" }
+
+/**
+ * Flip Cover included on a skip tier and re-derive the ticket description.
+ * Cover tiers ignore the toggle — they are the cover.
+ */
+export function applyIncludesCover(
+  tier: NightTierDraft,
+  includesCover: boolean,
+  opts?: { venueName?: string; dayName?: string }
+): NightTierDraft {
+  if (tier.kind !== "skip") return { ...tier, includes_cover: false }
+  return {
+    ...tier,
+    includes_cover: includesCover,
+    description: defaultTierDescription({
+      kind: "skip",
+      includesCover,
+      venueName: opts?.venueName,
+      dayName: opts?.dayName,
+    }),
+  }
+}
+
+/** Re-derive every skip blurb from the current toggle so a stale seed cannot persist. */
+export function syncSkipTierDescriptions(
+  draft: NightDraft,
+  opts?: { venueName?: string; dayName?: string }
+): NightDraft {
+  return {
+    ...draft,
+    tiers: draft.tiers.map((tier) =>
+      tier.kind === "skip" ? applyIncludesCover(tier, tier.includes_cover, opts) : tier
+    ),
+  }
+}
 
 export function emptyTier(kind: NightTierKind): NightTierDraft {
   return {
@@ -445,7 +505,10 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
   const price = parsePrice(tier.priceInput)
   const steps = surgeStepsToWire(tier)
   const hasWindow = tier.valid_from_time !== "" || tier.valid_until_time !== ""
-  const description = tier.description.trim()
+  const description =
+    tier.kind === "skip"
+      ? withSkipCoverClause(tier.description, tier.includes_cover)
+      : tier.description.trim()
   return {
     tier_key: resolveTierKey(tier.kind, tier.tier_key),
     name: tier.name.trim() || defaultTierName(tier.kind),
