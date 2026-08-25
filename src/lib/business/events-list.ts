@@ -301,7 +301,7 @@ export function isWeeklyCoverSeriesRef(series: WeeklyCoverSeriesRef): boolean {
 
 /** Listed door-access ids plus recurring series that are Weekly Cover. */
 export function weeklyCoverSeriesIds(
-  programs: readonly ListedProgramRef[],
+  programs: readonly { id: number }[],
   series: readonly WeeklyCoverSeriesRef[] = [],
 ): number[] {
   const ids = new Set<number>()
