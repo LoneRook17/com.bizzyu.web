@@ -5,12 +5,18 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Camera, ListChecks, Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
+  Camera, ListChecks, Pencil, QrCode, Repeat, ScanLine, Ticket, Users, Tag, ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-links"
-import { ACCESS_ACCENT, isWeeklyCoverProduct } from "@/lib/business/door-access"
+import {
+  ACCESS_ACCENT,
+  isWeeklyCoverProduct,
+  programEditHref,
+  programIdFromOwnedEvent,
+  weeklyCoverNightEditHref,
+} from "@/lib/business/door-access"
 import type { EventDetail } from "@/lib/business/types"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
@@ -154,14 +160,31 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     },
   ]
 
+  // WC FLAW 3 — the generic-edit fork. "Edit event" and "Manage Tickets" write
+  // through PUT /business/events/:id and the event ticket PUTs. WC night
+  // setup tiles stay on the WC path: the night-override editor (Custom for
+  // this date; series save leaves it alone) and the program editor for the
+  // weekday template. BINDING: that includes a night already stamped
+  // customized — never a green named-Event editor. Only a WC night with no
+  // resolvable program keeps the generic tiles (there is no series to protect).
+  const wcProgramId = programIdFromOwnedEvent(event)
+  const wcNightEdit = weeklyCoverNightEditHref(event)
+
   // Event Setup — the things you configure before the doors open. "Manage
   // Tickets" is the tickets page, which owns tiers, the group sellout toggle and
   // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
-  const setupTiles: Tile[] = [
-    { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
-    { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
-    { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
-  ]
+  const setupTiles: Tile[] =
+    wcNightEdit != null && wcProgramId != null
+      ? [
+          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Cover prices, door hours, or close this night only", show: canEdit },
+          { href: programEditHref(wcProgramId), icon: Repeat, title: "Edit program", subtitle: "Weekday setup for future nights. Custom nights stay as they are", show: canEdit },
+          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
+        ]
+      : [
+          { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
+          { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
+          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
+        ]
 
   const insightsTiles: Tile[] = [
     { href: `${base}/analytics`, icon: BarChart3, title: "Event analytics", subtitle: "Revenue and check-ins", show: true },

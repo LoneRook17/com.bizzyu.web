@@ -107,6 +107,8 @@ import {
   PROGRAM_LINK_DESCRIPTION,
   NIGHTS_HELPER_EDIT,
   NIGHTS_HELPER_VIEW,
+  NIGHT_CUSTOM_HELPER,
+  NIGHT_CUSTOMIZED_NOTICE,
   EDIT_PROGRAM_LABEL,
   DEFAULT_NIGHT_PREVIEW_COUNT,
   type DoorAccessNight,
@@ -408,7 +410,7 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   assert.ok(!src.includes("buildNightHoursPayload"), "do not drop ticket price from Save night")
   assert.ok(!src.includes("nightHasEventTickets"), "do not route stamped nights onto event ticket PUTs")
   assert.ok(!/href=\{?[`'"]\/business\/events/.test(src), "do not link off the night to event edit")
-  assert.ok(src.includes("nightIsEditable"), "customized nights stay read-only here")
+  assert.ok(src.includes("nightIsEditable"), "cancelled nights stay read-only here")
   assert.ok(!src.includes("function NightNumberField"), "price/capacity no longer use the simplified field")
   assert.ok(!src.includes("function TiersCard"), "replace Tiers this night with Manage Tickets cards")
 
@@ -551,11 +553,12 @@ test("validateNightDraft mirrors the server's rules", () => {
   )
 })
 
-test("nightIsEditable closes the surface where an override would be invisible", () => {
+test("nightIsEditable only closes cancelled nights", () => {
   assert.equal(nightIsEditable(night()), true)
   assert.equal(nightIsEditable(night({ status: "cancelled" })), false)
-  // Customized nights have left the program — edits belong on the event page.
-  assert.equal(nightIsEditable(night({ is_customized: true })), false)
+  // BINDING: Custom WC edits HERE — never a green Event. Freezing it here
+  // would orphan it. Series/program save leaves the Custom night alone.
+  assert.equal(nightIsEditable(night({ is_customized: true })), true)
   // Unstamped is EDITABLE: overrides key off the date, which is what lets a
   // host price a holiday weeks before the generator reaches it.
   assert.equal(nightIsEditable(night({ is_stamped: false, event_id: null, status: null })), true)
@@ -1169,10 +1172,13 @@ test("list and program page use the flyer/venue image helper", () => {
 })
 
 test("program page host copy has no em dashes", () => {
-  const copy = [PROGRAM_LINK_LABEL, PROGRAM_LINK_DESCRIPTION, NIGHTS_HELPER_EDIT, NIGHTS_HELPER_VIEW, EDIT_PROGRAM_LABEL, MISSING_PROGRAM_ID_TITLE, MISSING_PROGRAM_ID_DESCRIPTION]
+  const copy = [PROGRAM_LINK_LABEL, PROGRAM_LINK_DESCRIPTION, NIGHTS_HELPER_EDIT, NIGHTS_HELPER_VIEW, NIGHT_CUSTOM_HELPER, NIGHT_CUSTOMIZED_NOTICE, EDIT_PROGRAM_LABEL, MISSING_PROGRAM_ID_TITLE, MISSING_PROGRAM_ID_DESCRIPTION]
   assert.equal(PROGRAM_LINK_LABEL, "Program link")
   assert.equal(PROGRAM_LINK_DESCRIPTION, "Every upcoming night")
-  assert.equal(NIGHTS_HELPER_EDIT, "Tap a night to change price, capacity, or hours for that date only.")
+  assert.equal(
+    NIGHTS_HELPER_EDIT,
+    "Tap a night to change price, capacity, or hours for that date only. Those edits stay Custom; a later program save will not change them.",
+  )
   assert.equal(EDIT_PROGRAM_LABEL, "Edit program")
   for (const line of copy) {
     assert.ok(!line.includes("\u2014"), `"${line}" still has an em dash`)

@@ -43,9 +43,10 @@ export default function EditDoorAccessProgramPage({ params }: { params: Promise<
    * The weekday editors hydrate from THESE, not from the program row: services
    * takes a `weekday_edits` map on a write and never echoes it back on a GET, so
    * a weekday editor seeded from the program opens on template defaults and the
-   * host's saved Thursday price is invisible, and then the next save pushes the
-   * template back over it. The nights are the only durable record of "Thursdays
-   * are $15".
+   * host's saved Thursday setup is invisible, and then the next save pushes the
+   * template back over it. The nights are the only durable record of the
+   * Thursday template (tickets, prices, doors, capacity, flyer). Custom nights
+   * are excluded from that hydration so a program save cannot restamp them.
    */
   const [nights, setNights] = useState<DoorAccessNight[]>([])
   const [profile, setProfile] = useState<BusinessProfile | null>(null)

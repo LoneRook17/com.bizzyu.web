@@ -21,6 +21,7 @@ import {
 import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2/events/eventStatus"
 import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
+import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
 
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -125,6 +126,12 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
 
   const badge = eventStatusBadge(event.status)
   const editingTicket = event.tickets.find((t) => t.ticket_id === editingTicketId)
+
+  // WC FLAW 3 — a Weekly Cover night must not take price edits on the event
+  // surface (generic PUT). The pencil routes to the night editor for every WC
+  // night with a program, stamped customized or not — Custom WC, never a
+  // green Event. Null only for named events and rows with no resolvable program.
+  const wcNightEdit = weeklyCoverNightEditHref(event)
 
   return (
     <>
@@ -235,13 +242,23 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
                         <p className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">
                           <span>{ticket.ticket_type === "free" ? "Free" : usd(ticket.price_usd)}</span>
                           {ticket.ticket_type !== "free" && canEditPrice && (
-                            <button
-                              onClick={() => openPriceEdit(ticket)}
-                              className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
-                              title="Edit price"
-                            >
-                              <Pencil className="size-3" />
-                            </button>
+                            wcNightEdit != null ? (
+                              <Link
+                                href={wcNightEdit}
+                                className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
+                                title="Edit price on the night page"
+                              >
+                                <Pencil className="size-3" />
+                              </Link>
+                            ) : (
+                              <button
+                                onClick={() => openPriceEdit(ticket)}
+                                className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
+                                title="Edit price"
+                              >
+                                <Pencil className="size-3" />
+                              </button>
+                            )
                           )}
                           {ticket.max_per_person ? <span>· Max {ticket.max_per_person}/person</span> : null}
                         </p>

@@ -20,6 +20,8 @@ import {
   nightChips,
   nightIsEditable,
   nightSaveFeedback,
+  NIGHT_CUSTOM_HELPER,
+  NIGHT_CUSTOMIZED_NOTICE,
   NIGHT_UNSAVED_TITLE,
   nightHref,
   programHref,
@@ -48,17 +50,16 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The per-night override editor (D-F10.2).
  *
- * ONE night departs from the program template here: tickets, hours, or closed,
- * without restating the program and without evicting the night from series-wide
- * edits.
+ * ONE night becomes Custom here: tickets, hours, or closed, for this date
+ * only. Changing the whole series later does not alter that Custom night.
  *
  * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id and
- * PUT /business/events/:id/tickets stamp series_customized_at and detach the
- * night from the program. Save night writes door_access_tier_overrides
- * (hours, ticket price/qty, hide, sold_out, sort_order). Core restamp copies
- * those onto tickets.id. Ticket rows on this page draft only. Leaving without
- * Save night prompts (beforeunload + in-app confirm). A night that HAS been
- * customized elsewhere is read-only here (nightIsEditable).
+ * PUT /business/events/:id/tickets stamp series_customized_at. Save night
+ * writes door_access_tier_overrides (hours, ticket price/qty, hide, sold_out,
+ * sort_order). Ticket rows on this page draft only. Leaving without Save
+ * night prompts (beforeunload + in-app confirm). A night that is already
+ * Custom EDITS HERE TOO, never a green Event. Only a cancelled night is
+ * read-only (nightIsEditable).
  *
  * Hours are always visible. Matching the program window (or Reset to program
  * default) sends null so the night tracks the template. Closed this night is
@@ -250,10 +251,16 @@ export default function DoorAccessNightPage({
       {/* Why this night can't be edited here. Stated, never a dead form. */}
       {!nightIsEditable(night) && (
         <Notice tone="warning">
-          {night.status === "cancelled"
-            ? "This night is cancelled. Cancelled nights can't be re-priced."
-            : "This night was edited directly as an event, so it no longer follows the program. Change it on its event page. Edits made here wouldn't show up there."}
+          This night is cancelled. Cancelled nights can&apos;t be re-priced.
         </Notice>
+      )}
+
+      {editable && (
+        <Notice tone="info">{NIGHT_CUSTOM_HELPER}</Notice>
+      )}
+
+      {editable && night.is_customized && (
+        <Notice tone="warning">{NIGHT_CUSTOMIZED_NOTICE}</Notice>
       )}
 
       {/* Unstamped is not an error state. Overrides key off the DATE, which is

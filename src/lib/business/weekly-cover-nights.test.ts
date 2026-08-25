@@ -67,8 +67,12 @@ import {
   tierToWire,
   trimMoney,
   validateNightDraft,
+  weekdayDraftFromWire,
+  weekdayEditsFromNights,
   weekdayEditsToWire,
   weekdayHydrationNight,
+  weekdayTemplateFlyer,
+  weekdayTemplateToWire,
   type NightDraft,
   type NightTierDraft,
 } from "./weekly-cover-nights.ts"
@@ -336,6 +340,37 @@ test("the cheapest paid price spans template, weekdays and game days", () => {
 test("weekday_edits is keyed by ISO weekday as a string, in order", () => {
   const wire = weekdayEditsToWire({ 5: night(), 3: night() }, [3, 5])
   assert.deepEqual(Object.keys(wire), ["3", "5"])
+})
+
+test("the Thursday weekday slot is the FULL setup, not flyer-only", () => {
+  // Luke 2026-08-25: tickets, prices, doors, capacity, flyer. Flyer-only is a fail.
+  const thu = night({
+    startTime: "21:00",
+    endTime: "02:00",
+    flyerImageUrl: "https://cdn/thursday.jpg",
+    tiers: [tier({ priceInput: "15", quantityInput: "80" })],
+  })
+  const slot = weekdayTemplateToWire(thu)
+  assert.equal(slot.start_time, "21:00")
+  assert.equal(slot.end_time, "02:00")
+  assert.ok(Array.isArray(slot.tiers) && slot.tiers.length === 1)
+  assert.equal((slot.tiers as Array<{ price_usd: number; quantity: number }>)[0].price_usd, 15)
+  assert.equal((slot.tiers as Array<{ price_usd: number; quantity: number }>)[0].quantity, 80)
+  assert.equal(slot.flyer_image_url, "https://cdn/thursday.jpg")
+  assert.equal(slot.is_closed, false)
+
+  const wire = weekdayEditsToWire({ 4: thu }, [4])
+  const sent = wire["4"] as Record<string, unknown>
+  assert.equal(sent.start_time, "21:00")
+  assert.equal(sent.end_time, "02:00")
+  assert.ok(Array.isArray(sent.tiers))
+  assert.equal(sent.flyer_image_url, "https://cdn/thursday.jpg")
+  const keys = Object.keys(sent)
+  assert.ok(keys.includes("start_time") && keys.includes("end_time") && keys.includes("tiers"))
+  assert.ok(
+    keys.includes("flyer_image_url") && keys.length > 2,
+    "weekday slot must not be flyer-only",
+  )
 })
 
 test("a weekday no longer on the schedule is not sent", () => {
@@ -643,6 +678,122 @@ test("a weekday whose every night is cancelled still hydrates, so it opens as it
 
 test("a weekday with nothing left returns null, so the caller falls back", () => {
   assert.equal(weekdayHydrationNight({ isoWeekday: 2, nights: [], today: "2026-08-24" }), null)
+})
+
+test("weekday hydration never seeds from a Custom night", () => {
+  // Custom Friday at $30 must not become the Friday template when siblings are $10.
+  const nights = [
+    servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
+    servedNight("2026-09-11", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
+  ]
+  const hit = weekdayHydrationNight({ isoWeekday: 5, nights, today: "2026-08-24" })
+  assert.equal(hit?.occurrence_date, "2026-09-04")
+  assert.equal(hit?.tiers[0].price_usd, 10)
+})
+
+test("a weekday whose every remaining night is Custom has no template to read", () => {
+  const nights = [
+    servedNight("2026-08-28", 30, { is_customized: true }),
+    servedNight("2026-09-04", 25, { is_customized: true }),
+  ]
+  assert.equal(weekdayHydrationNight({ isoWeekday: 5, nights, today: "2026-08-24" }), null)
+})
+
+test("a flyer-only Custom Friday does not become the Friday template", () => {
+  const nights = [
+    servedNight("2026-08-28", 10, {
+      is_customized: true,
+      flyer_image_url: "https://cdn/one-off.jpg",
+    }),
+    servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
+    servedNight("2026-09-11", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
+  ]
+  const hit = weekdayHydrationNight({ isoWeekday: 5, nights, today: "2026-08-24" })
+  assert.equal(hit?.occurrence_date, "2026-09-04")
+  assert.equal((hit as { flyer_image_url?: string })?.flyer_image_url, "https://cdn/friday.jpg")
+})
+
+test("weekday template flyer stays on the Thursday slot even when it matches the program flyer", () => {
+  const program = {
+    flyer_image_url: "https://cdn/thursday.jpg",
+    photo_url: "https://cdn/venue.jpg",
+  }
+  assert.equal(
+    weekdayTemplateFlyer({ flyer_image_url: "https://cdn/thursday.jpg" }, program),
+    "https://cdn/thursday.jpg",
+    "matching the program flyer is still the Thursday poster",
+  )
+  assert.equal(weekdayTemplateFlyer({ flyer_image_url: "https://cdn/venue.jpg" }, program), "")
+  assert.equal(
+    nightOwnFlyer({ flyer_image_url: "https://cdn/thursday.jpg" }, program),
+    "",
+    "date-local Custom editor still treats the program flyer as inherited",
+  )
+})
+
+test("weekdayEditsFromNights hydrates the full Friday template and skips Custom nights", () => {
+  const program = {
+    days_of_week: [5],
+    start_time: "21:00",
+    end_time: "02:00",
+    is_21_plus: false,
+    flyer_image_url: "https://cdn/friday.jpg",
+    photo_url: "https://cdn/venue.jpg",
+    template_tickets: [],
+  } as never
+  const nights = [
+    servedNight("2026-08-28", 40, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-09-04", 12, {
+      flyer_image_url: "https://cdn/friday.jpg",
+      start_time: "22:00",
+      end_time: "03:00",
+      tiers: [
+        {
+          tier_key: "cover",
+          name: "Cover",
+          description: null,
+          price_usd: 12,
+          quantity: 60,
+          max_per_person: 0,
+          sort_order: 1,
+          is_disabled: false,
+          sold_out: false,
+          is_overridden: false,
+          template_price_usd: 12,
+          template_quantity: 60,
+        },
+      ],
+    }),
+  ]
+  const edits = weekdayEditsFromNights({ program, nights, today: "2026-08-24" })
+  const friday = edits[5]
+  assert.ok(friday, "Friday template comes from the non-Custom night")
+  assert.equal(friday.startTime, "22:00")
+  assert.equal(friday.endTime, "03:00")
+  assert.equal(friday.tiers[0].priceInput, "12")
+  assert.equal(friday.tiers[0].quantityInput, "60")
+  assert.equal(friday.flyerImageUrl, "https://cdn/friday.jpg")
+  const slot = weekdayTemplateToWire(friday)
+  assert.equal(slot.start_time, "22:00")
+  assert.equal(slot.flyer_image_url, "https://cdn/friday.jpg")
+  assert.equal((slot.tiers as Array<{ quantity: number }>)[0].quantity, 60)
+})
+
+test("weekdayDraftFromWire keeps the weekday poster when it matches the program flyer", () => {
+  const program = {
+    start_time: "21:00",
+    end_time: "02:00",
+    is_21_plus: false,
+    flyer_image_url: "https://cdn/thursday.jpg",
+    photo_url: "https://cdn/venue.jpg",
+    template_tickets: [],
+  } as never
+  const draft = weekdayDraftFromWire(
+    servedNight("2026-08-27", 10, { flyer_image_url: "https://cdn/thursday.jpg" }) as never,
+    program,
+  )
+  assert.equal(draft.flyerImageUrl, "https://cdn/thursday.jpg")
 })
 
 test("create derives {Venue} Cover and never asks for a typed name", () => {
