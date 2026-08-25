@@ -4,7 +4,13 @@ import Link from "next/link"
 import { CalendarDays, ScanLine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
-import { eventListHref, eventRowStats, type ListedProgramRef } from "@/lib/business/events-list"
+import {
+  eventListHref,
+  eventRowStats,
+  listedWeeklyCoverProgramId,
+  type ListedProgramRef,
+} from "@/lib/business/events-list"
+import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { Button } from "@/components/business/v2/ui/button"
 import {
   HostCardThumbnail,
@@ -30,17 +36,21 @@ export function EventCard({
   event,
   programs = [],
   wcSeriesIds = [],
+  inactiveWcSeriesIds = [],
 }: {
   event: EventListItem
   programs?: readonly ListedProgramRef[]
   wcSeriesIds?: readonly number[]
+  inactiveWcSeriesIds?: readonly number[]
 }) {
   const { user } = useAuth()
   const canScan = user?.business_role !== "promoter"
   const badge = eventStatusBadge(event.status)
+  const programId = listedWeeklyCoverProgramId(event, wcSeriesIds)
+  const seriesActive = programId == null || !inactiveWcSeriesIds.includes(programId)
 
   const chips: HostCardChip[] = [{ label: badge.label, variant: badge.variant }]
-  if (event.cancellation_status === "pending") {
+  if (weeklyCoverNightNeedsPendingCancel(event, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
   }
   if (event.cancellation_status === "denied") {
@@ -56,7 +66,7 @@ export function EventCard({
     .filter(Boolean)
     .join(" · ")
 
-  const href = eventListHref(event, programs, wcSeriesIds)
+  const href = eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
 
   return (
     <HostListCard

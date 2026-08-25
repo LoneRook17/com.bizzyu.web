@@ -204,7 +204,7 @@ test("the night editor edits a customized night instead of handing it back to th
   assert.ok(src.includes("NIGHT_CUSTOM_HELPER"), "copy says series/program save will not change this night")
   assert.ok(!src.includes("the rest keeps following the program"), "Custom nights do not pick up series changes")
   assert.ok(!src.includes("program-wide edits still apply"), "Custom nights do not pick up series changes")
-  assert.ok(src.includes("nightIsEditable"), "cancelled nights are the only read-only state")
+  assert.ok(src.includes("nightIsEditable"), "cancelled / host-deleted series nights are read-only")
 })
 
 test("series-night banner does not tell hosts Custom nights pick up program edits", () => {

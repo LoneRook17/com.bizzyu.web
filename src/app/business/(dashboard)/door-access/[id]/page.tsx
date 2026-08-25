@@ -21,6 +21,7 @@ import {
   NIGHTS_HELPER_VIEW,
   nightDateBlock,
   nightHref,
+  nightIsEditable,
   nightPreviewChip,
   nightPreviewPrice,
   programEditHref,
@@ -42,6 +43,7 @@ import {
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
 import { isoWeekdayOfDate, weekdayFlyerByDayFromNights } from "@/lib/business/weekly-cover-nights"
+import { isSeriesActive, weeklyCoverNightVisibleOnDash } from "@/lib/business/weekly-cover-visibility"
 import { venuePageUrl } from "@/lib/business/public-links"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -120,7 +122,12 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   }, [load])
 
   const today = useMemo(() => easternToday(), [])
-  const { upcoming } = useMemo(() => splitNights(nights, today), [nights, today])
+  const seriesActive = isSeriesActive(program?.is_active)
+  const dashNights = useMemo(
+    () => nights.filter((night) => weeklyCoverNightVisibleOnDash(night, seriesActive)),
+    [nights, seriesActive],
+  )
+  const { upcoming } = useMemo(() => splitNights(dashNights, today), [dashNights, today])
   const visibleNights = useMemo(
     () => visibleUpcomingNights(upcoming, showMoreNights),
     [upcoming, showMoreNights]
@@ -189,7 +196,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           .filter(Boolean)
           .join(" · ")}
         actions={
-          canEdit ? (
+          canEdit && program.is_active ? (
             <div className="flex flex-wrap items-center gap-2">
               <Button asChild variant="secondary">
                 <Link href={createFromTemplateHref({ program_id: programId })}>
@@ -202,11 +209,17 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                 </Link>
               </Button>
             </div>
+          ) : canEdit ? (
+            <Button asChild variant="secondary">
+              <Link href={createFromTemplateHref({ program_id: programId })}>
+                <Copy className="size-4" /> Use as template
+              </Link>
+            </Button>
           ) : undefined
         }
       />
 
-      {program.venue_id != null && (
+      {program.venue_id != null && program.is_active && (
         <ShareLinkRow
           url={venuePageUrl(program.venue_id)}
           title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
@@ -219,15 +232,19 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
         <div>
           <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Nights</h2>
           <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-            {canEdit ? NIGHTS_HELPER_EDIT : NIGHTS_HELPER_VIEW}
+            {canEdit && program.is_active ? NIGHTS_HELPER_EDIT : NIGHTS_HELPER_VIEW}
           </p>
         </div>
 
         {upcoming.length === 0 ? (
           <EmptyState
             icon={CalendarDays}
-            title="No upcoming nights"
-            description="Nights come from the program's active days and date range. Check both if you expected one here."
+            title={program.is_active ? "No upcoming nights" : "No nights on this program"}
+            description={
+              program.is_active
+                ? "Nights come from the program's active days and date range. Check both if you expected one here."
+                : "This program is no longer active. Unsold nights are gone. Nights with sales stay until admin refunds complete."
+            }
           />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -238,6 +255,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                   key={night.occurrence_date}
                   night={night}
                   programId={programId}
+                  seriesActive={seriesActive}
                   flyerUrl={resolveNightCardImageUrl(
                     night,
                     program,
@@ -284,7 +302,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
 
       <TemplateTiersCard program={program} />
 
-      <ProgramPromoCodes program={program} canManage={canEdit} />
+      <ProgramPromoCodes program={program} canManage={canEdit && program.is_active} />
     </>
   )
 }
@@ -359,14 +377,20 @@ function NightPreviewCard({
   night,
   programId,
   flyerUrl,
+  seriesActive = true,
 }: {
   night: DoorAccessNight
   programId: number
   flyerUrl: string | null
+  seriesActive?: boolean
 }) {
-  const chip = nightPreviewChip(night)
+  const chip = nightPreviewChip(night, seriesActive)
+  const href = seriesActive && nightIsEditable(night, { is_active: seriesActive })
+    ? nightHref(programId, night.occurrence_date)
+    : night.event_id != null
+      ? `/business/events/${night.event_id}`
+      : nightHref(programId, night.occurrence_date)
   const dateBlock = nightDateBlock(night.occurrence_date)
-  const href = nightHref(programId, night.occurrence_date)
   const soldLabel = night.passes_sold === 1 ? "1 sold" : `${night.passes_sold.toLocaleString("en-US")} sold`
 
   return (

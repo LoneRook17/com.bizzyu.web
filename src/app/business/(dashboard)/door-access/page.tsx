@@ -11,6 +11,7 @@ import {
   WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
+import { weeklyCoverProgramsForDash } from "@/lib/business/events-list"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
@@ -58,8 +59,7 @@ export default function DoorAccessProgramsPage() {
     load()
   }, [load])
 
-  const active = programs.filter((p) => p.is_active)
-  const ended = programs.filter((p) => !p.is_active)
+  const active = weeklyCoverProgramsForDash(programs)
 
   return (
     <>
@@ -89,7 +89,7 @@ export default function DoorAccessProgramsPage() {
           title="Couldn't load programs"
           description={error}
         />
-      ) : programs.length === 0 ? (
+      ) : active.length === 0 ? (
         <EmptyState
           icon={Sparkles}
           title={`No ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs yet`}
@@ -111,14 +111,6 @@ export default function DoorAccessProgramsPage() {
       ) : (
         <div className="flex flex-col gap-6">
           <ProgramSection programs={active} />
-          {ended.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <h2 className="text-[13px] font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                Ended
-              </h2>
-              <ProgramSection programs={ended} />
-            </div>
-          )}
         </div>
       )}
 

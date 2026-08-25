@@ -9,6 +9,10 @@ import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice
 
 import { isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { ACCESS, EVENT, EVENT_FILL } from "@/lib/checkout/surfaces"
+import {
+  loadVenuePublicEventIdSet,
+  weeklyCoverSaleOpenForPayloads,
+} from "@/lib/checkout/weekly-cover-sale"
 import { ticketIdFromSearch } from "@/lib/venuePublic"
 
 const API_URL = getApiBaseUrl()
@@ -51,6 +55,9 @@ interface EventInfo {
   access_kind?: string | null
   /** Services' explicit product stamp. Missing on older payloads. */
   product_kind?: "weekly_cover" | "event" | null
+  recurring_series_id?: number | string | null
+  venue_id?: number | string | null
+  series_is_active?: boolean | number | string | null
 }
 
 interface TicketTier {
@@ -94,6 +101,7 @@ interface FeePreview {
 interface PageData {
   event: EventInfo
   tickets: TicketTier[]
+  saleClosed?: boolean
 }
 
 type CheckoutStep = "idle" | "phone" | "name" | "verify" | "processing"
@@ -345,6 +353,7 @@ export default function EventCheckoutClient({
   // Venue payout account not ready (#9): sales at this venue are paused.
   // Rendered as a full pause notice in place of the purchase CTA.
   const [venueBlock, setVenueBlock] = useState<VenueStripeBlock | null>(null)
+  const [saleClosed, setSaleClosed] = useState(!!initialData?.saleClosed)
 
   // Promoter tracking code (PRD §7.4). On mount, hydrate from URL ?ref=
   // (writing the cookie) or from any prior bz_ref cookie. Survives page
@@ -389,6 +398,10 @@ export default function EventCheckoutClient({
         ...base,
         promotion_enabled: ui.promotion_enabled,
         access_kind: base.access_kind ?? ui.access_kind ?? null,
+        product_kind: base.product_kind ?? ui.product_kind ?? null,
+        recurring_series_id: base.recurring_series_id ?? ui.recurring_series_id,
+        venue_id: base.venue_id ?? ui.venue_id,
+        series_is_active: base.series_is_active ?? ui.series_is_active,
       }
     } catch {
       return base
@@ -400,8 +413,24 @@ export default function EventCheckoutClient({
       const res = await fetch(`${API_URL}/checkout/event/${eventId}`)
       if (!res.ok) throw new Error("Event not found")
       const data = await res.json()
+      const eventRow = await applyPromotionFlag(data.event)
       setTickets(data.tickets || [])
-      setEvent(await applyPromotionFlag(data.event))
+      setEvent(eventRow)
+      let ui: unknown = null
+      try {
+        const uiRes = await fetch(`${API_URL}/ui/events/${eventId}`)
+        if (uiRes.ok) ui = await uiRes.json()
+      } catch {
+        ui = null
+      }
+      const publicListIds = await loadVenuePublicEventIdSet(API_URL, eventRow.venue_id)
+      setSaleClosed(
+        !weeklyCoverSaleOpenForPayloads({
+          checkoutPayload: { ...data, event: eventRow },
+          uiPayload: ui,
+          publicListIds,
+        }),
+      )
     } catch {
       setError("Could not load event information")
     } finally {
@@ -414,10 +443,28 @@ export default function EventCheckoutClient({
       fetchData()
       return
     }
-    if (initialData.event.promotion_enabled === undefined) {
-      applyPromotionFlag(initialData.event).then(setEvent)
-    }
-  }, [initialData, fetchData, applyPromotionFlag])
+    // Re-check in the browser so a leftover published WC night cannot sell
+    // if SSR missed catalog membership or series_is_active.
+    void (async () => {
+      let ui: unknown = null
+      try {
+        const uiRes = await fetch(`${API_URL}/ui/events/${eventId}`)
+        if (uiRes.ok) ui = await uiRes.json()
+      } catch {
+        ui = null
+      }
+      const eventRow = await applyPromotionFlag(initialData.event)
+      setEvent(eventRow)
+      const publicListIds = await loadVenuePublicEventIdSet(API_URL, eventRow.venue_id)
+      setSaleClosed(
+        !weeklyCoverSaleOpenForPayloads({
+          checkoutPayload: { event: eventRow, tickets: initialData.tickets },
+          uiPayload: ui,
+          publicListIds,
+        }),
+      )
+    })()
+  }, [initialData, fetchData, applyPromotionFlag, eventId])
 
   // ─── Quantity helpers ───────────────────────────────────────────────────
 
@@ -435,6 +482,7 @@ export default function EventCheckoutClient({
   // ─── Fee Preview ────────────────────────────────────────────────────────
 
   const fetchFeePreview = useCallback(async () => {
+    if (saleClosed) return
     // Build ticket array from current quantities
     const selectedTickets = Object.entries(quantities)
       .filter(([, qty]) => qty > 0)
@@ -492,7 +540,7 @@ export default function EventCheckoutClient({
     } finally {
       setFeeLoading(false)
     }
-  }, [quantities, tickets, eventId])
+  }, [quantities, tickets, eventId, saleClosed])
 
   // Debounce fee preview calls
   useEffect(() => {
@@ -503,7 +551,7 @@ export default function EventCheckoutClient({
   // ─── Checkout Flow ──────────────────────────────────────────────────────
 
   const startCheckout = () => {
-    if (totalQty === 0) return
+    if (saleClosed || totalQty === 0) return
     setCheckoutStep("phone")
     setCheckoutError("")
     setPhone("")
@@ -519,6 +567,7 @@ export default function EventCheckoutClient({
   }
 
   const sendCode = async () => {
+    if (saleClosed) return
     if (!phone || phone.length < 10) {
       setCheckoutError("Please enter a valid phone number")
       return
@@ -561,6 +610,7 @@ export default function EventCheckoutClient({
   }
 
   const verifyAndPurchase = async () => {
+    if (saleClosed) return
     if (!otpCode || otpCode.length < 6) {
       setCheckoutError("Please enter the 6-digit code")
       return
@@ -599,6 +649,7 @@ export default function EventCheckoutClient({
   }
 
   const createStripeSession = async (authToken: string | null) => {
+    if (saleClosed) return
     // Build selected tickets
     const selectedTickets = Object.entries(quantities)
       .filter(([, qty]) => qty > 0)
@@ -696,6 +747,23 @@ export default function EventCheckoutClient({
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-6">
         <div className="w-full max-w-md text-center">
           <h2 className="mb-2 text-xl font-bold text-white">{error || "Event not found"}</h2>
+          <a
+            href="/"
+            className="mt-4 inline-block rounded-lg bg-white/10 px-6 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+          >
+            Go Home
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (saleClosed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-6">
+        <div className="w-full max-w-md text-center">
+          <h2 className="mb-2 text-xl font-bold text-white">This night is no longer on sale</h2>
+          <p className="text-sm text-white/60">Cover and Skip the Line are not available for this series.</p>
           <a
             href="/"
             className="mt-4 inline-block rounded-lg bg-white/10 px-6 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"

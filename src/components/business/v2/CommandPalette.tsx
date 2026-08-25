@@ -26,6 +26,7 @@ import {
   isCommandPaletteHotkey,
   type PaletteItem,
 } from "@/lib/business/command-palette"
+import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
 import type { DealListItem, EventListItem } from "@/lib/business/types"
@@ -130,30 +131,35 @@ function CommandPalette({
 
     const load = async () => {
       try {
-        const requests: Promise<PaletteItem[]>[] = []
-
+        const eventRequests: Promise<EventListItem[]>[] = []
         if (config.showEvents) {
           for (const tab of ["upcoming", "drafts", "past"] as const) {
-            requests.push(
+            eventRequests.push(
               apiClient
                 .get<{ events: EventListItem[] }>(`/business/events?tab=${tab}&page=1&limit=30${venueParam}`)
-                .then((data) => buildEventItems(data.events ?? []))
+                .then((data) => data.events ?? [])
                 .catch(() => []),
             )
           }
         }
-        if (config.showDeals) {
-          requests.push(
-            apiClient
+        const dealRequest = config.showDeals
+          ? apiClient
               .get<{ deals: DealListItem[] }>(`/business/deals?tab=live&page=1&limit=30${venueParam}`)
               .then((data) => buildDealItems(data.deals ?? []))
-              .catch(() => []),
-          )
-        }
+              .catch(() => [] as PaletteItem[])
+          : Promise.resolve([] as PaletteItem[])
 
-        const chunks = await Promise.all(requests)
+        const [eventChunks, dealItems] = await Promise.all([
+          Promise.all(eventRequests),
+          dealRequest,
+        ])
         if (cancelled) return
-        const all = dedupeItems(chunks.flat())
+        const events = eventChunks.flat()
+        const inactive = await probeInactiveSeriesIds(events, (id) =>
+          apiClient.get(`/business/recurring-series/${id}`),
+        )
+        if (cancelled) return
+        const all = dedupeItems([...buildEventItems(events, inactive), ...dealItems])
         setEventItems(all.filter((item) => item.kind === "event"))
         setDealItems(all.filter((item) => item.kind === "deal"))
       } finally {
