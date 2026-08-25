@@ -1,22 +1,31 @@
 # Scanning, door codes & door counters
 
-## Scanning tickets
+## Scanning tickets (named events)
 
 1. Go to **Scanner** in the dashboard sidebar (or use the Bizzy phone app).
 2. Point the camera at the customer's QR-code ticket.
 3. **Green = valid ticket**, let them in. **Red = already used or invalid**, don't let
    them in.
 
-- Assign team members the **Staff** role so they can scan tickets too (see the "Team"
-  article).
+- This is for **named events** (`product_kind` event). Weekly Cover passes
+  are **not** scanned here — the in-app scanner refuses them. See "Weekly Cover".
+- Assign team members the **Staff** role so they can scan named-event tickets too
+  (see the "Team" article).
 - A ticket's **scan window** (its "Valid from / Valid until" times, if set) controls
   when it can be scanned.
 
-## Door codes (get staff scanning fast, no account)
+## Weekly Cover (camera Check In)
 
-Every event has a **6-digit door code**. It's the fastest way to get a doorperson
-scanning: they never make an account or get invited. This is the answer to "how do
-I get someone scanning tickets tonight?" — share the code, not an email invite.
+Guests (or staff) open the Cover QR with **any phone camera** and tap **Check In**.
+No staff login. On the night, use the **redemption list** to check names off.
+Don't send Weekly Cover to Scanner or to a 6-digit door code.
+
+## Door codes (named events only)
+
+Every **named event** has a **6-digit door code**. It's the fastest way to get a
+doorperson scanning a green event: they never make an account or get invited.
+This is still the answer to "how do I get someone scanning **event tickets**
+tonight?" — share the code, not an email invite. Weekly Cover does not use it.
 
 How a staffer uses it:
 

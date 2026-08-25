@@ -5,7 +5,8 @@ line skip, Stripe collects payment and sends your share to your bank account.
 
 ## Connecting Stripe
 
-You must connect Stripe **before you can create any paid events or line skips**.
+You must connect Stripe **before you can create any paid events, Weekly Cover,
+or line skips**.
 
 1. Go to **Settings** in the sidebar.
 2. Find the **Stripe Connect** section and click **"Set up business Stripe"**.
@@ -83,7 +84,8 @@ support@bizzyu.com rather than answering from this pack.
 
 - **Customers can't self-serve refunds**, and businesses don't issue individual refunds
   from the dashboard. Exceptional cases go through support (support@bizzyu.com).
-- Refunds happen automatically only when **you cancel** an event or a line-skip night.
+- Refunds happen automatically only when **you cancel** an event, a Weekly Cover
+  night, or a line-skip night.
   Then every buyer is refunded in full (price + fees) automatically, and the money is
   **pulled back from your Stripe account** (Stripe may add processing fees for the
   reversal). See the "Events" article for the cancellation flow and the
