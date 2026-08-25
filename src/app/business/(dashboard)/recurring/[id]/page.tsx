@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState, use } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft, CalendarOff, CheckCircle2, ChevronRight, MapPin, PauseCircle, Pencil, Repeat, TriangleAlert,
@@ -21,6 +22,8 @@ import {
   fmtDateOnly, fmtDateOnlyLong, fmtTimeOfDay, scheduleSentence,
 } from "@/components/business/v2/recurring/schedule"
 import { SuspendSeriesDialog } from "@/components/business/v2/recurring/SuspendSeriesDialog"
+import { programHref } from "@/lib/business/door-access"
+import { GREEN_NIGHT_CUSTOM_COPY, isWeeklyCoverSeriesRef } from "@/lib/business/events-list"
 
 /** The create flow stashes its generation result here (see SeriesForm). */
 function readCreationReport(seriesId: string): { generation: RecurringGenerationSummary | null; error: string | null } | null {
@@ -37,11 +40,13 @@ function readCreationReport(seriesId: string): { generation: RecurringGeneration
 
 export default function RecurringSeriesDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const { user } = useAuth()
 
   const [series, setSeries] = useState<RecurringSeriesDetail | null>(null)
   const [occurrences, setOccurrences] = useState<RecurringOccurrence[]>([])
   const [loading, setLoading] = useState(true)
+  const [redirecting, setRedirecting] = useState(false)
   const [error, setError] = useState("")
   const [suspendOpen, setSuspendOpen] = useState(false)
   const [creationBanner, setCreationBanner] = useState<{ generation: RecurringGenerationSummary | null; error: string | null } | null>(null)
@@ -53,6 +58,11 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
       const data = await apiClient.get<{ series: RecurringSeriesDetail; occurrences: RecurringOccurrence[] }>(
         `/business/recurring-series/${id}`
       )
+      if (data.series && isWeeklyCoverSeriesRef(data.series)) {
+        setRedirecting(true)
+        router.replace(programHref(data.series.id))
+        return
+      }
       setSeries(data.series)
       setOccurrences(data.occurrences ?? [])
     } catch (err) {
@@ -60,7 +70,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, router])
 
   useEffect(() => { fetchSeries() }, [fetchSeries])
   useEffect(() => {
@@ -86,7 +96,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
     return map
   }, [occurrences])
 
-  if (loading) {
+  if (loading || redirecting) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-5 w-32" />
@@ -186,10 +196,9 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
       <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-700 dark:text-blue-400">
         <p className="font-semibold">Every night below is its own event.</p>
         <p className="mt-1">
-          <strong>Want to change one night?</strong> Open it. You&apos;ll edit it like any normal event, and your
-          changes never touch the series. <strong>Want to change every future night?</strong> Use{" "}
-          <em>Edit the series</em>. It updates future nights that haven&apos;t been customized, and nights
-          you&apos;ve edited individually keep their changes.
+          <strong>Want to change one night?</strong> Open it. That night becomes Custom for this date only.
+          A later series save will not change it. <strong>Want to change every future night?</strong> Use{" "}
+          <em>Edit the series</em>. It updates nights that are not Custom. {GREEN_NIGHT_CUSTOM_COPY}
         </p>
       </div>
 
@@ -253,7 +262,7 @@ function OccurrenceRow({ occurrence: o, past = false }: { occurrence: RecurringO
             <Badge
               variant="info"
               size="sm"
-              title="You edited this night directly. Series edits leave it alone"
+              title={GREEN_NIGHT_CUSTOM_COPY}
             >
               Customized
             </Badge>

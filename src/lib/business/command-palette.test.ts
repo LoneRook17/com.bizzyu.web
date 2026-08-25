@@ -90,6 +90,30 @@ test("empty query keeps every page but caps records; typed query returns all mat
   assert.deepEqual(typed.map((item) => item.label), ["Night 12"])
 })
 
+test("a Weekly Cover night in the palette opens the WC night editor", () => {
+  assert.deepEqual(
+    buildEventItems([
+      {
+        event_id: 621,
+        name: "The Dungeon Cover",
+        product_kind: "weekly_cover",
+        recurring_series_id: 23,
+        start_date_time: "2026-08-28 21:00:00",
+      },
+    ]),
+    [
+      {
+        id: "event:621",
+        kind: "event",
+        label: "The Dungeon Cover",
+        href: "/business/door-access/23/nights/2026-08-28",
+        hint: undefined,
+        keywords: "The Dungeon Cover",
+      },
+    ],
+  )
+})
+
 test("event and deal builders point at existing manage surfaces", () => {
   assert.deepEqual(buildEventItems([{ event_id: 9, name: "Escrow Test", venue_name: "The Dungeon", status: "draft" }]), [
     {

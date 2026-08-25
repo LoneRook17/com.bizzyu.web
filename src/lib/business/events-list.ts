@@ -16,8 +16,11 @@ import type { EventListItem, RecurringSeriesListItem } from "./types"
 import {
   isDoorAccessKind,
   isWeeklyCoverProduct,
+  isWeeklyCoverSeriesPayload,
+  nightHref,
   programHref,
   programIdFromOwnedEvent,
+  weeklyCoverNightEditHref,
   type DoorAccessProgramSummary,
 } from "./door-access.ts"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
@@ -167,6 +170,20 @@ export function seriesHref(seriesId: number): string {
   return `/business/recurring/${seriesId}`
 }
 
+/**
+ * Custom green night copy. Individual date edit is Custom; a later whole-series
+ * save must not change that night. WC nights use NIGHT_CUSTOM_* in door-access.
+ */
+export const GREEN_NIGHT_CUSTOM_COPY =
+  "This night is Custom for this date only. A later series save will not change it."
+
+/** Green Event series only. Weekly Cover stays off /business/recurring. */
+export function greenRecurringSeriesOnly<T extends WeeklyCoverSeriesRef>(
+  series: readonly T[],
+): T[] {
+  return series.filter((row) => !isWeeklyCoverSeriesRef(row))
+}
+
 /** Fields `workingProgramIdForEventGroup` reads from GET /business/door-access. */
 export type ListedProgramRef = Pick<
   DoorAccessProgramSummary,
@@ -189,6 +206,32 @@ export function eventListHref(
   // WC nights always open the series. Never /door-access/{event_id}.
   if (working == null) return programHref(programId)
   return programHref(working)
+}
+
+/**
+ * Manage must match View's product. Pink / Weekly Cover → WC night editor
+ * (or the program page when the date is unreadable). Green Event →
+ * /business/events/:id/manage. Never send a WC night to the generic hub.
+ */
+export function eventManageHref(
+  event: EventListItem,
+  programs: readonly ListedProgramRef[] = [],
+  wcSeriesIds: readonly number[] = [],
+): string {
+  const view = eventListHref(event, programs, wcSeriesIds)
+  if (!view.startsWith("/business/door-access/")) {
+    return `/business/events/${event.event_id}/manage`
+  }
+  const wcNight = weeklyCoverNightEditHref(event)
+  if (wcNight != null) return wcNight
+  const programId =
+    programIdFromWeeklyCoverSeries(event, wcSeriesIds) ??
+    Number(view.replace("/business/door-access/", "").split("/")[0])
+  const date = eventDateOnly(event.start_date_time)
+  if (Number.isFinite(programId) && programId > 0 && date) {
+    return nightHref(programId, date)
+  }
+  return view
 }
 
 /**
@@ -240,8 +283,7 @@ export type WeeklyCoverSeriesRef = {
  * signal is gone — a series named "Weekly Cover" is whatever the wire says.
  */
 export function isWeeklyCoverSeriesRef(series: WeeklyCoverSeriesRef): boolean {
-  if (isDoorAccessKind(series.program_kind)) return true
-  return isWeeklyCoverProduct(series)
+  return isWeeklyCoverSeriesPayload(series)
 }
 
 /** Listed door-access ids plus recurring series that are Weekly Cover. */

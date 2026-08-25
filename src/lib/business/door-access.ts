@@ -76,6 +76,44 @@ export function isWeeklyCoverProduct(row: {
   return isDoorAccessKind(row.access_kind)
 }
 
+/**
+ * A recurring-series payload is Weekly Cover when the series itself says so.
+ * program_kind=door_access wins; otherwise product_kind (with access_kind
+ * fallback). The name is never a signal.
+ */
+export function isWeeklyCoverSeriesPayload(series: {
+  program_kind?: string | null
+  product_kind?: string | null
+  access_kind?: string | null
+}): boolean {
+  if (isDoorAccessKind(series.program_kind)) return true
+  return isWeeklyCoverProduct(series)
+}
+
+/**
+ * May GET /business/door-access/:id recover/hydrate this owned series?
+ *
+ * Series 23 (program_kind=event, product_kind=weekly_cover) still recovers.
+ * Trivia Tuesdays (program_kind=event, no WC product, no WC nights) must not
+ * become a pink program. Never guess from the title.
+ */
+export function ownedSeriesRecoversAsDoorAccess(
+  series: {
+    program_kind?: string | null
+    product_kind?: string | null
+    access_kind?: string | null
+  } | null,
+  eventRows: Array<{
+    product_kind?: string | null
+    access_kind?: string | null
+    recurring_series_id?: number | string | null
+  }>,
+  seriesId: number,
+): boolean {
+  if (series != null && isWeeklyCoverSeriesPayload(series)) return true
+  return eventRows.some((event) => eventBelongsToSeries(event, seriesId) && isWeeklyCoverProduct(event))
+}
+
 /** Wire program_kind for create/edit. Display copy stays Weekly Cover. */
 export const PROGRAM_KIND_DOOR_ACCESS = "door_access" as const
 
@@ -174,9 +212,11 @@ export type OwnedSeriesOccurrence = {
 }
 
 /**
- * Build the host's program from an owned recurring series + its nights.
- * Used when GET /business/door-access/:id 404s (program_kind=event series 23).
- * Does not invent: no series payload and no nights for this id means null.
+ * Build the host's program from an owned Weekly Cover series + its nights.
+ * Used when GET /business/door-access/:id 404s (program_kind=event series 23
+ * that still carries product_kind=weekly_cover). A green Event series
+ * (Trivia Tuesdays) returns null — GET/PUT /business/door-access/:greenId
+ * must not convert it. Never guesses from the title.
  */
 export function doorAccessSeriesFromOwnedHydration(input: {
   seriesId: number
@@ -186,6 +226,15 @@ export function doorAccessSeriesFromOwnedHydration(input: {
 }): DoorAccessSeries | null {
   const { seriesId, series, eventRows, occurrences = [] } = input
   if (!Number.isFinite(seriesId) || seriesId <= 0) return null
+  if (
+    !ownedSeriesRecoversAsDoorAccess(
+      series != null && typeof series === "object" ? series : null,
+      eventRows,
+      seriesId,
+    )
+  ) {
+    return null
+  }
 
   const nightsFromEvents = eventRows.filter((event) => eventBelongsToSeries(event, seriesId))
   const hasSeries = series != null && typeof series === "object"
@@ -286,9 +335,11 @@ export function doorAccessSeriesFromOwnedHydration(input: {
  * events/23 logged Boom "Event not found". Prefer GET
  * /business/recurring-series/:id for the owning host.
  * A listed id, a WC series from recurring_series_id grouping, or an owned
- * series is surfaced so the page retries GET /business/door-access/:seriesId
- * and hydrates if that still 404s. A WC night redirects to its
- * recurring_series_id. Does not guess "the only program".
+ * Weekly Cover series is surfaced so the page retries GET
+ * /business/door-access/:seriesId and hydrates if that still 404s. An owned
+ * green Event series (program_kind=event, no WC product) is not recovered.
+ * A WC night redirects to its recurring_series_id. Does not guess "the only
+ * program" and never guesses from the title.
  */
 export async function recoverDoorAccessProgramId(pathId: number): Promise<number | null> {
   if (!Number.isFinite(pathId) || pathId <= 0) return null
@@ -344,10 +395,23 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
   let ownedSeriesId: number | null = null
   try {
     const api = await client()
-    const data = await api.get<{ series?: { id?: number } }>(`/business/recurring-series/${pathId}`)
+    const data = await api.get<{
+      series?: {
+        id?: number
+        program_kind?: string | null
+        product_kind?: string | null
+        access_kind?: string | null
+      }
+    }>(`/business/recurring-series/${pathId}`)
     if (data?.series) {
       const id = Number(data.series.id ?? pathId)
-      if (Number.isFinite(id) && id > 0) ownedSeriesId = id
+      if (
+        Number.isFinite(id) &&
+        id > 0 &&
+        ownedSeriesRecoversAsDoorAccess(data.series, eventRows, id)
+      ) {
+        ownedSeriesId = id
+      }
     }
   } catch {
     ownedSeriesId = null
@@ -402,10 +466,11 @@ export async function recoverDoorAccessProgramId(pathId: number): Promise<number
 }
 
 /**
- * When GET /business/door-access/:id 404s after recover confirmed the series,
- * assemble the host's program from owned recurring-series + nights. Nights
- * match recurring_series_id even when access_kind is still event. Does not
- * invent: no owned series and no nights for this id means null.
+ * When GET /business/door-access/:id 404s after recover confirmed a Weekly
+ * Cover series, assemble the host's program from owned recurring-series +
+ * nights. A green Event series is not hydrated. Nights match
+ * recurring_series_id even when access_kind is still event. Does not invent:
+ * no owned WC series and no WC nights for this id means null.
  */
 export async function hydrateDoorAccessSeriesFromOwned(
   seriesId: number,

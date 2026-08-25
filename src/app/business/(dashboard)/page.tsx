@@ -20,10 +20,11 @@ import {
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
   fetchDoorAccessProgramsSafe,
-  isDoorAccessKind,
+  isWeeklyCoverProduct,
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
+import { eventListHref, eventManageHref } from "@/lib/business/events-list"
 import { homeUpcoming, nextAccessNight } from "@/lib/business/home-upcoming"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -181,14 +182,14 @@ export default function V2HomePage() {
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
   const nextEvent = showEventsSection
-    ? events.find((event) => !isDoorAccessKind(event.access_kind))
+    ? events.find((event) => !isWeeklyCoverProduct(event))
     : undefined
   if (nextEvent) {
     attention.push({
       icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
       title: `${nextEvent.name} is coming up`,
       sub: `${fmtDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
-      href: `/business/events/${nextEvent.event_id}/manage`, cta: "Manage",
+      href: eventManageHref(nextEvent), cta: "Manage",
     })
   }
   if (soonestNight) {
@@ -400,7 +401,7 @@ export default function V2HomePage() {
                   const e = entry.event
                   const b = eventBadge(e.status)
                   return (
-                    <Link key={entry.key} href={`/business/events/${e.event_id}/manage`} className={rowClass}>
+                    <Link key={entry.key} href={eventListHref(e)} className={rowClass}>
                       {showAccessSection && <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full bg-[#05EB54]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>

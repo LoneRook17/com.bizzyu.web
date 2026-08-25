@@ -15,7 +15,7 @@
 // isDoorAccessKind is a pure helper in door-access.ts (api-client stays behind
 // a lazy import), so `node --test` can load this module without a browser.
 import type { EventListItem } from "./types"
-import { isDoorAccessKind, type DoorAccessProgramSummary } from "./door-access.ts"
+import { isWeeklyCoverProduct, type DoorAccessProgramSummary } from "./door-access.ts"
 
 export type UpcomingEntry =
   | { kind: "event"; key: string; sortKey: string; event: EventListItem }
@@ -47,7 +47,7 @@ export function homeUpcoming(
   limit = 4,
 ): UpcomingEntry[] {
   const entries: UpcomingEntry[] = events
-    .filter((event) => !isDoorAccessKind(event.access_kind))
+    .filter((event) => !isWeeklyCoverProduct(event))
     .map((event) => ({
       kind: "event",
       key: `event-${event.event_id}`,

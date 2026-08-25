@@ -132,6 +132,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   // night with a program, stamped customized or not — Custom WC, never a
   // green Event. Null only for named events and rows with no resolvable program.
   const wcNightEdit = weeklyCoverNightEditHref(event)
+  const manageHref = wcNightEdit ?? `/business/events/${event.event_id}/manage`
 
   return (
     <>
@@ -153,11 +154,13 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {canEdit && (
-            <Button asChild><Link href={`/business/events/${event.event_id}/manage`}><Settings2 /> Manage</Link></Button>
+            <Button asChild><Link href={manageHref}><Settings2 /> Manage</Link></Button>
           )}
-          <Button variant="secondary" asChild>
-            <Link href={`/business/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
-          </Button>
+          {wcNightEdit == null && (
+            <Button variant="secondary" asChild>
+              <Link href={`/business/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
+            </Button>
+          )}
           {canEdit && (
             <Button variant="secondary" onClick={handleDuplicate}>
               <Copy /> Use as template

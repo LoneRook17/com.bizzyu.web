@@ -6,6 +6,7 @@ import { CalendarClock, ChevronRight, Plus, Repeat } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { RecurringSeriesListItem } from "@/lib/business/types"
+import { greenRecurringSeriesOnly } from "@/lib/business/events-list"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
@@ -26,7 +27,7 @@ export default function RecurringSeriesListPage() {
   useEffect(() => {
     apiClient
       .get<{ series: RecurringSeriesListItem[] }>("/business/recurring-series")
-      .then((data) => setSeries(data.series ?? []))
+      .then((data) => setSeries(greenRecurringSeriesOnly(data.series ?? [])))
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load recurring series"))
       .finally(() => setLoading(false))
   }, [])
