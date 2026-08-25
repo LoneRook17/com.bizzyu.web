@@ -1217,6 +1217,52 @@ export function nightHref(programId: number, date: string): string {
   return `/business/door-access/${programId}/nights/${date}`
 }
 
+/** The night's date for nightHref: occurrence_date, else start_date_time's day. */
+function nightDateFromEvent(event: {
+  occurrence_date?: string | null
+  start_date_time?: string | null
+}): string | null {
+  for (const raw of [event.occurrence_date, event.start_date_time]) {
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(raw ?? "").trim())
+    if (match) return match[1]
+  }
+  return null
+}
+
+/**
+ * WC FLAW 3 — where the dashboard EDITS a Weekly Cover night: the
+ * night-override editor, never the named-event surfaces.
+ *
+ * PUT /business/events/:id and the event ticket writes stamp
+ * series_customized_at on a series night. That one stamp evicts the night
+ * from every program restamp: a weekday-global edit skips it forever, and a
+ * mis-stamped first night drops off the program's feed with no way back.
+ * The override editor writes date-local Custom (door_access_tier_overrides),
+ * so the night keeps following the program and restamp still sees it.
+ *
+ * Returns the night editor href (program page when the date is unreadable),
+ * or null when the generic event surface is the RIGHT place:
+ *   - not the Weekly Cover product — product_kind is authoritative, an old
+ *     payload falls back to access_kind, the name is never a signal;
+ *   - already customized (series_customized_at set) — the night is detached
+ *     and the event page is its only remaining editor (nightIsEditable);
+ *   - no resolvable program id — no series for the stamp to detach from.
+ */
+export function weeklyCoverNightEditHref(event: {
+  product_kind?: string | null
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+  series_customized_at?: string | null
+  occurrence_date?: string | null
+  start_date_time?: string | null
+}): string | null {
+  if (event.series_customized_at) return null
+  const programId = programIdFromOwnedEvent(event)
+  if (programId == null) return null
+  const date = nightDateFromEvent(event)
+  return date == null ? programHref(programId) : nightHref(programId, date)
+}
+
 /** "21:00:00" → "21:00" for `<input type="time">`. */
 export function toTimeInput(value: string | null | undefined): string {
   const match = /^(\d{1,2}):(\d{2})/.exec(str(value))
