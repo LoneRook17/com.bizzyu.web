@@ -532,8 +532,16 @@ export const PROGRAM_LINK_LABEL = "Program link"
 export const PROGRAM_LINK_DESCRIPTION = "Every upcoming night"
 
 export const NIGHTS_HELPER_EDIT =
-  "Tap a night to change price, capacity, or hours for that date only."
+  "Tap a night to change price, capacity, or hours for that date only. Those edits stay Custom; a later program save will not change them."
 export const NIGHTS_HELPER_VIEW = "Tap a night to see what it sells."
+
+/** Night-page helper: this date is Custom. Series/program save leaves it alone. */
+export const NIGHT_CUSTOM_HELPER =
+  "Changes here are Custom for this date only. Changing the whole program will not change this night."
+
+/** Night already stamped Custom (including a leftover generic-event edit). */
+export const NIGHT_CUSTOMIZED_NOTICE =
+  "This night is Custom for this date only. Edit it here. Changing the whole program will not change this night."
 
 /** Header control on the series page. Opens the dedicated template editor. */
 export const EDIT_PROGRAM_LABEL = "Edit program"
@@ -1234,18 +1242,15 @@ function nightDateFromEvent(event: {
  * night-override editor, never the named-event surfaces.
  *
  * PUT /business/events/:id and the event ticket writes stamp
- * series_customized_at on a series night. That one stamp evicts the night
- * from every program restamp: a weekday-global edit skips it forever, and a
- * mis-stamped first night drops off the program's feed with no way back.
- * The override editor writes date-local Custom (door_access_tier_overrides),
- * so the night keeps following the program and restamp still sees it.
+ * series_customized_at on a series night. That one stamp is what made a
+ * weekday-global restamp skip the night, and a mis-stamped first night drop
+ * off the program feed. Night edits stay off that generic PUT.
  *
- * BINDING (Luke, flaw 3): an individual WC night edit is Custom WC on the
- * WC/series path, and a WC night is NEVER treated as a green named Event.
- * That includes a night whose series_customized_at is already stamped — the
- * stamp is the flaw, not a fork the host chose, so it does not reroute the
- * night back onto the event surfaces. The field is accepted here only so
- * callers can pass a full event row; it does not change the answer.
+ * BINDING (Luke, 2026-08-25): an individual WC night edit is Custom WC on the
+ * WC/series path, never a green named Event — including a night already
+ * stamped customized. Custom is a later edit of one date. Changing the whole
+ * series does not alter that Custom night. series_customized_at is accepted
+ * so callers can pass a full event row; it does not change the answer.
  *
  * Returns the night editor href (program page when the date is unreadable),
  * or null when the generic event surface is the RIGHT place:
@@ -1515,11 +1520,9 @@ export function nightChips(night: DoorAccessNight): NightChip[] {
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
   if (night.has_override) chips.push({ label: "Overridden", variant: "info" })
-  // "Customized" means a past generic event edit stamped series_customized_at
-  // on this night — the flaw-3 stamp that made restamp skip it. It stays a
-  // warning chip so the state is visible, but it no longer moves the night's
-  // edits anywhere: the night editor keeps working (nightIsEditable), because
-  // Custom is not a forever fork.
+  // "Customized" means this date is Custom — a leftover generic-event stamp
+  // or a one-date edit. It stays a warning chip. The night editor still
+  // edits it (never a green Event). Series/program save leaves it alone.
   if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
   if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
   return chips
@@ -1969,11 +1972,10 @@ function clockMinutes(hhmm: string): number {
 /**
  * Can this night still be edited here?
  *
- * Only a cancelled night is done. A customized night (series_customized_at
- * stamped by a past generic event edit) EDITS HERE TOO — binding flaw-3
- * decision: Custom is not a forever fork, and a WC night is never handed
- * back to the event surfaces. Freezing it read-only here while the event
- * surfaces also refuse it would leave the night with no editor at all.
+ * Only a cancelled night is done. A Custom night EDITS HERE — individual
+ * night edit is Custom WC, never a green Event. Freezing it read-only here
+ * while the event surfaces also refuse it would leave the night with no
+ * editor at all. Series/program save does not alter this night.
  */
 export function nightIsEditable(night: DoorAccessNight): boolean {
   return night.status !== "cancelled"

@@ -15,12 +15,10 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
   const [ready, setReady] = useState(false)
 
   // WC FLAW 3 — ManageSalesTickets writes PUT /business/events/:id and the
-  // event ticket PUTs, which stamp series_customized_at on a Weekly Cover
-  // night: the program's weekday-global restamp then skips it forever. Every
-  // WC night with a resolvable program edits tiers on the night-override
-  // editor instead — including one already stamped customized (binding:
-  // Custom is not a forever fork). The writer only mounts for named events
-  // and for rows with no program to protect.
+  // event ticket PUTs. Every WC night with a resolvable program edits tiers
+  // on the night-override editor instead — including one already stamped
+  // customized (Custom WC, never a green Event). The writer only mounts for
+  // named events and for rows with no program to protect.
   useEffect(() => {
     let cancelled = false
     apiClient

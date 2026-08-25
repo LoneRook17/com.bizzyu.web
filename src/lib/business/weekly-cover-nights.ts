@@ -40,6 +40,14 @@
  *      program built on either client binds its overrides to the same rows.
  *      Per-day inventions (`cover-wed`) are what 400s a night write.
  *
+ *   5. WEEKDAY TEMPLATE vs CUSTOM (Luke, 2026-08-25). A Thursday slot set at
+ *      create/edit — tickets, prices, doors, capacity, AND flyer — is the
+ *      weekday template. Every future Thursday gets that full setup.
+ *      Flyer-only on the Thursday slot is a fail. Custom is a later edit of
+ *      one date. Series/program save must not send that night's local fields
+ *      as if they should be restamped onto it, and must not seed the Thursday
+ *      template from a Custom night.
+ *
  * Everything here is pure. No fetch, no React — the wizard and the tests both
  * drive it.
  */
@@ -462,8 +470,8 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
 }
 
 /**
- * One night write — the value of a `weekday_edits[day]` or `date_edits[date]`
- * entry, and the body of `PUT …/nights/:date`.
+ * One night write — the value of a `date_edits[date]` entry, and the body of
+ * `PUT …/nights/:date`. Weekday templates use `weekdayTemplateToWire` instead.
  *
  * Sparse on purpose: an omitted field is left alone. The one field that must
  * never be sent speculatively is `flyer_image_url` — see rule 1 at the top.
@@ -486,7 +494,26 @@ export function nightToWire(draft: NightDraft): Record<string, unknown> {
   return body
 }
 
-/** `weekday_edits` — ISO weekday (as a string key) → night write. */
+/**
+ * The Thursday (etc.) weekday template: tickets, prices, doors, capacity, and
+ * flyer. Every future Thursday gets this full setup. Sending only a flyer on
+ * the slot is a fail — doors and tiers always travel with it.
+ */
+export function weekdayTemplateToWire(draft: NightDraft): Record<string, unknown> {
+  const own = draft.flyerImageUrl.trim()
+  const body: Record<string, unknown> = {
+    is_closed: draft.isClosed,
+    is_21_plus: draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus),
+    start_time: draft.startTime,
+    end_time: draft.endTime,
+    tiers: draft.tiers.map(tierToWire),
+  }
+  if (own !== "") body.flyer_image_url = own
+  else if (draft.flyerRemoved) body.flyer_image_url = null
+  return body
+}
+
+/** `weekday_edits` — ISO weekday (as a string key) → full weekday template. */
 export function weekdayEditsToWire(
   edits: Record<number, NightDraft>,
   daysOfWeek: number[]
@@ -495,7 +522,7 @@ export function weekdayEditsToWire(
   for (const day of [...daysOfWeek].sort((a, b) => a - b)) {
     const draft = edits[day]
     if (!draft) continue
-    out[String(day)] = nightToWire(draft)
+    out[String(day)] = weekdayTemplateToWire(draft)
   }
   return out
 }
@@ -739,6 +766,10 @@ export function collapseTiers(tiers: NightTierDraft[]): NightTierDraft[] {
  * explicit `flyer_image_url_override` is the only unambiguous signal; failing
  * that, a resolved URL that differs from what the program and venue offer is
  * this night's own.
+ *
+ * Date-local Custom editors use this. Weekday templates use
+ * `weekdayTemplateFlyer` — a Thursday poster that matches the program flyer
+ * is still the Thursday slot's flyer and must be sent on that slot.
  */
 export function nightOwnFlyer(
   night: Record<string, unknown>,
@@ -751,6 +782,27 @@ export function nightOwnFlyer(
   const programFlyer = String(program?.flyer_image_url ?? "").trim()
   const venuePhoto = String(program?.photo_url ?? "").trim()
   if (resolved === programFlyer || resolved === venuePhoto) return ""
+  return resolved
+}
+
+/**
+ * The flyer that belongs on a WEEKDAY template slot.
+ *
+ * A Thursday poster set at create often equals the program flyer (the first
+ * night is Thursday). Treating that match as "inherited" would omit
+ * `flyer_image_url` on the Thursday slot on the next edit save, and future
+ * Thursdays would lose the poster. Venue photo is still display-only.
+ */
+export function weekdayTemplateFlyer(
+  night: Record<string, unknown>,
+  program?: { flyer_image_url?: string | null; photo_url?: string | null } | null
+): string {
+  const override = String(night.flyer_image_url_override ?? "").trim()
+  if (override !== "") return override
+  const resolved = String(night.flyer_image_url ?? "").trim()
+  if (resolved === "") return ""
+  const venuePhoto = String(program?.photo_url ?? "").trim()
+  if (resolved === venuePhoto) return ""
   return resolved
 }
 
@@ -779,6 +831,20 @@ export function nightDraftFromWire(
   }
 }
 
+/**
+ * Weekday-editor draft. Same as a night draft except the flyer is the weekday
+ * template poster — including when it matches the program flyer.
+ */
+export function weekdayDraftFromWire(
+  night: DoorAccessNight & Record<string, unknown>,
+  program: DoorAccessProgram
+): NightDraft {
+  return {
+    ...nightDraftFromWire(night, program),
+    flyerImageUrl: weekdayTemplateFlyer(night, program),
+  }
+}
+
 /** Program template rows as editor drafts — the fallback when a night has none. */
 export function templateTiersToDrafts(template: DoorAccessTemplateTier[]): NightTierDraft[] {
   return [...template]
@@ -802,6 +868,21 @@ function isTerminal(night: DoorAccessNight): boolean {
   return TERMINAL_STATUSES.has(String(night.status ?? "")) || night.is_closed
 }
 
+/**
+ * A date-local Custom night. `is_customized` is the wire flag (including a
+ * leftover `series_customized_at` stamp). Series/program save must not treat
+ * this night as the weekday template.
+ */
+export function isCustomWeeklyCoverNight(night: { is_customized?: unknown }): boolean {
+  return truthy(night.is_customized)
+}
+
+function nightFlyerKey(night: Record<string, unknown>): string {
+  const override = String(night.flyer_image_url_override ?? "").trim()
+  if (override !== "") return override
+  return String(night.flyer_image_url ?? "").trim()
+}
+
 /** A night's signature, for deciding what the weekday's consensus is. */
 function nightSignature(night: DoorAccessNight & Record<string, unknown>): string {
   const tiers = [...(night.tiers ?? [])]
@@ -811,12 +892,13 @@ function nightSignature(night: DoorAccessNight & Record<string, unknown>): strin
         .map((s) => `${s.afterSoldInput}:${s.priceInput}`)
         .sort()
         .join(",")
-      return `${t.tier_key}:${t.price_usd}:${t.is_disabled ? 1 : 0}:${surge}`
+      return `${t.tier_key}:${t.price_usd}:${t.quantity ?? ""}:${t.is_disabled ? 1 : 0}:${surge}`
     })
     .sort()
     .join("|")
   const plus = truthy((night as Record<string, unknown>).is_21_plus) ? 1 : 0
-  return `${toTimeValue(night.start_time)}|${toTimeValue(night.end_time)}|${night.is_closed ? 1 : 0}|${plus}|${tiers}`
+  const flyer = nightFlyerKey(night as Record<string, unknown>)
+  return `${toTimeValue(night.start_time)}|${toTimeValue(night.end_time)}|${night.is_closed ? 1 : 0}|${plus}|${flyer}|${tiers}`
 }
 
 /** The one signature a clear majority of siblings share, if there is one. */
@@ -841,11 +923,11 @@ function modeOf(signatures: string[]): string | null {
  * next save pushes the template back over it. The durable record of "Mondays are
  * $15" is the Mondays themselves.
  *
- * Which Monday matters, though. A date the host customised on its own is not the
- * weekday: seeding from it would show one game day's price as every Monday's. So
- * the answer is CONSENSUS — the signature a majority of that weekday's future
- * live nights share — falling back to the first live night, then the first future
- * night (so a weekday the host closed everywhere still opens closed), then null.
+ * Custom nights are never the weekday. Seeding from one would send that date's
+ * tickets/prices/doors/flyer as the Thursday template on the next program save
+ * and restamp them onto other Thursdays — and onto the Custom night itself.
+ * Consensus is among the remaining future nights of that weekday. If every
+ * remaining night is Custom, there is no template to read and this returns null.
  */
 export function weekdayHydrationNight(opts: {
   isoWeekday: number
@@ -854,7 +936,10 @@ export function weekdayHydrationNight(opts: {
 }): DoorAccessNight | null {
   const floor = opts.today ?? todayIso()
   const candidates = opts.nights.filter(
-    (n) => isoWeekdayOfDate(n.occurrence_date) === opts.isoWeekday && n.occurrence_date >= floor
+    (n) =>
+      isoWeekdayOfDate(n.occurrence_date) === opts.isoWeekday &&
+      n.occurrence_date >= floor &&
+      !isCustomWeeklyCoverNight(n)
   )
   if (candidates.length === 0) return null
 
@@ -884,7 +969,7 @@ export function weekdayEditsFromNights(opts: {
       today: opts.today,
     })
     if (!night) continue
-    out[day] = nightDraftFromWire(
+    out[day] = weekdayDraftFromWire(
       night as DoorAccessNight & Record<string, unknown>,
       opts.program
     )

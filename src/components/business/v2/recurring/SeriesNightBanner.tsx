@@ -24,14 +24,12 @@ export type SeriesNightBannerEvent = Pick<
  * Decision-2 explainer shown on a normal event page when the event is one
  * night of a recurring series: edits here are this-night-only, always.
  *
- * WC FLAW 3 — a Weekly Cover night gets its own branch. The named-series copy
- * ("edit this night only") is exactly the wrong coaching for a program night:
- * editing it as an event stamps series_customized_at and the program's
- * weekday-global restamp skips it forever. Binding decision: a WC night edit
- * is Custom WC on the WC/series path, never a green named-Event edit, and
- * Custom is not a forever fork — so the branch is the same for a night that
- * already carries the stamp. Links go to the night editor and the program
- * page (D-F11.1), never /business/recurring/:id.
+ * WC FLAW 3 — a Weekly Cover night gets its own branch. Editing it as an
+ * event stamps series_customized_at via PUT /events/:id. Binding: a WC night
+ * edit is Custom WC on the WC/series path, never a green named-Event edit,
+ * including a night that already carries the stamp. Changing the whole
+ * series does not alter that Custom night. Links go to the night editor and
+ * the program page (D-F11.1), never /business/recurring/:id.
  */
 export function SeriesNightBanner({ event }: { event: SeriesNightBannerEvent }) {
   if (!event.recurring_series_id) return null
@@ -48,8 +46,8 @@ export function SeriesNightBanner({ event }: { event: SeriesNightBannerEvent }) 
           <Link href={nightEditHref} className="font-semibold underline-offset-2 hover:underline">
             the night page
           </Link>
-          . Edits there are Custom for this date only, and program-wide edits still apply to
-          this night.{" "}
+          . Edits there are Custom for this date only. Changing the whole program will not
+          change a Custom night.{" "}
           <Link
             href={programHref(wcProgramId)}
             className="font-semibold underline-offset-2 hover:underline"

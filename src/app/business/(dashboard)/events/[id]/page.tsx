@@ -128,12 +128,9 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   const editingTicket = event.tickets.find((t) => t.ticket_id === editingTicketId)
 
   // WC FLAW 3 — a Weekly Cover night must not take price edits on the event
-  // surface. Either the write stamps series_customized_at (restamp then skips
-  // the night forever), or the next weekday-global restamp silently
-  // overwrites the new price. The night editor's override is correct in both
-  // directions, so the pencil routes there for every WC night with a program,
-  // stamped customized or not (binding: Custom is not a forever fork). Null
-  // only for named events and rows with no resolvable program.
+  // surface (generic PUT). The pencil routes to the night editor for every WC
+  // night with a program, stamped customized or not — Custom WC, never a
+  // green Event. Null only for named events and rows with no resolvable program.
   const wcNightEdit = weeklyCoverNightEditHref(event)
 
   return (

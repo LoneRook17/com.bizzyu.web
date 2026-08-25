@@ -255,6 +255,11 @@ export function DoorAccessWizard({
   }
 
   const salesPayload = (): Record<string, unknown> => {
+    // Weekday slots are the FULL weekday template (tickets, prices, doors,
+    // capacity, flyer). Every future Thursday gets Thursday's setup.
+    // date_edits are Custom one-offs from THIS session (create game days).
+    // Edit never hydrates Custom nights into dateEdits, so a program save
+    // cannot send night-local Custom fields to restamp onto those nights.
     const weekday = weekdayEditsToWire(weekdayEdits, daysOfWeek)
     const dates = dateEditsToWire(dateEdits, daysOfWeek)
     const flyer = (firstNight?.flyerImageUrl || "").trim()
@@ -267,6 +272,8 @@ export function DoorAccessWizard({
     }
 
     if (Object.keys(weekday).length > 0) payload.weekday_edits = weekday
+    // Create may send date_edits. Edit only sends them when the host set a
+    // game day in this session — never the already-Custom nights on the series.
     if (Object.keys(dates).length > 0) payload.date_edits = dates
 
     if (promotionEnabled && !promoToggleDisabled) {

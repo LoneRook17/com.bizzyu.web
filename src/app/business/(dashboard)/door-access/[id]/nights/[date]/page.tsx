@@ -20,6 +20,8 @@ import {
   nightChips,
   nightIsEditable,
   nightSaveFeedback,
+  NIGHT_CUSTOM_HELPER,
+  NIGHT_CUSTOMIZED_NOTICE,
   NIGHT_UNSAVED_TITLE,
   nightHref,
   programHref,
@@ -48,19 +50,16 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The per-night override editor (D-F10.2).
  *
- * ONE night departs from the program template here: tickets, hours, or closed,
- * without restating the program and without evicting the night from series-wide
- * edits.
+ * ONE night becomes Custom here: tickets, hours, or closed, for this date
+ * only. Changing the whole series later does not alter that Custom night.
  *
  * WHY THIS IS NOT THE EVENT EDIT PAGE. PUT /business/events/:id and
- * PUT /business/events/:id/tickets stamp series_customized_at and detach the
- * night from the program. Save night writes door_access_tier_overrides
- * (hours, ticket price/qty, hide, sold_out, sort_order). Core restamp copies
- * those onto tickets.id. Ticket rows on this page draft only. Leaving without
- * Save night prompts (beforeunload + in-app confirm). A night that was
- * customized by a past generic event edit EDITS HERE TOO (binding flaw-3
- * decision: Custom is not a forever fork, and a WC night never goes back to
- * the event surfaces). Only a cancelled night is read-only (nightIsEditable).
+ * PUT /business/events/:id/tickets stamp series_customized_at. Save night
+ * writes door_access_tier_overrides (hours, ticket price/qty, hide, sold_out,
+ * sort_order). Ticket rows on this page draft only. Leaving without Save
+ * night prompts (beforeunload + in-app confirm). A night that is already
+ * Custom EDITS HERE TOO, never a green Event. Only a cancelled night is
+ * read-only (nightIsEditable).
  *
  * Hours are always visible. Matching the program window (or Reset to program
  * default) sends null so the night tracks the template. Closed this night is
@@ -256,14 +255,12 @@ export default function DoorAccessNightPage({
         </Notice>
       )}
 
-      {/* The flaw-3 stamp, explained without handing the night back to the
-          event surfaces. Saving here is the way OUT of that state: overrides
-          are date-local Custom and the night stays on the program path. */}
+      {editable && (
+        <Notice tone="info">{NIGHT_CUSTOM_HELPER}</Notice>
+      )}
+
       {editable && night.is_customized && (
-        <Notice tone="warning">
-          This night was edited directly as an event at some point. Edit it here from now on:
-          changes save as Custom for this date only, and the rest keeps following the program.
-        </Notice>
+        <Notice tone="warning">{NIGHT_CUSTOMIZED_NOTICE}</Notice>
       )}
 
       {/* Unstamped is not an error state. Overrides key off the DATE, which is

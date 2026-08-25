@@ -10,10 +10,9 @@
 // The fix is a routing fork, pinned here, per Luke's BINDING product decision:
 //   - an individual WC night edit is Custom WC, on the WC/series path, and a
 //     WC night is never treated as a green named Event;
-//   - Custom is not a forever fork — series-wide edits still apply to the
-//     night, so nothing on the dashboard may freeze it out of restamp. That
-//     includes a night already stamped customized: it routes to the night
-//     editor too, and the night editor edits it (nightIsEditable).
+//   - Custom is a later edit of one date. Changing the whole series does not
+//     alter that Custom night. A night already stamped customized still
+//     routes to the night editor (nightIsEditable), never a green Event.
 //
 // Identification is product_kind with the access_kind fallback, exactly PR
 // #75's rule. The name is never a signal; looksLikeWeeklyCoverName stays dead.
@@ -36,6 +35,7 @@ const TICKETS_PAGE = "../../app/business/(dashboard)/events/[id]/manage/tickets/
 const DETAIL_PAGE = "../../app/business/(dashboard)/events/[id]/page.tsx"
 const BANNER = "../../components/business/v2/recurring/SeriesNightBanner.tsx"
 const NIGHT_PAGE = "../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx"
+const WIZARD = "../../components/business/v2/door-access/DoorAccessWizard.tsx"
 
 // ── the helper itself ────────────────────────────────────────────────────────
 
@@ -74,9 +74,9 @@ test("weeklyCoverNightEditHref sends an uncustomized WC night to the override ed
 })
 
 test("a night already stamped customized STILL routes to the night editor", () => {
-  // BINDING: Custom is not a forever fork. The series_customized_at stamp is
-  // the flaw being repaired, not a host choice, so it never reroutes the
-  // night back onto the green named-Event editors.
+  // BINDING: Custom WC, never a green Event. The series_customized_at stamp
+  // does not reroute the night back onto the named-Event editors. Series
+  // save leaves that Custom night alone.
   assert.equal(
     weeklyCoverNightEditHref({
       product_kind: "weekly_cover",
@@ -198,13 +198,34 @@ test("series-night banner sends WC nights to the program, never /business/recurr
 
 test("the night editor edits a customized night instead of handing it back to the event page", () => {
   const src = read(NIGHT_PAGE)
-  // The old freeze told hosts "Change it on its event page" — the exact
-  // forever fork the binding decision kills. The state stays explained, but
-  // as an editable warning, and the copy never routes to the event surfaces.
   assert.ok(!src.includes("Change it on its event page"), "no event-page handoff for customized nights")
   assert.ok(src.includes("night.is_customized"), "the stamp is still surfaced to the host")
-  assert.ok(src.includes("Edit it here from now on"), "the customized notice says where edits live")
+  assert.ok(src.includes("NIGHT_CUSTOMIZED_NOTICE"), "the customized notice says this date stays Custom")
+  assert.ok(src.includes("NIGHT_CUSTOM_HELPER"), "copy says series/program save will not change this night")
+  assert.ok(!src.includes("the rest keeps following the program"), "Custom nights do not pick up series changes")
+  assert.ok(!src.includes("program-wide edits still apply"), "Custom nights do not pick up series changes")
   assert.ok(src.includes("nightIsEditable"), "cancelled nights are the only read-only state")
+})
+
+test("series-night banner does not tell hosts Custom nights pick up program edits", () => {
+  const src = read(BANNER)
+  assert.ok(src.includes("Changing the whole program will not"), "Custom nights stay as they are")
+  assert.ok(!src.includes("program-wide edits still apply"), "old restamp copy is gone")
+})
+
+test("program create/edit sends the full weekday template and does not restamp Custom nights", () => {
+  const src = read(WIZARD)
+  assert.ok(src.includes("weekdayEditsToWire"), "weekday slots go out as weekday_edits")
+  assert.ok(src.includes("weekdayEditsFromNights"), "edit hydrates weekdays from served nights")
+  assert.ok(src.includes("dateEditsToWire"), "create can still send game-day Custom dates")
+  assert.ok(
+    src.includes('useState<Record<string, NightDraft>>({})'),
+    "edit does not hydrate Custom nights into date_edits",
+  )
+  assert.ok(
+    src.includes("cannot send night-local Custom fields"),
+    "program save must not restamp Custom nights from their own fields",
+  )
 })
 
 // ── never a green named Event row ────────────────────────────────────────────
@@ -252,7 +273,7 @@ test("a WC-stamped row with NO series id stays green — there is no program to 
 })
 
 test("no touched surface resurrects the Weekly Cover name regex", () => {
-  for (const rel of [HUB, EDIT_PAGE, TICKETS_PAGE, DETAIL_PAGE, BANNER, NIGHT_PAGE]) {
+  for (const rel of [HUB, EDIT_PAGE, TICKETS_PAGE, DETAIL_PAGE, BANNER, NIGHT_PAGE, WIZARD]) {
     const src = read(rel)
     assert.ok(!src.includes("looksLikeWeeklyCoverName"), `${rel} must not use the name signal`)
     assert.ok(!/weekly\\s\*cover/i.test(src), `${rel} must not inline a name regex`)

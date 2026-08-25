@@ -28,12 +28,10 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
       try {
         const event = await apiClient.get<EventDetail>(`/business/events/${id}`)
         // WC FLAW 3 — never mount EventForm for a Weekly Cover night.
-        // Saving here PUTs /business/events/:id, which stamps
-        // series_customized_at and evicts the night from every weekday-global
-        // restamp. The night-override editor is the edit surface (date-local
-        // Custom; restamp still sees the night). BINDING: a night already
-        // stamped customized redirects too — Custom is not a forever fork,
-        // and its editor is the night page, never this form.
+        // Saving here PUTs /business/events/:id. The night-override editor is
+        // the edit surface (Custom for this date). BINDING: a night already
+        // stamped customized redirects too — never a green Event. Series save
+        // leaves that Custom night alone.
         const wcNightEdit = weeklyCoverNightEditHref(event)
         if (wcNightEdit != null) {
           router.replace(wcNightEdit)

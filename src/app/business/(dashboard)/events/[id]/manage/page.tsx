@@ -161,16 +161,12 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   ]
 
   // WC FLAW 3 — the generic-edit fork. "Edit event" and "Manage Tickets" write
-  // through PUT /business/events/:id and the event ticket PUTs, which stamp
-  // series_customized_at on a series night. One stamp and the program's
-  // weekday-global restamp skips the night FOREVER — a mis-stamped first night
-  // drops off the program feed with no way back. So a Weekly Cover night's
-  // setup tiles stay on the WC path: the night-override editor (date-local
-  // Custom; restamp still sees the night) and the program editor for
-  // weekday-global changes. BINDING: that includes a night already stamped
-  // customized — Custom is not a forever fork, and a WC night is never handed
-  // to the green named-Event editors. Only a WC night with no resolvable
-  // program keeps the generic tiles (there is no series to protect).
+  // through PUT /business/events/:id and the event ticket PUTs. WC night
+  // setup tiles stay on the WC path: the night-override editor (Custom for
+  // this date; series save leaves it alone) and the program editor for the
+  // weekday template. BINDING: that includes a night already stamped
+  // customized — never a green named-Event editor. Only a WC night with no
+  // resolvable program keeps the generic tiles (there is no series to protect).
   const wcProgramId = programIdFromOwnedEvent(event)
   const wcNightEdit = weeklyCoverNightEditHref(event)
 
@@ -181,7 +177,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     wcNightEdit != null && wcProgramId != null
       ? [
           { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Cover prices, door hours, or close this night only", show: canEdit },
-          { href: programEditHref(wcProgramId), icon: Repeat, title: "Edit program", subtitle: "Schedule, pricing, and artwork for every night", show: canEdit },
+          { href: programEditHref(wcProgramId), icon: Repeat, title: "Edit program", subtitle: "Weekday setup for future nights. Custom nights stay as they are", show: canEdit },
           { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
         ]
       : [
