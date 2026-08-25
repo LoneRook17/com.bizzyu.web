@@ -76,26 +76,34 @@ test("toVenueEvent aliases weekly_cover to door_access like Flutter readAccessKi
   assert.equal(shouldListOnVenuePage(row), true)
 })
 
-test("isVenueWeeklyCoverNight is door_access, weekly_cover, or a Weekly Cover name", () => {
-  assert.equal(isVenueWeeklyCoverNight({ access_kind: "door_access", name: "Friday" }), true)
-  assert.equal(isVenueWeeklyCoverNight({ access_kind: "weekly_cover", name: "Friday" }), true)
+test("isVenueWeeklyCoverNight is product_kind, else the access_kind fallback", () => {
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: "door_access" }), true)
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: "weekly_cover" }), true)
   assert.equal(
-    isVenueWeeklyCoverNight({ access_kind: "event", name: "The Dungeon Weekly Cover" }),
+    isVenueWeeklyCoverNight({ product_kind: "weekly_cover", access_kind: "event" }),
     true,
+    "the explicit stamp wins over a stale access_kind",
   )
-  assert.equal(isVenueWeeklyCoverNight({ access_kind: "event", name: "Rumble" }), false)
-  assert.equal(isVenueWeeklyCoverNight({ access_kind: null, name: "Rumble" }), false)
+  assert.equal(
+    isVenueWeeklyCoverNight({ product_kind: "event", access_kind: "door_access" }),
+    false,
+    "an explicit product_kind=event outranks a stale access_kind",
+  )
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: "event" }), false)
+  assert.equal(isVenueWeeklyCoverNight({ access_kind: null }), false)
 })
 
-test("toVenueEvent treats a Weekly Cover name as pink door_access when access_kind is event", () => {
+test("toVenueEvent treats product_kind=weekly_cover as pink door_access when access_kind is event", () => {
   const row = toVenueEvent({
     event_id: 621,
     name: "The Dungeon Weekly Cover (Escrow Test)",
+    product_kind: "weekly_cover",
     access_kind: "event",
     status: "draft",
   })
   assert.ok(row)
   assert.equal(row.access_kind, "door_access")
+  assert.equal(row.product_kind, "weekly_cover")
   assert.equal(shouldListOnVenuePage(row), true)
   const namedEvent = toVenueEvent({
     event_id: 1,
@@ -104,6 +112,20 @@ test("toVenueEvent treats a Weekly Cover name as pink door_access when access_ki
     status: "draft",
   })
   assert.equal(namedEvent?.access_kind, "event")
+})
+
+test("a Weekly Cover NAME alone no longer rewrites access_kind", () => {
+  // The name-regex rewrite is deleted. Without product_kind the wire's
+  // access_kind is the only signal, so this row stays a draft event.
+  const row = toVenueEvent({
+    event_id: 621,
+    name: "The Dungeon Weekly Cover (Escrow Test)",
+    access_kind: "event",
+    status: "draft",
+  })
+  assert.ok(row)
+  assert.equal(row.access_kind, "event")
+  assert.equal(isVenueWeeklyCoverNight(row), false)
 })
 
 test("toVenueEvent maps /ui/events lowest_price onto min_ticket_price", () => {
@@ -825,8 +847,12 @@ test("event checkout paints Weekly Cover magenta", () => {
     join(process.cwd(), "src/app/checkout/[id]/EventCheckoutClient.tsx"),
     "utf8",
   )
-  assert.ok(src.includes("looksLikeWeeklyCoverName"), "name is the leftover Weekly Cover signal")
-  assert.ok(src.includes("isDoorAccessKind"), "access_kind door_access is magenta")
+  assert.ok(src.includes("isWeeklyCoverProduct"), "product_kind (access_kind fallback) is magenta")
+  assert.ok(src.includes("product_kind"), "checkout consumes services' product stamp")
+  assert.ok(
+    !src.includes("looksLikeWeeklyCoverName"),
+    "the event's name is not a product signal on checkout",
+  )
   assert.ok(src.includes("const fill = cover ? ACCESS : EVENT_FILL"), "Weekly Cover uses ACCESS, named events stay green")
   assert.ok(src.includes("ticketIdFromSearch"), "venue ?ticket_id= must auto-select that ticket")
 })

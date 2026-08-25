@@ -38,6 +38,8 @@ interface TicketInfo {
   is_refunded: boolean
   event_status: string
   access_kind?: string | null
+  /** Services' explicit product stamp. Missing on older payloads. */
+  product_kind?: string | null
   redemption_mode?: string | null
   /**
    * Event-level scan window. Optional: an older API omits all four and the

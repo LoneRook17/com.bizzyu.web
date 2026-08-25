@@ -21,12 +21,3 @@ export const WEEKLY_ACCESS_TYPE_LABEL = WEEKLY_ACCESS_SECTION_LABEL.toUpperCase(
  * Same words as the section label so create, lists, and the public page agree.
  */
 export const WEEKLY_ACCESS_CREATION_LABEL = WEEKLY_ACCESS_SECTION_LABEL
-
-/**
- * Series 23 and other Weekly Cover rows can still arrive as program_kind=event
- * with access_kind=event. The name is the remaining product signal. Do not
- * treat a generic "Cover" show as Weekly Cover.
- */
-export function looksLikeWeeklyCoverName(name: string | null | undefined): boolean {
-  return /weekly\s*cover/i.test(String(name ?? ""))
-}

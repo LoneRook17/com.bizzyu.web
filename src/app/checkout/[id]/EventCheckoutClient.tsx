@@ -7,8 +7,7 @@ import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
 import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
-import { isDoorAccessKind } from "@/lib/business/door-access"
-import { looksLikeWeeklyCoverName } from "@/lib/business/weekly-cover-label"
+import { isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { ACCESS, EVENT, EVENT_FILL } from "@/lib/checkout/surfaces"
 import { ticketIdFromSearch } from "@/lib/venuePublic"
 
@@ -50,6 +49,8 @@ interface EventInfo {
   flyer_image_url: string | null
   promotion_enabled?: boolean | number
   access_kind?: string | null
+  /** Services' explicit product stamp. Missing on older payloads. */
+  product_kind?: "weekly_cover" | "event" | null
 }
 
 interface TicketTier {
@@ -684,9 +685,9 @@ export default function EventCheckoutClient({
     )
   }
 
-  const cover = event
-    ? isDoorAccessKind(event.access_kind) || looksLikeWeeklyCoverName(event.name)
-    : false
+  // product_kind decides when services sends it; an older payload falls back
+  // to access_kind (isDoorAccessKind). The event's NAME says nothing here.
+  const cover = event ? isWeeklyCoverProduct(event) : false
   const fill = cover ? ACCESS : EVENT_FILL
   const accent = cover ? ACCESS : EVENT
 
