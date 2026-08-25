@@ -73,7 +73,7 @@ test("toVenueEvent aliases weekly_cover to door_access like Flutter readAccessKi
   })
   assert.ok(row)
   assert.equal(row.access_kind, "door_access")
-  assert.equal(shouldListOnVenuePage(row), true)
+  assert.equal(shouldListOnVenuePage(row), false, "draft WC nights stay off the guest list")
 })
 
 test("isVenueWeeklyCoverNight is product_kind, else the access_kind fallback", () => {
@@ -104,7 +104,7 @@ test("toVenueEvent treats product_kind=weekly_cover as pink door_access when acc
   assert.ok(row)
   assert.equal(row.access_kind, "door_access")
   assert.equal(row.product_kind, "weekly_cover")
-  assert.equal(shouldListOnVenuePage(row), true)
+  assert.equal(shouldListOnVenuePage(row), false, "unpublished WC nights stay off the guest list")
   const namedEvent = toVenueEvent({
     event_id: 1,
     name: "Rumble",
@@ -257,8 +257,20 @@ test("toVenueEvent drops a row with no id or name", () => {
   assert.equal(toVenueEvent({ event_id: 1 }), null)
 })
 
-test("shouldListOnVenuePage keeps published one-offs and draft door-access nights", () => {
+test("shouldListOnVenuePage keeps published one-offs and live WC nights only", () => {
   assert.equal(shouldListOnVenuePage(event()), true)
+  assert.equal(
+    shouldListOnVenuePage(
+      event({
+        event_id: 621,
+        name: "Weekly Cover",
+        access_kind: "door_access",
+        status: "published",
+        flyer_image_url: null,
+      }),
+    ),
+    true,
+  )
   assert.equal(
     shouldListOnVenuePage(
       event({
@@ -269,7 +281,19 @@ test("shouldListOnVenuePage keeps published one-offs and draft door-access night
         flyer_image_url: null,
       }),
     ),
-    true,
+    false,
+    "unpublished WC nights stay off the guest list",
+  )
+  assert.equal(
+    shouldListOnVenuePage(
+      event({
+        event_id: 775,
+        name: "The Devil Dungeon Cover",
+        access_kind: "door_access",
+        status: "cancelled",
+      }),
+    ),
+    false,
   )
   assert.equal(
     shouldListOnVenuePage(event({ event_id: 618, name: "Paid Event", status: "draft" })),
@@ -286,12 +310,19 @@ test("mergeVenueEvents dedupes by id, keeps door-access, sorts by start", () => 
     name: "Weekly Cover",
     start_date_time: "2026-08-24 21:00:00",
     access_kind: "door_access",
-    status: "draft",
+    status: "published",
     flyer_image_url: null,
     min_ticket_price: null,
   })
   const draftOneOff = event({ event_id: 618, name: "Paid Event", status: "draft" })
-  const merged = mergeVenueEvents([rumble], [cover, rumble, draftOneOff])
+  const cancelledCover = event({
+    event_id: 776,
+    name: "Weekly Cover",
+    start_date_time: "2026-08-25 21:00:00",
+    access_kind: "door_access",
+    status: "cancelled",
+  })
+  const merged = mergeVenueEvents([rumble], [cover, rumble, draftOneOff, cancelledCover])
   assert.deepEqual(
     merged.map((e) => e.event_id),
     [620, 621],
@@ -934,7 +965,7 @@ const DUNGEON_ONE_COVER_ROW = {
   flyer_image_url: null,
   min_ticket_price: "5.00",
   access_kind: "door_access",
-  status: "draft",
+  status: "published",
   venue_id: 990198,
   tickets: [{ name: "Cover", price_usd: 5 }],
 }

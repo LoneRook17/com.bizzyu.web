@@ -17,6 +17,10 @@ import {
   programIdFromOwnedEvent,
   weeklyCoverNightEditHref,
 } from "@/lib/business/door-access"
+import {
+  isSeriesActive,
+  weeklyCoverNightNeedsPendingCancel,
+} from "@/lib/business/weekly-cover-visibility"
 import type { EventDetail } from "@/lib/business/types"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
@@ -84,6 +88,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   const router = useRouter()
   const { user } = useAuth()
   const [event, setEvent] = useState<EventDetail | null>(null)
+  const [seriesActive, setSeriesActive] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [showCancel, setShowCancel] = useState(false)
@@ -93,7 +98,15 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     apiClient
       .get<EventDetail>(`/business/events/${id}`)
-      .then(setEvent)
+      .then((row) => {
+        setEvent(row)
+        const seriesId = programIdFromOwnedEvent(row)
+        if (seriesId == null) return
+        apiClient
+          .get<{ series?: { is_active?: unknown } }>(`/business/recurring-series/${seriesId}`)
+          .then((data) => setSeriesActive(isSeriesActive(data.series?.is_active)))
+          .catch(() => {})
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load event"))
       .finally(() => setLoading(false))
   }, [id])
@@ -127,7 +140,8 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // Only hand out the public link once the event is live — a draft/pending
   // event's checkout page dead-ends (same rule as venue page links). DASH2-D
   // moved this predicate into public-links so Door Access nights apply it too.
-  const isLive = isPubliclyLinkable(event.status)
+  const pendingCancel = weeklyCoverNightNeedsPendingCancel(event, seriesActive)
+  const isLive = isPubliclyLinkable(event.status) && seriesActive && !pendingCancel
 
   // V5 REDEMPTION §5 — the door surface follows the event's KIND, not a stored
   // preference. A door-access night sells a pass redeemed by camera + tap, so
@@ -176,8 +190,8 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   const setupTiles: Tile[] =
     wcNightEdit != null && wcProgramId != null
       ? [
-          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Cover prices, door hours, or close this night only", show: canEdit },
-          { href: programEditHref(wcProgramId), icon: Repeat, title: "Edit program", subtitle: "Weekday setup for future nights. Custom nights stay as they are", show: canEdit },
+          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Cover prices, door hours, or close this night only", show: canEdit && seriesActive },
+          { href: programEditHref(wcProgramId), icon: Repeat, title: "Edit program", subtitle: "Weekday setup for future nights. Custom nights stay as they are", show: canEdit && seriesActive },
           { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
         ]
       : [
@@ -195,7 +209,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // (The app had it buried inside Manage sales until 2026-08-23; the web never
   // did, so only the ordering needed to change here.)
   const promoteTiles: Tile[] = [
-    { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit },
+    { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit && seriesActive },
     { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Referral links and what they earn", show: true },
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
   ]
@@ -308,11 +322,15 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       />
 
       {/* cancellation banners */}
-      {cancellationStatus === "pending" && (
+      {(cancellationStatus === "pending" || pendingCancel) && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
           <div className="flex items-center gap-2">
             <Badge variant="warning">Cancellation pending</Badge>
-            <span className="text-sm text-amber-700 dark:text-amber-400">Awaiting admin review</span>
+            <span className="text-sm text-amber-700 dark:text-amber-400">
+              {cancellationStatus === "pending"
+                ? "Awaiting admin review"
+                : "This series was cancelled. This night stays until admin refunds complete."}
+            </span>
           </div>
           {event.cancellation_reason && <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Reason: {event.cancellation_reason}</p>}
         </div>
@@ -330,7 +348,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           <div className="p-5">
             <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
             <div className="mt-3">
-              {event.status !== "cancelled" && cancellationStatus === "none" && !isPastEvent && (
+              {event.status !== "cancelled" && cancellationStatus === "none" && !pendingCancel && !isPastEvent && (
                 <Button variant="secondary" className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => setShowCancel(true)}>
                   Cancel event
                 </Button>

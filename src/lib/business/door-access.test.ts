@@ -554,7 +554,7 @@ test("validateNightDraft mirrors the server's rules", () => {
   )
 })
 
-test("nightIsEditable only closes cancelled nights", () => {
+test("nightIsEditable closes cancelled nights and host-deleted series", () => {
   assert.equal(nightIsEditable(night()), true)
   assert.equal(nightIsEditable(night({ status: "cancelled" })), false)
   // BINDING: Custom WC edits HERE — never a green Event. Freezing it here
@@ -563,6 +563,9 @@ test("nightIsEditable only closes cancelled nights", () => {
   // Unstamped is EDITABLE: overrides key off the date, which is what lets a
   // host price a holiday weeks before the generator reaches it.
   assert.equal(nightIsEditable(night({ is_stamped: false, event_id: null, status: null })), true)
+  assert.equal(nightIsEditable(night(), { is_active: true }), true)
+  assert.equal(nightIsEditable(night(), { is_active: 0 }), false, "deleted series is not editable as live")
+  assert.equal(nightIsEditable(night({ passes_sold: 4 }), { is_active: false }), false)
 })
 
 test("Save night keeps ticket price on the override for stamped and unstamped nights", () => {
@@ -1050,6 +1053,11 @@ test("nightPreviewChip only names on sale or not generated", () => {
   assert.equal(nightPreviewChip(night({ status: "draft" })), null)
   assert.equal(nightPreviewChip(night({ is_closed: true })), null)
   assert.equal(nightPreviewChip(night({ status: "cancelled" })), null)
+  assert.deepEqual(
+    nightPreviewChip(night({ passes_sold: 3 }), false),
+    { label: "Cancellation pending", variant: "warning" },
+  )
+  assert.equal(nightPreviewChip(night({ passes_sold: 0, paid_orders: 0 }), false), null)
   // Overridden / Customized stay off the card. Those belong on the night page.
   assert.deepEqual(nightPreviewChip(night({ has_override: true, is_customized: true })), {
     label: "On sale",
@@ -1605,6 +1613,8 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(eventsPage.includes("eventAccessGroupsForVenue"), "stamped WC nights hide with the same venue scope")
   assert.ok(!eventsPage.includes("/weekly-cover"), "do not rename the API path")
   assert.ok(eventsPage.includes("eventAccessGroupsForPrograms"), "empty programs list still shows stamped nights")
+  assert.ok(eventsPage.includes("inactiveWeeklyCoverSeriesIds"), "host-deleted series do not resurrect from published nights")
+  assert.ok(eventsPage.includes("weeklyCoverProgramsForDash"), "ended / deleted programs leave the live list")
   assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
   const accessRow = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/AccessProgramRow.tsx", import.meta.url)),
@@ -1613,7 +1623,7 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
   assert.ok(eventsPage.includes("programs={venuePrograms}"), "EventCard/SeriesGroupRow rematch against the venue-scoped programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
-  assert.ok(eventCard.includes("eventListHref(event, programs, wcSeriesIds)"), "EventCard hrefs WC nights via eventListHref")
+  assert.ok(eventCard.includes("eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)"), "EventCard hrefs WC nights via eventListHref")
   assert.ok(eventsPage.includes("weeklyCoverSeriesIds"), "list marks owned Weekly Cover series ids")
   assert.ok(eventsPage.includes("wcSeriesIds"), "list hrefs door-access/{seriesId} for those series")
   assert.ok(programPage.includes("loadDoorAccessSeriesForPath"), "program page recovers a night id or retries the series")

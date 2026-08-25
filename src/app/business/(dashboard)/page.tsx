@@ -20,11 +20,13 @@ import {
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
   fetchDoorAccessProgramsSafe,
-  isDoorAccessKind,
+  isWeeklyCoverProduct,
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { homeUpcoming, nextAccessNight } from "@/lib/business/home-upcoming"
+import { inactiveWeeklyCoverSeriesIds } from "@/lib/business/events-list"
+import { isApprovedCanceledStatus } from "@/lib/business/weekly-cover-visibility"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
@@ -160,6 +162,7 @@ export default function V2HomePage() {
   // events do. Presence-gated exactly like every other product here — a
   // business with no programs sees no trace of them.
   const activePrograms = config.showLineSkips ? programs.filter((p) => p.is_active) : []
+  const inactiveWcIds = inactiveWeeklyCoverSeriesIds(programs, [], events)
   const showAccessSection = activePrograms.length > 0
   const nextNights = activePrograms
     .map(nextAccessNight)
@@ -168,7 +171,7 @@ export default function V2HomePage() {
   const soonestNight = nextNights[0] ?? null
 
   // The interleaved list (green events + pink nights) this card now shows.
-  const upcoming = homeUpcoming(showEventsSection ? events : [], activePrograms, 4)
+  const upcoming = homeUpcoming(showEventsSection ? events : [], activePrograms, 4, inactiveWcIds)
   const showUpcomingCard = showEventsSection || showAccessSection
 
   // The "next night" tile answers across BOTH systems while they coexist — a
@@ -181,7 +184,7 @@ export default function V2HomePage() {
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
   const nextEvent = showEventsSection
-    ? events.find((event) => !isDoorAccessKind(event.access_kind))
+    ? events.find((event) => !isWeeklyCoverProduct(event) && !isApprovedCanceledStatus(event.status))
     : undefined
   if (nextEvent) {
     attention.push({

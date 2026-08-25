@@ -15,13 +15,18 @@ import {
   eventAccessGroupsForVenue,
   EVENT_TYPE_FILTERS,
   groupEventRows,
+  inactiveWeeklyCoverSeriesIds,
   parseEventTypeFilter,
+  pendingCancelWeeklyCoverNights,
   showsAccess,
   showsEvents,
+  weeklyCoverProgramsForDash,
   weeklyCoverRowsForVenue,
   weeklyCoverSeriesIds,
+  weeklyCoverSeriesIdsNeedingActivityProbe,
   type EventTypeFilter,
 } from "@/lib/business/events-list"
+import { isSeriesActive } from "@/lib/business/weekly-cover-visibility"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Button } from "@/components/business/v2/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/business/v2/ui/tabs"
@@ -87,6 +92,10 @@ export default function V2EventsPage() {
   // one row. Degrades to [] — an ungrouped list is a worse list, not a broken
   // one, so a failure here must never take the page down with it.
   const [series, setSeries] = useState<RecurringSeriesListItem[]>([])
+  // Host-deleted series omitted from both list endpoints still carry
+  // published nights. Probe GET /business/recurring-series/:id for those
+  // ids only; unknown / 404 stays active (series-23 fallback).
+  const [probedInactiveIds, setProbedInactiveIds] = useState<number[]>([])
 
   const [showVenueModal, setShowVenueModal] = useState(false)
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
@@ -185,32 +194,80 @@ export default function V2EventsPage() {
   // All venues keeps every owned series.
   const venuePrograms = weeklyCoverRowsForVenue(programs, scopedVenueId, selectedVenue?.name)
   const venueSeries = weeklyCoverRowsForVenue(series, scopedVenueId, selectedVenue?.name)
-  const activePrograms = venuePrograms.filter((p) => p.is_active)
+  const wcSeriesIds = weeklyCoverSeriesIds(venuePrograms, venueSeries)
+
+  useEffect(() => {
+    const scopedPrograms = weeklyCoverRowsForVenue(programs, scopedVenueId, selectedVenue?.name)
+    const scopedSeries = weeklyCoverRowsForVenue(series, scopedVenueId, selectedVenue?.name)
+    const known = [...scopedPrograms.map((p) => p.id), ...scopedSeries.map((s) => s.id)]
+    const toProbe = weeklyCoverSeriesIdsNeedingActivityProbe(
+      events,
+      known,
+      weeklyCoverSeriesIds(scopedPrograms, scopedSeries),
+    )
+    if (toProbe.length === 0) {
+      setProbedInactiveIds((prev) => (prev.length === 0 ? prev : []))
+      return
+    }
+    let cancelled = false
+    Promise.all(
+      toProbe.map((id) =>
+        apiClient
+          .get<{ series?: { is_active?: unknown } }>(`/business/recurring-series/${id}`)
+          .then((data) => ({ id, inactive: !isSeriesActive(data.series?.is_active) }))
+          .catch(() => ({ id, inactive: false })),
+      ),
+    ).then((rows) => {
+      if (!cancelled) setProbedInactiveIds(rows.filter((row) => row.inactive).map((row) => row.id))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [events, programs, series, scopedVenueId, selectedVenue?.name])
+
+  const inactiveWcIds = [
+    ...new Set([
+      ...inactiveWeeklyCoverSeriesIds(venuePrograms, venueSeries, events),
+      ...probedInactiveIds,
+    ]),
+  ]
+  // Host-deleted / ended series are not live program rows. Sold nights of
+  // those series stay as pending-cancel EventCards (same as a one-off).
+  const activePrograms = weeklyCoverProgramsForDash(venuePrograms)
 
   // In the combined view only on the tab that means "what's on". "Past" /
   // "Drafts" / "Recurring" are questions about dated events; an ongoing program
-  // is not an answer to any of them. The Weekly Access segment is where the
-  // full program list — ended ones included — lives.
+  // is not an answer to any of them. The Weekly Cover segment used to keep
+  // Ended rows; a host series delete with 0 sales must leave the dash entirely.
   const visiblePrograms = !showsAccess(effectiveType)
     ? []
     : effectiveType === "access"
-      ? venuePrograms
+      ? activePrograms
       : tab === "upcoming" ? activePrograms : []
 
-  const wcSeriesIds = weeklyCoverSeriesIds(venuePrograms, venueSeries)
-  const rows = showsEvents(effectiveType) ? groupEventRows(events, venueSeries, wcSeriesIds) : []
+  const rows = showsEvents(effectiveType)
+    ? groupEventRows(events, venueSeries, wcSeriesIds, inactiveWcIds)
+    : []
   // AccessProgramRow uses GET /business/door-access ids. Stamped WC nights
   // still group by recurring_series_id when that list omits the series
-  // (program_kind=event). EventCard / SeriesGroupRow open the series id,
+  // (program_kind=event). Host-deleted series (is_active=0) do not resurrect
+  // from published nights. EventCard / SeriesGroupRow open the series id,
   // never /door-access/{event_id}.
   const eventAccessGroups = showsAccess(effectiveType)
     ? eventAccessGroupsForVenue(
-        eventAccessGroupsForPrograms(events, venuePrograms, wcSeriesIds),
+        eventAccessGroupsForPrograms(events, venuePrograms, wcSeriesIds, inactiveWcIds),
         scopedVenueId,
         selectedVenue?.name,
       )
     : []
-  const isEmpty = rows.length === 0 && visiblePrograms.length === 0 && eventAccessGroups.length === 0
+  const pendingCancelNights = showsAccess(effectiveType) && !showsEvents(effectiveType)
+    ? pendingCancelWeeklyCoverNights(events, wcSeriesIds, inactiveWcIds)
+    : []
+  const isEmpty =
+    rows.length === 0 &&
+    visiblePrograms.length === 0 &&
+    eventAccessGroups.length === 0 &&
+    pendingCancelNights.length === 0
 
   const handleTabChange = (newTab: string) => {
     setTab(newTab)
@@ -321,10 +378,35 @@ export default function V2EventsPage() {
           {eventAccessGroups.map((group) => (
             <AccessEventGroupRow key={`access-event-${group.programId}`} group={group} />
           ))}
+          {pendingCancelNights.map((event) => (
+            <EventCard
+              key={`pending-cancel-${event.event_id}`}
+              event={event}
+              programs={venuePrograms}
+              wcSeriesIds={wcSeriesIds}
+              inactiveWcSeriesIds={inactiveWcIds}
+            />
+          ))}
           {rows.map((row) =>
             row.kind === "series"
-              ? <SeriesGroupRow key={row.key} row={row} programs={venuePrograms} wcSeriesIds={wcSeriesIds} />
-              : <EventCard key={row.key} event={row.event} programs={venuePrograms} wcSeriesIds={wcSeriesIds} />
+              ? (
+                <SeriesGroupRow
+                  key={row.key}
+                  row={row}
+                  programs={venuePrograms}
+                  wcSeriesIds={wcSeriesIds}
+                  inactiveWcSeriesIds={inactiveWcIds}
+                />
+              )
+              : (
+                <EventCard
+                  key={row.key}
+                  event={row.event}
+                  programs={venuePrograms}
+                  wcSeriesIds={wcSeriesIds}
+                  inactiveWcSeriesIds={inactiveWcIds}
+                />
+              )
           )}
         </div>
       )}

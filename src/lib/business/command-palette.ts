@@ -1,4 +1,6 @@
 import { canAccessPayouts, type BusinessRole } from "./payouts-access.ts"
+import { isWeeklyCoverProduct } from "./door-access.ts"
+import { isApprovedCanceledStatus } from "./weekly-cover-visibility.ts"
 
 export type PaletteItemKind = "page" | "event" | "deal"
 
@@ -107,16 +109,25 @@ export function eventHint(event: { venue_name?: string; status?: string }): stri
 }
 
 export function buildEventItems(
-  events: Array<{ event_id: number; name: string; venue_name?: string; status?: string }>,
+  events: Array<{
+    event_id: number
+    name: string
+    venue_name?: string
+    status?: string
+    product_kind?: string | null
+    access_kind?: string | null
+  }>,
 ): PaletteItem[] {
-  return events.map((event) => ({
-    id: `event:${event.event_id}`,
-    kind: "event" as const,
-    label: event.name,
-    href: `/business/events/${event.event_id}`,
-    hint: eventHint(event),
-    keywords: [event.name, event.venue_name, event.status].filter(Boolean).join(" "),
-  }))
+  return events
+    .filter((event) => !isWeeklyCoverProduct(event) && !isApprovedCanceledStatus(event.status))
+    .map((event) => ({
+      id: `event:${event.event_id}`,
+      kind: "event" as const,
+      label: event.name,
+      href: `/business/events/${event.event_id}`,
+      hint: eventHint(event),
+      keywords: [event.name, event.venue_name, event.status].filter(Boolean).join(" "),
+    }))
 }
 
 export function buildDealItems(

@@ -42,10 +42,12 @@ export function SeriesGroupRow({
   row,
   programs = [],
   wcSeriesIds = [],
+  inactiveWcSeriesIds = [],
 }: {
   row: Extract<EventRow, { kind: "series" }>
   programs?: readonly ListedProgramRef[]
   wcSeriesIds?: readonly number[]
+  inactiveWcSeriesIds?: readonly number[]
 }) {
   const [open, setOpen] = useState(false)
   const stats = seriesRowStats(row)
@@ -114,7 +116,13 @@ export function SeriesGroupRow({
         // not as the list having suddenly grown a dozen new top-level entries.
         <div className="flex flex-col gap-2 border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
           {row.events.map((event) => (
-            <EventCard key={event.event_id} event={event} programs={programs} wcSeriesIds={wcSeriesIds} />
+            <EventCard
+              key={event.event_id}
+              event={event}
+              programs={programs}
+              wcSeriesIds={wcSeriesIds}
+              inactiveWcSeriesIds={inactiveWcSeriesIds}
+            />
           ))}
         </div>
       )}

@@ -4,6 +4,7 @@ import {
   readProductKind,
   resolveProgramImageUrl,
 } from "./business/door-access.ts"
+import { shouldListWeeklyCoverNightOnGuest } from "./business/weekly-cover-visibility.ts"
 
 // Public /venue/:id board data.
 //
@@ -156,9 +157,9 @@ export function isVenueWeeklyCoverNight(event: {
   return isWeeklyCoverProduct(event)
 }
 
-/** Door-access nights stay listable even when core stamped them draft. */
+/** Live one-offs and live WC nights only. Unpublished / canceled WC stays off. */
 export function shouldListOnVenuePage(event: VenueEvent): boolean {
-  if (isVenueWeeklyCoverNight(event)) return true
+  if (isVenueWeeklyCoverNight(event)) return shouldListWeeklyCoverNightOnGuest(event.status)
   if (!event.status) return true
   return LIVE_ONE_OFF_STATUSES.has(event.status.toLowerCase())
 }

@@ -90,6 +90,17 @@ test("empty query keeps every page but caps records; typed query returns all mat
   assert.deepEqual(typed.map((item) => item.label), ["Night 12"])
 })
 
+test("command palette does not list Weekly Cover nights or cancelled events", () => {
+  assert.deepEqual(
+    buildEventItems([
+      { event_id: 774, name: "The Devil Dungeon Cover", product_kind: "weekly_cover", status: "published" },
+      { event_id: 1, name: "Friday", status: "published" },
+      { event_id: 2, name: "Cancelled show", status: "cancelled" },
+    ]).map((item) => item.id),
+    ["event:1"],
+  )
+})
+
 test("event and deal builders point at existing manage surfaces", () => {
   assert.deepEqual(buildEventItems([{ event_id: 9, name: "Escrow Test", venue_name: "The Dungeon", status: "draft" }]), [
     {
