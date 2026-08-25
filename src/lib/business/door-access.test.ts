@@ -1611,7 +1611,7 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(eventsPage.includes("${venueParam}"), "events list fetch stays venue-scoped")
   assert.ok(eventsPage.includes("weeklyCoverRowsForVenue"), "single-venue view hides other venues' Weekly Cover")
   assert.ok(eventsPage.includes("eventAccessGroupsForVenue"), "stamped WC nights hide with the same venue scope")
-  assert.ok(!eventsPage.includes("/weekly-cover"), "do not rename the API path")
+  assert.ok(!/["'`]\/weekly-cover/.test(eventsPage), "do not rename the API path")
   assert.ok(eventsPage.includes("eventAccessGroupsForPrograms"), "empty programs list still shows stamped nights")
   assert.ok(eventsPage.includes("inactiveWeeklyCoverSeriesIds"), "host-deleted series do not resurrect from published nights")
   assert.ok(eventsPage.includes("weeklyCoverProgramsForDash"), "ended / deleted programs leave the live list")

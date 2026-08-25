@@ -24,9 +24,9 @@ import {
   weeklyCoverRowsForVenue,
   weeklyCoverSeriesIds,
   weeklyCoverSeriesIdsNeedingActivityProbe,
+  isSeriesActive,
   type EventTypeFilter,
 } from "@/lib/business/events-list"
-import { isSeriesActive } from "@/lib/business/weekly-cover-visibility"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Button } from "@/components/business/v2/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/business/v2/ui/tabs"

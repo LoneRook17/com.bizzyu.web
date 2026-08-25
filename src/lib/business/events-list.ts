@@ -29,6 +29,8 @@ import {
   weeklyCoverProgramVisibleOnDash,
 } from "./weekly-cover-visibility.ts"
 
+export { isSeriesActive } from "./weekly-cover-visibility.ts"
+
 /** The segment's three positions. `all` is the default — one combined list. */
 export const EVENT_TYPE_FILTERS = [
   { value: "all", label: "All" },

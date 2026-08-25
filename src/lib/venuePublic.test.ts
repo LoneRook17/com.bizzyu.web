@@ -447,7 +447,7 @@ function coverNight(eventId: number, start: string, extra: Partial<VenueEvent> =
     name: "Weekly Cover",
     start_date_time: start,
     access_kind: "door_access",
-    status: "draft",
+    status: "published",
     flyer_image_url: null,
     min_ticket_price: "5.00",
     ...extra,
