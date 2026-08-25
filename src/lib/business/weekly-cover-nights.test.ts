@@ -70,6 +70,7 @@ import {
   weekdayDraftFromWire,
   weekdayEditsFromNights,
   weekdayEditsToWire,
+  weekdayFlyerByDayFromNights,
   weekdayHydrationNight,
   weekdayTemplateFlyer,
   weekdayTemplateToWire,
@@ -698,6 +699,33 @@ test("a weekday whose every remaining night is Custom has no template to read", 
     servedNight("2026-09-04", 25, { is_customized: true }),
   ]
   assert.equal(weekdayHydrationNight({ isoWeekday: 5, nights, today: "2026-08-24" }), null)
+})
+
+test("weekday night-card flyers skip Custom art and keep the weekday poster", () => {
+  const program = {
+    days_of_week: [5],
+    flyer_image_url: "https://cdn/program.jpg",
+    photo_url: "https://cdn/venue.jpg",
+  } as never
+  const nights = [
+    servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
+    servedNight("2026-09-11", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
+  ]
+  const byDay = weekdayFlyerByDayFromNights({ program, nights, today: "2026-08-24" })
+  assert.equal(byDay[5], "https://cdn/friday.jpg")
+  assert.equal(
+    weekdayFlyerByDayFromNights({
+      program,
+      nights: [
+        servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+        servedNight("2026-09-04", 25, { is_customized: true, flyer_image_url: "https://cdn/other.jpg" }),
+      ],
+      today: "2026-08-24",
+    })[5],
+    undefined,
+    "when every remaining Friday is Custom there is no weekday poster to inherit",
+  )
 })
 
 test("a flyer-only Custom Friday does not become the Friday template", () => {

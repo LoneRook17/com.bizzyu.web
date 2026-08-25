@@ -955,6 +955,31 @@ export function weekdayHydrationNight(opts: {
   return live[0] ?? candidates[0]
 }
 
+/**
+ * Weekday-template flyer per ISO weekday, for program night-card display.
+ *
+ * Custom nights are never the weekday — same rule as `weekdayHydrationNight`.
+ * A later edit of one date is Custom; that date's flyer stays on that date.
+ */
+export function weekdayFlyerByDayFromNights(opts: {
+  program: DoorAccessProgram
+  nights: DoorAccessNight[]
+  today?: string
+}): Record<number, string> {
+  const out: Record<number, string> = {}
+  for (const day of opts.program.days_of_week) {
+    const src = weekdayHydrationNight({
+      isoWeekday: day,
+      nights: opts.nights,
+      today: opts.today,
+    })
+    if (!src) continue
+    const url = weekdayTemplateFlyer(src as DoorAccessNight & Record<string, unknown>, opts.program)
+    if (url) out[day] = url
+  }
+  return out
+}
+
 /** Every weekday's editor state, hydrated from the served nights. */
 export function weekdayEditsFromNights(opts: {
   program: DoorAccessProgram
