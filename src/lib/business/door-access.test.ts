@@ -408,7 +408,7 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   assert.ok(!src.includes("buildNightHoursPayload"), "do not drop ticket price from Save night")
   assert.ok(!src.includes("nightHasEventTickets"), "do not route stamped nights onto event ticket PUTs")
   assert.ok(!/href=\{?[`'"]\/business\/events/.test(src), "do not link off the night to event edit")
-  assert.ok(src.includes("nightIsEditable"), "customized nights stay read-only here")
+  assert.ok(src.includes("nightIsEditable"), "cancelled nights stay read-only here")
   assert.ok(!src.includes("function NightNumberField"), "price/capacity no longer use the simplified field")
   assert.ok(!src.includes("function TiersCard"), "replace Tiers this night with Manage Tickets cards")
 
@@ -551,11 +551,13 @@ test("validateNightDraft mirrors the server's rules", () => {
   )
 })
 
-test("nightIsEditable closes the surface where an override would be invisible", () => {
+test("nightIsEditable only closes cancelled nights", () => {
   assert.equal(nightIsEditable(night()), true)
   assert.equal(nightIsEditable(night({ status: "cancelled" })), false)
-  // Customized nights have left the program — edits belong on the event page.
-  assert.equal(nightIsEditable(night({ is_customized: true })), false)
+  // BINDING flaw-3 decision: Custom is not a forever fork. A night stamped
+  // customized by a past generic event edit edits HERE — the event surfaces
+  // no longer take WC nights, so freezing it here would orphan it entirely.
+  assert.equal(nightIsEditable(night({ is_customized: true })), true)
   // Unstamped is EDITABLE: overrides key off the date, which is what lets a
   // host price a holiday weeks before the generator reaches it.
   assert.equal(nightIsEditable(night({ is_stamped: false, event_id: null, status: null })), true)

@@ -57,8 +57,10 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
  * night from the program. Save night writes door_access_tier_overrides
  * (hours, ticket price/qty, hide, sold_out, sort_order). Core restamp copies
  * those onto tickets.id. Ticket rows on this page draft only. Leaving without
- * Save night prompts (beforeunload + in-app confirm). A night that HAS been
- * customized elsewhere is read-only here (nightIsEditable).
+ * Save night prompts (beforeunload + in-app confirm). A night that was
+ * customized by a past generic event edit EDITS HERE TOO (binding flaw-3
+ * decision: Custom is not a forever fork, and a WC night never goes back to
+ * the event surfaces). Only a cancelled night is read-only (nightIsEditable).
  *
  * Hours are always visible. Matching the program window (or Reset to program
  * default) sends null so the night tracks the template. Closed this night is
@@ -250,9 +252,17 @@ export default function DoorAccessNightPage({
       {/* Why this night can't be edited here. Stated, never a dead form. */}
       {!nightIsEditable(night) && (
         <Notice tone="warning">
-          {night.status === "cancelled"
-            ? "This night is cancelled. Cancelled nights can't be re-priced."
-            : "This night was edited directly as an event, so it no longer follows the program. Change it on its event page. Edits made here wouldn't show up there."}
+          This night is cancelled. Cancelled nights can&apos;t be re-priced.
+        </Notice>
+      )}
+
+      {/* The flaw-3 stamp, explained without handing the night back to the
+          event surfaces. Saving here is the way OUT of that state: overrides
+          are date-local Custom and the night stays on the program path. */}
+      {editable && night.is_customized && (
+        <Notice tone="warning">
+          This night was edited directly as an event at some point. Edit it here from now on:
+          changes save as Custom for this date only, and the rest keeps following the program.
         </Notice>
       )}
 

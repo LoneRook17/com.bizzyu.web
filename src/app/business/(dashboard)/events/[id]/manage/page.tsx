@@ -167,8 +167,10 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // drops off the program feed with no way back. So a Weekly Cover night's
   // setup tiles stay on the WC path: the night-override editor (date-local
   // Custom; restamp still sees the night) and the program editor for
-  // weekday-global changes. A night already customized is detached, and the
-  // generic tiles remain its only editor (nightIsEditable's escape hatch).
+  // weekday-global changes. BINDING: that includes a night already stamped
+  // customized — Custom is not a forever fork, and a WC night is never handed
+  // to the green named-Event editors. Only a WC night with no resolvable
+  // program keeps the generic tiles (there is no series to protect).
   const wcProgramId = programIdFromOwnedEvent(event)
   const wcNightEdit = weeklyCoverNightEditHref(event)
 

@@ -9,10 +9,10 @@ import {
 
 /**
  * What the banner reads. The date fields are optional extras: pages that pass
- * the full EventDetail (event view) let the Weekly Cover branch link straight
- * to the night editor; the edit page's slimmer pick still renders correctly
- * because its Weekly Cover nights are always customized (uncustomized ones
- * are redirected before this banner mounts).
+ * the full EventDetail (event view) let the Weekly Cover branch link the
+ * exact night editor; a slimmer pick (the edit page, which never shows this
+ * banner for WC nights anyway because they redirect) falls back to the
+ * program page link.
  */
 export type SeriesNightBannerEvent = Pick<
   EventDetail,
@@ -27,35 +27,29 @@ export type SeriesNightBannerEvent = Pick<
  * WC FLAW 3 — a Weekly Cover night gets its own branch. The named-series copy
  * ("edit this night only") is exactly the wrong coaching for a program night:
  * editing it as an event stamps series_customized_at and the program's
- * weekday-global restamp skips it forever. The WC branch points at the
- * night-override editor instead, and its series link goes to the program page
- * (D-F11.1), never /business/recurring/:id.
+ * weekday-global restamp skips it forever. Binding decision: a WC night edit
+ * is Custom WC on the WC/series path, never a green named-Event edit, and
+ * Custom is not a forever fork — so the branch is the same for a night that
+ * already carries the stamp. Links go to the night editor and the program
+ * page (D-F11.1), never /business/recurring/:id.
  */
 export function SeriesNightBanner({ event }: { event: SeriesNightBannerEvent }) {
   if (!event.recurring_series_id) return null
 
   const wcProgramId = programIdFromOwnedEvent(event)
   if (wcProgramId != null) {
-    const nightEditHref = weeklyCoverNightEditHref(event)
+    const nightEditHref = weeklyCoverNightEditHref(event) ?? programHref(wcProgramId)
     return (
       <div className="flex items-start gap-2.5 rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3">
         <Repeat className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
         <p className="text-sm text-blue-700 dark:text-blue-400">
           <span className="font-semibold">This is one night of your Weekly Cover program.</span>{" "}
-          {nightEditHref != null ? (
-            <>
-              Change prices or hours on{" "}
-              <Link href={nightEditHref} className="font-semibold underline-offset-2 hover:underline">
-                the night page
-              </Link>{" "}
-              so it keeps following the program. Editing it here as an event would detach it
-              from program edits for good.{" "}
-            </>
-          ) : (
-            <>
-              It was edited directly as an event, so program edits leave this night alone.{" "}
-            </>
-          )}
+          Change prices or hours on{" "}
+          <Link href={nightEditHref} className="font-semibold underline-offset-2 hover:underline">
+            the night page
+          </Link>
+          . Edits there are Custom for this date only, and program-wide edits still apply to
+          this night.{" "}
           <Link
             href={programHref(wcProgramId)}
             className="font-semibold underline-offset-2 hover:underline"

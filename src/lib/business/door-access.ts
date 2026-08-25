@@ -1240,12 +1240,17 @@ function nightDateFromEvent(event: {
  * The override editor writes date-local Custom (door_access_tier_overrides),
  * so the night keeps following the program and restamp still sees it.
  *
+ * BINDING (Luke, flaw 3): an individual WC night edit is Custom WC on the
+ * WC/series path, and a WC night is NEVER treated as a green named Event.
+ * That includes a night whose series_customized_at is already stamped — the
+ * stamp is the flaw, not a fork the host chose, so it does not reroute the
+ * night back onto the event surfaces. The field is accepted here only so
+ * callers can pass a full event row; it does not change the answer.
+ *
  * Returns the night editor href (program page when the date is unreadable),
  * or null when the generic event surface is the RIGHT place:
  *   - not the Weekly Cover product — product_kind is authoritative, an old
  *     payload falls back to access_kind, the name is never a signal;
- *   - already customized (series_customized_at set) — the night is detached
- *     and the event page is its only remaining editor (nightIsEditable);
  *   - no resolvable program id — no series for the stamp to detach from.
  */
 export function weeklyCoverNightEditHref(event: {
@@ -1256,7 +1261,6 @@ export function weeklyCoverNightEditHref(event: {
   occurrence_date?: string | null
   start_date_time?: string | null
 }): string | null {
-  if (event.series_customized_at) return null
   const programId = programIdFromOwnedEvent(event)
   if (programId == null) return null
   const date = nightDateFromEvent(event)
@@ -1511,9 +1515,11 @@ export function nightChips(night: DoorAccessNight): NightChip[] {
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
   if (night.has_override) chips.push({ label: "Overridden", variant: "info" })
-  // "Customized" means the night was edited through the generic event surface,
-  // which stamped series_customized_at and EVICTED it from series-wide edits.
-  // It is a warning, not a state the host chose here.
+  // "Customized" means a past generic event edit stamped series_customized_at
+  // on this night — the flaw-3 stamp that made restamp skip it. It stays a
+  // warning chip so the state is visible, but it no longer moves the night's
+  // edits anywhere: the night editor keeps working (nightIsEditable), because
+  // Custom is not a forever fork.
   if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
   if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
   return chips
@@ -1963,12 +1969,14 @@ function clockMinutes(hhmm: string): number {
 /**
  * Can this night still be edited here?
  *
- * A cancelled night is done, and a customized one has left the program — its
- * edits now belong on the event surface that captured it, and writing an
- * override would produce a change the host cannot see there.
+ * Only a cancelled night is done. A customized night (series_customized_at
+ * stamped by a past generic event edit) EDITS HERE TOO — binding flaw-3
+ * decision: Custom is not a forever fork, and a WC night is never handed
+ * back to the event surfaces. Freezing it read-only here while the event
+ * surfaces also refuse it would leave the night with no editor at all.
  */
 export function nightIsEditable(night: DoorAccessNight): boolean {
-  return night.status !== "cancelled" && !night.is_customized
+  return night.status !== "cancelled"
 }
 
 /**

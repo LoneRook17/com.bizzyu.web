@@ -110,6 +110,14 @@ export type DoorAccessEventGroup = {
  * fallback). Treating them as EventCard / SeriesGroupRow sends hosts to
  * /business/events/:event_id or /business/recurring/:id, and using event_id as
  * a /business/door-access/:id segment 404s.
+ *
+ * WC FLAW 3 (binding): a WC night is NEVER a green named Event. So a night
+ * whose own row says product_kind='weekly_cover' leaves this list even when
+ * its access_kind is a stale 'event' and its series made neither lookup list
+ * (programIdFromOwnedEvent reads product_kind directly). Such a night still
+ * renders — doorAccessGroupsFromEvents groups it by the same helper, so it
+ * shows as a pink Weekly Cover row instead. A WC night with NO series id has
+ * no program to route to and stays green, which is the honest degrade.
  */
 export function groupEventRows(
   events: EventListItem[],
@@ -125,6 +133,7 @@ export function groupEventRows(
 
   for (const event of events) {
     if (isDoorAccessKind(event.access_kind)) continue
+    if (programIdFromOwnedEvent(event) != null) continue
     if (event.recurring_series_id != null && weeklyIds.has(event.recurring_series_id)) continue
     const seriesId = event.recurring_series_id
     if (seriesId == null) {

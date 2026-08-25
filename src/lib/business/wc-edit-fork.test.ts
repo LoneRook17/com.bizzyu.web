@@ -7,11 +7,13 @@
 // weekday-global restamp skips the night forever; a mis-stamped first night
 // then drops off the program feed with no way back.
 //
-// The fix is a routing fork, pinned here: an UNCUSTOMIZED Weekly Cover night
-// edits on the night-override editor (date-local Custom, restamp still sees
-// the night) and never mounts the generic writers. A night that was already
-// customized is detached, and the generic surfaces remain its only editor
-// (the night page's nightIsEditable escape hatch points hosts there).
+// The fix is a routing fork, pinned here, per Luke's BINDING product decision:
+//   - an individual WC night edit is Custom WC, on the WC/series path, and a
+//     WC night is never treated as a green named Event;
+//   - Custom is not a forever fork — series-wide edits still apply to the
+//     night, so nothing on the dashboard may freeze it out of restamp. That
+//     includes a night already stamped customized: it routes to the night
+//     editor too, and the night editor edits it (nightIsEditable).
 //
 // Identification is product_kind with the access_kind fallback, exactly PR
 // #75's rule. The name is never a signal; looksLikeWeeklyCoverName stays dead.
@@ -21,6 +23,8 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { weeklyCoverNightEditHref } from "./door-access.ts"
+import { groupEventRows, doorAccessGroupsFromEvents } from "./events-list.ts"
+import type { EventListItem } from "./types.ts"
 
 function read(rel: string) {
   return readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
@@ -31,6 +35,7 @@ const EDIT_PAGE = "../../app/business/(dashboard)/events/[id]/edit/page.tsx"
 const TICKETS_PAGE = "../../app/business/(dashboard)/events/[id]/manage/tickets/page.tsx"
 const DETAIL_PAGE = "../../app/business/(dashboard)/events/[id]/page.tsx"
 const BANNER = "../../components/business/v2/recurring/SeriesNightBanner.tsx"
+const NIGHT_PAGE = "../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx"
 
 // ── the helper itself ────────────────────────────────────────────────────────
 
@@ -68,9 +73,10 @@ test("weeklyCoverNightEditHref sends an uncustomized WC night to the override ed
   )
 })
 
-test("weeklyCoverNightEditHref leaves the generic surface in charge when it should", () => {
-  // Already customized: detached from the program; the event page is the
-  // night's only remaining editor (nightIsEditable's escape hatch).
+test("a night already stamped customized STILL routes to the night editor", () => {
+  // BINDING: Custom is not a forever fork. The series_customized_at stamp is
+  // the flaw being repaired, not a host choice, so it never reroutes the
+  // night back onto the green named-Event editors.
   assert.equal(
     weeklyCoverNightEditHref({
       product_kind: "weekly_cover",
@@ -78,8 +84,11 @@ test("weeklyCoverNightEditHref leaves the generic surface in charge when it shou
       occurrence_date: "2026-08-28",
       series_customized_at: "2026-08-20 10:00:00",
     }),
-    null,
+    "/business/door-access/23/nights/2026-08-28",
   )
+})
+
+test("weeklyCoverNightEditHref leaves the generic surface in charge when it should", () => {
   // Named events are not rerouted.
   assert.equal(
     weeklyCoverNightEditHref({
@@ -181,14 +190,69 @@ test("series-night banner sends WC nights to the program, never /business/recurr
   const src = read(BANNER)
   assert.ok(src.includes("programIdFromOwnedEvent"), "WC detection is product_kind + fallback")
   assert.ok(src.includes("programHref(wcProgramId)"), "the WC series link is the program page")
-  assert.ok(src.includes("weeklyCoverNightEditHref"), "uncustomized nights link the night editor")
+  assert.ok(src.includes("weeklyCoverNightEditHref"), "WC nights link the night editor")
   assert.ok(src.includes("View the program"))
   // The named-series branch is untouched.
   assert.ok(src.includes("/business/recurring/${event.recurring_series_id}"))
 })
 
+test("the night editor edits a customized night instead of handing it back to the event page", () => {
+  const src = read(NIGHT_PAGE)
+  // The old freeze told hosts "Change it on its event page" — the exact
+  // forever fork the binding decision kills. The state stays explained, but
+  // as an editable warning, and the copy never routes to the event surfaces.
+  assert.ok(!src.includes("Change it on its event page"), "no event-page handoff for customized nights")
+  assert.ok(src.includes("night.is_customized"), "the stamp is still surfaced to the host")
+  assert.ok(src.includes("Edit it here from now on"), "the customized notice says where edits live")
+  assert.ok(src.includes("nightIsEditable"), "cancelled nights are the only read-only state")
+})
+
+// ── never a green named Event row ────────────────────────────────────────────
+
+function wcNight(extra: Partial<EventListItem> = {}): EventListItem {
+  return {
+    event_id: 621,
+    name: "The Dungeon Cover",
+    description: "",
+    venue_name: "The Dungeon",
+    venue_address: "",
+    start_date_time: "2026-08-28 21:00:00",
+    end_date_time: "2026-08-29 02:00:00",
+    type: "Ticketed",
+    status: "published",
+    is_21_plus: false,
+    flyer_image_url: "",
+    is_recurring: false,
+    recurring_series_id: 23,
+    total_attendees: 0,
+    total_revenue: 0,
+    ticket_sales_count: 0,
+    checkin_rate: 0,
+    ...extra,
+  } as EventListItem
+}
+
+test("a product_kind night never renders as a green Event row, even with stale access_kind", () => {
+  const night = wcNight({ product_kind: "weekly_cover", access_kind: "event" })
+  // Neither lookup list knows the series — the exact leak: before this fork
+  // the night rendered as a green EventCard whose Manage led to the generic
+  // editors.
+  assert.deepEqual(groupEventRows([night], [], []), [])
+  // It is not lost: the same helper groups it for the pink Weekly Cover rows.
+  const groups = doorAccessGroupsFromEvents([night], [])
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].programId, 23)
+})
+
+test("a WC-stamped row with NO series id stays green — there is no program to open", () => {
+  const orphan = wcNight({ product_kind: "weekly_cover", access_kind: "event", recurring_series_id: null })
+  const rows = groupEventRows([orphan], [], [])
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].kind, "single")
+})
+
 test("no touched surface resurrects the Weekly Cover name regex", () => {
-  for (const rel of [HUB, EDIT_PAGE, TICKETS_PAGE, DETAIL_PAGE, BANNER]) {
+  for (const rel of [HUB, EDIT_PAGE, TICKETS_PAGE, DETAIL_PAGE, BANNER, NIGHT_PAGE]) {
     const src = read(rel)
     assert.ok(!src.includes("looksLikeWeeklyCoverName"), `${rel} must not use the name signal`)
     assert.ok(!/weekly\\s\*cover/i.test(src), `${rel} must not inline a name regex`)

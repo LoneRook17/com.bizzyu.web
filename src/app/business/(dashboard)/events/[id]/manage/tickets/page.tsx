@@ -16,10 +16,11 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
 
   // WC FLAW 3 — ManageSalesTickets writes PUT /business/events/:id and the
   // event ticket PUTs, which stamp series_customized_at on a Weekly Cover
-  // night: the program's weekday-global restamp then skips it forever. An
-  // uncustomized night edits tiers on the night-override editor instead, so
-  // the writer only mounts for rows the generic surface already owns (named
-  // events, and nights that were customized before this guard existed).
+  // night: the program's weekday-global restamp then skips it forever. Every
+  // WC night with a resolvable program edits tiers on the night-override
+  // editor instead — including one already stamped customized (binding:
+  // Custom is not a forever fork). The writer only mounts for named events
+  // and for rows with no program to protect.
   useEffect(() => {
     let cancelled = false
     apiClient
