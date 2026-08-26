@@ -646,6 +646,17 @@ export interface PromoEventBreakdown {
   events: PromoEventBreakdownRow[]
 }
 
+/**
+ * One series on GET /business/venues/:venueId/promo-codes/series.
+ * Sibling of the Universal list. Never mixed into venue-wide rows.
+ */
+export interface VenueSeriesPromoGroup {
+  id: number
+  name: string
+  product_kind: 'weekly_cover' | 'event'
+  promo_codes: PromoCode[]
+}
+
 export interface CheckinEntry {
   ticket_instance_id: number
   uuid: string
