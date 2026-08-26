@@ -21,19 +21,42 @@ import {
 } from "@/lib/business/weekly-cover-nights"
 import { Button } from "@/components/business/v2/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/business/v2/ui/dialog"
-import { Input } from "@/components/business/v2/ui/input"
+import { Input, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
+import { ScanWindowExamples, ScanWindowInfo, ScanWindowToggle } from "@/components/business/v2/events/ScanWindowSection"
 import { WEEKLY_COVER_CHECKBOX_CLASS } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 
 /**
  * Flutter Monday Prices editor.
  *
- * Cover price / qty (Unlimited default), Surge, 21+, Add another Cover.
- * Skip the Line with Cover included ON. Hours Starts / Ends. Optional flyer.
- * Save {day}. No VIP, no scan window, no max-per-person field (blank max
- * already serializes as 0), no stock alerts.
+ * Cover price / qty (Unlimited default), Surge, relative scan window, 21+,
+ * Add another Cover. Skip the Line with Cover included ON. Hours Starts /
+ * Ends. Optional flyer. Save {day}. Scan window is HH:mm + day offset on
+ * weekday / game-day templates (same as RecurringTierEditor), never
+ * calendar valid_from / valid_until. No VIP, no max-per-person field (blank
+ * max already serializes as 0), no stock alerts.
  */
+
+const OFFSET_OPTIONS = [
+  { value: -1, label: "the day before" },
+  { value: 0, label: "same night" },
+  { value: 1, label: "next morning" },
+  { value: 2, label: "2 days after" },
+]
+
+function OffsetSelect({ value, onChange, idPrefix }: { value: number; onChange: (v: number) => void; idPrefix: string }) {
+  const options = OFFSET_OPTIONS.some((o) => o.value === value)
+    ? OFFSET_OPTIONS
+    : [...OFFSET_OPTIONS, { value, label: `${value > 0 ? "+" : ""}${value} days` }].sort((a, b) => a.value - b.value)
+  return (
+    <Select id={idPrefix} value={value} onChange={(e) => onChange(Number(e.target.value))}>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </Select>
+  )
+}
 
 export function NightEditorDialog({
   open,
@@ -263,26 +286,6 @@ export function NightEditorDialog({
                           />
                           Surge
                         </label>
-                        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-neutral-700 dark:text-neutral-300">
-                          <input
-                            type="checkbox"
-                            checked={tier.is_21_plus}
-                            onChange={(e) => patchTier(i, { is_21_plus: e.target.checked })}
-                            className={WEEKLY_COVER_CHECKBOX_CLASS}
-                          />
-                          21+
-                        </label>
-                        {tier.kind === "skip" && (
-                          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-neutral-700 dark:text-neutral-300">
-                            <input
-                              type="checkbox"
-                              checked={tier.includes_cover}
-                              onChange={(e) => toggleIncludesCover(i, e.target.checked)}
-                              className={WEEKLY_COVER_CHECKBOX_CLASS}
-                            />
-                            Cover included
-                          </label>
-                        )}
                       </div>
 
                       {tier.surge_enabled && (
@@ -338,6 +341,62 @@ export function NightEditorDialog({
                           </button>
                         </div>
                       )}
+
+                      <ScanWindowToggle
+                        info={<ScanWindowInfo weekly />}
+                        hasWindow={!!(tier.valid_from_time || tier.valid_until_time)}
+                        onClear={() =>
+                          patchTier(i, {
+                            valid_from_time: "",
+                            valid_until_time: "",
+                            valid_from_day_offset: 0,
+                            valid_until_day_offset: 0,
+                          })
+                        }
+                      >
+                        <div className="mt-1 grid grid-cols-2 gap-3 md:grid-cols-4">
+                          <div>
+                            <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">From</Label>
+                            <Input type="time" value={tier.valid_from_time} onChange={(e) => patchTier(i, { valid_from_time: e.target.value })} />
+                          </div>
+                          <div>
+                            <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>
+                            <OffsetSelect idPrefix={`from_offset_${i}`} value={tier.valid_from_day_offset} onChange={(v) => patchTier(i, { valid_from_day_offset: v })} />
+                          </div>
+                          <div>
+                            <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Until</Label>
+                            <Input type="time" value={tier.valid_until_time} onChange={(e) => patchTier(i, { valid_until_time: e.target.value })} />
+                          </div>
+                          <div>
+                            <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>
+                            <OffsetSelect idPrefix={`until_offset_${i}`} value={tier.valid_until_day_offset} onChange={(v) => patchTier(i, { valid_until_day_offset: v })} />
+                          </div>
+                        </div>
+                        <ScanWindowExamples weekly />
+                      </ScanWindowToggle>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+                        <label className="flex cursor-pointer items-center gap-2 text-[13px] text-neutral-700 dark:text-neutral-300">
+                          <input
+                            type="checkbox"
+                            checked={tier.is_21_plus}
+                            onChange={(e) => patchTier(i, { is_21_plus: e.target.checked })}
+                            className={WEEKLY_COVER_CHECKBOX_CLASS}
+                          />
+                          21+
+                        </label>
+                        {tier.kind === "skip" && (
+                          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-neutral-700 dark:text-neutral-300">
+                            <input
+                              type="checkbox"
+                              checked={tier.includes_cover}
+                              onChange={(e) => toggleIncludesCover(i, e.target.checked)}
+                              className={WEEKLY_COVER_CHECKBOX_CLASS}
+                            />
+                            Cover included
+                          </label>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
