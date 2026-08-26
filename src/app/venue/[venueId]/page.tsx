@@ -1,17 +1,15 @@
 import { Metadata } from "next"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
+import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 import { fetchVenuePublicData } from "@/lib/venuePublic"
 import VenuePageClient from "./VenuePageClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
-// Event ticket checkout still lives on the Laravel app (dev: http://3.80.143.224,
-// prod: https://bizzy-deals.com); the Vercel event checkout isn't built yet.
-// Reuses the same env convention as src/app/event/[id]/page.tsx.
-const CHECKOUT_BASE_URL =
-  process.env.CHECKOUT_REDIRECT_BASE_URL ||
-  process.env.LARAVEL_CHECKOUT_BASE_URL ||
-  "https://bizzy-deals.com"
+// Event ticket checkout still lives on Laravel (l2gp: https://dev.bizzy-deals.com).
+// Relative /checkout on this Next app resolves to Vercel. Vercel env:
+// CHECKOUT_REDIRECT_BASE_URL on project com-bizzyu-web-l2gp.
+const CHECKOUT_BASE_URL = laravelCheckoutBaseUrl()
 
 interface PageProps {
   params: Promise<{ venueId: string }>
