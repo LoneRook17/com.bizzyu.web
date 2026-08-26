@@ -72,11 +72,11 @@ function inviteBadge(member: TeamMember, isExpired: boolean): { label: string; v
     case "email_failed":
       // The invite is live and the link works — only the email failed. Says so,
       // rather than reporting a send that did not happen.
-      return { label: "Email failed — send the link", variant: "danger" }
+      return { label: "Email failed. Send the link", variant: "danger" }
     case "link_only":
       // Bizzy sends no invite SMS: until the owner texts the link, nothing has
       // reached this person at all.
-      return { label: "Not sent yet — send the link", variant: "warning" }
+      return { label: "Not sent yet. Send the link", variant: "warning" }
     default:
       return { label: "Pending invite", variant: "warning" }
   }
@@ -115,7 +115,7 @@ export default function TeamMemberRow({
   const joinedSource = member.invite_accepted_at ?? member.created_at
   const joinedDate = joinedSource
     ? new Date(joinedSource).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : "—"
+    : "-"
 
   // Never-blank (TI-3w / fixes TI-F1): a provisional or phone-only row used to
   // render with no name and a "?" avatar because the row keyed off `email`. The

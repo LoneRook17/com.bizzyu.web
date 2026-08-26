@@ -31,7 +31,7 @@ export const COMPUTING_PATIENCE_MS = 90_000
 export const COMPUTING_PATIENT_COPY = {
   title: "Still working on it",
   description:
-    "Large accounts can take a few minutes on the first load — we're reconciling every deposit with Stripe, and this page will update by itself.",
+    "Large accounts can take a few minutes on the first load. We're reconciling every deposit with Stripe, and this page will update by itself.",
 } as const
 
 /** calm → the standard crunching copy; patient → COMPUTING_PATIENT_COPY. */

@@ -2,13 +2,13 @@
 // (1 = Monday … 7 = Sunday) end-to-end — that's what the services API stores.
 
 export const ISO_DAYS = [
-  { value: 1, label: "Mon", full: "Monday" },
-  { value: 2, label: "Tue", full: "Tuesday" },
-  { value: 3, label: "Wed", full: "Wednesday" },
-  { value: 4, label: "Thu", full: "Thursday" },
-  { value: 5, label: "Fri", full: "Friday" },
-  { value: 6, label: "Sat", full: "Saturday" },
-  { value: 7, label: "Sun", full: "Sunday" },
+  { value: 1, label: "Mon", letter: "M", full: "Monday" },
+  { value: 2, label: "Tue", letter: "T", full: "Tuesday" },
+  { value: 3, label: "Wed", letter: "W", full: "Wednesday" },
+  { value: 4, label: "Thu", letter: "T", full: "Thursday" },
+  { value: 5, label: "Fri", letter: "F", full: "Friday" },
+  { value: 6, label: "Sat", letter: "S", full: "Saturday" },
+  { value: 7, label: "Sun", letter: "S", full: "Sunday" },
 ]
 
 export const isoDayFull = (d: number) => ISO_DAYS.find((x) => x.value === d)?.full ?? ""
@@ -34,7 +34,7 @@ export function fmtDateOnly(
   s?: string | null,
   opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", year: "numeric" }
 ) {
-  if (!s) return "—"
+  if (!s) return "-"
   return new Date(s.slice(0, 10) + "T00:00:00").toLocaleDateString("en-US", opts)
 }
 
@@ -45,7 +45,7 @@ export function fmtDateOnlyLong(s?: string | null) {
 
 /** "HH:MM[:SS]" → "9:00 PM". */
 export function fmtTimeOfDay(t?: string | null) {
-  if (!t) return "—"
+  if (!t) return "-"
   const [h, m] = t.split(":").map(Number)
   const d = new Date(2000, 0, 1, h, m)
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })

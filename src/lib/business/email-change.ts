@@ -77,7 +77,7 @@ export function emailChangeErrorMessage(status: number, serverMessage?: string):
 
 /** Success copy — states plainly that nothing has changed yet. */
 export function emailChangeSuccessMessage(pendingEmail: string): string {
-  return `Check ${pendingEmail} to confirm — nothing changes until then.`
+  return `Check ${pendingEmail} to confirm. Nothing changes until then.`
 }
 
 /** Banner copy shown when a previously-requested change is still outstanding. */

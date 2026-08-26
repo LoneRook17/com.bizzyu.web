@@ -36,7 +36,7 @@ export default function CandidatePicker({
             {candidates.length} accounts use {contactValue}
           </p>
           <p className="mt-0.5 text-[13px] text-amber-800 dark:text-amber-400/90">
-            Pick the person you meant. Only they can accept — nobody else sharing this
+            Pick the person you meant. Only they can accept. Nobody else sharing this
             number gets access.
           </p>
         </div>

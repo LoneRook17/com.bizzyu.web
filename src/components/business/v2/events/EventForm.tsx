@@ -5,17 +5,31 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2, MapPin } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import { EVENT_TYPES } from "@/lib/business/constants"
+import {
+  ARTWORK_TEMPLATE_OPTIONS,
+  DEFAULT_ARTWORK_TEMPLATE,
+  EVENT_TYPES,
+  EVENT_TYPE_HINTS,
+  EVENT_TYPE_LABELS,
+  type ArtworkTemplate,
+} from "@/lib/business/constants"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import type { EventFormData, TicketTier } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
-import { Badge } from "@/components/business/v2/ui/badge"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { cn } from "@/lib/v2/utils"
-import { ImageUpload } from "./ImageUpload"
+import {
+  applySaveAsDraftFlag,
+  promoterToggleDisabled,
+  willDraftOnCreate,
+} from "@/lib/business/create-publish"
+import { ArtworkSection } from "./ArtworkSection"
+import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
+import { fmtDateTime, fmtTime } from "./eventStatus"
+import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
 
 interface EventFormProps {
@@ -121,7 +135,15 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     lowstock_threshold_type: initialData?.lowstock_threshold_type || "percent",
     lowstock_threshold_value: initialData?.lowstock_threshold_value ?? null,
     lowstock_notify_business_team: !!initialData?.lowstock_notify_business_team,
+    artwork_template: initialData?.artwork_template ?? null,
+    artwork_accent: initialData?.artwork_accent ?? null,
   })
+
+  // 5.0 F10: creation walks Details → Tickets & access → Review. EDITING does
+  // not — an operator fixing a typo should not re-walk a wizard, so edit keeps
+  // the single-page form it has always been.
+  const [step, setStep] = useState(0)
+  const [furthestStep, setFurthestStep] = useState(0)
 
   const [promotionValueInput, setPromotionValueInput] = useState<string>(
     commissionValueToInput(initialData?.promotion_commission_type || "percent", initialData?.promotion_commission_value)
@@ -216,7 +238,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     }, 400)
   }
 
-  const validate = (): boolean => {
+  // Step 1 (Details) rules. Unchanged from the pre-5.0 single-page form — just
+  // split out so "Continue" can gate on this step alone.
+  const collectDetailErrors = (): Record<string, string> => {
     const errs: Record<string, string> = {}
     if (!form.name.trim()) errs.name = "Event name is required"
     else if (form.name.length > 100) errs.name = "Event name must be 100 characters or less"
@@ -232,6 +256,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         errs.end_date_time = "End date must be after start date"
       }
     }
+    return errs
+  }
+
+  // Step 2 (Tickets & access) rules.
+  const collectTicketErrors = (): Record<string, string> => {
+    const errs: Record<string, string> = {}
     if (form.type === "Ticketed" && form.tickets.length === 0) {
       errs.tickets = "At least one ticket tier is required"
     }
@@ -268,13 +298,50 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       const { error } = lowstockInputToStored(form.lowstock_threshold_type || "percent", lowstockValueInput)
       if (error) errs.lowstock_threshold_value = error
     }
+    return errs
+  }
+
+  const validate = (): boolean => {
+    const errs = { ...collectDetailErrors(), ...collectTicketErrors() }
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
+  // Advance only when the CURRENT step is clean. Anything that fails lands the
+  // user back on the step that owns it, so an error is never stranded behind a
+  // step they have already left.
+  const goToStep = (next: number) => {
+    if (next > step) {
+      const errs = next > 0 ? collectDetailErrors() : {}
+      const withTickets = next > 1 ? { ...errs, ...collectTicketErrors() } : errs
+      setErrors(withTickets)
+      if (Object.keys(withTickets).length > 0) {
+        setStep(Object.keys(collectDetailErrors()).length > 0 ? 0 : 1)
+        return
+      }
+    }
+    setErrors({})
+    setServerError("")
+    setStep(next)
+    setFurthestStep((prev) => Math.max(prev, next))
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    await submitCreateOrEdit(false)
+  }
+
+  const submitCreateOrEdit = async (saveAsDraft: boolean) => {
+    if (!validate()) {
+      // Send the user back to the step that owns the failure — on the Review
+      // step the offending field is otherwise off-screen entirely.
+      if (!isEditing) {
+        setStep(Object.keys(collectDetailErrors()).length > 0 ? 0 : 1)
+        if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
+      }
+      return
+    }
     setLoading(true)
     setServerError("")
     setModerationNotice("")
@@ -293,6 +360,17 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         is_21_plus: form.is_21_plus,
         is_recurring: false,
         flyer_image_url: form.flyer_image_url || undefined,
+        // V5 REDEMPTION — `redemption_mode` is NOT sent. The server derives it
+        // from access_kind (services Event.createFullEvent / updateEvent), and a
+        // value posted from here would be accepted and discarded anyway. Omitted
+        // rather than sent-and-ignored so the payload states the actual contract.
+      }
+
+      // 5.0 D10 — the template is only meaningful when there is no flyer; an
+      // uploaded flyer wins the artwork chain outright.
+      if (!form.flyer_image_url) {
+        payload.artwork_template = form.artwork_template || DEFAULT_ARTWORK_TEMPLATE
+        payload.artwork_accent = form.artwork_accent || null
       }
 
       if (form.type === "Ticketed") {
@@ -345,8 +423,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       // Opt-in announcement to venue followers on publish.
       payload.notify_followers_on_publish = !!form.notify_followers_on_publish
 
+      // Publish is the default POST (live). Only the explicit Save as draft
+      // button sends this flag.
+      const body = isEditing ? payload : applySaveAsDraftFlag(payload, saveAsDraft)
+
       if (isEditing) {
-        await apiClient.put(`/business/events/${eventId}`, payload)
+        await apiClient.put(`/business/events/${eventId}`, body)
         router.push(`/business/events/${eventId}`)
       } else {
         const data = await apiClient.post<{
@@ -355,10 +437,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           moderation_status: string | null
           requires_stripe_to_publish?: boolean
           requires_approval_to_publish?: boolean
-        }>("/business/events", payload)
+        }>("/business/events", body)
         if (data.status === "draft") {
-          // Saved, but not live yet (pending approval and/or Stripe). Land on the
-          // event so the draft banner there explains why + offers Publish.
+          // Saved as a draft (explicit Save as draft, or still pending approval).
           router.push(`/business/events/${data.event_id}`)
         } else if (data.moderation_status === "pending_review") {
           setModerationNotice("Your event has been created but is under review due to content moderation.")
@@ -374,40 +455,39 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     }
   }
 
-  const hasPaidTicket = form.tickets.some((t) => (t.price_usd ?? 0) > 0)
-  const promoToggleDisabled = !hasPaidTicket || !stripeOnboarded
-  const promoDisabledReason = !hasPaidTicket
+  // D-F10.4 — an approved business publishes INSTANTLY, free or paid. The Stripe
+  // gate only ever applies to money changing hands, and the server says so:
+  // BusinessEventService.createEvent computes
+  //     hasPaidTickets = payload.type === 'Ticketed' && tickets.some(price > 0)
+  //     requiresStripe = hasPaidTickets && !stripeReady
+  // so a Free event never requires Stripe and goes live on create.
+  //
+  // This client used to drop the `type === "Ticketed"` half of that test, so a
+  // host who built a paid tier and then switched the event to Free kept the
+  // stale tiers in form state, was told "Saved as a draft, connect Stripe to
+  // publish", and got a Publish-labelled CTA reading "Save draft" — while the
+  // server published the event immediately. Mirroring the server's own
+  // predicate is the fix.
+  const hasPaidTicket = form.type === "Ticketed" && form.tickets.some((t) => (t.price_usd ?? 0) > 0)
+  const promoToggleDisabled = promoterToggleDisabled(hasPaidTicket)
+  const promoDisabledReason = promoToggleDisabled
     ? "Add a paid ticket to enable the promoter program."
-    : !stripeOnboarded
-      ? "Connect Stripe to enable the promoter program."
-      : ""
+    : ""
   const commissionType = form.promotion_commission_type || "percent"
   const lowstockType = form.lowstock_threshold_type || "percent"
 
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <Link
-        href="/business/events"
-        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-      >
-        <ArrowLeft className="size-3.5" /> Back to events
-      </Link>
+  // What the review banner says. `isPending` is the only default-draft gate —
+  // approved/verified hosts publish even without Stripe. `willDraft` must
+  // never be true just because `!stripeOnboarded`.
+  const willDraft = willDraftOnCreate(isPending)
+  const draftReason = "Your business is still in review, so this may save as a draft until you're approved."
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          {isEditing ? "Edit event" : "Create event"}
-        </h1>
-        <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
-          {isEditing ? "Update details, tickets, and settings." : "Set up your event, tickets, and where it happens."}
-        </p>
-      </div>
+  // `isEditing` renders every section on one page, exactly as before 5.0.
+  // Creating walks the three steps.
+  const onStep = (i: number) => isEditing || step === i
 
-      {moderationNotice && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-          {moderationNotice}
-        </div>
-      )}
-
+  const detailsStep = (
+    <>
       {/* Basic info */}
       <Card>
         <CardHeader><CardTitle>Basics</CardTitle></CardHeader>
@@ -426,15 +506,21 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               <Label htmlFor="type" className="mb-1.5 block">Event type</Label>
               <Select id="type" name="type" value={form.type} onChange={handleChange}>
                 {EVENT_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>
                 ))}
               </Select>
-              {/* Stripe is no longer required to BUILD a paid event - only to
-                  publish one. Show a non-blocking nudge for paid + no Stripe. */}
-              {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
+              {/* D-P2: "Free" never reads as "RSVP" — a free event still mints a
+                  real $0 order and a scannable ticket. */}
+              <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{EVENT_TYPE_HINTS[form.type]}</p>
+              {/* Approved businesses can publish paid events without Stripe —
+                  payments go to escrow. Show a soft nudge, not a blocker. */}
+              {form.type === "Ticketed" && hasPaidTicket && !stripeOnboarded && !isPending && (
                 <div className="mt-1.5">
-                  <p className="text-xs text-amber-600 dark:text-amber-400">
-                    You can build this now and save it as a draft. Connect Stripe before a paid event can go live, free events don&apos;t need it.
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    Connect Stripe to receive payments instantly
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
                   </p>
                   <button
                     type="button"
@@ -569,14 +655,28 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </CardContent>
       </Card>
 
-      {/* Flyer */}
+      {/* Artwork — flyer, or a template when there isn't one (D10/D-F4.1) */}
       <Card>
-        <CardHeader><CardTitle>Flyer image</CardTitle></CardHeader>
+        <CardHeader className="flex-col items-start gap-1">
+          <CardTitle>Artwork</CardTitle>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Your flyer if you have one, a Bizzy template if you don&apos;t.</p>
+        </CardHeader>
         <CardContent className="pt-0">
-          <ImageUpload value={form.flyer_image_url} onChange={(url) => setForm((prev) => ({ ...prev, flyer_image_url: url }))} />
+          <ArtworkSection
+            flyerUrl={form.flyer_image_url}
+            onFlyerChange={(url) => setForm((prev) => ({ ...prev, flyer_image_url: url }))}
+            template={form.artwork_template}
+            onTemplateChange={(t) => setForm((prev) => ({ ...prev, artwork_template: t }))}
+            accent={form.artwork_accent}
+            onAccentChange={(a) => setForm((prev) => ({ ...prev, artwork_accent: a }))}
+          />
         </CardContent>
       </Card>
+    </>
+  )
 
+  const ticketsStep = (
+    <>
       {/* Tickets */}
       {form.type === "Ticketed" && (
         <Card>
@@ -588,24 +688,25 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </Card>
       )}
 
-      {/* Notify followers - opt-in announcement on publish (any event type) */}
-      <Card>
-        <CardHeader className="flex-col items-start gap-1">
-          <CardTitle>Notify followers</CardTitle>
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Send a push to followers of this venue when the event goes live.</p>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={!!form.notify_followers_on_publish}
-              onChange={(e) => setForm((prev) => ({ ...prev, notify_followers_on_publish: e.target.checked }))}
-              className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
-            />
-            <span className="text-sm text-neutral-700 dark:text-neutral-300">Announce to venue followers</span>
-          </label>
-        </CardContent>
-      </Card>
+      {form.type === "Free" && (
+        <Card>
+          <CardHeader className="flex-col items-start gap-1">
+            <CardTitle>Free entry</CardTitle>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+              Guests claim a real ticket at no charge. Same wallet pass, same scan at the door. Nothing to price.
+            </p>
+          </CardHeader>
+        </Card>
+      )}
+
+      {/* V5 REDEMPTION — the "How will you check people in?" card is GONE.
+          It asked the host a question the create funnel had already answered one
+          screen earlier: this form builds an EVENT, and an event runs on the
+          Bizzy scanner. (A Door Access night is built by the wizard next door and
+          runs on camera + tap.) The type the host picked IS the choice, and the
+          server derives redemption_mode from it, so a selector here could only
+          ever produce an event whose door tooling contradicted its own product —
+          a contradiction that surfaced at the door, not at creation. */}
 
       {/* Promoter program */}
       {form.type === "Ticketed" && (
@@ -701,82 +802,114 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Stock alerts</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier sells out — and optionally before it does.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier sells out, and optionally before it does.</p>
           </CardHeader>
           <CardContent className="pt-0">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={!!form.lowstock_alerts_enabled}
-                onChange={(e) => {
-                  setForm((prev) => ({ ...prev, lowstock_alerts_enabled: e.target.checked }))
-                  setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
-                }}
-                className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
-              />
-              <span className="text-sm text-neutral-700 dark:text-neutral-300">Notify me when a ticket tier sells out</span>
-            </label>
-
-            {form.lowstock_alerts_enabled && (
-              <div className="mt-4 space-y-3">
-                <div>
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Also warn me when it&apos;s running low</p>
-                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional — leave blank to only be notified on sell-out.</p>
-                </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label htmlFor="lowstock_threshold_type" className="mb-1.5 block">Warn on</Label>
-                    <Select
-                      id="lowstock_threshold_type"
-                      value={lowstockType}
-                      onChange={(e) => {
-                        setForm((prev) => ({ ...prev, lowstock_threshold_type: e.target.value as "percent" | "count" }))
-                        setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
-                      }}
-                    >
-                      <option value="percent">Percent left</option>
-                      <option value="count">Tickets left</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="lowstock_threshold_value" className="mb-1.5 block">
-                      Threshold {lowstockType === "percent" ? "(%)" : "(tickets)"}
-                    </Label>
-                    <Input
-                      id="lowstock_threshold_value"
-                      type="number"
-                      inputMode="numeric"
-                      step="1"
-                      min="1"
-                      max={lowstockType === "percent" ? "100" : undefined}
-                      className="w-40"
-                      placeholder={lowstockType === "percent" ? "e.g. 10" : "e.g. 20"}
-                      value={lowstockValueInput}
-                      onChange={(e) => {
-                        setLowstockValueInput(e.target.value)
-                        setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
-                      }}
-                    />
-                    {errors.lowstock_threshold_value && (
-                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.lowstock_threshold_value}</p>
-                    )}
-                  </div>
-                </div>
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!!form.lowstock_notify_business_team}
-                    onChange={(e) => setForm((prev) => ({ ...prev, lowstock_notify_business_team: e.target.checked }))}
-                    className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
-                  />
-                  <span className="text-sm text-neutral-700 dark:text-neutral-300">Also notify business team</span>
-                </label>
-              </div>
-            )}
+            <StockAlertsFields
+              enabled={!!form.lowstock_alerts_enabled}
+              onEnabledChange={(enabled) => {
+                setForm((prev) => ({ ...prev, lowstock_alerts_enabled: enabled }))
+                setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
+              }}
+              thresholdType={lowstockType}
+              onThresholdTypeChange={(type) => {
+                setForm((prev) => ({ ...prev, lowstock_threshold_type: type }))
+                setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
+              }}
+              thresholdInput={lowstockValueInput}
+              onThresholdInputChange={(value) => {
+                setLowstockValueInput(value)
+                setErrors((prev) => ({ ...prev, lowstock_threshold_value: "" }))
+              }}
+              notifyTeam={!!form.lowstock_notify_business_team}
+              onNotifyTeamChange={(notify) => setForm((prev) => ({ ...prev, lowstock_notify_business_team: notify }))}
+              error={errors.lowstock_threshold_value}
+            />
           </CardContent>
         </Card>
       )}
+    </>
+  )
 
+  // The at-a-glance summary is a CREATE affordance — it exists so step 3 can
+  // show what you're about to publish. Editing already shows every field.
+  const reviewSummary = (
+    <>
+      <Card>
+        <CardHeader><CardTitle>Review</CardTitle></CardHeader>
+        <CardContent className="pt-0">
+          <dl className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            <ReviewRow label="Name" value={form.name || "-"} />
+            <ReviewRow label="Type" value={EVENT_TYPE_LABELS[form.type]} />
+            <ReviewRow label="When" value={summariseWhen(form.start_date_time, form.end_date_time)} />
+            <ReviewRow label="Where" value={[form.venue_name, form.venue_address].filter(Boolean).join(" · ") || "-"} />
+            {form.is_21_plus && <ReviewRow label="Age" value="21+" />}
+            {form.type === "Ticketed" && <ReviewRow label="Tickets" value={summariseTiers(form.tickets)} />}
+            {/* Still shown, no longer a decision: the host should see what the
+                door will do, they just don't get to pick it. Reads off the same
+                derived value the server will stamp. */}
+            <ReviewRow label="Door" value="Bizzy scanner" />
+            <ReviewRow label="Artwork" value={summariseArtwork(form.flyer_image_url, form.artwork_template)} />
+            {form.type === "Ticketed" && (
+              <ReviewRow
+                label="Promoters"
+                value={form.promotion_enabled ? `On · ${promotionValueInput}${commissionType === "percent" ? "%" : " fixed"}` : "Off"}
+              />
+            )}
+            {form.type === "Ticketed" && (
+              <ReviewRow label="Stock alerts" value={form.lowstock_alerts_enabled ? "On" : "Off"} />
+            )}
+          </dl>
+        </CardContent>
+      </Card>
+    </>
+  )
+
+  // Notify followers - opt-in announcement on publish (any event type). Shown
+  // on BOTH create (step 3) and edit, exactly as before 5.0.
+  const publishCard = (
+    <>
+      <Card>
+        <CardHeader className="flex-col items-start gap-1">
+          <CardTitle>{isEditing ? "Notify followers" : "When this goes live"}</CardTitle>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Send a push to followers of this venue when the event goes live.</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!form.notify_followers_on_publish}
+              onChange={(e) => setForm((prev) => ({ ...prev, notify_followers_on_publish: e.target.checked }))}
+              className="size-4 rounded border-neutral-300 dark:border-neutral-700 text-[#05EB54] focus:ring-[#05EB54]"
+            />
+            <span className="text-sm text-neutral-700 dark:text-neutral-300">Announce to venue followers</span>
+          </label>
+
+          {/* D-F10.4: an approved business publishes instantly — free or paid.
+              Create-only: on edit the event already has a status. */}
+          {!isEditing && (
+            <div
+              className={cn(
+                "mt-4 rounded-xl border px-4 py-3 text-sm",
+                willDraft
+                  ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                  : "border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300"
+              )}
+            >
+              {willDraft
+                ? draftReason
+                : form.type === "Free"
+                  ? "This publishes the moment you create it. Free events don't need Stripe."
+                  : "This publishes the moment you create it."}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  )
+
+  const submitRow = (
+    <>
       {/* Submit */}
       {serverError && (
         <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
@@ -789,22 +922,115 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        {!isEditing && isPending && (
-          <Badge variant="warning">Trial: saved as a draft until you&apos;re approved</Badge>
-        )}
-        {!isEditing && !isPending && hasPaidTicket && !stripeOnboarded && (
-          <Badge variant="warning">Saved as a draft, connect Stripe to publish</Badge>
-        )}
-        <Button type="submit" size="lg" disabled={loading}>
-          {loading && <Loader2 className="animate-spin" />}
-          {isEditing
-            ? "Save changes"
-            : isPending || (hasPaidTicket && !stripeOnboarded)
-              ? "Save draft"
-              : "Create event"}
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          {!isEditing && step > 0 && (
+            <Button type="button" variant="secondary" onClick={() => goToStep(step - 1)}>
+              Back
+            </Button>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {!isEditing && (
+            <Button type="button" variant="secondary" size="lg" disabled={loading} onClick={() => submitCreateOrEdit(true)}>
+              {loading && <Loader2 className="animate-spin" />}
+              Save as draft
+            </Button>
+          )}
+          <Button type="submit" size="lg" disabled={loading}>
+            {loading && <Loader2 className="animate-spin" />}
+            {isEditing ? "Save changes" : "Publish event"}
+          </Button>
+        </div>
       </div>
+    </>
+  )
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <Link
+        href="/business/events"
+        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
+      >
+        <ArrowLeft className="size-3.5" /> Back to events
+      </Link>
+
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+          {isEditing ? "Edit event" : "Create event"}
+        </h1>
+        <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
+          {isEditing
+            ? "Update details, tickets, and settings."
+            : `Step ${step + 1} of ${EVENT_CREATE_STEPS.length}. ${EVENT_CREATE_STEPS[step].label}.`}
+        </p>
+      </div>
+
+      {!isEditing && <EventStepNav current={step} furthest={furthestStep} onJump={goToStep} />}
+
+      {moderationNotice && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          {moderationNotice}
+        </div>
+      )}
+
+      {onStep(0) && detailsStep}
+      {onStep(1) && ticketsStep}
+      {!isEditing && step === 2 && reviewSummary}
+      {onStep(2) && publishCard}
+
+      {/* Steps 1 and 2 advance; only the last step submits. Editing always
+          submits, since it renders every section at once. */}
+      {!isEditing && step < EVENT_CREATE_STEPS.length - 1 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            {step > 0 && (
+              <Button type="button" variant="secondary" onClick={() => goToStep(step - 1)}>
+                Back
+              </Button>
+            )}
+          </div>
+          <Button type="button" size="lg" onClick={() => goToStep(step + 1)}>
+            Continue
+          </Button>
+        </div>
+      ) : (
+        submitRow
+      )}
     </form>
   )
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+      <dt className="text-[13px] text-neutral-500 dark:text-neutral-400">{label}</dt>
+      <dd className="max-w-[70%] text-right text-sm font-medium text-neutral-900 dark:text-neutral-100">{value}</dd>
+    </div>
+  )
+}
+
+function summariseWhen(start: string, end: string): string {
+  if (!start) return "-"
+  const startLabel = fmtDateTime(start)
+  if (!end) return startLabel
+  const sameDay = start.slice(0, 10) === end.slice(0, 10)
+  return sameDay ? `${startLabel} - ${fmtTime(end)}` : `${startLabel} - ${fmtDateTime(end)}`
+}
+
+function summariseTiers(tiers: TicketTier[]): string {
+  if (!tiers.length) return "-"
+  const prices = tiers.map((t) => Number(t.price_usd) || 0)
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
+  const count = `${tiers.length} tier${tiers.length === 1 ? "" : "s"}`
+  if (max === 0) return `${count} · Free`
+  return min === max ? `${count} · $${max.toFixed(2)}` : `${count} · ${min.toFixed(2)}-${max.toFixed(2)}`
+}
+
+function summariseArtwork(flyerUrl: string, template: ArtworkTemplate | null | undefined): string {
+  if (flyerUrl) return "Your flyer"
+  const chosen = template ?? DEFAULT_ARTWORK_TEMPLATE
+  const label = ARTWORK_TEMPLATE_OPTIONS.find((o) => o.value === chosen)?.label ?? chosen
+  return `${label} template`
 }

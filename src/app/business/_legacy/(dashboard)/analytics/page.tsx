@@ -9,6 +9,7 @@ import EventsOverview from "@/components/business/dashboard/EventsOverview"
 import LineSkipsOverview from "@/components/business/dashboard/LineSkipsOverview"
 import PromoterStatsView from "@/components/business/dashboard/PromoterStatsView"
 import type { DealsOverview as DealsOverviewType, EventsOverview as EventsOverviewType, PromoterLink, LineSkipAnalyticsOverview } from "@/lib/business/types"
+import { ANALYTICS_ACCESS_TAB_LABEL } from "@/lib/business/analytics-copy"
 
 export default function AnalyticsPage() {
   const { user } = useAuth()
@@ -117,7 +118,7 @@ function OwnerManagerView() {
           Events
         </TabButton>
         <TabButton active={tab === "line-skips"} onClick={() => setTab("line-skips")}>
-          Line Skips
+          {ANALYTICS_ACCESS_TAB_LABEL}
         </TabButton>
       </div>
 

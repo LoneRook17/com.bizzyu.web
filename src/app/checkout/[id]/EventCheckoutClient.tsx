@@ -7,8 +7,16 @@ import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
 import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
+import { isWeeklyCoverProduct } from "@/lib/business/door-access"
+import { ACCESS, EVENT, EVENT_FILL } from "@/lib/checkout/surfaces"
+import {
+  loadVenuePublicEventIdSet,
+  weeklyCoverSaleOpenForPayloads,
+} from "@/lib/checkout/weekly-cover-sale"
+import { foldLeftoverSurgeSkus } from "@/lib/checkout/surge-skus"
+import { ticketIdFromSearch } from "@/lib/venuePublic"
+
 const API_URL = getApiBaseUrl()
-const GOLD = "#D4AF37"
 
 // Promoter attribution cookie (PRD §7.4). Read by client JS so the order
 // POST can include it; 24h TTL matches the PRD spec. Not httpOnly because
@@ -44,12 +52,22 @@ interface EventInfo {
   type: string
   is_21_plus: boolean
   flyer_image_url: string | null
+  promotion_enabled?: boolean | number
+  access_kind?: string | null
+  /** Services' explicit product stamp. Missing on older payloads. */
+  product_kind?: "weekly_cover" | "event" | null
+  recurring_series_id?: number | string | null
+  venue_id?: number | string | null
+  series_is_active?: boolean | number | string | null
 }
 
 interface TicketTier {
   ticket_id: number
   name: string
   description: string | null
+  /** Leftover expander keys when the checkout payload still sends them. */
+  tier_key?: string | null
+  template_tier_key?: string | null
   price_usd: number
   quantity: number | null
   available_quantity: number | null
@@ -87,6 +105,7 @@ interface FeePreview {
 interface PageData {
   event: EventInfo
   tickets: TicketTier[]
+  saleClosed?: boolean
 }
 
 type CheckoutStep = "idle" | "phone" | "name" | "verify" | "processing"
@@ -139,8 +158,168 @@ function tzAbbrev(dateStr: string, timezone?: string | null): string {
 }
 
 function formatPrice(dollars: number): string {
-  if (dollars === 0) return "Free"
   return `$${dollars.toFixed(2)}`
+}
+
+function formatClock(dateStr: string): string {
+  const d = new Date(dateStr.replace(" ", "T"))
+  if (isNaN(d.getTime())) return ""
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+}
+
+/** 0 / null max_per_person means no per-person cap. Capacity 0/null is unlimited. */
+function maxPurchasable(ticket: TicketTier): number {
+  const perPerson = ticket.max_per_person && ticket.max_per_person > 0 ? ticket.max_per_person : 10
+  const remaining = ticket.quantity ? ticket.available_quantity : null
+  if (remaining === null || remaining === undefined) return perPerson
+  return Math.max(0, Math.min(perPerson, remaining))
+}
+
+function weekdayFromStart(start: string): string {
+  const d = new Date(start.replace(" ", "T"))
+  if (isNaN(d.getTime())) return ""
+  return d.toLocaleDateString("en-US", { weekday: "long" })
+}
+
+function TicketCard({
+  ticket,
+  qty,
+  unavailable,
+  isSoldOut,
+  status,
+  accent,
+  onSelect,
+  onAdjustQty,
+}: {
+  ticket: TicketTier
+  qty: number
+  unavailable: boolean
+  isSoldOut: boolean
+  status: string | null
+  accent: string
+  onSelect: () => void
+  onAdjustQty: (val: number) => void
+}) {
+  const description = ticket.description?.trim() || ""
+  const cap = maxPurchasable(ticket)
+  const selected = qty > 0
+  const badge = isSoldOut ? "Sold Out" : status === "Sales closed" ? "Sales Closed" : null
+
+  if (unavailable) {
+    return (
+      <div className="rounded-2xl border border-[#1e1e2e]/50 bg-[#141420]/40 p-5 opacity-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-5 rounded-full border-2 border-gray-600" />
+            <div>
+              <h4 className="text-lg font-bold text-gray-500">{ticket.name}</h4>
+              {description && <p className="mt-0.5 text-sm text-gray-600">{description}</p>}
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold text-gray-600">{formatPrice(ticket.price_usd)}</p>
+            {badge && (
+              <span className="mt-1 inline-flex items-center rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-400">
+                {badge}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="cursor-pointer rounded-2xl border bg-[#141420] p-5 transition-[border-color,box-shadow] duration-200"
+      style={{
+        borderColor: selected ? accent : "#1e1e2e",
+        boxShadow: selected ? `0 0 20px ${accent}26` : undefined,
+      }}
+      onClick={onSelect}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex flex-1 items-center gap-3">
+          <input
+            type="radio"
+            checked={selected}
+            readOnly
+            className="h-5 w-5 cursor-pointer"
+            style={{ accentColor: accent }}
+          />
+          <div>
+            <h4 className="text-lg font-bold text-white">{ticket.name}</h4>
+            {description && <p className="mt-0.5 text-sm text-gray-400">{description}</p>}
+          </div>
+        </div>
+        <div className="ml-4 text-right">
+          <p className={`text-xl font-bold ${ticket.price_usd === 0 ? "text-[#33f77c]" : "text-white"}`}>
+            {ticket.price_usd === 0 ? "FREE" : formatPrice(ticket.price_usd)}
+          </p>
+          {ticket.price_usd > 0 && <p className="text-xs text-gray-500">+ fees</p>}
+        </div>
+      </div>
+
+      {selected && (
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            className="qty-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAdjustQty(qty - 1)
+            }}
+            disabled={qty <= 0}
+          >
+            −
+          </button>
+          <span className="w-16 rounded-xl border border-[#1e1e2e] bg-[#141420] py-2 text-center text-lg font-bold text-white">
+            {qty}
+          </span>
+          <button
+            type="button"
+            className="qty-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAdjustQty(qty + 1)
+            }}
+            disabled={qty >= cap}
+          >
+            +
+          </button>
+          {(ticket.max_per_person ?? 0) > 0 && (
+            <span className="ml-2 text-xs text-gray-500">Max {ticket.max_per_person}</span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AboutBlock({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const long = text.length > 200
+  return (
+    <div className="rounded-2xl border border-[#1e1e2e] bg-[#141420]/50 p-5">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">About</h3>
+      <div
+        className={`whitespace-pre-line text-sm leading-relaxed text-gray-300 ${
+          expanded || !long ? "" : "line-clamp-3"
+        }`}
+      >
+        {text}
+      </div>
+      {long && (
+        <button
+          type="button"
+          onClick={() => setExpanded((open) => !open)}
+          className="mt-2 text-sm font-medium text-[#33f77c] hover:text-[#66f99d]"
+        >
+          {expanded ? "Show less" : "Read more"}
+        </button>
+      )}
+    </div>
+  )
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -153,7 +332,9 @@ export default function EventCheckoutClient({
   initialData: PageData | null
 }) {
   const [event, setEvent] = useState<EventInfo | null>(initialData?.event ?? null)
-  const [tickets, setTickets] = useState<TicketTier[]>(initialData?.tickets ?? [])
+  const [tickets, setTickets] = useState<TicketTier[]>(
+    foldLeftoverSurgeSkus(initialData?.tickets ?? []),
+  )
   const [loading, setLoading] = useState(!initialData)
   const [error, setError] = useState("")
 
@@ -173,9 +354,12 @@ export default function EventCheckoutClient({
   const [userName, setUserName] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState("")
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // Matches the app: pre-selected, unchecking does not block purchase.
+  const [smsOptIn, setSmsOptIn] = useState(true)
   // Venue payout account not ready (#9): sales at this venue are paused.
   // Rendered as a full pause notice in place of the purchase CTA.
   const [venueBlock, setVenueBlock] = useState<VenueStripeBlock | null>(null)
+  const [saleClosed, setSaleClosed] = useState(!!initialData?.saleClosed)
 
   // Promoter tracking code (PRD §7.4). On mount, hydrate from URL ?ref=
   // (writing the cookie) or from any prior bz_ref cookie. Survives page
@@ -195,25 +379,98 @@ export default function EventCheckoutClient({
     }
   }, [])
 
+  // Venue / share links pass ?ticket_id= so the matching tier starts selected.
+  useEffect(() => {
+    if (typeof window === "undefined" || tickets.length === 0) return
+    const wanted = ticketIdFromSearch(window.location.search)
+    if (wanted == null) return
+    const ticket = tickets.find((row) => row.ticket_id === wanted)
+    if (!ticket) return
+    setQuantities((prev) => {
+      if (Object.values(prev).some((qty) => qty > 0)) return prev
+      return { [wanted]: 1 }
+    })
+  }, [tickets])
+
   // ─── Fetch event data if not provided by server ─────────────────────────
+
+  const applyPromotionFlag = useCallback(async (base: EventInfo) => {
+    if (base.promotion_enabled !== undefined) return base
+    try {
+      const res = await fetch(`${API_URL}/ui/events/${eventId}`)
+      if (!res.ok) return base
+      const ui = await res.json()
+      return {
+        ...base,
+        promotion_enabled: ui.promotion_enabled,
+        access_kind: base.access_kind ?? ui.access_kind ?? null,
+        product_kind: base.product_kind ?? ui.product_kind ?? null,
+        recurring_series_id: base.recurring_series_id ?? ui.recurring_series_id,
+        venue_id: base.venue_id ?? ui.venue_id,
+        series_is_active: base.series_is_active ?? ui.series_is_active,
+      }
+    } catch {
+      return base
+    }
+  }, [eventId])
 
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/checkout/event/${eventId}`)
       if (!res.ok) throw new Error("Event not found")
       const data = await res.json()
-      setEvent(data.event)
-      setTickets(data.tickets || [])
+      const eventRow = await applyPromotionFlag(data.event)
+      setTickets(foldLeftoverSurgeSkus(data.tickets || []))
+      setEvent(eventRow)
+      let ui: unknown = null
+      try {
+        const uiRes = await fetch(`${API_URL}/ui/events/${eventId}`)
+        if (uiRes.ok) ui = await uiRes.json()
+      } catch {
+        ui = null
+      }
+      const publicListIds = await loadVenuePublicEventIdSet(API_URL, eventRow.venue_id)
+      setSaleClosed(
+        !weeklyCoverSaleOpenForPayloads({
+          checkoutPayload: { ...data, event: eventRow },
+          uiPayload: ui,
+          publicListIds,
+        }),
+      )
     } catch {
       setError("Could not load event information")
     } finally {
       setLoading(false)
     }
-  }, [eventId])
+  }, [eventId, applyPromotionFlag])
 
   useEffect(() => {
-    if (!initialData) fetchData()
-  }, [initialData, fetchData])
+    if (!initialData) {
+      fetchData()
+      return
+    }
+    // Re-check in the browser so a leftover published WC night cannot sell
+    // if SSR missed catalog membership or series_is_active.
+    void (async () => {
+      let ui: unknown = null
+      try {
+        const uiRes = await fetch(`${API_URL}/ui/events/${eventId}`)
+        if (uiRes.ok) ui = await uiRes.json()
+      } catch {
+        ui = null
+      }
+      const eventRow = await applyPromotionFlag(initialData.event)
+      setEvent(eventRow)
+      const publicListIds = await loadVenuePublicEventIdSet(API_URL, eventRow.venue_id)
+      setSaleClosed(
+        !weeklyCoverSaleOpenForPayloads({
+          checkoutPayload: { event: eventRow, tickets: initialData.tickets },
+          uiPayload: ui,
+          publicListIds,
+        }),
+      )
+    })()
+  }, [initialData, fetchData, applyPromotionFlag, eventId])
 
   // ─── Quantity helpers ───────────────────────────────────────────────────
 
@@ -221,10 +478,7 @@ export default function EventCheckoutClient({
 
   const setQty = (ticketId: number, val: number) => {
     const ticket = tickets.find((t) => t.ticket_id === ticketId)
-    const max = ticket?.max_per_person ?? 10
-    // quantity 0/null = unlimited supply; the API still reports available_quantity 0 for those
-    const available = ticket?.quantity ? ticket?.available_quantity : null
-    const upperBound = available !== null && available !== undefined ? Math.min(max, available) : max
+    const upperBound = ticket ? maxPurchasable(ticket) : 10
     setQuantities((prev) => ({ ...prev, [ticketId]: Math.max(0, Math.min(upperBound, val)) }))
   }
 
@@ -234,6 +488,7 @@ export default function EventCheckoutClient({
   // ─── Fee Preview ────────────────────────────────────────────────────────
 
   const fetchFeePreview = useCallback(async () => {
+    if (saleClosed) return
     // Build ticket array from current quantities
     const selectedTickets = Object.entries(quantities)
       .filter(([, qty]) => qty > 0)
@@ -291,7 +546,7 @@ export default function EventCheckoutClient({
     } finally {
       setFeeLoading(false)
     }
-  }, [quantities, tickets, eventId])
+  }, [quantities, tickets, eventId, saleClosed])
 
   // Debounce fee preview calls
   useEffect(() => {
@@ -302,13 +557,14 @@ export default function EventCheckoutClient({
   // ─── Checkout Flow ──────────────────────────────────────────────────────
 
   const startCheckout = () => {
-    if (totalQty === 0) return
+    if (saleClosed || totalQty === 0) return
     setCheckoutStep("phone")
     setCheckoutError("")
     setPhone("")
     setOtpCode("")
     setAttendeeName("")
     setUserName(null)
+    setSmsOptIn(true)
   }
 
   const closeCheckout = () => {
@@ -317,6 +573,7 @@ export default function EventCheckoutClient({
   }
 
   const sendCode = async () => {
+    if (saleClosed) return
     if (!phone || phone.length < 10) {
       setCheckoutError("Please enter a valid phone number")
       return
@@ -359,6 +616,7 @@ export default function EventCheckoutClient({
   }
 
   const verifyAndPurchase = async () => {
+    if (saleClosed) return
     if (!otpCode || otpCode.length < 6) {
       setCheckoutError("Please enter the 6-digit code")
       return
@@ -397,6 +655,7 @@ export default function EventCheckoutClient({
   }
 
   const createStripeSession = async (authToken: string | null) => {
+    if (saleClosed) return
     // Build selected tickets
     const selectedTickets = Object.entries(quantities)
       .filter(([, qty]) => qty > 0)
@@ -427,6 +686,7 @@ export default function EventCheckoutClient({
           // correct .pkpass through the public session-id-gated route.
           successUrl: `${window.location.origin}/checkout/${eventId}?success=1&session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: window.location.href,
+          sms_opt_in: smsOptIn,
           ...(trackingCode ? { tracking_code: trackingCode } : {}),
         }),
       })
@@ -482,11 +742,34 @@ export default function EventCheckoutClient({
     )
   }
 
+  // product_kind decides when services sends it; an older payload falls back
+  // to access_kind (isDoorAccessKind). The event's NAME says nothing here.
+  const cover = event ? isWeeklyCoverProduct(event) : false
+  const fill = cover ? ACCESS : EVENT_FILL
+  const accent = cover ? ACCESS : EVENT
+
   if (error || !event) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-6">
         <div className="w-full max-w-md text-center">
           <h2 className="mb-2 text-xl font-bold text-white">{error || "Event not found"}</h2>
+          <a
+            href="/"
+            className="mt-4 inline-block rounded-lg bg-white/10 px-6 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+          >
+            Go Home
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (saleClosed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-6">
+        <div className="w-full max-w-md text-center">
+          <h2 className="mb-2 text-xl font-bold text-white">This night is no longer on sale</h2>
+          <p className="text-sm text-white/60">Cover and Skip the Line are not available for this series.</p>
           <a
             href="/"
             className="mt-4 inline-block rounded-lg bg-white/10 px-6 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"
@@ -510,9 +793,9 @@ export default function EventCheckoutClient({
           <div className="mb-6 text-center">
             <div
               className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full"
-              style={{ backgroundColor: `${GOLD}20` }}
+              style={{ backgroundColor: `${accent}20` }}
             >
-              <svg className="h-10 w-10" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-10 w-10" style={{ color: accent }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
@@ -521,7 +804,7 @@ export default function EventCheckoutClient({
           </div>
           <div
             className="mb-6 overflow-hidden rounded-2xl"
-            style={{ backgroundColor: `${GOLD}15`, border: `1px solid ${GOLD}40` }}
+            style={{ backgroundColor: `${accent}15`, border: `1px solid ${accent}40` }}
           >
             <div className="p-6">
               <h2 className="mb-4 text-lg font-bold text-white">{event.name}</h2>
@@ -576,7 +859,7 @@ export default function EventCheckoutClient({
             <a
               href={`bizzy://event/${eventId}`}
               className="mb-2.5 block rounded-lg px-6 py-2.5 text-sm font-semibold text-black transition-colors"
-              style={{ backgroundColor: GOLD }}
+              style={{ backgroundColor: fill }}
             >
               Open in the Bizzy app
             </a>
@@ -597,264 +880,275 @@ export default function EventCheckoutClient({
 
   const paidTickets = tickets.filter((t) => t.ticket_type !== "free" && t.price_usd > 0)
   const freeTickets = tickets.filter((t) => t.ticket_type === "free" || t.price_usd === 0)
+  const heroImage = event.flyer_image_url
+  const eventDayLabel = formatDate(event.start_date_time)
+  const startClock = formatClock(event.start_date_time)
+  const endClock = formatClock(event.end_date_time)
+  const ctaLabel =
+    feePreview && feePreview.total > 0
+      ? `Get Tickets · ${formatPrice(feePreview.total)}`
+      : totalQty > 1
+        ? "Claim Free Tickets"
+        : totalQty === 1 && feePreview?.total === 0
+          ? "Claim Free Ticket"
+          : "Get Tickets"
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
-      {/* Event Banner */}
-      <div className="relative h-56 w-full overflow-hidden bg-gradient-to-b from-white/10 to-transparent">
-        {event.flyer_image_url && (
-          <img
-            src={event.flyer_image_url}
-            alt={event.name}
-            className="h-full w-full object-cover opacity-40"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <div className="mx-auto max-w-lg">
-            <img src="/images/bizzy-logo.png" alt="Bizzy" className="mb-3 h-6 opacity-60" />
-            <h1 className="text-2xl font-bold text-white">{event.name}</h1>
-            <p className="mt-1 text-sm text-white/50">
-              {formatDate(event.start_date_time)} &middot; {formatTime(event.start_date_time, event.timezone)}
-            </p>
-            <p className="text-sm text-white/40">{event.venue_name}</p>
-          </div>
+    <div className="relative min-h-screen bg-[#0a0a0f] font-[family-name:var(--font-fira)] text-gray-100">
+      <style>{`
+        .bg-blur-flyer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(80px) saturate(1.5); opacity: 0.15; transform: scale(1.2); }
+        .flyer-glow { box-shadow: 0 0 60px ${cover ? "rgba(255, 62, 209, 0.2)" : "rgba(5, 235, 84, 0.2)"}, 0 0 120px ${cover ? "rgba(255, 62, 209, 0.1)" : "rgba(5, 235, 84, 0.1)"}; }
+        .qty-btn { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #1e1e2e; border: 1px solid #2d2d3f; color: ${cover ? ACCESS : "#33f77c"}; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .qty-btn:hover:not(:disabled) { background: ${fill}; border-color: ${fill}; color: ${cover ? "#000" : "white"}; }
+        .qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      `}</style>
+
+      {heroImage && (
+        <div className="bg-blur-flyer" aria-hidden>
+          <img src={heroImage} alt="" />
         </div>
-      </div>
+      )}
 
-      {/* Content */}
-      <div className="mx-auto max-w-lg px-4 pb-12">
-        {/* Ticket Selection */}
-        <div className="mt-6">
-          <h2 className="mb-4 text-lg font-bold text-white">Select Tickets</h2>
-
-          {tickets.length === 0 ? (
-            <div className="rounded-xl bg-white/5 border border-white/10 p-8 text-center">
-              <p className="text-white/50">No tickets available</p>
+      <div className="relative z-10 min-h-screen">
+        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0f]/70 backdrop-blur-xl">
+          <div className="mx-auto max-w-6xl px-4 py-3">
+            <div className="flex items-center justify-between">
+              <a href="https://bizzyu.com" className="flex items-center">
+                <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-10 w-auto" />
+              </a>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`bizzy://event/${event.event_id}`}
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition hover:opacity-90"
+                  style={{ backgroundColor: fill }}
+                >
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                  </svg>
+                  Open in Bizzy app
+                </a>
+                <a
+                  href="https://apps.apple.com/app/id6683306360"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/15"
+                >
+                  Get the App
+                </a>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {[...paidTickets, ...freeTickets].map((ticket) => {
-                const qty = getQty(ticket.ticket_id)
-                // Prefer the server's is_sold_out (covers unlimited tiers the
-                // operator forced sold-out); fall back to available_quantity
-                // math for compatibility with older API responses.
-                const isSoldOut =
-                  ticket.is_sold_out !== undefined
-                    ? ticket.is_sold_out
-                    : !!ticket.quantity &&
-                      ticket.available_quantity !== null &&
-                      ticket.available_quantity !== undefined &&
-                      ticket.available_quantity <= 0
-                const remaining = ticket.quantity ? ticket.available_quantity : null
-                // Scheduled tickets: the window is the REDEEM/scan window, and a
-                // ticket stays BUYABLE until it CLOSES (buying before it opens is
-                // fine). Trust the API's timezone-aware state; fall back to local
-                // math only if the field is absent (older API). Half-open end.
-                const now = new Date()
-                const vf = ticket.valid_from ? new Date(ticket.valid_from.replace(" ", "T")) : null
-                const vu = ticket.valid_until ? new Date(ticket.valid_until.replace(" ", "T")) : null
-                const salesClosed = ticket.sales_state
-                  ? ticket.sales_state === "closed"
-                  : vu !== null && now >= vu
-                const salesNotOpen = ticket.sales_state
-                  ? ticket.sales_state === "not_open"
-                  : vf !== null && now < vf
-                // Lock only when sold out or CLOSED - never merely "not open yet".
-                const unavailable =
-                  isSoldOut ||
-                  (ticket.is_purchasable !== undefined ? !ticket.is_purchasable : salesClosed)
+          </div>
+        </header>
 
-                return (
-                  <div
-                    key={ticket.ticket_id}
-                    className="overflow-hidden rounded-xl bg-white/5 border border-white/10"
-                  >
-                    <div className="p-5">
-                      <div className="mb-3 flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-bold text-white">{ticket.name}</h3>
-                          {ticket.description && (
-                            <p className="mt-0.5 text-xs text-white/40">{ticket.description}</p>
-                          )}
-                          {ticket.max_per_person && (
-                            <p className="mt-0.5 text-xs text-white/30">
-                              Max {ticket.max_per_person} per person
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-lg font-bold text-white ml-4">
-                          {ticket.price_usd === 0 ? "Free" : formatPrice(ticket.price_usd)}
-                        </span>
-                      </div>
+        <main className="mx-auto max-w-6xl px-4 py-6 lg:py-10">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-12">
+            <div className="lg:col-span-2">
+              <div className="lg:sticky lg:top-24">
+                {heroImage ? (
+                  <img src={heroImage} alt={event.name} className="flyer-glow w-full rounded-2xl object-cover" />
+                ) : (
+                  <div className="flex aspect-[3/4] items-center justify-center rounded-2xl border border-[#1e1e2e] bg-[#141420]">
+                    <svg className="h-16 w-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            </div>
 
-                      {/* Availability */}
-                      <div className="mb-3">
-                        {isSoldOut ? (
-                          <span className="text-xs font-semibold text-red-400">Sold Out</span>
-                        ) : salesClosed ? (
-                          <span className="text-xs font-semibold text-amber-400">Sales closed</span>
-                        ) : salesNotOpen ? (
-                          // Still buyable - the window only gates when it can be SCANNED.
-                          ticket.valid_from ? (
-                            <span className="text-xs font-semibold text-primary">
-                              {`Scannable from ${formatShortDate(ticket.valid_from)}, ${formatTime(ticket.valid_from, ticket.event_timezone)}`}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-white/40">Buy now</span>
-                          )
-                        ) : remaining !== null && remaining !== undefined ? (
-                          <span className="text-xs text-white/40">{remaining} remaining</span>
-                        ) : (
-                          <span className="text-xs text-white/40">Available</span>
-                        )}
-                      </div>
-
-                      {!unavailable && (
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center rounded-lg bg-white/5 border border-white/10">
-                            <button
-                              onClick={() => setQty(ticket.ticket_id, qty - 1)}
-                              className="px-3 py-2 text-white/60 hover:text-white transition-colors"
-                              disabled={qty <= 0}
-                            >
-                              -
-                            </button>
-                            <span className="w-8 text-center text-sm font-medium text-white">
-                              {qty}
-                            </span>
-                            <button
-                              onClick={() => setQty(ticket.ticket_id, qty + 1)}
-                              className="px-3 py-2 text-white/60 hover:text-white transition-colors"
-                              disabled={
-                                (remaining !== null && remaining !== undefined && qty >= remaining) ||
-                                (ticket.max_per_person !== null && qty >= ticket.max_per_person)
-                              }
-                            >
-                              +
-                            </button>
-                          </div>
-                          {qty > 0 && ticket.price_usd > 0 && (
-                            <span className="text-sm text-white/50">
-                              {formatPrice(ticket.price_usd * qty)}
-                            </span>
-                          )}
-                        </div>
-                      )}
+            <div className="space-y-6 lg:col-span-3">
+              <div>
+                <h2 className="mb-4 text-3xl font-extrabold leading-tight text-white lg:text-4xl">{event.name}</h2>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#1e1e2e] bg-[#141420]">
+                      <svg className="h-5 w-5 text-[#33f77c]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white">{event.venue_name}</p>
+                      {event.venue_address && <p className="text-sm text-gray-400">{event.venue_address}</p>}
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
 
-        {/* Fee Breakdown */}
-        {totalQty > 0 && feePreview && (
-          <div className="mt-6 rounded-xl bg-white/5 border border-white/10 p-5">
-            <h3 className="mb-3 text-sm font-semibold text-white">Order Summary</h3>
-            <div className="space-y-2 text-sm">
-              {/* Per-ticket line items */}
-              {Object.entries(quantities)
-                .filter(([, qty]) => qty > 0)
-                .map(([ticketId, qty]) => {
-                  const ticket = tickets.find((t) => t.ticket_id === Number(ticketId))
-                  if (!ticket) return null
-                  return (
-                    <div key={ticketId} className="flex justify-between text-white/70">
-                      <span>
-                        {ticket.name} {qty > 1 ? `x ${qty}` : ""}
-                      </span>
-                      <span>{ticket.price_usd === 0 ? "Free" : formatPrice(ticket.price_usd * qty)}</span>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#1e1e2e] bg-[#141420]">
+                      <svg className="h-5 w-5 text-[#33f77c]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
                     </div>
-                  )
-                })}
+                    <div>
+                      <p className="font-semibold text-amber-400">{eventDayLabel}</p>
+                      <p className="text-sm text-gray-400">
+                        {startClock}
+                        {endClock ? ` - ${endClock}` : ""}
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Discount (if any) */}
-              {feePreview.discount > 0 && (
-                <div className="flex justify-between text-green-400">
-                  <span>Promo Discount</span>
-                  <span>-{formatPrice(feePreview.discount)}</span>
+                  {!!event.is_21_plus && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/15 px-3 py-1.5 text-sm font-semibold text-red-400">
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        21+ Event
+                      </span>
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              {event.description?.trim() && (
+                <AboutBlock text={event.description.trim()} />
               )}
 
-              {/* Divider */}
-              <div className="border-t border-white/10 my-1" />
+              <div>
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">Select Tickets</h3>
+                {tickets.length === 0 ? (
+                  <div className="rounded-2xl border border-[#1e1e2e] bg-[#141420] p-6">
+                    <p className="text-gray-400">No tickets available for this event.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {[...paidTickets, ...freeTickets].map((ticket) => {
+                      const qty = getQty(ticket.ticket_id)
+                      const isSoldOut =
+                        ticket.is_sold_out !== undefined
+                          ? ticket.is_sold_out
+                          : !!ticket.quantity &&
+                            ticket.available_quantity !== null &&
+                            ticket.available_quantity !== undefined &&
+                            ticket.available_quantity <= 0
+                      const now = new Date()
+                      const vu = ticket.valid_until ? new Date(ticket.valid_until.replace(" ", "T")) : null
+                      const salesClosed = ticket.sales_state
+                        ? ticket.sales_state === "closed"
+                        : vu !== null && now >= vu
+                      const unavailable =
+                        isSoldOut ||
+                        (ticket.is_purchasable !== undefined ? !ticket.is_purchasable : salesClosed)
+                      const status = salesClosed ? "Sales closed" : null
 
-              {/* Subtotal */}
-              <div className="flex justify-between text-white/70">
-                <span>Subtotal</span>
-                <span>{formatPrice(feePreview.discounted_subtotal)}</span>
-              </div>
+                      return (
+                        <TicketCard
+                          key={ticket.ticket_id}
+                          ticket={ticket}
+                          qty={qty}
+                          unavailable={unavailable}
+                          isSoldOut={isSoldOut}
+                          status={status}
+                          accent={fill}
+                          onSelect={() => {
+                            setQuantities({ [ticket.ticket_id]: qty === 0 ? 1 : qty })
+                          }}
+                          onAdjustQty={(val) => setQty(ticket.ticket_id, val)}
+                        />
+                      )
+                    })}
+                  </div>
+                )}
 
-              {/* Service Fee */}
-              <div className="flex justify-between text-white/70">
-                <span>Service Fee</span>
-                <span>{feePreview.service_fee === 0 ? "Free" : formatPrice(feePreview.service_fee)}</span>
-              </div>
+                {!!event.promotion_enabled && (
+                  <a
+                    href={`/promote/${event.event_id}`}
+                    className="mt-6 block w-full rounded-xl bg-gradient-to-r from-[#05EB54] to-[#03b840] py-4 text-center text-lg font-bold text-white transition hover:from-[#33f77c] hover:to-[#05EB54]"
+                  >
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Get paid to promote this event
+                    </span>
+                  </a>
+                )}
 
-              {/* Divider */}
-              <div className="border-t border-white/10 my-1" />
+                <div className="mt-6 rounded-2xl border border-[#1e1e2e] bg-[#141420] p-5">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-gray-400">
+                      <span>Subtotal</span>
+                      <span className="text-gray-300">{formatPrice(feePreview?.discounted_subtotal ?? 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Service Fee</span>
+                      <span className="text-gray-300">{formatPrice(feePreview?.service_fee ?? 0)}</span>
+                    </div>
+                    {feePreview && feePreview.discount > 0 && (
+                      <div className="flex justify-between text-[#33f77c]">
+                        <span>Discount</span>
+                        <span>-{formatPrice(feePreview.discount)}</span>
+                      </div>
+                    )}
+                    <div className="my-2 border-t border-[#1e1e2e]" />
+                    <div className="flex justify-between text-lg font-bold text-white">
+                      <span>Total</span>
+                      <span>{formatPrice(feePreview?.total ?? 0)}</span>
+                    </div>
+                  </div>
 
-              {/* Total */}
-              <div className="flex justify-between text-white font-bold text-base">
-                <span>Total</span>
-                <span>{feePreview.total === 0 ? "Free" : formatPrice(feePreview.total)}</span>
+                  {venueBlock ? (
+                    <div className="mt-5">
+                      <VenueSalesPausedNotice block={venueBlock} />
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={startCheckout}
+                        disabled={totalQty === 0 || feeLoading}
+                        className="mt-5 w-full rounded-xl bg-gradient-to-r from-[#05EB54] to-[#03b840] py-4 text-lg font-bold text-white transition hover:from-[#33f77c] hover:to-[#05EB54] disabled:cursor-not-allowed disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-500"
+                      >
+                        <span className="inline-flex items-center justify-center gap-2">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                          {ctaLabel}
+                        </span>
+                      </button>
+                      <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
+                        By purchasing, you agree that all sales are final. No refunds or exchanges.
+                        If the event is cancelled by the organizer, you will receive a refund of the ticket face value.
+                        You also agree to the{" "}
+                        <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                          Terms
+                        </a>{" "}
+                        and{" "}
+                        <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                          Privacy Policy
+                        </a>
+                        .
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-
-            {feeLoading && (
-              <p className="mt-2 text-xs text-white/30">Updating...</p>
-            )}
           </div>
-        )}
+        </main>
 
-        {/* Venue payout account not ready (#9): the pause notice replaces the
-            purchase CTA entirely — the buyer must never see a raw error. */}
-        {venueBlock && <VenueSalesPausedNotice block={venueBlock} />}
-
-        {/* Get Tickets Button */}
-        {totalQty > 0 && !venueBlock && (
-          <button
-            onClick={startCheckout}
-            disabled={feeLoading}
-            className="mt-6 w-full rounded-xl py-3.5 text-base font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ backgroundColor: GOLD }}
-          >
-            {feePreview && feePreview.total > 0
-              ? `Get Tickets - ${formatPrice(feePreview.total)}`
-              : "Get Tickets - Free"}
-          </button>
-        )}
-
-        {/* Refund policy */}
-        {totalQty > 0 && !venueBlock && (
-          <p className="mt-3 text-center text-[10px] text-white/30 leading-relaxed">
-            By purchasing, you agree that all sales are final. No refunds or exchanges.
-            If the event is cancelled by the host, you will receive a full refund.
-          </p>
-        )}
-
-        {/* 21+ notice */}
-        {event.is_21_plus && (
-          <p className="mt-4 text-center text-xs text-white/30">
-            This is a 21+ event. Valid ID required at the door.
-          </p>
-        )}
-
-        {/* Powered by Bizzy */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-white/20">Powered by Bizzy</p>
-        </div>
+        <footer className="mt-12 border-t border-white/5">
+          <div className="mx-auto max-w-6xl px-4 py-6 text-center">
+            <p className="text-sm text-gray-600">
+              Powered by <span className="font-semibold text-gray-400">Bizzy</span>
+              {" · "}
+              <a href="/terms" className="hover:text-gray-400">Terms</a>
+              {" · "}
+              <a href="/privacy" className="hover:text-gray-400">Privacy</a>
+            </p>
+          </div>
+        </footer>
       </div>
 
       {/* ─── Checkout Modal ─────────────────────────────────────────────────── */}
       {checkoutStep !== "idle" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center">
-          <div className="w-full max-w-md rounded-t-2xl bg-[#141414] p-6 sm:rounded-2xl sm:m-4">
-            {/* Modal header */}
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
+          <div className="w-full max-w-md sm:m-4">
+            <div className="max-h-[90dvh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-[#1e1e2e] bg-[#141420] p-6 sm:rounded-2xl">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">
+              <h2 className="text-lg font-extrabold text-white">
                 {checkoutStep === "phone" && "Enter your phone"}
                 {checkoutStep === "name" && "Your name"}
                 {checkoutStep === "verify" && "Verify your number"}
@@ -862,7 +1156,7 @@ export default function EventCheckoutClient({
               </h2>
               <button
                 onClick={closeCheckout}
-                className="rounded-full bg-white/10 p-1.5 text-white/60 hover:text-white transition-colors"
+                className="rounded-full bg-white/10 p-1.5 text-white/60 transition-colors hover:text-white"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -870,29 +1164,55 @@ export default function EventCheckoutClient({
               </button>
             </div>
 
-            {/* Order summary in modal */}
             {feePreview && (
               <div
-                className="mb-5 rounded-lg px-4 py-3"
-                style={{ backgroundColor: `${GOLD}10`, border: `1px solid ${GOLD}20` }}
+                className="mb-5 rounded-xl px-4 py-3"
+                style={{ backgroundColor: `${EVENT}10`, border: `1px solid ${EVENT}25` }}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-white">{event.name}</p>
-                    <p className="text-xs text-white/50">{totalQty} ticket{totalQty > 1 ? "s" : ""}</p>
-                  </div>
-                  <p className="text-sm font-bold" style={{ color: GOLD }}>
-                    {feePreview.total === 0 ? "Free" : formatPrice(feePreview.total)}
+                <div className="min-w-0">
+                  <p className="text-sm font-extrabold text-white">
+                    {Object.entries(quantities)
+                      .filter(([, qty]) => qty > 0)
+                      .map(([ticketId]) => tickets.find((t) => t.ticket_id === Number(ticketId))?.name)
+                      .filter(Boolean)
+                      .join(", ") || event.name}
                   </p>
+                  <p className="mt-0.5 text-xs font-semibold text-white/55">
+                    {weekdayFromStart(event.start_date_time) || eventDayLabel}
+                  </p>
+                </div>
+                <div className="mt-2.5 space-y-1 text-xs text-white/55">
+                  {Object.entries(quantities)
+                    .filter(([, qty]) => qty > 0)
+                    .map(([ticketId, qty]) => {
+                      const ticket = tickets.find((t) => t.ticket_id === Number(ticketId))
+                      if (!ticket) return null
+                      return (
+                        <div key={ticketId} className="flex justify-between">
+                          <span>
+                            {ticket.name}
+                            {qty > 1 ? ` × ${qty}` : ""}
+                          </span>
+                          <span>{ticket.price_usd === 0 ? "Free" : formatPrice(ticket.price_usd * qty)}</span>
+                        </div>
+                      )
+                    })}
+                  <div className="flex justify-between">
+                    <span>Service fee</span>
+                    <span>{feePreview.service_fee === 0 ? "Free" : formatPrice(feePreview.service_fee)}</span>
+                  </div>
+                  <div className="flex justify-between pt-1 font-extrabold text-white">
+                    <span>Total</span>
+                    <span style={{ color: accent }}>{feePreview.total === 0 ? "Free" : formatPrice(feePreview.total)}</span>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Phone step - phone number only */}
             {checkoutStep === "phone" && (
               <div>
-                <label className="mb-2 block text-sm text-white/60">Phone Number</label>
-                <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-4 py-3">
+                <label className="mb-2 block text-sm font-semibold text-white/60">Phone Number</label>
+                <div className="flex items-center gap-2 rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 transition-colors focus-within:border-[#4ADE80]/60">
                   <span className="text-sm text-white/40">+1</span>
                   <input
                     type="tel"
@@ -908,30 +1228,54 @@ export default function EventCheckoutClient({
                   <p className="mt-3 text-xs text-red-400">{checkoutError}</p>
                 )}
 
+                <label className="mt-4 flex items-start gap-2.5 cursor-pointer select-none">
+                  <span
+                    className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-[3px] border"
+                    style={{
+                      backgroundColor: smsOptIn ? fill : "transparent",
+                      borderColor: smsOptIn ? fill : "rgba(255,255,255,0.4)",
+                    }}
+                  >
+                    {smsOptIn && (
+                      <svg className="h-3 w-3 text-black" viewBox="0 0 12 12" fill="none" aria-hidden>
+                        <path d="M2.2 6.3 4.7 8.8 9.8 3.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={smsOptIn}
+                    onChange={(e) => setSmsOptIn(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <span className="text-xs text-white/50 leading-snug">
+                    Keep me posted by text. I agree to receive SMS marketing messages about this event and the organizer&apos;s future events &amp; deals. Msg &amp; data rates may apply; reply STOP to opt out. Unchecking won&apos;t affect your purchase.
+                  </span>
+                </label>
+
                 <button
                   onClick={sendCode}
                   disabled={checkoutLoading || phone.length < 10}
-                  className="mt-4 w-full rounded-lg py-3 text-sm font-bold text-black disabled:opacity-50 transition-opacity"
-                  style={{ backgroundColor: GOLD }}
+                  className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
+                  style={{ backgroundColor: fill }}
                 >
                   {checkoutLoading ? "Sending..." : "Continue"}
                 </button>
               </div>
             )}
 
-            {/* Name step - shown only for unregistered users */}
             {checkoutStep === "name" && (
               <div>
                 <p className="mb-3 text-sm text-white/60">
                   We don&apos;t have an account for this number yet. Enter your name to continue.
                 </p>
-                <label className="mb-2 block text-sm text-white/60">Your Name</label>
+                <label className="mb-2 block text-sm font-semibold text-white/60">Your Name</label>
                 <input
                   type="text"
                   placeholder="Full name"
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-white/20"
+                  className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-[#4ADE80]/60"
                   autoFocus
                 />
 
@@ -942,8 +1286,8 @@ export default function EventCheckoutClient({
                 <button
                   onClick={submitName}
                   disabled={!attendeeName.trim()}
-                  className="mt-4 w-full rounded-lg py-3 text-sm font-bold text-black disabled:opacity-50 transition-opacity"
-                  style={{ backgroundColor: GOLD }}
+                  className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
+                  style={{ backgroundColor: fill }}
                 >
                   Continue
                 </button>
@@ -953,20 +1297,19 @@ export default function EventCheckoutClient({
                     setCheckoutStep("phone")
                     setCheckoutError("")
                   }}
-                  className="mt-2 w-full py-2 text-xs text-white/40 hover:text-white/60 transition-colors"
+                  className="mt-2 w-full py-2 text-xs text-white/40 transition-colors hover:text-white/60"
                 >
                   Change phone number
                 </button>
               </div>
             )}
 
-            {/* Verify step */}
             {checkoutStep === "verify" && (
               <div>
                 <p className="mb-3 text-sm text-white/60">
                   Enter the 6-digit code sent to your phone
                   {userName && (
-                    <span className="block mt-1 text-white/80">
+                    <span className="mt-1 block text-white/80">
                       Welcome back, {userName}!
                     </span>
                   )}
@@ -978,7 +1321,7 @@ export default function EventCheckoutClient({
                   placeholder="000000"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white placeholder-white/20 outline-none focus:border-white/20"
+                  className="w-full rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]/60 px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-white placeholder-white/20 outline-none focus:border-[#4ADE80]/60"
                   autoFocus
                 />
 
@@ -989,11 +1332,22 @@ export default function EventCheckoutClient({
                 <button
                   onClick={verifyAndPurchase}
                   disabled={checkoutLoading || otpCode.length < 6}
-                  className="mt-4 w-full rounded-lg py-3 text-sm font-bold text-black disabled:opacity-50 transition-opacity"
-                  style={{ backgroundColor: GOLD }}
+                  className="mt-4 w-full rounded-xl py-3 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
+                  style={{ backgroundColor: fill }}
                 >
                   {checkoutLoading ? "Verifying..." : "Verify & Pay"}
                 </button>
+                <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
+                  By continuing, you agree that all sales are final. If the event is cancelled by the organizer, you will receive a refund of the ticket face value. You also agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                    Terms
+                  </a>{" "}
+                  and{" "}
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="underline decoration-white/30 hover:text-white/60">
+                    Privacy Policy
+                  </a>
+                  .
+                </p>
 
                 <button
                   onClick={() => {
@@ -1001,20 +1355,20 @@ export default function EventCheckoutClient({
                     setOtpCode("")
                     setCheckoutError("")
                   }}
-                  className="mt-2 w-full py-2 text-xs text-white/40 hover:text-white/60 transition-colors"
+                  className="mt-2 w-full py-2 text-xs text-white/40 transition-colors hover:text-white/60"
                 >
                   Change phone number
                 </button>
               </div>
             )}
 
-            {/* Processing step */}
             {checkoutStep === "processing" && (
               <div className="py-8 text-center">
                 <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 <p className="text-sm text-white/60">Setting up your payment...</p>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}

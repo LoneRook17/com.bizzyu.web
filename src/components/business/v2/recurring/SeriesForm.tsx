@@ -46,9 +46,11 @@ interface SeriesFormProps {
   /** Pre-save occurrences (edit mode) — lets the post-save report label nights by date. */
   occurrences?: RecurringOccurrence[]
   stripeOnboarded?: boolean
+  /** Business is pending approval — affects copy and behavior. */
+  isPending?: boolean
 }
 
-export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stripeOnboarded = true }: SeriesFormProps) {
+export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stripeOnboarded = true, isPending = false }: SeriesFormProps) {
   const router = useRouter()
   const isEdit = mode === "edit"
   const { venues, selectedVenue, setSelectedVenue } = useVenue()
@@ -126,12 +128,10 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
   )
 
   const hasPaidTicket = type === "Ticketed" && tiers.some((t) => (parseFloat(t.priceInput) || 0) > 0)
-  const promoToggleDisabled = !hasPaidTicket || !stripeOnboarded
+  const promoToggleDisabled = !hasPaidTicket
   const promoDisabledReason = !hasPaidTicket
     ? "Add a paid ticket to enable the promoter program."
-    : !stripeOnboarded
-      ? "Connect Stripe to enable the promoter program."
-      : ""
+    : ""
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
@@ -156,7 +156,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           const from = tier.valid_from_day_offset * 1440 + toMinutes(tier.valid_from_time)
           const until = tier.valid_until_day_offset * 1440 + toMinutes(tier.valid_until_time)
           if (from >= until) {
-            errs.tickets = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends on “the day after”)`
+            errs.tickets = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
             break
           }
         }
@@ -291,7 +291,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isEdit
             ? "You're editing the whole series, not a single night."
-            : "Set it up once — every night becomes its own event automatically."}
+            : "Set it up once. Every night becomes its own event automatically."}
         </p>
       </div>
 
@@ -354,7 +354,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             </div>
             <div>
               <Label htmlFor="date_range_end" className="mb-1.5 block">
-                Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional — leave blank to run until you suspend it)</span>
+                Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional. Leave blank to run until you suspend it)</span>
               </Label>
               <Input
                 id="date_range_end"
@@ -390,7 +390,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               />
               {errors.end_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_time}</p>}
               <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
-                Ends past midnight? No problem — it rolls into the next morning.
+                Ends past midnight? No problem. It rolls into the next morning.
               </p>
             </div>
           </div>
@@ -403,7 +403,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               <>
                 <p className="mb-1 text-sm font-medium text-neutral-900 dark:text-neutral-100">Next nights</p>
                 {previewDates.length === 0 ? (
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No upcoming nights match this schedule — check the dates above.</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">No upcoming nights match this schedule. Check the dates above.</p>
                 ) : (
                   previewDates.map((d, i) => (
                     <p key={i} className="text-xs text-neutral-600 dark:text-neutral-400">{d}</p>
@@ -449,10 +449,15 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
                 <option value="Ticketed">Ticketed</option>
                 <option value="Free">Free</option>
               </Select>
-              {type === "Ticketed" && hasPaidTicket && !stripeOnboarded && (
-                <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
-                  Without Stripe connected, nights are created as drafts. Connect Stripe (in Settings) and they can go live.
-                </p>
+              {type === "Ticketed" && hasPaidTicket && !stripeOnboarded && !isPending && (
+                <div className="mt-1.5">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    Connect Stripe to receive payments instantly
+                  </p>
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away.
+                  </p>
+                </div>
               )}
             </div>
             <div className="flex items-end pb-2">
@@ -537,7 +542,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Tickets</CardTitle>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-              Every night gets a fresh set of these tickets. Sales and scan windows are relative to each night.
+              Every night gets a fresh set of these tickets.
             </p>
           </CardHeader>
           <CardContent className="pt-0">
@@ -552,7 +557,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <CardHeader className="flex-col items-start gap-1">
           <CardTitle>Notify followers</CardTitle>
           <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-            The notify setting is saved onto each night. Automatic weekly pushes are off for now — you can announce any
+            The notify setting is saved onto each night. Automatic weekly pushes are off for now. You can announce any
             night from its event page.
           </p>
         </CardHeader>
@@ -649,7 +654,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Stock alerts</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a night&apos;s ticket tier sells out — and optionally before it does.</p>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a night&apos;s ticket tier sells out, and optionally before it does.</p>
           </CardHeader>
           <CardContent className="pt-0">
             <label className="flex cursor-pointer items-center gap-2">
@@ -666,7 +671,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               <div className="mt-4 space-y-3">
                 <div>
                   <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Also warn me when it&apos;s running low</p>
-                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional — leave blank to only be notified on sell-out.</p>
+                  <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Optional. Leave blank to only be notified on sell-out.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>

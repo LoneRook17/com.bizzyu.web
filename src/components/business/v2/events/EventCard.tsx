@@ -1,90 +1,112 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarDays, ChevronRight, ScanLine } from "lucide-react"
+import { CalendarDays, ScanLine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
-import { usd } from "@/lib/v2/utils"
-import { Card } from "@/components/business/v2/ui/card"
-import { Badge } from "@/components/business/v2/ui/badge"
+import {
+  eventListHref,
+  eventRowStats,
+  listedWeeklyCoverProgramId,
+  type ListedProgramRef,
+} from "@/lib/business/events-list"
+import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { Button } from "@/components/business/v2/ui/button"
+import {
+  HostCardThumbnail,
+  HostListCard,
+  type HostCardChip,
+} from "@/components/business/v2/host/HostListCard"
 import { eventStatusBadge, fmtDate, fmtTime } from "./eventStatus"
 
-export function EventCard({ event }: { event: EventListItem }) {
+/**
+ * A green EVENT row on the combined list (F9).
+ *
+ * Built on HostListCard so an event row and a WEEKLY ACCESS row are literally
+ * the same anatomy — one component, two accents. They sit in the same list, so
+ * two lookalike implementations would drift into two subtly different rows,
+ * which is exactly the seam F9 exists to close.
+ *
+ * What this card kept from its pre-F9 form: the View / Manage / Scan footer.
+ * The app reaches those by opening the row first; a dashboard has the width to
+ * offer them directly, and taking them away would have been a regression
+ * dressed up as a redesign.
+ */
+export function EventCard({
+  event,
+  programs = [],
+  wcSeriesIds = [],
+  inactiveWcSeriesIds = [],
+}: {
+  event: EventListItem
+  programs?: readonly ListedProgramRef[]
+  wcSeriesIds?: readonly number[]
+  inactiveWcSeriesIds?: readonly number[]
+}) {
   const { user } = useAuth()
   const canScan = user?.business_role !== "promoter"
   const badge = eventStatusBadge(event.status)
+  const programId = listedWeeklyCoverProgramId(event, wcSeriesIds)
+  const seriesActive = programId == null || !inactiveWcSeriesIds.includes(programId)
+
+  const chips: HostCardChip[] = [{ label: badge.label, variant: badge.variant }]
+  if (weeklyCoverNightNeedsPendingCancel(event, seriesActive)) {
+    chips.push({ label: "Cancellation pending", variant: "warning" })
+  }
+  if (event.cancellation_status === "denied") {
+    chips.push({ label: "Cancellation denied", variant: "danger" })
+  }
+
+  // The F9 metadata line: when first — this list's whole job is what's coming
+  // up — then where.
+  const meta = [
+    `${fmtDate(event.start_date_time)} at ${fmtTime(event.start_date_time)}`,
+    event.venue_name,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
+  const href = eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
 
   return (
-    <Card className="overflow-hidden transition-shadow hover:shadow-md">
-      <div className="flex gap-4 p-4">
-        {/* flyer */}
-        <Link
-          href={`/business/events/${event.event_id}`}
-          className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800"
-        >
-          {event.flyer_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={event.flyer_image_url} alt={event.name} className="size-full object-cover" />
-          ) : (
-            <CalendarDays className="size-7 text-neutral-300 dark:text-neutral-600" />
-          )}
-        </Link>
-
-        {/* info */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <Link
-                href={`/business/events/${event.event_id}`}
-                className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors hover:text-[#05EB54] dark:hover:text-[#05EB54]"
-              >
-                {event.name}
-              </Link>
-              <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">
-                {fmtDate(event.start_date_time)} at {fmtTime(event.start_date_time)}
-              </p>
-              <p className="truncate text-[13px] text-neutral-500 dark:text-neutral-400">{event.venue_name}</p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-              <Badge variant={badge.variant}>{badge.label}</Badge>
-              {event.cancellation_status === "pending" && <Badge variant="warning">Cancellation pending</Badge>}
-              {event.cancellation_status === "denied" && (
-                <Badge variant="danger" >Cancellation denied</Badge>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-            <span>{event.ticket_sales_count} tickets</span>
-            <span>{event.total_attendees} attendees</span>
-            <span>{usd(event.total_revenue)}</span>
-            {event.type !== "Free" && <span className="text-neutral-400 dark:text-neutral-500">{event.type}</span>}
-          </div>
-        </div>
-      </div>
-
-      {/* actions */}
-      <div className="flex items-center gap-1 border-t border-neutral-100 dark:border-neutral-800 px-4 py-2.5">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/business/events/${event.event_id}`}>View</Link>
-        </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>
-        </Button>
-        {canScan && (
+    <HostListCard
+      kind="event"
+      href={href}
+      title={event.name}
+      meta={meta}
+      secondary={event.type === "Free" ? "Free entry" : "Presale + door tickets"}
+      chips={chips}
+      thumbnail={
+        <HostCardThumbnail
+          kind="event"
+          src={event.flyer_image_url}
+          alt={event.name}
+          icon={CalendarDays}
+        />
+      }
+      /* D2-C: sold · revenue · when, all from fields this list already fetched.
+         The date is a STAT rather than only a line of prose because "when is
+         this" is the question the row exists to answer, and prose doesn't scan
+         down a column. It stays in the meta line too — with the time, which the
+         stat has no room for. */
+      stats={eventRowStats(event)}
+      actions={
+        <>
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/business/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
+            <Link href={href}>View</Link>
           </Button>
-        )}
-        <Link
-          href={`/business/events/${event.event_id}/manage`}
-          className="ml-auto inline-flex size-7 items-center justify-center rounded-lg text-neutral-300 dark:text-neutral-600 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-500 dark:hover:text-neutral-400"
-          aria-label="Manage event"
-        >
-          <ChevronRight className="size-4" />
-        </Link>
-      </div>
-    </Card>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>
+          </Button>
+          {canScan && (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/business/events/${event.event_id}/manage/scanner`}>
+                <ScanLine /> Scan
+              </Link>
+            </Button>
+          )}
+        </>
+      }
+    />
   )
 }
