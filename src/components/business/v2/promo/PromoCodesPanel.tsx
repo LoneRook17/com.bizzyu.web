@@ -111,17 +111,31 @@ export const PROGRAM_PROMO_COPY = (programName: string): PromoScopeCopy => ({
     "Counted per night. A customer can use this code once per night, so they can redeem it again the following week. Your total usage limit still applies across all nights combined.",
 })
 
+export const SERIES_PROMO_COPY = (seriesName: string): PromoScopeCopy => ({
+  createTitle: "New series promo code",
+  createDescription: `This code will work on every night of ${seriesName}, not the whole venue.`,
+  emptyTitle: "No series promo codes yet",
+  emptyDescription: `Create one to discount every night of ${seriesName} without touching the rest of the venue.`,
+  reactivateDescription: `This code will work again on every night of ${seriesName}.`,
+  breakdownUnitLabel: "Night",
+  breakdownTotalLabel: "All nights",
+  perUserHelp:
+    "Counted per night. A customer can use this code once per night, so they can redeem it again the following week. Your total usage limit still applies across all nights of this series combined.",
+})
+
 export function PromoCodesPanel({
   basePath,
   copy,
   canManage,
   createButtonLabel = "Create code",
   headerAction,
+  providedCodes,
 }: {
   /**
    * REST root for this scope's codes — no trailing slash.
    * Venue:   `/business/venues/{venueId}/promo-codes`
    * Program: `/user/business/door-access/{programId}/promo-codes`
+   * Series:  `/business/door-access/{seriesId}/promo-codes`
    */
   basePath: string
   copy: PromoScopeCopy
@@ -133,9 +147,15 @@ export function PromoCodesPanel({
    * built-in inline button.
    */
   headerAction?: (openCreate: () => void) => React.ReactNode
+  /**
+   * Seed from a parent grouped list (P5 series sibling). List GET still
+   * runs against basePath; if that 404s we keep these rows so the section
+   * isn't empty just because CRUD isn't live yet.
+   */
+  providedCodes?: PromoCode[]
 }) {
-  const [codes, setCodes] = useState<PromoCode[]>([])
-  const [loading, setLoading] = useState(true)
+  const [codes, setCodes] = useState<PromoCode[]>(providedCodes ?? [])
+  const [loading, setLoading] = useState(providedCodes === undefined)
   const [error, setError] = useState("")
 
   const [formOpen, setFormOpen] = useState(false)
@@ -157,13 +177,25 @@ export function PromoCodesPanel({
     // the scope changes, or a program would briefly show the venue's numbers.
     setExpandedId(null)
     setBreakdowns({})
-    setLoading(true)
+    setLoading(providedCodes === undefined)
     apiClient
       .get<{ promo_codes: PromoCode[] }>(basePath)
-      .then((data) => setCodes(data.promo_codes ?? []))
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load promo codes"))
+      .then((data) => {
+        setCodes(data.promo_codes ?? [])
+        setError("")
+      })
+      .catch((err) => {
+        // P5: a series panel may be seeded from the grouped sibling while
+        // door-access CRUD is not live yet. Keep the seed; don't paint an
+        // error over rows the host can already see.
+        if (providedCodes !== undefined) {
+          setCodes(providedCodes)
+          return
+        }
+        setError(err instanceof ApiError ? err.message : "Failed to load promo codes")
+      })
       .finally(() => setLoading(false))
-  }, [basePath])
+  }, [basePath, providedCodes])
 
   useEffect(() => {
     setError("")
