@@ -10,13 +10,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/business/v2/ui
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
-import {
-  PROMOTER_TAB_COMMISSION_EXPLAINER,
-  PROMOTER_TAB_EMPTY_DESCRIPTION,
-  PROMOTER_TAB_EMPTY_TITLE,
-  PROMOTER_TAB_EXPLAINER,
-  PROMOTER_TAB_SUBTITLE,
-} from "@/lib/business/promoter-tab-copy"
 
 function initials(s?: string | null) {
   if (!s) return "?"
@@ -66,18 +59,7 @@ export default function V2EventPromotersPage({ params }: { params: Promise<{ id:
 
   return (
     <>
-      <ManageSubheader
-        eventId={id}
-        title="Promoters"
-        subtitle={
-          <>
-            {PROMOTER_TAB_SUBTITLE}
-            <span className="mt-2 block text-[13px] text-neutral-500 dark:text-neutral-400">
-              {PROMOTER_TAB_EXPLAINER}
-            </span>
-          </>
-        }
-      />
+      <ManageSubheader eventId={id} title="Promoters" subtitle="People sharing your event link and what they've earned." />
 
       {error ? (
         <EmptyState icon={Megaphone} title={error} />
@@ -92,7 +74,7 @@ export default function V2EventPromotersPage({ params }: { params: Promise<{ id:
               </div>
               <p className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{money(totalCommissionCents)}</p>
               <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-                {PROMOTER_TAB_COMMISSION_EXPLAINER}
+                Already deducted from your gross. You don&apos;t pay this separately. Your Stripe take-home is what&apos;s left after this.
               </p>
             </CardContent>
           </Card>
@@ -100,8 +82,8 @@ export default function V2EventPromotersPage({ params }: { params: Promise<{ id:
           {(promoters ?? []).length === 0 ? (
             <EmptyState
               icon={Megaphone}
-              title={PROMOTER_TAB_EMPTY_TITLE}
-              description={PROMOTER_TAB_EMPTY_DESCRIPTION}
+              title="No promoters yet"
+              description="When users opt in to promote this event, they'll appear here."
             />
           ) : (
             <Card className="overflow-hidden">

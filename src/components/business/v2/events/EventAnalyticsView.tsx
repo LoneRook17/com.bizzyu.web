@@ -1,7 +1,6 @@
 "use client"
 
 import type { EventAnalytics } from "@/lib/business/types"
-import { promoterDisplayName } from "@/lib/business/promoter-display-name"
 import { usd, cn } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 
@@ -148,7 +147,7 @@ export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
               <tbody>
                 {data.trackingLinks.map((link) => (
                   <tr key={link.tracking_link_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
-                    <td className="py-2 text-neutral-900 dark:text-neutral-100">{promoterDisplayName(link)}</td>
+                    <td className="py-2 text-neutral-900 dark:text-neutral-100">{link.promoter_name}</td>
                     <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.clicks}</td>
                     <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.sales_count}</td>
                     <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd((link.commission_cents ?? 0) / 100)}</td>

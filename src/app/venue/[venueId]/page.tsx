@@ -1,39 +1,38 @@
 import { Metadata } from "next"
-import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
-import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
-import { fetchVenuePublicData } from "@/lib/venuePublic"
 import VenuePageClient from "./VenuePageClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
-// Event ticket checkout still lives on Laravel (l2gp: https://dev.bizzy-deals.com).
-// Relative /checkout on this Next app resolves to Vercel. Vercel env:
-// CHECKOUT_REDIRECT_BASE_URL on project com-bizzyu-web-l2gp.
-const CHECKOUT_BASE_URL = laravelCheckoutBaseUrl()
+// Event ticket checkout still lives on the Laravel app (dev: http://3.80.143.224,
+// prod: https://bizzy-deals.com); the Vercel event checkout isn't built yet.
+// Reuses the same env convention as src/app/event/[id]/page.tsx.
+const CHECKOUT_BASE_URL =
+  process.env.CHECKOUT_REDIRECT_BASE_URL ||
+  process.env.LARAVEL_CHECKOUT_BASE_URL ||
+  "https://bizzy-deals.com"
 
 interface PageProps {
   params: Promise<{ venueId: string }>
-  // V5 REDEMPTION §8 — `?line_skip=<id>` is still ACCEPTED and still parsed. The
-  // public page no longer renders a line-skip section (F15 moves that product
-  // onto Door Access), but shared links carrying the param are in the wild — in
-  // Messages threads, in promoter posts — and an unknown search param must not
-  // 404 or warn. It is read here and ignored; the page it lands on is the venue
-  // page, which is where the visitor wanted to be either way.
   searchParams: Promise<{ line_skip?: string }>
 }
 
 async function getVenueData(venueId: string) {
-  return fetchVenuePublicData(venueId, API_URL, CHECKOUT_BASE_URL)
+  try {
+    const res = await fetch(`${API_URL}/ui/venues/venue/${venueId}`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return null
+    return res.json()
+  } catch {
+    return null
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { venueId } = await params
   const data = await getVenueData(venueId)
   const venueName = data?.venue?.name || "Venue"
-  // §8 — the fallback description follows what the page actually shows now.
-  const description =
-    data?.venue?.description ||
-    `Check out events, ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, and deals at ${venueName} on Bizzy.`
+  const description = data?.venue?.description || `Check out events, line skips, and deals at ${venueName} on Bizzy.`
 
   return {
     title: `${venueName} | Bizzy`,
@@ -65,15 +64,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function VenuePage({ params, searchParams }: PageProps) {
   const { venueId } = await params
-  // Awaited and discarded — see the PageProps note. Next requires the promise be
-  // consumed; the value is deliberately unused.
-  await searchParams
+  const { line_skip } = await searchParams
   const data = await getVenueData(venueId)
 
   return (
     <VenuePageClient
       venueId={venueId}
       initialData={data}
+      highlightLineSkip={line_skip}
       checkoutBaseUrl={CHECKOUT_BASE_URL}
     />
   )

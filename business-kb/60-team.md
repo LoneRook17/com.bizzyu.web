@@ -15,8 +15,8 @@ There are **two different kinds of team** on Bizzy:
 ## Business team roles
 
 - **Owner** — full access to everything, including settings and billing.
-- **Manager** — create and manage events, Weekly Cover, deals, and line skips; view
-  analytics; **no** business settings.
+- **Manager** — create and manage events, deals, and line skips; view analytics; **no**
+  business settings.
 - **Staff** — scan tickets, sell via Tap-to-Pay, view basic event info.
 - **Promoter** — view their share link and promotion performance.
 

@@ -35,7 +35,7 @@ export default function RecurringSeriesListPage() {
     <>
       <PageHeader
         title="Recurring"
-        description="Weekly events that run themselves. Every night is created automatically."
+        description="Weekly events that run themselves — every night is created automatically."
         actions={
           canEdit ? (
             <Button asChild>
@@ -56,7 +56,7 @@ export default function RecurringSeriesListPage() {
         <EmptyState
           icon={Repeat}
           title="No recurring series yet"
-          description="Run the same event every week (like Trivia Tuesdays or Friday Karaoke)? Set it up once and we'll create each night automatically. You can still edit or cancel any single night without touching the rest."
+          description="Run the same event every week — like Trivia Tuesdays or Friday Karaoke? Set it up once and we'll create each night automatically. You can still edit or cancel any single night without touching the rest."
           action={
             canEdit ? (
               <Button asChild>

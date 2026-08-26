@@ -2,12 +2,6 @@
 
 import Link from "next/link"
 import type { LineSkipAnalyticsOverview, LineSkipOverviewInstance } from "@/lib/business/types"
-import {
-  ANALYTICS_ACCESS_EMPTY_TITLE,
-  ANALYTICS_ACCESS_EMPTY_DESCRIPTION,
-  ANALYTICS_ACCESS_ACTIVE_SECTION,
-  ANALYTICS_ACCESS_PAST_SECTION,
-} from "@/lib/business/analytics-copy"
 import CollapsibleSection from "./CollapsibleSection"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -218,7 +212,7 @@ export default function LineSkipsOverviewComponent({
       <div>
         <AggregateStats data={data} />
         <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
-          {ANALYTICS_ACCESS_EMPTY_TITLE}. {ANALYTICS_ACCESS_EMPTY_DESCRIPTION}
+          No line skip instances yet. Create a Line Skip schedule to see analytics here.
         </div>
       </div>
     )
@@ -229,13 +223,13 @@ export default function LineSkipsOverviewComponent({
       <AggregateStats data={data} />
 
       {activeInstances.length > 0 && (
-        <CollapsibleSection title={ANALYTICS_ACCESS_ACTIVE_SECTION} count={activeInstances.length} defaultOpen={true}>
+        <CollapsibleSection title="Active Line Skips" count={activeInstances.length} defaultOpen={true}>
           <InstanceList instances={activeInstances} isAllVenues={isAllVenues} />
         </CollapsibleSection>
       )}
 
       {pastInstances.length > 0 && (
-        <CollapsibleSection title={ANALYTICS_ACCESS_PAST_SECTION} count={pastInstances.length} defaultOpen={false}>
+        <CollapsibleSection title="Past Line Skips" count={pastInstances.length} defaultOpen={false}>
           <InstanceList instances={pastInstances} isAllVenues={isAllVenues} />
         </CollapsibleSection>
       )}

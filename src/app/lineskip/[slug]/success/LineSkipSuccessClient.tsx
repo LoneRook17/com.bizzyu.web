@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 
-import { ACCESS, ACCESS_CTA, ACCESS_LIGHT } from "@/lib/checkout/surfaces"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { nativeShare } from "@/lib/share"
@@ -11,6 +10,8 @@ import { fireConfetti } from "./confetti"
 const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 
 const API_URL = getApiBaseUrl()
+const GOLD = "#D4AF37"
+const GOLD_LIGHT = "#F0CD6E"
 
 interface TicketInfo {
   id: number
@@ -106,7 +107,7 @@ export default function LineSkipSuccessClient({
         <div className="text-center">
           <div
             className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/20"
-            style={{ borderTopColor: ACCESS }}
+            style={{ borderTopColor: GOLD }}
           />
           <p className="text-white/60">Confirming your purchase...</p>
         </div>
@@ -128,7 +129,7 @@ export default function LineSkipSuccessClient({
             href={`/lineskip/${slugId}`}
             className="mt-4 inline-block rounded-lg bg-white/10 px-6 py-2 text-sm font-medium text-white hover:bg-white/20 transition-colors"
           >
-            Back to Skip the Line
+            Back to Line Skips
           </a>
         </div>
       </div>
@@ -147,21 +148,21 @@ export default function LineSkipSuccessClient({
         <div className="mb-8 text-center">
           <div
             className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full"
-            style={{ backgroundColor: `${ACCESS}1f`, border: `1px solid ${ACCESS}33` }}
+            style={{ backgroundColor: `${GOLD}1f`, border: `1px solid ${GOLD}33` }}
           >
-            <svg className="h-10 w-10" style={{ color: ACCESS }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-10 w-10" style={{ color: GOLD }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <h1 className="text-3xl font-extrabold text-white">You&apos;re all set!</h1>
           <p className="mt-1 text-white/60">
-            Your Skip the Line{tickets.length > 1 ? "s are" : " is"} confirmed for {displayName}
+            Your Line Skip{tickets.length > 1 ? "s are" : " is"} confirmed for {displayName}
           </p>
         </div>
 
         {/* Get your line skips in the app */}
         <div className="mb-6 rounded-2xl border border-[#1e1e2e] bg-[#141420] p-6 text-center">
-          <h2 className="mb-2 text-2xl font-extrabold text-white">Get your Skip the Line in the app</h2>
+          <h2 className="mb-2 text-2xl font-extrabold text-white">Get your Line Skips in the app</h2>
           <p className="mb-6 text-sm text-gray-400">
             Sign up with the <span className="font-semibold text-white">same phone number</span> you used at checkout.
           </p>
@@ -171,7 +172,7 @@ export default function LineSkipSuccessClient({
             target="_blank"
             rel="noreferrer"
             className="flex w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-4 text-lg font-extrabold text-black transition hover:brightness-110 active:scale-[0.98]"
-            style={{ background: `${ACCESS_CTA}`, boxShadow: `0 16px 40px -12px ${ACCESS}80` }}
+            style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})`, boxShadow: `0 16px 40px -12px ${GOLD}80` }}
           >
             <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
               <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
@@ -187,8 +188,8 @@ export default function LineSkipSuccessClient({
         </div>
 
         {/* Details card */}
-        <div className="mb-6 overflow-hidden rounded-2xl border" style={{ borderColor: `${ACCESS}40`, backgroundColor: `${ACCESS}0d` }}>
-          <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: ACCESS }}>
+        <div className="mb-6 overflow-hidden rounded-2xl border" style={{ borderColor: `${GOLD}40`, backgroundColor: `${GOLD}0d` }}>
+          <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: GOLD }}>
             <span className="text-sm font-extrabold text-black/80">LINE SKIP</span>
             <span className="rounded-full bg-black/10 px-3 py-0.5 text-xs font-bold text-black/70">INCLUDES COVER</span>
           </div>
@@ -206,7 +207,7 @@ export default function LineSkipSuccessClient({
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/50">Skip the Line</span>
+                <span className="text-white/50">Line Skips</span>
                 <span className="font-semibold text-white">{tickets.length}</span>
               </div>
             </div>
@@ -225,10 +226,10 @@ export default function LineSkipSuccessClient({
           href={`/lineskip/${venueId}`}
           className="flex w-full items-center justify-center gap-2.5 rounded-2xl border border-[#1e1e2e] bg-[#141420] px-6 py-4 text-lg font-extrabold text-white transition hover:bg-[#1e1e2e] active:scale-[0.98]"
         >
-          <svg className="h-5 w-5" style={{ color: ACCESS }} fill="currentColor" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" style={{ color: GOLD }} fill="currentColor" viewBox="0 0 24 24">
             <path d="M13 2L4.094 12.688c-.391.469-.063 1.187.547 1.187H10l-1 8.125 8.906-10.688c.391-.469.063-1.187-.547-1.187H14l-1-8.125z" />
           </svg>
-          Buy more Skip the Line
+          Buy more Line Skips
         </a>
 
         {/* Footer */}

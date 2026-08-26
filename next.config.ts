@@ -41,9 +41,17 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    // /event/:id is owned by src/app/event/[id]/page.tsx so a host-ended
-    // Weekly Cover night can fail closed before any Laravel bounce. Live
-    // nights still 302 to CHECKOUT_REDIRECT_BASE_URL from that page.
+    // /event/:id forwards to the Laravel event checkout. Destination is
+    // per-deploy so the dev Vercel project (com-bizzyu-web-l2gp) can point
+    // at the dev Laravel EC2 while the prod project (com-bizzyu-web) points
+    // at bizzy-deals.com. CHECKOUT_REDIRECT_BASE_URL is the canonical var and
+    // MUST come first here — it's the same var the page components read, so a
+    // single value governs every redirect path (build-time and runtime).
+    // CHECKOUT_REDIRECT_BASE is kept only as a legacy fallback.
+    const checkoutBase =
+      process.env.CHECKOUT_REDIRECT_BASE_URL ||
+      process.env.CHECKOUT_REDIRECT_BASE ||
+      "https://bizzy-deals.com";
     return [
       {
         // /discounts and /post-a-deal both sold restaurants on posting a deal.
@@ -93,6 +101,11 @@ const nextConfig: NextConfig = {
       {
         source: "/business/accept-invite",
         destination: "/team-invite",
+        permanent: false,
+      },
+      {
+        source: "/event/:id(\\d+)",
+        destination: `${checkoutBase}/checkout/:id`,
         permanent: false,
       },
     ];

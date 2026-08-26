@@ -155,7 +155,7 @@ const EXPORT_LABEL: Record<ExportPhase, string> = {
   idle: "Export CSV",
   busy: "Export CSV",
   preparing: EXPORT_PREPARING_LABEL,
-  failed: "Export failed. Retry",
+  failed: "Export failed — retry",
 }
 
 function GlobalCsvExportButton({ timeWindow, venueParam }: { timeWindow: PayoutsWindow; venueParam: string }) {
@@ -429,7 +429,7 @@ function ReconcileContainer() {
           <EmptyState
             icon={Info}
             title="Payout reconciliation is coming soon"
-            description="Detailed payout breakdowns aren't available yet. Your deposits still land in your bank on Stripe's normal schedule. This tab will show exactly what each one paid for once it's live."
+            description="Detailed payout breakdowns aren't available yet. Your deposits still land in your bank on Stripe's normal schedule — this tab will show exactly what each one paid for once it's live."
           />
         ) : mode === "error" ? (
           <EmptyState

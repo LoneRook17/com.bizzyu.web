@@ -360,7 +360,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
           <p className="text-lg font-semibold text-ink">
             {analytics.tickets.length > 0
               ? formatPrice(analytics.tickets[analytics.tickets.length - 1]?.price_paid_cents ?? 0)
-              : analytics.capacity !== null ? "-" : "-"}
+              : analytics.capacity !== null ? "—" : "—"}
           </p>
         </div>
       </div>
@@ -477,7 +477,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
                     {analytics.tickets.map((t) => (
                       <tr key={t.id} className="border-b border-gray-50">
                         <td className="py-2">{t.attendee_name}</td>
-                        <td className="py-2 text-gray-500 text-xs">{t.phone_number || "-"}</td>
+                        <td className="py-2 text-gray-500 text-xs">{t.phone_number || "—"}</td>
                         <td className="py-2 text-gray-500 text-xs">{formatDateTime(t.created_at)}</td>
                         <td className="py-2 text-right">{formatPrice(t.price_paid_cents)}</td>
                         <td className="py-2 text-center">
@@ -490,9 +490,9 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
                           </span>
                         </td>
                         <td className="py-2 text-xs text-gray-500">
-                          {t.redeemed_at ? formatDateTime(t.redeemed_at) : "-"}
+                          {t.redeemed_at ? formatDateTime(t.redeemed_at) : "—"}
                         </td>
-                        <td className="py-2 text-xs text-gray-500">{t.promo_code || "-"}</td>
+                        <td className="py-2 text-xs text-gray-500">{t.promo_code || "—"}</td>
                         <td className="py-2 text-xs text-gray-500">{t.user_id ? "App" : "Web"}</td>
                       </tr>
                     ))}

@@ -386,14 +386,14 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
                         {analytics.tickets.map((t) => (
                           <tr key={t.id} className="border-b border-neutral-50 dark:border-neutral-800/60">
                             <td className="py-2 text-neutral-800 dark:text-neutral-200">{t.attendee_name}</td>
-                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.phone_number || "-"}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.phone_number || "—"}</td>
                             <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{formatDateTime(t.created_at)}</td>
                             <td className="py-2 text-right text-neutral-800 dark:text-neutral-200">{money(t.price_paid_cents)}</td>
                             <td className="py-2 text-center">
                               <Badge variant={t.is_redeemed ? "success" : "neutral"}>{t.is_redeemed ? "Checked in" : "Active"}</Badge>
                             </td>
-                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.redeemed_at ? formatDateTime(t.redeemed_at) : "-"}</td>
-                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.promo_code || "-"}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.redeemed_at ? formatDateTime(t.redeemed_at) : "—"}</td>
+                            <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.promo_code || "—"}</td>
                             <td className="py-2 text-xs text-neutral-500 dark:text-neutral-400">{t.user_id ? "App" : "Web"}</td>
                           </tr>
                         ))}

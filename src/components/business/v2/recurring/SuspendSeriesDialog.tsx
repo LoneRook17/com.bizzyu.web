@@ -51,10 +51,10 @@ export function SuspendSeriesDialog({
       // Core owns the whole state change — on failure nothing was modified.
       setError(
         err instanceof ApiError && err.status === 502
-          ? "Suspending isn't available right now. Nothing was changed. Please try again in a minute."
+          ? "Suspending isn't available right now — nothing was changed. Please try again in a minute."
           : err instanceof ApiError
             ? err.message
-            : "Failed to suspend the series. Nothing was changed."
+            : "Failed to suspend the series — nothing was changed."
       )
     } finally {
       setSuspending(false)
@@ -85,7 +85,7 @@ export function SuspendSeriesDialog({
               </DialogDescription>
             </DialogHeader>
             <p className="text-xs text-neutral-400 dark:text-neutral-500">
-              Nights that already sold tickets (and nights you&apos;ve customized) stay live so nobody loses a
+              Nights that already sold tickets — and nights you&apos;ve customized — stay live so nobody loses a
               ticket. You&apos;ll get a summary of exactly what happened.
             </p>
             {error && (
@@ -124,7 +124,7 @@ export function SuspendSeriesDialog({
                       <li>
                         {plural(keptWithSales.length, "night")} {keptWithSales.length === 1 ? "has" : "have"} ticket
                         sales, so {keptWithSales.length === 1 ? "it wasn't" : "they weren't"} cancelled. To cancel{" "}
-                        {keptWithSales.length === 1 ? "it" : "them"}, open the event page. That starts the
+                        {keptWithSales.length === 1 ? "it" : "them"}, open the event page — that starts the
                         cancellation &amp; refund process:{" "}
                         <NightLinks ids={keptWithSales} dateByEventId={dateByEventId} />
                       </li>
@@ -132,7 +132,7 @@ export function SuspendSeriesDialog({
                     {keptCustomized.length > 0 && (
                       <li>
                         {plural(keptCustomized.length, "night")} you edited individually{" "}
-                        {keptCustomized.length === 1 ? "was" : "were"} kept. Manage{" "}
+                        {keptCustomized.length === 1 ? "was" : "were"} kept — manage{" "}
                         {keptCustomized.length === 1 ? "it" : "them"} from{" "}
                         {keptCustomized.length === 1 ? "its" : "their"} event page:{" "}
                         <NightLinks ids={keptCustomized} dateByEventId={dateByEventId} />

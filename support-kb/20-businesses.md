@@ -16,8 +16,8 @@ apply to business/venue users.
 ## Getting paid (Stripe)
 
 - Businesses must connect **Stripe** (Settings → Stripe Connect) before creating paid
-  events, Weekly Cover, or line skips. Stripe's wizard asks for business details,
-  bank account, and photo ID.
+  events or line skips. Stripe's wizard asks for business details, bank account, and
+  photo ID.
 - Sales pay out to the business's bank account on Stripe's schedule for their account
   (not a Bizzy timeline). The first payout usually takes about 7 to 14 days while Stripe
   verifies the account; after that, payouts arrive on Stripe's standard rolling schedule.
@@ -30,10 +30,9 @@ apply to business/venue users.
 
 ## Venues
 
-- A venue is a physical location; a business can have several. Every event, Weekly
-  Cover series, deal, and line skip belongs to one venue. Add/edit venues under
-  Settings → Your venues; the venue switcher at the top of the sidebar filters the
-  dashboard.
+- A venue is a physical location; a business can have several. Every event, deal, and
+  line skip belongs to one venue. Add/edit venues under Settings → Your venues; the
+  venue switcher at the top of the sidebar filters the dashboard.
 
 ## Events & tickets
 
@@ -49,32 +48,27 @@ apply to business/venue users.
 - **Promoters**: enable the Promoter Program on an event and set commission terms.
   Promoters get a personal share link; commissions accrue to the promoter's in-app
   wallet and they cash out on demand (no weekly payout). Track under Manage → Promoters.
-- **Recurring events** (named series, e.g. Trivia Tuesdays): each generated
-  night is a **green named Event** with its own tickets, sales, and 6-digit
-  door code. This is **not** Weekly Cover. Open grouped series rows from the
-  Events list (there is no Recurring item in the sidebar).
-- **Weekly Cover**: a pink series of regular nights. Customers buy Cover for
-  one date. `product_kind` is `weekly_cover`, not `event`. Create from Events
-  → Create → the pink Weekly Cover tile. A custom night stays Weekly Cover;
-  editing the program still restamps that night. Camera check-in, not a door
-  code. See "Weekly Cover". Don't guess from a title ending in Cover.
+- **Recurring events**: run the same event weekly (e.g. Trivia Tuesdays) from the
+  **Recurring** section — pick the nights of the week and a ticket template, and each
+  night is created automatically as its own event with its own tickets, sales, and
+  door code. Edit one night (marked "Customized") or the template; suspending only
+  cancels future nights that have no sales. Generated nights more than about a week
+  out aren't in the student feed/search yet but still exist and sell via direct and
+  promoter links.
 - **Low-stock alerts**: turn on low-stock/sold-out alerts on the event form (percent
   or count threshold; blank = sold-out-only). Alerts reach the event team by push and
   in the app's Events tab.
 
 ## Door tools
 
-- **Scanning tickets** (named events): Scanner in the dashboard sidebar or the
-  Bizzy app. Green = valid, let them in; red = already used or invalid.
-- **Door codes** (named events only): every **named event** has a 6-digit door
-  code. A doorperson opens the app, taps "Scan Tickets" on the login screen,
-  types the code, and can scan and take door sales with NO account or invite.
-  Find, share, and rotate it under the event's Manage page (owner, managers,
-  event creator, and co-hosts can see/rotate it, not staff/crew). The code
-  stops working about 2 hours after the event ends; rotating kills the old one
-  instantly. Weekly Cover does **not** use this code. Cover is camera Check In.
-- **Weekly Cover at the door**: any phone camera, tap Check In, no staff login.
-  Use the redemption list to check names off. The in-app scanner refuses Cover.
+- **Scanning tickets**: Scanner in the dashboard sidebar or the Bizzy app. Green =
+  valid, let them in; red = already used or invalid.
+- **Door codes**: every event has a 6-digit door code. A doorperson opens the app,
+  taps "Scan Tickets" on the login screen, types the code, and can scan and take
+  door sales with NO account or invite. Find, share, and rotate it under the event's
+  Manage page (owner, managers, event creator, and co-hosts can see/rotate it, not
+  staff/crew). The code stops working about 2 hours after the event ends; rotating
+  kills the old one instantly.
 - **Line skips are scanned with the phone's regular camera**, NOT the in-app scanner:
   point the camera at the QR, tap the link, it shows valid or not.
 - **Tap-to-Pay door sales**: sell at the door with the phone as the card reader
@@ -99,13 +93,11 @@ apply to business/venue users.
 ## Refunds & cancellations (policy)
 
 - **All sales are final** — customers can't request individual refunds.
-- Refunds happen only when the business cancels an event, a Weekly Cover night, or a
-  line-skip night: every buyer is then refunded in full (price + fees) automatically
-  through Stripe, and the money is pulled back from the business's Stripe account.
-- Cancelling an event requires Bizzy admin approval when there is still money to refund.
-  If the event only had free tickets, or every paid order was already refunded, there's
-  nothing to return and it cancels immediately. Events that already ended can't be
-  cancelled.
+- Refunds happen only when the business cancels an event or a line-skip night: every
+  buyer is then refunded in full (price + fees) automatically through Stripe, and the
+  money is pulled back from the business's Stripe account.
+- Cancelling an event with paid tickets sold requires Bizzy admin approval; with no
+  paid tickets it cancels immediately. Events that already ended can't be cancelled.
 - Repeated cancellations trigger review: a 3rd cancellation within 90 days flags the
   account for review by the Bizzy team.
 

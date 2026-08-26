@@ -1,22 +1,14 @@
 # Recurring events (weekly series)
 
-Run the same **named event** every week, like Trivia Tuesdays or Friday Karaoke,
-without building each night by hand. You set up a **series** once and Bizzy
-creates each night automatically. Every night is a **green named Event**
-(`product_kind` event) with its own tickets, its own sales, and its own 6-digit
-door code.
-
-This is **not Weekly Cover**. Weekly Cover is a pink series of Cover nights
-(`product_kind` weekly_cover). A custom Weekly Cover night does not become a
-recurring named event. See "Weekly Cover".
-
-There is no Recurring item in the sidebar. Open a named series from the grouped
-rows on the **Events** list.
+Run the same event every week, like Trivia Tuesdays or Friday Karaoke, without
+building each night by hand. You set up a **series** once and Bizzy creates each
+night automatically. Every night is a normal event with its own tickets, its own
+sales, and its own door code.
 
 ## Creating a series
 
-1. Create a **named Event** (Events → Create → green Event tile) and turn on
-   the weekly repeat, or open an existing series from the Events list.
+1. Go to **Recurring** in the sidebar and click **"New series"** (or "Create a
+   series").
 2. Give it a name and description.
 3. Pick the **nights of the week** it runs (one or more), a **start date**, and an
    optional **end date**. Leave the end date blank to keep it going.

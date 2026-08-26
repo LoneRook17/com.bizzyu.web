@@ -56,9 +56,8 @@ Grounded in a code-behavior trace (2026-07-03). Re-verify when flows change.
 
 ## Tickets
 
-- Buy from the Events tab (**green** named-event rows): pick ticket type +
-  quantity, pay by card or Apple Pay. A **service fee** is added at checkout.
-  Pink rows are **Weekly Cover**, not event tickets — see "Weekly Cover".
+- Buy from the Events tab: pick ticket type + quantity, pay by card or Apple Pay.
+  A **service fee** is added at checkout.
 - After purchase the ticket appears in the **Wallet tab** (QR code) and a receipt
   email arrives with the QR and, where available, an **Add to Apple Wallet** button.
 - At the door, staff scan the QR. Each ticket scans once — a re-scan shows
@@ -86,19 +85,6 @@ Grounded in a code-behavior trace (2026-07-03). Re-verify when flows change.
 - One-time use; valid only for the specific night/time window purchased.
 - Same refund policy as tickets: final sale unless the venue cancels the night, in
   which case unredeemed passes are automatically refunded in full.
-- **"Skip the line" can mean three different things.** (1) A **line skip**, the
-  product above, bought from the venue's line-skip listing. (2) A **named-event
-  ticket tier** called "Skip the Line": just a ticket, scanned with the in-app
-  scanner, cover only if the venue says so. (3) A **Weekly Cover** option also
-  called Skip the Line: still Cover for that night, scanned with any phone
-  camera. If a student isn't sure, have them check the Wallet tab. Don't guess.
-
-## Weekly Cover
-
-Cover for one night of a venue's regular series. Pink on the Events tab and
-Happening Tonight. Camera check-in, not the in-app scanner. Full article:
-"Weekly Cover". Don't call it door access. Don't treat a title ending in
-Cover as proof it is Weekly Cover.
 
 ## Profile & leaderboard
 

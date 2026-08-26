@@ -35,10 +35,6 @@ import {
   isStripeAccountReady,
   getVenuePayoutBlock,
 } from "@/lib/business/venue-payout"
-import {
-  completeAccountStripeOnboardOnce,
-  resetAccountStripeOnboardComplete,
-} from "@/lib/business/stripe-onboard-complete"
 import type { BusinessStripeAccount, Venue } from "@/lib/business/types"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -189,7 +185,7 @@ function AccountRow({
 
       {account.stripe_reconnect_required && (
         <p className="mt-2 text-[13px] text-red-600 dark:text-red-400">
-          Stripe no longer recognizes this account. It may have been disconnected or deleted.
+          Stripe no longer recognizes this account — it may have been disconnected or deleted.
           {ready ? "" : " Venues matched to it can't sell tickets until it's reconnected."}
         </p>
       )}
@@ -314,7 +310,9 @@ function AccountReturnBanner({
     setStatus("verifying")
     setError(null)
     try {
-      const data = await completeAccountStripeOnboardOnce(accountId) as CompleteResponse
+      const data = await apiClient.post<CompleteResponse>(
+        `/business/stripe-accounts/${accountId}/onboard/complete`
+      )
       setResult(data)
       setStatus("done")
       await onVerified()
@@ -357,7 +355,7 @@ function AccountReturnBanner({
         <div className="flex items-start gap-2 text-sm font-medium text-green-700 dark:text-green-400">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
           <span>
-            {name} finished Stripe onboarding. Charges and payouts are enabled. You can now match
+            {name} finished Stripe onboarding — charges and payouts are enabled. You can now match
             venues to it or make it the default.
           </span>
         </div>
@@ -403,13 +401,7 @@ function AccountReturnBanner({
               {resumeLoading ? "Opening Stripe…" : reconnectRequired ? "Reconnect account" : "Resume onboarding"}
             </button>
             {mode === "return" && (
-              <button
-                onClick={() => {
-                  resetAccountStripeOnboardComplete(accountId)
-                  verify()
-                }}
-                className="cursor-pointer text-[13px] font-semibold text-[#05EB54] hover:underline"
-              >
+              <button onClick={verify} className="cursor-pointer text-[13px] font-semibold text-[#05EB54] hover:underline">
                 Check again
               </button>
             )}
@@ -513,7 +505,7 @@ function VenueMatcherRow({
                 {accountDisplayName(a)}
                 {a.is_default ? " (default)" : ""}
                 {!isStripeAccountReady(a)
-                  ? a.stripe_reconnect_required ? " (needs reconnect)" : " (not onboarded)"
+                  ? a.stripe_reconnect_required ? " — needs reconnect" : " — not onboarded"
                   : ""}
               </option>
             ))}
@@ -546,7 +538,7 @@ function VenueMatcherRow({
               Ticket sales at this venue will PAUSE until this account finishes Stripe onboarding.
             </span>{" "}
             &ldquo;{pendingAccount ? accountDisplayName(pendingAccount) : ""}&rdquo; can&apos;t take
-            payments yet, and Bizzy never silently falls back to another account. Every checkout at{" "}
+            payments yet, and Bizzy never silently falls back to another account — every checkout at{" "}
             {venue.name} will be blocked until onboarding completes. You can un-match the account at
             any time to instantly restore default routing.
           </>
@@ -580,16 +572,6 @@ export default function VenuePayoutAccountsSection() {
       : null
 
   const [addOpen, setAddOpen] = useState(false)
-
-  // Payments load: ready venue accounts POST complete so escrow claims run.
-  // Deduped per id; never starts a new Connect account.
-  useEffect(() => {
-    if (!accounts) return
-    for (const account of accounts) {
-      if (!isStripeAccountReady(account)) continue
-      void completeAccountStripeOnboardOnce(account.id)
-    }
-  }, [accounts])
 
   const refreshAll = useCallback(async () => {
     await Promise.all([refresh(), refreshVenues()])
@@ -688,7 +670,7 @@ export default function VenuePayoutAccountsSection() {
       {/* Stale-but-usable list: a background refresh failed but we still have data. */}
       {error && (
         <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[13px] text-amber-700 dark:text-amber-400">
-          <span>Couldn&apos;t refresh payout accounts. Showing the last loaded state.</span>
+          <span>Couldn&apos;t refresh payout accounts — showing the last loaded state.</span>
           <button onClick={() => refresh()} className="shrink-0 cursor-pointer font-semibold hover:underline">Retry</button>
         </div>
       )}
@@ -740,7 +722,7 @@ export default function VenuePayoutAccountsSection() {
           <div className="mt-3 space-y-3">
             {activeVenues.length === 0 ? (
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                No active venues yet. Add a venue in the Venues tab first.
+                No active venues yet — add a venue in the Venues tab first.
               </p>
             ) : (
               activeVenues.map((venue) => (

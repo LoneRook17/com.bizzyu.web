@@ -333,7 +333,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
               "Venue address": form.venue_address,
               "Start": form.start_date_time || "(unset)",
               "End": form.end_date_time || "(unset)",
-              "Tickets": form.type === "Ticketed" ? `${form.tickets.length} tier(s)` : "-",
+              "Tickets": form.type === "Ticketed" ? `${form.tickets.length} tier(s)` : "—",
               "Moderation status": data.moderation_status ?? "approved",
             },
           }),

@@ -19,9 +19,11 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js"
 
-import { ACCESS, ACCESS_CTA, ACCESS_LIGHT } from "@/lib/checkout/surfaces"
 import type { LineSkipPiBreakdown } from "@/lib/lineskip-pi/types"
 import { resolveElementsMode, elementsKey } from "@/lib/lineskip-pi/element-binding"
+
+const GOLD = "#D4AF37"
+const GOLD_LIGHT = "#F0CD6E"
 
 function formatPrice(cents: number): string {
   if (cents === 0) return "Free"
@@ -42,8 +44,10 @@ function getStripe(publishableKey: string) {
 // Elements appearance, matched to the event checkout's configured theme
 // (com.bizzyu.core resources/views/public/checkout.blade.php — the F9.3 Stripe.js
 // island: theme "night", #0a0a0f background, #f3f4f6 text, 12px radius, Fira Sans).
-// colorPrimary is magenta (door access / Weekly Cover), matching the app.
-// Named events stay green. Never gold.
+// The one brand-adapted variable is colorPrimary: line skips deliberately use gold
+// where events use Bizzy green, to differentiate the VIP product across the whole
+// flow (see LineSkipCheckoutClient) — so the accent stays gold while everything
+// else (dark night theme, sans-serif labels, radius, danger) matches the event look.
 //
 // fontFamily must be a real font name, NOT a `var(--font-*)`: Elements renders in a
 // cross-origin iframe where the page's next/font CSS variable is undefined, which
@@ -51,7 +55,7 @@ function getStripe(publishableKey: string) {
 const appearance: Appearance = {
   theme: "night",
   variables: {
-    colorPrimary: ACCESS,
+    colorPrimary: GOLD,
     colorBackground: "#0a0a0f",
     colorText: "#f3f4f6",
     colorDanger: "#f87171",
@@ -97,11 +101,11 @@ function OrderSummary({ breakdown, quantity }: { breakdown: LineSkipPiBreakdown;
       </h3>
       <div className="space-y-2 text-sm">
         <div className="flex justify-between text-white/70">
-          <span>Skip the Line {quantity > 1 ? `× ${quantity}` : ""}</span>
+          <span>Line Skip {quantity > 1 ? `× ${quantity}` : ""}</span>
           <span>{formatPrice(breakdown.base_cents)}</span>
         </div>
         {breakdown.discount_cents > 0 && (
-          <div className="flex justify-between font-semibold" style={{ color: ACCESS }}>
+          <div className="flex justify-between font-semibold" style={{ color: GOLD }}>
             <span>Promo discount</span>
             <span>-{formatPrice(breakdown.discount_cents)}</span>
           </div>
@@ -113,7 +117,7 @@ function OrderSummary({ breakdown, quantity }: { breakdown: LineSkipPiBreakdown;
         <div className="my-2 border-t border-dashed border-white/15" />
         <div className="flex justify-between text-base font-extrabold text-white">
           <span>Total</span>
-          <span style={{ color: ACCESS }}>{formatPrice(breakdown.total_cents)}</span>
+          <span style={{ color: GOLD }}>{formatPrice(breakdown.total_cents)}</span>
         </div>
       </div>
     </div>
@@ -215,7 +219,7 @@ function PaymentForm({
         onClick={confirm}
         disabled={!stripe || submitting}
         className="mt-4 w-full rounded-xl py-3.5 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-50"
-        style={{ background: `${ACCESS_CTA}` }}
+        style={{ background: `linear-gradient(135deg, ${GOLD_LIGHT}, ${GOLD})` }}
       >
         {submitting ? "Processing..." : `Pay ${formatPrice(breakdown.total_cents)}`}
       </button>
@@ -241,7 +245,7 @@ function PaymentLoading({ breakdown, quantity }: { breakdown: LineSkipPiBreakdow
       <div className="mt-4 flex items-center justify-center gap-2 text-xs text-white/40">
         <span
           className="h-4 w-4 animate-spin rounded-full border-2 border-white/20"
-          style={{ borderTopColor: ACCESS }}
+          style={{ borderTopColor: GOLD }}
         />
         Loading secure payment…
       </div>
