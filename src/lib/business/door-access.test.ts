@@ -1803,6 +1803,17 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   assert.ok(editor.includes("applyIncludesCover"), "Cover included toggle rewrites the skip description")
   assert.ok(editor.includes("syncSkipTierDescriptions"), "Save night re-derives skip blurbs from the toggle")
   assert.ok(!editor.includes("patchTier(i, { includes_cover:"), "toggle must not flip the flag without the blurb")
+  assert.ok(editor.includes("ScanWindowToggle"), "weekday / game-day night editor paints ScanWindow under Surge")
+  assert.ok(editor.includes("<ScanWindowInfo weekly"), "scan window copy is the weekly relative variant")
+  assert.ok(editor.includes("<ScanWindowExamples weekly"), "scan window examples stay weekly")
+  assert.ok(editor.includes('type="time"'), "scan window is relative HH:mm, not a calendar datetime")
+  assert.ok(!editor.includes("datetime-local"), "WC templates must not send standalone valid_from / valid_until")
+  assert.ok(!editor.includes("<ScanWindowSection"), "absolute ScanWindowSection stays off weekday / game-day templates")
+  const surgeAt = editor.indexOf("checked={tier.surge_enabled}")
+  const scanAt = editor.indexOf("<ScanWindowToggle")
+  const ageAt = editor.indexOf("checked={tier.is_21_plus}")
+  assert.ok(surgeAt >= 0 && scanAt > surgeAt, "ScanWindow sits under Surge")
+  assert.ok(ageAt > scanAt, "21+ stays after ScanWindow")
 
   const night = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
@@ -1818,6 +1829,7 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   assert.ok(!eventForm.includes('variant="access"'), "event create/edit must stay green")
   assert.ok(!eventForm.includes("WeeklyCoverAccent"), "event form must not wrap the Weekly Cover accent")
   assert.ok(eventForm.includes("#05EB54") || eventForm.includes("<Button"), "event form still uses the green path")
+  assert.ok(!eventForm.includes("ScanWindowToggle"), "standalone EventForm must not grow a second relative scan window")
 })
 
 test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker", () => {
@@ -1837,7 +1849,13 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     const raw = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
     const src = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
     assert.ok(!/Stock alerts/.test(src), `${rel} still has stock alerts on WC create`)
-    assert.ok(!/ScanWindow/.test(src), `${rel} still has a scan window on WC create`)
+    // Weekday / game-day NightEditorDialog paints relative ScanWindow under
+    // Surge (Flutter Host parity). Wizard leftovers, Sell, Review, and the
+    // choice cards must not grow their own copy. Steps that only mount the
+    // dialog stay clean as long as they do not import ScanWindow themselves.
+    if (!rel.endsWith("NightEditorDialog.tsx")) {
+      assert.ok(!/ScanWindow/.test(src), `${rel} still has a scan window on WC create`)
+    }
     assert.ok(!/Save as draft/.test(src), `${rel} still has Save as draft`)
     assert.ok(!/Choose a venue|Select a venue/.test(src), `${rel} still shows a venue picker`)
     assert.ok(!/\bVIP\b/.test(src), `${rel} still mentions VIP`)
