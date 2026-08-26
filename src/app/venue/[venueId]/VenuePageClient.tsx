@@ -291,7 +291,12 @@ export default function VenuePageClient({
                   </h3>
                   <div className="space-y-3">
                     {rows.map((event) => (
-                      <UpcomingRow key={event.event_id} event={event} venue={venue} />
+                      <UpcomingRow
+                        key={event.event_id}
+                        event={event}
+                        venue={venue}
+                        checkoutBaseUrl={checkoutBaseUrl}
+                      />
                     ))}
                   </div>
                 </section>
@@ -302,7 +307,12 @@ export default function VenuePageClient({
                   <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">Later</h3>
                   <div className="space-y-3">
                     {later.map((event) => (
-                      <UpcomingRow key={event.event_id} event={event} venue={venue} />
+                      <UpcomingRow
+                        key={event.event_id}
+                        event={event}
+                        venue={venue}
+                        checkoutBaseUrl={checkoutBaseUrl}
+                      />
                     ))}
                   </div>
                 </section>
@@ -371,16 +381,19 @@ function nightRowTheme(cover: boolean) {
 function UpcomingRow({
   event,
   venue,
+  checkoutBaseUrl,
 }: {
   event: VenueEvent
   venue: VenueData["venue"]
+  checkoutBaseUrl: string
 }) {
   const cover = isVenueWeeklyCoverNight(event)
   const theme = nightRowTheme(cover)
   const image = resolveVenueEventImageUrl(event, venue)
   const price = rowPriceLabel(event)
-  // Same-origin event checkout as /checkout/673 — WC and named events share it.
-  const href = venueNightCheckoutHref("", event.event_id)
+  // Laravel GET /checkout/{eventId} — WC and named events share it. Relative
+  // /checkout on this Next app would stay on Vercel.
+  const href = venueNightCheckoutHref(checkoutBaseUrl, event.event_id)
   const tiers = resolveNightTiers(event)
 
   return (
@@ -427,7 +440,7 @@ function UpcomingRow({
             return (
               <a
                 key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
-                href={venueNightCheckoutHref("", event.event_id, tier.ticket_id)}
+                href={venueNightCheckoutHref(checkoutBaseUrl, event.event_id, tier.ticket_id)}
                 className={`rounded-full border bg-[#0a0a0f] px-3 py-1.5 text-sm font-semibold text-white ${theme.chip}`}
               >
                 {label}

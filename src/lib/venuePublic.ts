@@ -10,6 +10,7 @@ import {
   shouldListWeeklyCoverNightOnGuest,
 } from "./business/weekly-cover-visibility.ts"
 import { foldLeftoverSurgeSkus } from "./checkout/surge-skus.ts"
+import { DEV_LARAVEL_CHECKOUT_ORIGIN } from "./laravel-checkout.ts"
 
 // Public /venue/:id board data.
 //
@@ -344,8 +345,8 @@ export function formatAccessTierLabel(tier: VenueAccessTier): string {
 }
 
 /**
- * Event checkout preselect. /checkout/:id and Laravel both read this name.
- * Example: /checkout/621?ticket_id=678
+ * Event checkout preselect. Laravel GET /checkout/{eventId} reads this name.
+ * Example: https://dev.bizzy-deals.com/checkout/621?ticket_id=678
  */
 export const VENUE_CHECKOUT_TICKET_PARAM = "ticket_id"
 
@@ -354,7 +355,8 @@ export function venueNightCheckoutHref(
   eventId: number,
   ticketId?: number | null,
 ): string {
-  const base = `${checkoutBaseUrl.replace(/\/$/, "")}/checkout/${eventId}`
+  const origin = (checkoutBaseUrl.trim() || DEV_LARAVEL_CHECKOUT_ORIGIN).replace(/\/$/, "")
+  const base = `${origin}/checkout/${eventId}`
   const id = ticketId == null ? undefined : parseTicketIdValue(ticketId)
   return id != null ? `${base}?${VENUE_CHECKOUT_TICKET_PARAM}=${id}` : base
 }

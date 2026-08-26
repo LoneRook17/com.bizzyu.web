@@ -5,6 +5,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import { DEV_LARAVEL_CHECKOUT_ORIGIN } from "./laravel-checkout.ts"
 import {
   coalesceVenuePhotoUrl,
   eventIdSeeds,
@@ -255,8 +256,18 @@ test("venueNightCheckoutHref uses ?ticket_id= and omits it when there is no id",
     venueNightCheckoutHref("https://dev.bizzy-deals.com", 621, null),
     "https://dev.bizzy-deals.com/checkout/621",
   )
-  assert.equal(venueNightCheckoutHref("", 673), "/checkout/673")
-  assert.equal(venueNightCheckoutHref("", 673, 678), "/checkout/673?ticket_id=678")
+  assert.equal(
+    venueNightCheckoutHref("", 673),
+    `${DEV_LARAVEL_CHECKOUT_ORIGIN}/checkout/673`,
+  )
+  assert.equal(
+    venueNightCheckoutHref("", 673, 678),
+    `${DEV_LARAVEL_CHECKOUT_ORIGIN}/checkout/673?ticket_id=678`,
+  )
+  assert.ok(
+    !venueNightCheckoutHref("", 673).startsWith("/checkout/"),
+    "empty base must not resolve to same-origin Vercel /checkout",
+  )
 })
 
 test("ticketIdFromSearch reads the venue/event checkout preselect", () => {
@@ -708,6 +719,7 @@ test("venue checkout tiers path is the same-origin Cover $5 reader", () => {
   assert.ok(lib.includes("tickets.length < 2"), "do not treat a 1-ticket night as complete")
   assert.ok(route.includes("parseCheckoutTicketTiers"), "API route must parse Laravel checkout HTML")
   assert.ok(route.includes("/checkout/"), "API route must fetch the night checkout page")
+  assert.ok(route.includes("laravelCheckoutBaseUrl"), "tier reader must use Laravel origin, not Vercel")
 })
 
 test("Rumble / happening-today row is From $5 when we have a price", () => {
@@ -869,12 +881,16 @@ test("venue nights checkout through venueNightCheckoutHref like the event checko
   assert.ok(client.includes("UpcomingRow"), "must render checkout-style night cards")
   assert.ok(client.includes("venueNightCheckoutHref"), "rows share the checkout href helper")
   assert.ok(
-    client.includes('venueNightCheckoutHref("", event.event_id)'),
-    "a night row must checkout that night without forcing a ticket_id",
+    client.includes("venueNightCheckoutHref(checkoutBaseUrl, event.event_id)"),
+    "a night row must checkout that night on Laravel without forcing a ticket_id",
   )
   assert.ok(
-    client.includes("venueNightCheckoutHref(\"\", event.event_id, tier.ticket_id)"),
-    "a selected venue ticket must pass ?ticket_id= into /checkout/:eventId",
+    client.includes("venueNightCheckoutHref(checkoutBaseUrl, event.event_id, tier.ticket_id)"),
+    "a selected venue ticket must pass ?ticket_id= into Laravel /checkout/:eventId",
+  )
+  assert.ok(
+    !client.includes('venueNightCheckoutHref("", event.event_id)'),
+    "venue cards must not use relative /checkout on this Next app",
   )
   assert.ok(client.includes("formatAccessTierLabel"), "venue WC rows must show ticket prices")
   assert.ok(!client.includes("weeklyCoverCheckoutPath"), "venue must not send WC to /cover")
@@ -902,6 +918,14 @@ test("top venue CTAs omit price and the hero matches event checkout", () => {
   assert.ok(
     page.includes("CHECKOUT_BASE_URL"),
     "server fetch must pass the checkout base so draft Cover nights can resolve $5",
+  )
+  assert.ok(
+    page.includes("laravelCheckoutBaseUrl"),
+    "venue page must resolve Laravel checkout origin from env",
+  )
+  assert.ok(
+    !page.includes('"https://bizzy-deals.com"'),
+    "l2gp venue cards must not default to prod Laravel",
   )
 })
 
