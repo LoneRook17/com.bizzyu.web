@@ -239,6 +239,16 @@ test("surge waves stamped as extra -surge- tickets fold back onto the parent", (
   assert.deepEqual(collapsed[0].surge, [{ afterSoldInput: "50", priceInput: "15" }])
 })
 
+test("leftover cover_surge_* tickets fold back onto the Cover parent", () => {
+  const collapsed = collapseTiers([
+    tierFromWire({ tier_key: "cover", name: "Cover", price_usd: 10, quantity: 50 }),
+    tierFromWire({ tier_key: "cover_surge_2300", name: "Cover", price_usd: 15 }),
+  ])
+  assert.equal(collapsed.length, 1)
+  assert.equal(collapsed[0].surge_enabled, true)
+  assert.deepEqual(collapsed[0].surge, [{ afterSoldInput: "50", priceInput: "15" }])
+})
+
 // ── 3. The template must carry real prices ──────────────────────────────────
 
 test("template_tickets come from the first configured night, not the $0 seeds", () => {
