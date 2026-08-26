@@ -209,6 +209,21 @@ test("parseVenueAccessTiers reads price, amount, and price_cents", () => {
   ])
 })
 
+test("parseVenueAccessTiers folds leftover Cover surge extras", () => {
+  assert.deepEqual(
+    parseVenueAccessTiers([
+      { ticket_id: 678, name: "Cover", price_usd: 5, tier_key: "cover" },
+      { ticket_id: 680, name: "Cover", price_usd: 12, tier_key: "cover-surge-1" },
+      { ticket_id: 681, name: "Cover", price_usd: 15, template_tier_key: "cover_surge_2300" },
+      { ticket_id: 679, name: "Skip the Line", price_usd: 10 },
+    ]),
+    [
+      { name: "Cover", price_usd: 5, ticket_id: 678 },
+      { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+    ],
+  )
+})
+
 test("parseVenueAccessTiers keeps tickets.id from ticket_id, ticketId, or id", () => {
   assert.equal(parseTicketId({ ticket_id: 678 }), 678)
   assert.equal(parseTicketId({ ticketId: "679" }), 679)
@@ -641,6 +656,30 @@ test("parseCheckoutTicketTiers keeps both Cover and Skip the Line ticket ids", (
     <div class="ticket-card bg-surface rounded-2xl"
       data-ticket-id="678"
       data-price="5.00">
+      <h4 class="font-bold text-white text-lg">Cover</h4>
+    </div>
+    <div class="ticket-card bg-surface rounded-2xl"
+      data-ticket-id="679"
+      data-price="10.00">
+      <h4 class="font-bold text-white text-lg">Skip the Line</h4>
+    </div>
+  `
+  assert.deepEqual(parseCheckoutTicketTiers(html), [
+    { name: "Cover", price_usd: 5, ticket_id: 678 },
+    { name: "Skip the Line", price_usd: 10, ticket_id: 679 },
+  ])
+})
+
+test("parseCheckoutTicketTiers folds a leftover second Cover card", () => {
+  const html = `
+    <div class="ticket-card bg-surface rounded-2xl"
+      data-ticket-id="678"
+      data-price="5.00">
+      <h4 class="font-bold text-white text-lg">Cover</h4>
+    </div>
+    <div class="ticket-card bg-surface rounded-2xl"
+      data-ticket-id="680"
+      data-price="12.00">
       <h4 class="font-bold text-white text-lg">Cover</h4>
     </div>
     <div class="ticket-card bg-surface rounded-2xl"

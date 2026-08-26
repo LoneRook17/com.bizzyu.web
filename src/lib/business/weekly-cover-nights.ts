@@ -795,16 +795,30 @@ export function tierFromWire(raw: Record<string, unknown>): NightTierDraft {
   }
 }
 
-/** Surge waves stamped as extra `…-surge-N` tickets fold back onto their parent. */
+/** Leftover expander keys: `cover-surge-1` and `cover_surge_2300`. */
+function isLeftoverSurgeExtraKey(key: string | undefined, surgeEnabled: boolean): boolean {
+  if (!key || surgeEnabled) return false
+  const k = key.toLowerCase()
+  return k.includes("-surge-") || k.startsWith("cover_surge_")
+}
+
+function parentKeyFromSurgeExtra(key: string): string {
+  if (key.includes("-surge-")) return key.split("-surge-")[0]
+  const lower = key.toLowerCase()
+  if (lower.startsWith("cover_surge_")) return "cover"
+  return key
+}
+
+/** Surge waves stamped as extra `…-surge-N` / `cover_surge_*` tickets fold back onto their parent. */
 export function collapseTiers(tiers: NightTierDraft[]): NightTierDraft[] {
   const parents: NightTierDraft[] = []
   const extras: NightTierDraft[] = []
   for (const tier of tiers) {
-    if (tier.tier_key && tier.tier_key.includes("-surge-") && !tier.surge_enabled) extras.push(tier)
+    if (isLeftoverSurgeExtraKey(tier.tier_key, tier.surge_enabled)) extras.push(tier)
     else parents.push(tier)
   }
   for (const extra of extras) {
-    const parentKey = extra.tier_key!.split("-surge-")[0]
+    const parentKey = parentKeyFromSurgeExtra(extra.tier_key!)
     const parent =
       parents.find((p) => p.tier_key === parentKey) ?? parents.find((p) => p.name === extra.name)
     if (!parent) {
