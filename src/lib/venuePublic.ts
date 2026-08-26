@@ -9,6 +9,7 @@ import {
   shouldKeepLookaheadWeeklyCoverNight,
   shouldListWeeklyCoverNightOnGuest,
 } from "./business/weekly-cover-visibility.ts"
+import { foldLeftoverSurgeSkus } from "./checkout/surge-skus.ts"
 
 // Public /venue/:id board data.
 //
@@ -294,15 +295,19 @@ export function parseVenueAccessTiers(raw: unknown): VenueAccessTier[] {
     }
   }
   if (!Array.isArray(rows)) return []
-  return rows
-    .filter((tier): tier is Record<string, unknown> => !!tier && typeof tier === "object")
-    .filter((tier) => tier.is_hidden !== true && tier.is_hidden !== 1 && tier.is_hidden !== "1")
-    .map((tier) => {
-      const name =
-        typeof tier.name === "string" && tier.name.trim() ? tier.name.trim() : "Cover"
-      const price = parseTierPriceUsd(tier)
-      return accessTier(name, price ?? 0, parseTicketId(tier))
-    })
+  const visible = rows.filter(
+    (tier): tier is Record<string, unknown> =>
+      !!tier &&
+      typeof tier === "object" &&
+      (tier as Record<string, unknown>).is_hidden !== true &&
+      (tier as Record<string, unknown>).is_hidden !== 1 &&
+      (tier as Record<string, unknown>).is_hidden !== "1",
+  )
+  return foldLeftoverSurgeSkus(visible).map((tier) => {
+    const name = typeof tier.name === "string" && tier.name.trim() ? tier.name.trim() : "Cover"
+    const price = parseTierPriceUsd(tier)
+    return accessTier(name, price ?? 0, parseTicketId(tier))
+  })
 }
 
 const CHIP_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -546,7 +551,7 @@ export function parseCheckoutTicketTiers(html: string): VenueAccessTier[] {
     if (name.toLowerCase() === "order summary") continue
     tiers.push(accessTier(name, price, ticketIdFromCheckoutHtml(tag[0]) ?? ticketIdFromCheckoutHtml(nearby)))
   }
-  if (tiers.length > 0) return tiers
+  if (tiers.length > 0) return foldLeftoverSurgeSkus(tiers)
   const cardRe =
     /class="[^"]*ticket-card[^"]*"[\s\S]*?data-price="([^"]+)"[\s\S]*?<h4[^>]*>\s*([^<]+?)\s*<\/h4>/gi
   let match: RegExpExecArray | null
@@ -558,17 +563,19 @@ export function parseCheckoutTicketTiers(html: string): VenueAccessTier[] {
       tiers.push(accessTier(name, price, ticketIdFromCheckoutHtml(match[0])))
     }
   }
-  if (tiers.length > 0) return tiers
+  if (tiers.length > 0) return foldLeftoverSurgeSkus(tiers)
   const priceMatch = /data-price="([^"]+)"/.exec(html)
   const coverMatch = /<h4[^>]*>\s*([^<]+?)\s*<\/h4>/i.exec(html)
   if (priceMatch && coverMatch) {
     const price = Number(priceMatch[1])
     const name = coverMatch[1].trim() || "Cover"
     if (Number.isFinite(price) && name.toLowerCase() !== "order summary") {
-      return [accessTier(name, price, ticketIdFromCheckoutHtml(html))]
+      return foldLeftoverSurgeSkus([
+        accessTier(name, price, ticketIdFromCheckoutHtml(html)),
+      ])
     }
   }
-  return []
+  return foldLeftoverSurgeSkus(tiers)
 }
 
 async function fetchCheckoutTicketTiers(

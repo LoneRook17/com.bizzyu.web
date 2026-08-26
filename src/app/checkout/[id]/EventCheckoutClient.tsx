@@ -13,6 +13,7 @@ import {
   loadVenuePublicEventIdSet,
   weeklyCoverSaleOpenForPayloads,
 } from "@/lib/checkout/weekly-cover-sale"
+import { foldLeftoverSurgeSkus } from "@/lib/checkout/surge-skus"
 import { ticketIdFromSearch } from "@/lib/venuePublic"
 
 const API_URL = getApiBaseUrl()
@@ -64,6 +65,9 @@ interface TicketTier {
   ticket_id: number
   name: string
   description: string | null
+  /** Leftover expander keys when the checkout payload still sends them. */
+  tier_key?: string | null
+  template_tier_key?: string | null
   price_usd: number
   quantity: number | null
   available_quantity: number | null
@@ -328,7 +332,9 @@ export default function EventCheckoutClient({
   initialData: PageData | null
 }) {
   const [event, setEvent] = useState<EventInfo | null>(initialData?.event ?? null)
-  const [tickets, setTickets] = useState<TicketTier[]>(initialData?.tickets ?? [])
+  const [tickets, setTickets] = useState<TicketTier[]>(
+    foldLeftoverSurgeSkus(initialData?.tickets ?? []),
+  )
   const [loading, setLoading] = useState(!initialData)
   const [error, setError] = useState("")
 
@@ -414,7 +420,7 @@ export default function EventCheckoutClient({
       if (!res.ok) throw new Error("Event not found")
       const data = await res.json()
       const eventRow = await applyPromotionFlag(data.event)
-      setTickets(data.tickets || [])
+      setTickets(foldLeftoverSurgeSkus(data.tickets || []))
       setEvent(eventRow)
       let ui: unknown = null
       try {
