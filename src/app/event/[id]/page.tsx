@@ -5,6 +5,7 @@ import {
   loadVenuePublicEventIdSet,
   weeklyCoverSaleOpenForPayloads,
 } from "@/lib/checkout/weekly-cover-sale"
+import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
@@ -34,12 +35,8 @@ interface PageProps {
 // Live event ticket checkout still lives on Laravel. This page owns /event/:id
 // (the next.config 307 was removed) so a host-ended Weekly Cover night can
 // fail closed instead of bouncing to a Laravel URL that still sells.
-// See .env.example - CHECKOUT_REDIRECT_BASE_URL is the canonical env name.
-// Dev: http://3.80.143.224  |  Prod: https://bizzy-deals.com
-const LARAVEL_CHECKOUT_BASE_URL =
-  process.env.CHECKOUT_REDIRECT_BASE_URL ||
-  process.env.LARAVEL_CHECKOUT_BASE_URL ||
-  "https://bizzy-deals.com"
+// Vercel env: CHECKOUT_REDIRECT_BASE_URL on com-bizzyu-web-l2gp.
+const LARAVEL_CHECKOUT_BASE_URL = laravelCheckoutBaseUrl()
 
 async function getEvent(eventId: string): Promise<EventResponse | null> {
   try {

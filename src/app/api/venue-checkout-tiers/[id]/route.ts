@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server"
+import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 import { parseCheckoutTicketTiers } from "@/lib/venuePublic"
 
-const CHECKOUT_BASE =
-  process.env.CHECKOUT_REDIRECT_BASE_URL ||
-  process.env.LARAVEL_CHECKOUT_BASE_URL ||
-  "https://bizzy-deals.com"
+const CHECKOUT_BASE = laravelCheckoutBaseUrl()
 
 /**
  * Same-origin Cover / ticket prices (and tickets.id) for the public venue page.
