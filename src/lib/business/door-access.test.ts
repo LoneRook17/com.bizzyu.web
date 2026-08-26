@@ -1797,23 +1797,26 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
     fileURLToPath(new URL("../../components/business/v2/door-access/NightEditorDialog.tsx", import.meta.url)),
     "utf8",
   )
-  assert.ok(editor.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "night editor toggles use the shared pink class")
+  assert.ok(editor.includes("AccessPillToggle"), "night editor toggles are pills, not square checkboxes")
+  assert.ok(!editor.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "weekday editor must not use square checkboxes")
   assert.ok(editor.includes('variant="access-secondary"'), "Add another Cover stays in the pink family")
   assert.ok(editor.includes("ACCESS_INK"), "ink on pink fill is #33052A")
   assert.ok(editor.includes("applyIncludesCover"), "Cover included toggle rewrites the skip description")
   assert.ok(editor.includes("syncSkipTierDescriptions"), "Save night re-derives skip blurbs from the toggle")
-  assert.ok(!editor.includes("patchTier(i, { includes_cover:"), "toggle must not flip the flag without the blurb")
-  assert.ok(editor.includes("ScanWindowToggle"), "weekday / game-day night editor paints ScanWindow under Surge")
-  assert.ok(editor.includes("<ScanWindowInfo weekly"), "scan window copy is the weekly relative variant")
-  assert.ok(editor.includes("<ScanWindowExamples weekly"), "scan window examples stay weekly")
+  assert.ok(editor.includes("setTierCustomDescription"), "Custom description fills the default template")
+  assert.ok(editor.includes("What they get"), "custom description field is What they get")
+  assert.ok(editor.includes('label="Scan Window"'), "scan window label matches the app")
+  assert.ok(!editor.includes("Limit when this ticket can be scanned"), "long scan-window label stays off the weekday editor")
+  assert.ok(!editor.includes("ScanWindowToggle"), "weekday editor owns its own From/Until scan window")
+  assert.ok(!editor.includes("ScanWindowExamples"), "scan window examples sit behind (i), not inline")
   assert.ok(editor.includes('type="time"'), "scan window is relative HH:mm, not a calendar datetime")
   assert.ok(!editor.includes("datetime-local"), "WC templates must not send standalone valid_from / valid_until")
   assert.ok(!editor.includes("<ScanWindowSection"), "absolute ScanWindowSection stays off weekday / game-day templates")
-  const surgeAt = editor.indexOf("checked={tier.surge_enabled}")
-  const scanAt = editor.indexOf("<ScanWindowToggle")
-  const ageAt = editor.indexOf("checked={tier.is_21_plus}")
-  assert.ok(surgeAt >= 0 && scanAt > surgeAt, "ScanWindow sits under Surge")
-  assert.ok(ageAt > scanAt, "21+ stays after ScanWindow")
+  const surgeAt = editor.indexOf('label="Surge"')
+  const scanAt = editor.indexOf('label="Scan Window"')
+  const ageAt = editor.indexOf('label="21+"')
+  assert.ok(surgeAt >= 0 && scanAt > surgeAt, "Scan Window sits under Surge")
+  assert.ok(ageAt > scanAt, "21+ stays after Scan Window")
 
   const night = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
@@ -1854,7 +1857,7 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     // choice cards must not grow their own copy. Steps that only mount the
     // dialog stay clean as long as they do not import ScanWindow themselves.
     if (!rel.endsWith("NightEditorDialog.tsx")) {
-      assert.ok(!/ScanWindow/.test(src), `${rel} still has a scan window on WC create`)
+      assert.ok(!/Scan Window/.test(src) && !/ScanWindow/.test(src), `${rel} still has a scan window on WC create`)
     }
     assert.ok(!/Save as draft/.test(src), `${rel} still has Save as draft`)
     assert.ok(!/Choose a venue|Select a venue/.test(src), `${rel} still shows a venue picker`)
@@ -1869,7 +1872,9 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     assert.ok(!/Give the program a name/.test(src), `${rel} still requires a typed name`)
     assert.ok(!/Every night is created with this name/.test(src), `${rel} still invites a rename`)
     assert.ok(!/step === ["']details["']/.test(src), `${rel} still has a Details step`)
-    assert.ok(!/promo code/i.test(src), `${rel} still mentions promo codes`)
+    if (!rel.endsWith("WcDoorStep.tsx") && !rel.endsWith("DoorAccessWizard.tsx")) {
+      assert.ok(!/promo code/i.test(src), `${rel} still mentions promo codes`)
+    }
     assert.ok(!/notify_followers_on_publish:\s*true/.test(src), `${rel} still blasts followers`)
   }
 
@@ -1886,6 +1891,23 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(wizard.includes("WcProgressBar"), "pink progress bar on screens 2-9")
   assert.ok(wizard.includes("Look it over") || wizard.includes("WcReviewStep"), "review is Look it over")
   assert.ok(wizard.includes('isEdit && initialProducts ? STEP_DAYS : STEP_SELL'), "edit skips Sell when products exist")
+  assert.ok(wizard.includes("persistProgramPromoDrafts"), "Publish posts program-scoped promo drafts after create")
+  assert.ok(wizard.includes("wcPromoCreatePath"), "promo drafts hit the existing door-access promo API")
+
+  const door = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/WcDoorStep.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(door.includes("AccessPillToggle"), "promoter is a pill toggle")
+  assert.ok(door.includes("WcPromoCodesDraft"), "last page has the promo-code section")
+  assert.ok(!door.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "last page must not use a square promoter checkbox")
+
+  const inputs = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/ui/input.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(inputs.includes("ACCESS_INPUT_FOCUS_CLASS"), "WC inputs use the pink caret/focus token")
+  assert.ok(inputs.includes("caret-access"), "WC caret is pink, not event green")
 
   const days = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/WcDaysStep.tsx", import.meta.url)),
@@ -1902,8 +1924,11 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(!/contentEditable/.test(review), "Review name is display text, not editable")
   assert.ok(review.includes("reviewFlyerUrlForDay"), "review flyer follows the selected weekday")
   assert.ok(review.includes("ReviewFlyerPreview"), "Look it over shows the night flyer")
-  assert.ok(review.includes("No flyer"), "a night without a flyer shows a placeholder")
-  assert.ok(!review.includes("inheritedFlyerUrl"), "review must not treat the venue photo as a flyer")
+  assert.ok(review.includes("WHEN"), "Look it over has a WHEN row")
+  assert.ok(review.includes("WHERE"), "Look it over has a WHERE row")
+  assert.ok(review.includes("FORMAT"), "Look it over has a FORMAT row")
+  assert.ok(review.includes("venuePhotoUrl"), "Look it over can fall back to the venue photo")
+  assert.ok(!review.includes("No flyer"), "a missing custom flyer must not show a No flyer placeholder")
   assert.ok(review.includes("reviewSkipCoverSuffix"), "skip review suffix follows the Cover included toggle")
   assert.ok(!/tier\.kind === "skip" && tier\.includes_cover \?/.test(review), "off toggle must still show Cover NOT Included")
 

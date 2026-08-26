@@ -226,6 +226,18 @@ export function reviewSkipCoverSuffix(includesCover: boolean): string {
   return includesCover ? " · Cover included" : " · Cover NOT Included"
 }
 
+/** FORMAT row on Look it over. Guest name is Weekly Cover, never door access. */
+export function reviewFormatLabel(products: WcProducts | null): string {
+  if (products === "skip") return "Skip the Line"
+  if (products === "both") return "Cover & Skip the Line"
+  return "Weekly Cover"
+}
+
+/** Custom description is on when the weekday ticket already has text to persist. */
+export function tierHasCustomDescription(tier: { description?: string | null }): boolean {
+  return String(tier.description ?? "").trim() !== ""
+}
+
 const SKIP_COVER_CLAUSE =
   /(?:Cover included\.?|Cover NOT Included|Cover not included, paid separately\.?)\s*$/i
 
@@ -312,8 +324,9 @@ export interface NightDraft {
 export const EMPTY_SURGE_STEP: SurgeStepDraft = { afterSoldInput: "10", priceInput: "" }
 
 /**
- * Flip Cover included on a skip tier and re-derive the ticket description.
- * Cover tiers ignore the toggle — they are the cover.
+ * Flip Cover included on a skip tier and re-derive the ticket description
+ * only when Custom description is on. Off leaves description empty so the
+ * persist path stays null, same as a fresh Flutter weekday ticket.
  */
 export function applyIncludesCover(
   tier: NightTierDraft,
@@ -321,12 +334,36 @@ export function applyIncludesCover(
   opts?: { venueName?: string; dayName?: string }
 ): NightTierDraft {
   if (tier.kind !== "skip") return { ...tier, includes_cover: false }
+  if (!tierHasCustomDescription(tier)) return { ...tier, includes_cover: includesCover }
   return {
     ...tier,
     includes_cover: includesCover,
     description: defaultTierDescription({
       kind: "skip",
       includesCover,
+      venueName: opts?.venueName,
+      dayName: opts?.dayName,
+    }),
+  }
+}
+
+/**
+ * Flutter Custom description toggle. Off by default on a fresh weekday
+ * ticket. On fills the default template (they can edit). Same persist path:
+ * `description` on the weekday tier, empty → null on the wire.
+ */
+export function setTierCustomDescription(
+  tier: NightTierDraft,
+  on: boolean,
+  opts?: { venueName?: string; dayName?: string }
+): NightTierDraft {
+  if (!on) return { ...tier, description: "" }
+  if (tierHasCustomDescription(tier)) return tier
+  return {
+    ...tier,
+    description: defaultTierDescription({
+      kind: tier.kind,
+      includesCover: tier.includes_cover,
       venueName: opts?.venueName,
       dayName: opts?.dayName,
     }),
@@ -391,14 +428,6 @@ export function seedNightDraft(opts: {
   dayName?: string
 }): NightDraft {
   const tiers = seedTiersForProducts(opts.products ?? "cover")
-  for (const tier of tiers) {
-    tier.description = defaultTierDescription({
-      kind: tier.kind,
-      includesCover: tier.includes_cover,
-      venueName: opts.venueName,
-      dayName: opts.dayName,
-    })
-  }
   return {
     startTime: opts.startTime,
     endTime: opts.endTime,
@@ -432,6 +461,7 @@ export function copyNightToDay(
   next.flyerImageUrl = ""
   next.flyerRemoved = false
   for (const tier of next.tiers) {
+    if (!tierHasCustomDescription(tier)) continue
     tier.description = defaultTierDescription({
       kind: tier.kind,
       includesCover: tier.includes_cover,
@@ -1248,24 +1278,32 @@ export function validateAllNights(opts: {
 /**
  * Flyer shown on Look it over for one weekday draft.
  *
- * Own artwork only (`flyerImageUrl`). Inherited venue/program photos stay in
- * the night editor as a fallback, not as a per-night flyer. Empty string means
- * the review shows a placeholder; Publish is unaffected.
+ * Own artwork first. If they did not upload a custom flyer, the venue photo
+ * (inheritedFlyerUrl, then fallbackUrl) — same fallback as the app. Empty
+ * string is only when nothing is available; Publish is unaffected.
  */
-export function reviewFlyerUrl(draft: NightDraft | undefined | null): string {
-  return (draft?.flyerImageUrl ?? "").trim()
+export function reviewFlyerUrl(
+  draft: NightDraft | undefined | null,
+  fallbackUrl = ""
+): string {
+  const own = (draft?.flyerImageUrl ?? "").trim()
+  if (own !== "") return own
+  const inherited = (draft?.inheritedFlyerUrl ?? "").trim()
+  if (inherited !== "") return inherited
+  return fallbackUrl.trim()
 }
 
 /**
  * Same weekday selection as the text preview (EVERY WEDNESDAY, prices, times).
- * A missing day, an unset night, or a night with no own flyer all return "".
+ * A missing day or unset night falls back to the venue photo when provided.
  */
 export function reviewFlyerUrlForDay(
   weekdayEdits: Record<number, NightDraft>,
-  day: number | null | undefined
+  day: number | null | undefined,
+  fallbackUrl = ""
 ): string {
-  if (day == null) return ""
-  return reviewFlyerUrl(weekdayEdits[day])
+  if (day == null) return fallbackUrl.trim()
+  return reviewFlyerUrl(weekdayEdits[day], fallbackUrl)
 }
 
 /** A one-line summary for a weekday card: "Cover $10 · Skip $20 · Surge". */

@@ -1,17 +1,19 @@
 "use client"
 
-import { Camera } from "lucide-react"
-import { cn } from "@/lib/v2/utils"
-import { ACCESS_ACCENT, ACCESS_INK } from "@/lib/business/door-access"
+import { ACCESS_ACCENT } from "@/lib/business/door-access"
 import { trimMoney } from "@/lib/business/weekly-cover-nights"
-import { WEEKLY_COVER_CHECKBOX_CLASS, WEEKLY_COVER_RADIO_CLASS } from "@/components/business/v2/door-access/WeeklyCoverAccent"
+import type { WcPromoDraft } from "@/lib/business/wc-create-promo"
+import { AccessInfoTip } from "@/components/business/v2/door-access/AccessInfoTip"
+import { AccessPillToggle } from "@/components/business/v2/door-access/AccessPillToggle"
+import { WcPromoCodesDraft } from "@/components/business/v2/door-access/WcPromoCodesDraft"
+import { WEEKLY_COVER_RADIO_CLASS } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Input } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 
 /**
- * Flutter extras step, minus everything the app does not ask: no promo codes,
- * stock alerts, or follower blast. Camera check-in is a fact of the product,
- * not a toggle — the host just reads what the door will do.
+ * Flutter extras step: At the door, promoter toggle, program-scoped promo
+ * codes. Scan Window lives on the weekday ticket step. Less body text; (i)
+ * for leftover help.
  */
 export function WcDoorStep({
   promotionEnabled,
@@ -24,6 +26,9 @@ export function WcDoorStep({
   promoDisabledReason,
   cheapestPaid,
   commissionError,
+  promoDrafts,
+  onPromoDrafts,
+  promoDraftsError,
 }: {
   promotionEnabled: boolean
   onPromotionEnabled: (on: boolean) => void
@@ -35,56 +40,43 @@ export function WcDoorStep({
   promoDisabledReason: string
   cheapestPaid: number | null
   commissionError?: string
+  promoDrafts: WcPromoDraft[]
+  onPromoDrafts: (next: WcPromoDraft[]) => void
+  promoDraftsError?: string
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          At the door
-        </h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
+            At the door
+          </h2>
+          <AccessInfoTip label="How does door check-in work?">
+            Any phone camera opens the pass. Staff do not need the Bizzy scanner app or a login.
+          </AccessInfoTip>
+        </div>
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
-          Guests scan with any phone camera and tap Check In. No staff login.
+          Guests scan with any phone camera and tap Check In.
         </p>
-      </div>
-
-      <div
-        className="flex items-start gap-3 rounded-xl px-4 py-3"
-        style={{ backgroundColor: `${ACCESS_ACCENT}14`, border: `1px solid ${ACCESS_ACCENT}40` }}
-      >
-        <span
-          className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: ACCESS_ACCENT, color: ACCESS_INK }}
-        >
-          <Camera className="size-4" />
-        </span>
-        <span className="min-w-0 text-[13.5px] leading-snug text-neutral-700 dark:text-neutral-300">
-          Any phone camera opens the pass. Staff do not need the Bizzy scanner
-          app or a login.
-        </span>
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promoter</h3>
-        <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-          Promoters share the program link and earn this on every pass they sell.
-        </p>
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promoter</h3>
+          <AccessInfoTip label="What is the promoter program?">
+            Promoters share the program link and earn this on every pass they sell.
+          </AccessInfoTip>
+        </div>
 
-        <label
-          className={cn(
-            "mt-3 flex w-fit items-center gap-2",
-            promoToggleDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-          )}
-          title={promoToggleDisabled ? promoDisabledReason : undefined}
-        >
-          <input
-            type="checkbox"
+        <div className="mt-3 max-w-md rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800">
+          <AccessPillToggle
+            id="wc-promoter"
             checked={promotionEnabled}
             disabled={promoToggleDisabled}
-            onChange={(e) => onPromotionEnabled(e.target.checked)}
-            className={WEEKLY_COVER_CHECKBOX_CLASS}
+            onCheckedChange={onPromotionEnabled}
+            label="Enable promoter program"
           />
-          <span className="text-sm text-neutral-700 dark:text-neutral-300">Enable promoter program</span>
-        </label>
+        </div>
         {promoToggleDisabled ? (
           <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoDisabledReason}</p>
         ) : null}
@@ -142,6 +134,10 @@ export function WcDoorStep({
             </div>
           </div>
         ) : null}
+      </div>
+
+      <div className="border-t border-neutral-200 pt-5 dark:border-neutral-800" style={{ borderColor: `${ACCESS_ACCENT}22` }}>
+        <WcPromoCodesDraft drafts={promoDrafts} onChange={onPromoDrafts} error={promoDraftsError} />
       </div>
     </div>
   )
