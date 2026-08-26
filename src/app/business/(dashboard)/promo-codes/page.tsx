@@ -1,25 +1,25 @@
 "use client"
 
-import { MapPin } from "lucide-react"
+import { MapPin, Plus } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
-import { Plus } from "lucide-react"
 import {
   PromoCodesPanel,
   VENUE_PROMO_COPY,
 } from "@/components/business/v2/promo/PromoCodesPanel"
+import { SeriesPromoCodesSection } from "@/components/business/v2/promo/SeriesPromoCodesSection"
 
 /**
- * Universal (venue-wide) promo codes.
+ * Universal (venue-wide) promo codes, then Series codes underneath.
  *
- * The table, dialogs and per-event breakdown moved into PromoCodesPanel so the
- * Door Access program page can run the identical screen against its own scope
- * instead of growing a second copy — the drift that the promo-scoping bug came
- * from. This page keeps what is genuinely venue-specific: the header copy and
- * the "pick a venue, not All venues" guard.
+ * The Universal table stays on GET /business/venues/:venueId/promo-codes.
+ * Series codes are a sibling GET (.../promo-codes/series) grouped by series
+ * so WC and named RC rows never mix into the venue-wide list. That split is
+ * the whole P5 point: a host has to be able to tell venue reach from series
+ * reach off the screen.
  */
 export default function UniversalPromoCodesPage() {
   const { user } = useAuth()
@@ -45,29 +45,32 @@ export default function UniversalPromoCodesPage() {
           </Card>
         </>
       ) : (
-        <PromoCodesPanel
-          basePath={`/business/venues/${selectedVenueId}/promo-codes`}
-          copy={VENUE_PROMO_COPY(venueName)}
-          canManage={canManage}
-          headerAction={(openCreate) => (
-            <PageHeader
-              title="Universal promo codes"
-              description={
-                <>
-                  Codes here apply to <span className="font-medium text-neutral-900 dark:text-neutral-100">every event at {venueName}</span>, now and in
-                  the future. Usage limits count across all of those events.
-                </>
-              }
-              actions={
-                canManage ? (
-                  <Button onClick={openCreate}>
-                    <Plus /> Create code
-                  </Button>
-                ) : undefined
-              }
-            />
-          )}
-        />
+        <div className="flex flex-col gap-10">
+          <PromoCodesPanel
+            basePath={`/business/venues/${selectedVenueId}/promo-codes`}
+            copy={VENUE_PROMO_COPY(venueName)}
+            canManage={canManage}
+            headerAction={(openCreate) => (
+              <PageHeader
+                title="Universal promo codes"
+                description={
+                  <>
+                    Codes here apply to <span className="font-medium text-neutral-900 dark:text-neutral-100">every event at {venueName}</span>, now and in
+                    the future. Usage limits count across all of those events.
+                  </>
+                }
+                actions={
+                  canManage ? (
+                    <Button onClick={openCreate}>
+                      <Plus /> Create code
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )}
+          />
+          <SeriesPromoCodesSection venueId={selectedVenueId} canManage={canManage} />
+        </div>
       )}
     </>
   )
