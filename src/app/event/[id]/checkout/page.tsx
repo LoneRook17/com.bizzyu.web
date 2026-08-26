@@ -24,10 +24,17 @@ const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 // 1. iMessage / link preview scrapers fetch this URL - they need OG tags to
 //    show an event image + title. generateMetadata renders those tags from
 //    the event's flyer.
-// 2. The page body redirects to same-origin /checkout/:id (named events and
-//    Weekly Cover share that page). ?ref and ?ticket_id= are preserved.
-// CHECKOUT_REDIRECT_BASE_URL is unused on this landing — both products buy
-// through the Next.js event checkout, not /cover and not a second WC page.
+// 2. The page body redirects to the Laravel ticket checkout client-side so
+//    the scraper has time to extract metadata before the redirect happens.
+//    ?ref is preserved so Laravel's PublicController::checkout can stash it
+//    in the session for promoter attribution.
+// CHECKOUT_REDIRECT_BASE_URL is the documented convention (see .env.example);
+// LARAVEL_CHECKOUT_BASE_URL is accepted as a fallback for compatibility.
+// Dev: http://3.80.143.224  |  Prod: https://bizzy-deals.com
+const LARAVEL_CHECKOUT_BASE_URL =
+  process.env.CHECKOUT_REDIRECT_BASE_URL ||
+  process.env.LARAVEL_CHECKOUT_BASE_URL ||
+  "https://bizzy-deals.com"
 
 // Promoter click tracking. This landing is where every non-app visitor lands
 // (Android / desktop / iOS-without-app / Universal-Link fallback) — the in-app
@@ -131,7 +138,7 @@ export default async function EventCheckoutRedirect({ params, searchParams }: Pa
   }
 
   const qs = buildQueryString(sp)
-  const target = `/checkout/${id}${qs ? `?${qs}` : ""}`
+  const target = `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${id}${qs ? `?${qs}` : ""}`
   return (
     <>
       <meta httpEquiv="refresh" content={`0;url=${target}`} />

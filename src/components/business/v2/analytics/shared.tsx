@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { ChevronDown, ChevronRight, MapPin } from "lucide-react"
-import { ANALYTICS_LIST_PREVIEW_CLASS } from "@/lib/business/analytics-list"
 import { cn } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
@@ -26,8 +25,7 @@ export function StatGrid({ children, cols = 4 }: { children: React.ReactNode; co
   )
 }
 
-/** Collapsible section header with a count badge, reskinned to v2.
- *  Open lists are a ~4-row preview (scroll inside), not an unbounded ledger. */
+/** Collapsible section header with a count badge, reskinned to v2. */
 export function Section({
   title,
   count,
@@ -57,7 +55,7 @@ export function Section({
           {count}
         </span>
       </button>
-      {open && <div className={cn("mt-3", ANALYTICS_LIST_PREVIEW_CLASS)}>{children}</div>}
+      {open && <div className="mt-3">{children}</div>}
     </div>
   )
 }

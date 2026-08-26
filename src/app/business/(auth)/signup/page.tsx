@@ -275,13 +275,6 @@ export default function SignupPage() {
             error={!!errors.campus_id}
           />
           {errors.campus_id && <p className="mt-1 text-xs text-red-500 dark:text-red-400">{errors.campus_id}</p>}
-          <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-            Do not see your campus?{" "}
-            <Link href="/request-school" className="font-medium text-[#05EB54] hover:underline">
-              Request your school
-            </Link>
-            . New colleges get on the list after the team adds them to the campus catalog.
-          </p>
         </div>
 
         <AuthPasswordField

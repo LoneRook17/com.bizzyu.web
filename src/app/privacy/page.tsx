@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Privacy Policy</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> August 24, 2026 | <strong>Last Updated:</strong> August 24, 2026 | <strong>Version:</strong> 1.3
+          <strong>Effective Date:</strong> July 14, 2026 | <strong>Last Updated:</strong> July 14, 2026 | <strong>Version:</strong> 1.2
         </p>
 
         <p className="text-muted leading-relaxed">
@@ -746,7 +746,7 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">16.3 SMS/Text Messages (TCPA)</h3>
         <p className="text-muted leading-relaxed">
-          Marketing SMS messages from Bizzy or any business operating on the Platform are sent after you opt in at checkout or in settings. On ticket checkout in the app, and on some web checkouts, the marketing SMS box is presented already selected; you may uncheck it, and purchase is not conditioned on leaving it selected. By leaving the box selected (or later enabling SMS), you agree to receive recurring marketing SMS messages; message frequency varies; message and data rates may apply. You may opt out at any time by replying STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, OPTOUT, or REVOKE to any marketing SMS, or by toggling SMS off in your account notification settings. Reply HELP for help. We maintain records of your opt-in and opt-out actions for compliance purposes (see Section 7).
+          Marketing SMS messages from Bizzy or any business operating on the Platform are sent only with your prior express written consent as required by the Telephone Consumer Protection Act (47 U.S.C. § 227) and its implementing regulations. By providing your mobile phone number and affirmatively opting in to marketing SMS, you agree to receive recurring marketing SMS messages; message frequency varies; message and data rates may apply; consent is not a condition of any purchase. You may opt out at any time by replying STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, OPTOUT, or REVOKE to any marketing SMS, or by toggling SMS off in your account notification settings. Reply HELP for help. We maintain records of your opt-in and opt-out actions for compliance purposes (see Section 7).
         </p>
         <p className="text-muted leading-relaxed mt-3">
           Plain-language opt-out requests (such as &quot;stop texting me&quot; or &quot;remove me&quot;) are honored in addition to the keywords above, and you may re-subscribe by replying START. For guest checkout (purchasing without an account), we send a one-time SMS verification code to the phone number entered to verify the purchase, and we process that number and the message&apos;s delivery status; these verification messages are transactional, are rate-limited to prevent abuse, and are not marketing. Transactional and verification messages (including OTP and guest-checkout codes) are not affected by a marketing opt-out.
@@ -898,7 +898,6 @@ export default function PrivacyPage() {
           This section lists material revisions to this Privacy Policy. Non-material changes (typographical corrections, formatting, or clarifications that do not alter your rights) may be made without notation.
         </p>
         <ul className="text-muted space-y-2 list-disc pl-6">
-          <li><strong>v1.3 &mdash; August 24, 2026:</strong> Described the live checkout SMS control: the marketing box is presented already selected, may be unchecked, and is not required to complete a purchase (Section 16.3).</li>
           <li><strong>v1.2 &mdash; July 14, 2026:</strong> Disclosed collection of Door Code Operator names and operator session records from account-less door staff (Sections 19.5, 1.1); added scan and admission logs, per-tap door-counter records, the marketing send log, and Apple/Google Wallet device registrations to the collected-data categories and retention schedule (Sections 1.2, 19.1, 7); disclosed our AI support-assistant sub-processor (Sections 4.2, 20); clarified the follower relationship created on a Ticket purchase and per-business notification preferences (Section 17); added START re-subscribe and plain-language opt-out equivalents and disclosed guest-checkout verification messaging (Section 16.3); and noted per-venue connected accounts (Section 20).</li>
           <li><strong>v1.1 &mdash; May 17, 2026:</strong> Added OPTOUT and REVOKE to the list of recognized SMS opt-out keywords (Section 17); added this Revision History section.</li>
           <li><strong>v1.0 &mdash; May 12, 2026:</strong> Initial publication of this Privacy Policy, including expanded coverage of Promoter Program data, marketing communications, sub-processor disclosures, Apple Wallet pass data, and state-specific privacy rights (CA, VA, CO, CT, UT, NY, FL).</li>

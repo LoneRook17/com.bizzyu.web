@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { ChevronDown, CalendarDays } from "lucide-react"
 import type { EventsOverview, EventOverviewItem, EventAnalytics } from "@/lib/business/types"
-import { promoterDisplayName } from "@/lib/business/promoter-display-name"
 import { apiClient } from "@/lib/business/api-client"
 import { usd } from "@/lib/v2/utils"
 import { cn } from "@/lib/v2/utils"
@@ -159,7 +158,7 @@ function EventDetail({ data }: { data: EventAnalytics }) {
             <tbody>
               {data.trackingLinks.map((link) => (
                 <tr key={link.tracking_link_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
-                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{promoterDisplayName(link)}</td>
+                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{link.promoter_name}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.clicks}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.sales_count}</td>
                   <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd((link.commission_cents ?? 0) / 100)}</td>
@@ -303,30 +302,12 @@ function EventList({
   )
 }
 
-export type EventsOverviewCopy = {
-  totalLabel: string
-  upcomingTitle: string
-  pastTitle: string
-  emptyTitle: string
-  emptyDescription: string
-}
-
-const EVENTS_COPY: EventsOverviewCopy = {
-  totalLabel: "Total events",
-  upcomingTitle: "Upcoming events",
-  pastTitle: "Past events",
-  emptyTitle: "No events yet",
-  emptyDescription: "Create an event to see analytics here.",
-}
-
 export default function EventsOverviewView({
   data,
   isAllVenues = false,
-  copy = EVENTS_COPY,
 }: {
   data: EventsOverview
   isAllVenues?: boolean
-  copy?: EventsOverviewCopy
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const now = new Date()
@@ -343,7 +324,7 @@ export default function EventsOverviewView({
   return (
     <div>
       <StatGrid cols={5}>
-        <StatTile label={copy.totalLabel} value={data.total_events} />
+        <StatTile label="Total events" value={data.total_events} />
         <StatTile label="Tickets sold" value={data.total_tickets_sold.toLocaleString()} />
         <StatTile label="Revenue" value={usd(data.total_revenue)} />
         <StatTile label="Checked in" value={data.total_checked_in.toLocaleString()} />
@@ -352,17 +333,17 @@ export default function EventsOverviewView({
 
       {data.events.length === 0 ? (
         <div className="mt-6">
-          <EmptyState icon={CalendarDays} title={copy.emptyTitle} description={copy.emptyDescription} />
+          <EmptyState icon={CalendarDays} title="No events yet" description="Create an event to see analytics here." />
         </div>
       ) : (
         <>
           {upcoming.length > 0 && (
-            <Section title={copy.upcomingTitle} count={upcoming.length} defaultOpen>
+            <Section title="Upcoming events" count={upcoming.length} defaultOpen>
               <EventList events={upcoming} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} />
             </Section>
           )}
           {past.length > 0 && (
-            <Section title={copy.pastTitle} count={past.length} defaultOpen={false}>
+            <Section title="Past events" count={past.length} defaultOpen={false}>
               <EventList events={past} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} />
             </Section>
           )}

@@ -6,11 +6,9 @@ import { apiClient } from "@/lib/business/api-client"
 interface StripeConnectCardProps {
   onboarded: boolean
   onOnboardingComplete?: () => void
-  /** Business is pending approval — affects copy. Approved businesses see escrow copy. */
-  isPending?: boolean
 }
 
-export default function StripeConnectCard({ onboarded, onOnboardingComplete, isPending = false }: StripeConnectCardProps) {
+export default function StripeConnectCard({ onboarded, onOnboardingComplete }: StripeConnectCardProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,13 +84,9 @@ export default function StripeConnectCard({ onboarded, onOnboardingComplete, isP
             </svg>
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-yellow-700">
-              {isPending ? "Business Stripe Not Connected" : "Connect Stripe to receive payments instantly"}
-            </p>
+            <p className="text-sm font-medium text-yellow-700">Business Stripe Not Connected</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {isPending
-                ? "Connecting your business's Stripe account is required to create paid events. Ticket payments will pay into this BUSINESS account."
-                : "You can still publish paid events without it. We hold what you earn until you connect, then we send it all right away."}
+              Connecting your business&apos;s Stripe account is required to create paid events. Ticket payments will pay into this BUSINESS account.
             </p>
 
             {error && (

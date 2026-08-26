@@ -5,7 +5,7 @@
 // pointer-events:none and removes itself when the animation finishes, so it
 // never interferes with the receipt/confirmation content underneath.
 
-const COLORS = ["#FF3ED1", "#FF7BE0", "#C2185B", "#FF9AE8", "#FFFFFF"]
+const COLORS = ["#D4AF37", "#F0CD6E", "#FCE38A", "#E8B923", "#FFFFFF"]
 
 interface Piece {
   x: number

@@ -74,7 +74,7 @@ test("legacy (no `kind`) response renders the unchanged verification copy", () =
 test("email-change copy replaces the pending-approval message", () => {
   const copy = verifyEmailSuccessCopy("email_change")
   assert.equal(copy.kind, "email_change")
-  assert.equal(copy.alertBody, "Your email has been updated. Use it next time you sign in.")
+  assert.equal(copy.alertBody, "Your email has been updated — use it next time you sign in.")
   assert.equal(copy.title, "Email updated")
   assert.equal(copy.subtitle, "Your login email has been changed.")
   assert.equal(copy.alertTone, "success")

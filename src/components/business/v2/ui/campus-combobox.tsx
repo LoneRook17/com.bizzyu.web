@@ -1,10 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo, useId } from "react"
-import Link from "next/link"
 import { Check, ChevronDown, Search } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
-import { campusPickerEmptyHint, requestSchoolHref } from "@/lib/request-school"
 
 export interface CampusOption {
   id: number
@@ -169,15 +167,9 @@ export default function CampusCombobox({
           </div>
 
           {filtered.length === 0 ? (
-            <div className="px-2.5 py-3 text-center text-sm text-neutral-500 dark:text-neutral-400">
-              <p>{campusPickerEmptyHint(query)}</p>
-              <Link
-                href={requestSchoolHref(query)}
-                className="mt-2 inline-block font-medium text-[#05EB54] hover:underline"
-              >
-                Request this school
-              </Link>
-            </div>
+            <p className="px-2.5 py-3 text-center text-sm text-neutral-500 dark:text-neutral-400">
+              No campuses found
+            </p>
           ) : (
             <ul
               ref={listRef}

@@ -27,9 +27,9 @@ function formatCurrency(val: number) {
 }
 
 function formatTime(iso: string | null) {
-  if (!iso) return "-"
+  if (!iso) return "—"
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return "-"
+  if (isNaN(d.getTime())) return "—"
   return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
 }
 
@@ -125,7 +125,7 @@ export default function DoorPerformanceCard({
             {sorted.map((r, idx) => (
               <tr key={`${r.staff_user_id ?? "null"}-${r.scanner_label ?? "null"}-${idx}`} className="border-b border-gray-50 last:border-0">
                 <td className="py-2 text-ink">{staffLabel(r)}</td>
-                <td className="py-2 text-gray-600">{r.scanner_label ?? "-"}</td>
+                <td className="py-2 text-gray-600">{r.scanner_label ?? "—"}</td>
                 <td className="py-2 text-right text-gray-600">{r.valid_scans}</td>
                 <td className="py-2 text-right text-gray-600">{r.rejected_scans}</td>
                 <td className="py-2 text-right text-gray-600">{r.sold_count ?? 0}</td>

@@ -3,15 +3,11 @@
 ## Analytics
 
 The **Analytics** page shows how your business is performing, split into **Events**,
-**Deals**, and **Weekly Cover** tabs.
+**Deals**, and **Line skips** tabs.
 
-- **Events:** total **named** events, total tickets sold (online + door), total
-  revenue, and your check-in rate. Click any event for revenue by ticket type, the
-  pre-sale vs. door split, and the full check-in list. Weekly Cover nights do
-  **not** sit on this tab.
-- **Weekly Cover:** nights, Cover sold, and revenue for the Weekly Cover
-  program. Identify nights by `product_kind` weekly_cover, not by a title
-  ending in Cover.
+- **Events:** total events, total tickets sold (online + door), total revenue, and your
+  check-in rate. Click any event for revenue by ticket type, the pre-sale vs. door
+  split, and the full check-in list.
 - **What the numbers mean:**
   - Revenue shown is **your** revenue — the amount you receive.
   - **Pre-sale** = tickets bought online before the event.

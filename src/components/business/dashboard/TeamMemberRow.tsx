@@ -32,7 +32,7 @@ export default function TeamMemberRow({ member, currentUserRole, venues, onRemov
     ? new Date(member.invite_accepted_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : member.created_at
       ? new Date(member.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-      : "-"
+      : "—"
 
   return (
     <div className="flex flex-col gap-3 py-3 border-b border-gray-100 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2">

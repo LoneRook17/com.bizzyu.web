@@ -16,12 +16,12 @@ export function eventStatusBadge(status: string): { variant: BadgeVariant; label
   if (s.includes("pending")) return { variant: "warning", label: "In review" }
   if (s === "cancelled") return { variant: "danger", label: "Cancelled" }
   if (s === "rejected") return { variant: "danger", label: "Rejected" }
-  return { variant: "neutral", label: status || "-" }
+  return { variant: "neutral", label: status || "—" }
 }
 
 /** Long-form date, e.g. "Saturday, March 14, 2026" */
 export function fmtLongDate(s?: string | null) {
-  if (!s) return "-"
+  if (!s) return "—"
   return new Date(s).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -32,25 +32,25 @@ export function fmtLongDate(s?: string | null) {
 
 /** Short date, e.g. "Mar 14, 2026" */
 export function fmtDate(s?: string | null) {
-  if (!s) return "-"
+  if (!s) return "—"
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
 /** Short date without year, e.g. "Mar 14" */
 export function fmtDateShort(s?: string | null) {
-  if (!s) return "-"
+  if (!s) return "—"
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 /** Time only, e.g. "9:00 PM" */
 export function fmtTime(s?: string | null) {
-  if (!s) return "-"
+  if (!s) return "—"
   return new Date(s).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 }
 
 /** Date + time, e.g. "Mar 14, 9:00 PM" */
 export function fmtDateTime(s?: string | null) {
-  if (!s) return "-"
+  if (!s) return "—"
   return new Date(s).toLocaleString("en-US", {
     month: "short",
     day: "numeric",

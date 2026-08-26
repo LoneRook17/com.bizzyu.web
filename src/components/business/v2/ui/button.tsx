@@ -3,7 +3,6 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { cn } from "@/lib/v2/utils"
 
 const buttonVariants = cva(
@@ -12,10 +11,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: "bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] text-white shadow-md shadow-[#05EB54]/25 hover:brightness-110",
-        /** Weekly Cover primary — ACCESS_ACCENT / --color-access, not Bizzy green. */
-        access: "bg-gradient-to-br from-access-deep to-access text-[#33052A] shadow-md shadow-access/25 hover:brightness-110 focus-visible:ring-access/40",
         secondary: "bg-white text-neutral-700 border border-neutral-300 shadow-sm hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-200 dark:border-neutral-700 dark:hover:bg-neutral-800",
-        "access-secondary": "bg-white text-access border border-access/40 shadow-sm hover:bg-access/10 dark:bg-neutral-900 dark:text-access dark:border-access/50 dark:hover:bg-access/15",
         ghost: "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
         danger: "bg-red-600 text-white shadow-sm hover:bg-red-700",
         subtle: "bg-neutral-100 text-neutral-800 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700",
@@ -41,13 +37,8 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const weekly = useWeeklyCoverAccent()
-    // Inside Weekly Cover, the default/primary CTA is pink. Explicit variants
-    // (secondary, danger, access, …) stay as written so Cancel/Back stay gray.
-    const resolvedVariant =
-      weekly && (variant == null || variant === "primary") ? "access" : variant
     const Comp = asChild ? Slot : "button"
-    return <Comp className={cn(buttonVariants({ variant: resolvedVariant, size, className }))} ref={ref} {...props} />
+    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
   }
 )
 Button.displayName = "Button"

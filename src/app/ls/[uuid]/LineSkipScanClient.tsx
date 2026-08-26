@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
-import { lineSkipWindowState, lineSkipWindowNotice } from "@/lib/lineskip-window"
 
 const API_URL = getApiBaseUrl()
 
@@ -18,12 +17,6 @@ interface TicketInfo {
   instance_start_time: string
   instance_end_time: string
   instance_status: string
-  // Server-computed redemption window + zone (services LineSkipTicketService).
-  // Optional: an older API response simply omits them and the page derives.
-  doors_open?: string | null
-  scan_opens_at?: string | null
-  window_closes_at?: string | null
-  venue_timezone?: string | null
   is_redeemed: number
   redeemed_at: string | null
   price_paid_cents: number
@@ -124,23 +117,23 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
     if (ticket.instance_status === "cancelled") return "cancelled"
     if (ticket.is_redeemed) return "redeemed"
 
-    // Window comparison lives in lineskip-window.ts, which shares wall-clock.ts
-    // with the guest check-in page so the two surfaces cannot drift.
-    //
-    // The old comparison here was wrong for anyone outside Eastern: it rendered
-    // `now` into Eastern but built `start`/`end` with `new Date()`, which parses
-    // in the VIEWER's zone - so the two sides were measured on different clocks.
-    const state = lineSkipWindowState(ticket)
-    if (state === "not_open") return "not_yet"
-    if (state === "closed") return "ended"
+    // Check redemption window
+    const dateStr = typeof ticket.instance_date === "string"
+      ? ticket.instance_date.substring(0, 10)
+      : new Date(ticket.instance_date).toISOString().substring(0, 10)
+    const start = new Date(`${dateStr}T${ticket.instance_start_time}`)
+    const end = new Date(`${dateStr}T${ticket.instance_end_time}`)
+    if (end <= start) end.setDate(end.getDate() + 1)
+    const windowStart = new Date(start.getTime() - 3 * 60 * 60 * 1000)
+
+    const now = new Date()
+    // Approximate Eastern time comparison
+    const eastern = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }))
+
+    if (eastern < windowStart) return "not_yet"
+    if (eastern > end) return "ended"
     return "valid"
   }
-
-  // Recomputed per render so a page left open past the boundary stops being
-  // redeemable without a reload.
-  const windowState = ticket ? lineSkipWindowState(ticket) : "unknown"
-  const windowNotice = ticket ? lineSkipWindowNotice(ticket) : null
-  const outsideWindow = windowNotice !== null
 
   // --- Full-screen overlays ---
 
@@ -153,26 +146,12 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
           <p className="mb-8 text-lg text-white/70">
             Redeem line skip for <span className="font-bold text-white">{ticket?.attendee_name}</span>?
           </p>
-          {/* Gated on the window too, not just on `redeeming`. The main screen
-              only offers this overlay while the night is valid, but the page
-              can sit open across the boundary - a door phone left on a ticket
-              for an hour - and the state is recomputed per render, so this
-              cannot redeem a night that has since closed or not yet opened. */}
-          {outsideWindow && (
-            <p className="mb-4 text-sm text-white/70">{windowNotice?.detail}</p>
-          )}
           <button
             onClick={handleRedeem}
-            disabled={redeeming || outsideWindow}
-            className="mb-4 w-full rounded-2xl bg-[#D4AF37] py-5 text-xl font-bold text-white active:bg-[#b8962f] disabled:opacity-50 disabled:active:bg-[#D4AF37] transition-colors"
+            disabled={redeeming}
+            className="mb-4 w-full rounded-2xl bg-[#D4AF37] py-5 text-xl font-bold text-white active:bg-[#b8962f] disabled:opacity-50 transition-colors"
           >
-            {redeeming
-              ? "Redeeming..."
-              : windowState === "not_open"
-                ? "Check-in not open yet"
-                : windowState === "closed"
-                  ? "Check-in closed"
-                  : "Yes, Redeem"}
+            {redeeming ? "Redeeming..." : "Yes, Redeem"}
           </button>
           <button
             onClick={() => setOverlay(null)}
@@ -370,17 +349,9 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
                 <svg className="mx-auto mb-2 h-12 w-12 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {/* The old copy printed instance_start_time (doors) under a
-                    "Redemption opens at" label, so it was wrong by the full
-                    3-hour lead - it read "Redemption opens at 9:00 PM" on a
-                    night whose check-in had actually opened at 6:00 PM. The
-                    notice now carries the real opening time, and doors as a
-                    separate sentence. */}
-                <p className="text-lg font-bold text-orange-400">
-                  {windowNotice?.headline ?? "This line skip is not active yet"}
-                </p>
+                <p className="text-lg font-bold text-orange-400">This line skip is not active yet</p>
                 <p className="mt-1 text-sm text-orange-400/70">
-                  {windowNotice?.detail ?? "Check-in has not opened yet."}
+                  Redemption opens at {formatTime(ticket.instance_start_time)} (3 hours before doors)
                 </p>
               </div>
             )}
@@ -390,11 +361,9 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
                 <svg className="mx-auto mb-2 h-12 w-12 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="text-lg font-bold text-orange-400">
-                  {windowNotice?.headline ?? "This line skip has ended"}
-                </p>
+                <p className="text-lg font-bold text-orange-400">This line skip has ended</p>
                 <p className="mt-1 text-sm text-orange-400/70">
-                  {windowNotice?.detail ?? "Check-in has closed."}
+                  Window closed at {formatTime(ticket.instance_end_time)}
                 </p>
               </div>
             )}

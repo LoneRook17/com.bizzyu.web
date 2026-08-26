@@ -31,7 +31,6 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
   const { id } = use(params)
   const [codes, setCodes] = useState<PromoCode[]>([])
   const [universalCodes, setUniversalCodes] = useState<PromoCode[]>([])
-  const [seriesCodes, setSeriesCodes] = useState<PromoCode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [showCreate, setShowCreate] = useState(false)
@@ -50,17 +49,10 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
 
   const fetchCodes = () => {
     apiClient
-      .get<{
-        promo_codes: PromoCode[]
-        universal_promo_codes?: PromoCode[]
-        series_promo_codes?: PromoCode[]
-      }>(`/business/events/${id}/promo-codes`)
+      .get<{ promo_codes: PromoCode[]; universal_promo_codes?: PromoCode[] }>(`/business/events/${id}/promo-codes`)
       .then((data) => {
-        const listed = data.promo_codes ?? []
-        const seriesFromList = listed.filter((c) => c.recurring_series_id != null && c.event_id == null)
-        setCodes(listed.filter((c) => c.recurring_series_id == null || c.event_id != null))
+        setCodes(data.promo_codes)
         setUniversalCodes(data.universal_promo_codes ?? [])
-        setSeriesCodes(data.series_promo_codes ?? seriesFromList)
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load promo codes"))
       .finally(() => setLoading(false))
@@ -216,55 +208,6 @@ export default function V2PromoCodesPage({ params }: { params: Promise<{ id: str
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* series-scoped codes (read-only) — same tagged treatment as Universal */}
-      {seriesCodes.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Series promo codes</h2>
-            <Link href="/business/promo-codes" className="inline-flex items-center gap-1 text-[13px] font-medium text-[#05EB54] hover:underline">
-              Manage <ArrowUpRight className="size-3.5" />
-            </Link>
-          </div>
-          <p className="-mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-            These apply to <span className="font-medium">every night of this Weekly Cover or named recurring event</span>, not the whole venue.
-          </p>
-          <Card className="overflow-hidden bg-neutral-50/40 dark:bg-neutral-800/40">
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead>
-                <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 text-xs text-neutral-500 dark:text-neutral-400">
-                  <th className="px-5 py-3 text-left font-medium">Code</th>
-                  <th className="px-5 py-3 text-left font-medium">Discount</th>
-                  <th className="px-5 py-3 text-right font-medium">Uses</th>
-                  <th className="px-5 py-3 text-left font-medium">Status</th>
-                  <th className="px-5 py-3 text-left font-medium">Expires</th>
-                </tr>
-              </thead>
-              <tbody>
-                {seriesCodes.map((code) => {
-                  const status = codeStatus(code)
-                  return (
-                    <tr key={code.promo_code_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
-                      <td className="px-5 py-3 font-mono text-xs font-medium text-neutral-900 dark:text-neutral-100">
-                        {code.code}
-                        <Badge variant="brand" size="sm" className="ml-2 align-middle">Series</Badge>
-                      </td>
-                      <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">{code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}</td>
-                      <td className="px-5 py-3 text-right text-neutral-600 dark:text-neutral-400">
-                        {code.current_redemptions}{code.max_redemptions ? ` / ${code.max_redemptions}` : ""}
-                      </td>
-                      <td className="px-5 py-3"><Badge variant={status.variant} size="sm">{status.label}</Badge></td>
-                      <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">{code.expires_at ? fmtDate(code.expires_at) : "Never"}</td>
-                    </tr>
-                  )
-                })}
               </tbody>
             </table>
             </div>

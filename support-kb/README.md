@@ -23,8 +23,7 @@ so the bot only knows what is written here plus the conversation itself.
 | `00-policies.md` | Bot persona, scope, hard rules, escalation policy |
 | `01-product-overview.md` | What Bizzy is, both sides, campuses, key concepts |
 | `10-students.md` | Student-side: accounts, deals, premium, tickets, line skips, wallet |
-| `12-weekly-cover.md` | Weekly Cover / Cover (`product_kind` weekly_cover): buy one night, camera check-in, pink vs green |
-| `20-businesses.md` | Business-side: dashboard, events, Weekly Cover, payouts, refunds, team, door tools |
+| `20-businesses.md` | Business-side: dashboard, events, payouts, refunds, team, door tools |
 | `30-known-issues.md` | Current known issues / temporary answers (edit freely, prune often) |
 
 `10-students.md` and `30-known-issues.md` are grounded in a code-behavior trace —

@@ -1,7 +1,6 @@
 "use client"
 
 import type { EventAnalytics } from "@/lib/business/types"
-import { promoterDisplayName } from "@/lib/business/promoter-display-name"
 
 function formatCurrency(val: number) {
   return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -142,7 +141,7 @@ export default function EventAnalyticsView({ data }: { data: EventAnalytics }) {
             <tbody>
               {data.trackingLinks.map((link) => (
                 <tr key={link.tracking_link_id} className="border-b border-gray-50 last:border-0">
-                  <td className="py-2 text-ink">{promoterDisplayName(link)}</td>
+                  <td className="py-2 text-ink">{link.promoter_name}</td>
                   <td className="py-2 text-right text-gray-600">{link.clicks}</td>
                   <td className="py-2 text-right text-gray-600">{link.sales_count}</td>
                   <td className="py-2 text-right font-medium text-ink">{formatCurrency((link.commission_cents ?? 0) / 100)}</td>

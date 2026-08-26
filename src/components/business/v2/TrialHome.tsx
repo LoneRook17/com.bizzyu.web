@@ -34,7 +34,7 @@ export default function TrialHome() {
     : "Takes about 2 minutes. It's queued and goes live the moment you're approved."
   const hero =
     mode === "events"
-      ? { title: "Create your first event", cta: { label: "Create event", href: "/business/create" } }
+      ? { title: "Create your first event", cta: { label: "Create event", href: "/business/events/new" } }
       : mode === "hybrid"
         ? { title: "Build your first deal or event", cta: { label: "Build deal", href: "/business/deals/new" } }
         : { title: "Build your first deal", cta: { label: "Build deal", href: "/business/deals/new" } }

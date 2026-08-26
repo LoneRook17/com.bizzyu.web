@@ -1,12 +1,3 @@
-import type { RedemptionMode } from './door-access'
-
-// ⚠️ DEAD — this is the LEGACY dashboard rail's nav data.
-//
-// Its only consumer was components/business/dashboard/Sidebar.tsx, which now
-// has zero importers; the live dashboard at /business renders
-// components/business/v2/Sidebar.tsx, whose nav is a GROUPS array declared in
-// that file. V5 F14's Door Access entry was added here and therefore never
-// rendered — the symptom that found this. Add nav items to the v2 Sidebar.
 export const NAV_LINKS = [
   { label: 'Home', href: '/business', icon: 'home' },
   { label: 'Events', href: '/business/events', icon: 'calendar' },
@@ -47,7 +38,6 @@ export const CAMPUSES = [
 export const APPROVED_ONLY_ROUTES = [
   '/business/events',
   '/business/line-skips',
-  '/business/door-access',
   '/business/deals',
 ]
 
@@ -76,81 +66,6 @@ export const EVENT_TYPES = ['Ticketed', 'Free'] as const
 // 'guest' (Guest list) removed 2026-06-12 - not an implemented feature.
 // Legacy rows may still carry ticket_type='guest'; types keep accepting it.
 export const TICKET_TYPES = ['paid', 'free'] as const
-
-// 5.0 D-P2: the free path is "Free", never "RSVP". It mints a real $0 order and
-// a scannable wallet ticket via /free-ticket/{id}/purchase - same mechanics as a
-// paid ticket, no price. Copy anywhere near event type must match this wording.
-export const EVENT_TYPE_LABELS: Record<(typeof EVENT_TYPES)[number], string> = {
-  Ticketed: 'Ticketed',
-  Free: 'Free',
-}
-
-export const EVENT_TYPE_HINTS: Record<(typeof EVENT_TYPES)[number], string> = {
-  Ticketed: 'Sell tickets in tiers. Each buyer gets a scannable ticket.',
-  Free: 'No charge. Guests still claim a real, scannable ticket.',
-}
-
-// 5.0 D11 / D-F10.1: the host picks, per event, HOW people get checked in.
-// Same two modes the Door Access spine uses, and now literally the same
-// declaration — this file used to re-declare the pair that door-access.ts
-// already owned, so "events and access programs speak one vocabulary" was a
-// comment rather than something the compiler enforced. Two copies of a wire
-// enum agree right up until someone adds a third mode to one of them.
-//
-// door-access.ts owns it because that is the module mirroring the services wire
-// shapes; this file owns the dashboard's COPY for those modes
-// (REDEMPTION_MODE_OPTIONS below), which is a different concern. Re-exported so
-// no caller had to move.
-export { REDEMPTION_MODES, type RedemptionMode } from './door-access'
-
-// Events default to the Bizzy scanner - that is how every existing event
-// already behaves, so an untouched form keeps today's door flow.
-export const DEFAULT_EVENT_REDEMPTION_MODE: RedemptionMode = 'native_scan'
-
-export const REDEMPTION_MODE_OPTIONS: {
-  value: RedemptionMode
-  label: string
-  hint: string
-}[] = [
-  {
-    value: 'native_scan',
-    label: 'Bizzy scanner',
-    hint: 'Staff open the Bizzy scanner and scan each guest’s QR code.',
-  },
-  {
-    value: 'camera_tap',
-    label: 'Camera + tap to redeem',
-    hint: 'Staff scan with any phone camera, then tap the guest off a list. No app setup.',
-  },
-]
-
-// 5.0 D10 / D-F4.1: when there is no flyer, the app renders artwork from a small
-// fixed set of templates - a style pick plus an optional accent. Nothing is
-// uploaded or stored as an image; only the choice travels with the event.
-export const ARTWORK_TEMPLATES = ['classic', 'bold', 'minimal', 'night'] as const
-export type ArtworkTemplate = (typeof ARTWORK_TEMPLATES)[number]
-
-export const DEFAULT_ARTWORK_TEMPLATE: ArtworkTemplate = 'classic'
-
-export const ARTWORK_TEMPLATE_OPTIONS: {
-  value: ArtworkTemplate
-  label: string
-  hint: string
-  // Tailwind classes for the swatch preview - the app renders the real widget.
-  swatch: string
-}[] = [
-  { value: 'classic', label: 'Classic', hint: 'Venue mark over a soft green wash.', swatch: 'from-[#05EB54]/80 to-emerald-900' },
-  { value: 'bold', label: 'Bold', hint: 'Big type, high contrast.', swatch: 'from-[#05EB54] to-neutral-900' },
-  { value: 'minimal', label: 'Minimal', hint: 'Name and date, nothing else.', swatch: 'from-neutral-200 to-neutral-500' },
-  { value: 'night', label: 'Night', hint: 'Dark card with a magenta edge.', swatch: 'from-fuchsia-600 to-neutral-900' },
-]
-
-export const ARTWORK_ACCENTS: { value: string; label: string; dot: string }[] = [
-  { value: 'green', label: 'Green', dot: 'bg-[#05EB54]' },
-  { value: 'magenta', label: 'Magenta', dot: 'bg-fuchsia-500' },
-  { value: 'amber', label: 'Amber', dot: 'bg-amber-400' },
-  { value: 'ice', label: 'Ice', dot: 'bg-sky-300' },
-]
 
 export const DEAL_CATEGORIES = [
   'Food', 'Drinks', 'Things to Do', 'BOGO', 'Shopping', 'Services', 'Other',

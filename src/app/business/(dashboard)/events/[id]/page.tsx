@@ -20,8 +20,6 @@ import {
 } from "@/components/business/v2/ui/dialog"
 import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2/events/eventStatus"
 import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
-import { createFromTemplateHref } from "@/lib/business/create-from-template"
-import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
 
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -35,8 +33,11 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   const [editPriceCents, setEditPriceCents] = useState(0)
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceError, setPriceError] = useState("")
+  const [duplicating, setDuplicating] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState("")
+  const [publishNeedsStripe, setPublishNeedsStripe] = useState(false)
+  const [stripeConnecting, setStripeConnecting] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
   const canEditPrice = canEdit || user?.business_role === "staff"
@@ -83,6 +84,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   const handlePublish = async () => {
     setPublishing(true)
     setPublishError("")
+    setPublishNeedsStripe(false)
     try {
       await apiClient.post<{ event_id: number; status: string; moderation_status: string | null }>(
         `/business/events/${id}/publish`
@@ -90,15 +92,36 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
       // Re-fetch so the status badge + banners reflect published / pending_review.
       await fetchEvent()
     } catch (err) {
-      setPublishError(err instanceof ApiError ? err.message : "Failed to publish event")
+      const message = err instanceof ApiError ? err.message : "Failed to publish event"
+      setPublishError(message)
+      if (/stripe/i.test(message)) setPublishNeedsStripe(true)
     } finally {
       setPublishing(false)
     }
   }
 
-  const handleDuplicate = () => {
-    if (!event) return
-    router.push(createFromTemplateHref(event))
+  const handleConnectStripe = async () => {
+    setStripeConnecting(true)
+    try {
+      const data = await apiClient.post<{ url: string; stripe_connect_id: string }>(
+        "/business/profile/stripe-onboard?platform=web"
+      )
+      window.location.href = data.url
+    } catch (err) {
+      setPublishError(err instanceof ApiError ? err.message : "Failed to start Stripe onboarding")
+      setStripeConnecting(false)
+    }
+  }
+
+  const handleDuplicate = async () => {
+    setDuplicating(true)
+    try {
+      const data = await apiClient.post<{ event_id: number }>(`/business/events/${id}/duplicate`)
+      router.push(`/business/events/${data.event_id}/edit`)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to duplicate event")
+      setDuplicating(false)
+    }
   }
 
   if (loading) {
@@ -127,12 +150,6 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   const badge = eventStatusBadge(event.status)
   const editingTicket = event.tickets.find((t) => t.ticket_id === editingTicketId)
 
-  // WC FLAW 3 — a Weekly Cover night must not take price edits on the event
-  // surface (generic PUT). The pencil routes to the night editor for every WC
-  // night with a program, stamped customized or not — Custom WC, never a
-  // green Event. Null only for named events and rows with no resolvable program.
-  const wcNightEdit = weeklyCoverNightEditHref(event)
-
   return (
     <>
       <Link
@@ -159,8 +176,8 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
             <Link href={`/business/events/${event.event_id}/manage/scanner`}><ScanLine /> Scan</Link>
           </Button>
           {canEdit && (
-            <Button variant="secondary" onClick={handleDuplicate}>
-              <Copy /> Use as template
+            <Button variant="secondary" onClick={handleDuplicate} disabled={duplicating}>
+              {duplicating ? <Loader2 className="animate-spin" /> : <Copy />} Duplicate
             </Button>
           )}
         </div>
@@ -175,25 +192,14 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
       )}
 
       {event.status === "draft" && canEdit && (
-        <Card className={isPending
-          ? "border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30"
-          : undefined}
-        >
+        <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30">
           <CardContent className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className={isPending
-                ? "text-sm font-semibold text-amber-900 dark:text-amber-200"
-                : "text-sm font-semibold text-neutral-900 dark:text-neutral-100"}
-              >
-                This event is a draft
-              </p>
-              <p className={isPending
-                ? "mt-0.5 text-[13px] text-amber-700 dark:text-amber-400"
-                : "mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400"}
-              >
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">This event is a draft</p>
+              <p className="mt-0.5 text-[13px] text-amber-700 dark:text-amber-400">
                 {isPending
                   ? "It goes live once Bizzy approves your business. You can keep editing in the meantime."
-                  : "Publish it when you are ready."}
+                  : "Publish it when you're ready. Paid events need Stripe Connect first, free events don't."}
               </p>
               {publishError && (
                 <p className="mt-2 text-xs text-red-600 dark:text-red-400">{publishError}</p>
@@ -203,9 +209,15 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
               <Button variant="secondary" asChild>
                 <Link href={`/business/events/${event.event_id}/edit`}><Pencil /> Edit</Link>
               </Button>
-              <Button onClick={handlePublish} disabled={publishing || isPending}>
-                {publishing ? <Loader2 className="animate-spin" /> : <Rocket />} Publish
-              </Button>
+              {publishNeedsStripe ? (
+                <Button onClick={handleConnectStripe} disabled={stripeConnecting}>
+                  {stripeConnecting ? <Loader2 className="animate-spin" /> : null} Connect Stripe →
+                </Button>
+              ) : (
+                <Button onClick={handlePublish} disabled={publishing || isPending}>
+                  {publishing ? <Loader2 className="animate-spin" /> : <Rocket />} Publish
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -221,11 +233,11 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
             </Card>
           )}
 
-          {event.description?.trim() && (
+          {event.description && (
             <Card>
               <CardHeader><CardTitle>About</CardTitle></CardHeader>
               <CardContent className="pt-0">
-                <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{event.description.trim()}</p>
+                <p className="whitespace-pre-wrap text-sm text-neutral-600 dark:text-neutral-400">{event.description}</p>
               </CardContent>
             </Card>
           )}
@@ -242,23 +254,13 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
                         <p className="mt-0.5 inline-flex items-center gap-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">
                           <span>{ticket.ticket_type === "free" ? "Free" : usd(ticket.price_usd)}</span>
                           {ticket.ticket_type !== "free" && canEditPrice && (
-                            wcNightEdit != null ? (
-                              <Link
-                                href={wcNightEdit}
-                                className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
-                                title="Edit price on the night page"
-                              >
-                                <Pencil className="size-3" />
-                              </Link>
-                            ) : (
-                              <button
-                                onClick={() => openPriceEdit(ticket)}
-                                className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
-                                title="Edit price"
-                              >
-                                <Pencil className="size-3" />
-                              </button>
-                            )
+                            <button
+                              onClick={() => openPriceEdit(ticket)}
+                              className="inline-flex size-5 items-center justify-center rounded text-neutral-400 dark:text-neutral-500 transition-colors hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
+                              title="Edit price"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
                           )}
                           {ticket.max_per_person ? <span>· Max {ticket.max_per_person}/person</span> : null}
                         </p>

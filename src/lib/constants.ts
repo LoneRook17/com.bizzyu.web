@@ -63,11 +63,6 @@ export const STUDENT_FAQ = [
     answer:
       "Ticket sales are final unless the event is cancelled. See our Terms for details.",
   },
-  {
-    question: "What if my school isn't on Bizzy?",
-    answer:
-      "Request it at bizzyu.com/request-school. New colleges get on the list when the team adds them to the campus catalog. Requesting puts your school on that review list.",
-  },
 ];
 
 export const EVENTS_FAQ = [

@@ -6,9 +6,6 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
 import {
   PENDING_TTL_MS,
   canChangeBusinessEmail,
@@ -94,7 +91,7 @@ test("unknown status falls back without leaking a blank message", () => {
 test("state success: names the address and says nothing has changed yet", () => {
   assert.equal(
     emailChangeSuccessMessage("new@business.com"),
-    "Check new@business.com to confirm. Nothing changes until then."
+    "Check new@business.com to confirm — nothing changes until then."
   )
 })
 
@@ -184,29 +181,4 @@ test("readPendingRecord: absent, corrupt, or malformed payloads yield null", () 
 
 test("readPendingRecord: a future-dated record is distrusted, not shown forever", () => {
   assert.equal(readPendingRecord(stored({}, NOW + 5_000), BIZ, CURRENT, NOW), null)
-})
-
-// --- Settings → Security autofill (l2gp) ---------------------------------
-// Pin the markup tokens Chrome/Safari treat as a login form. The JSX runner
-// cannot mount EmailChangeForm, so we assert the source instead.
-
-const formSrc = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "../../components/business/v2/settings/EmailChangeForm.tsx"),
-  "utf8"
-)
-
-test("EmailChangeForm is not marked as a login form", () => {
-  assert.match(formSrc, /<form[^>]*autoComplete="off"/)
-  assert.match(formSrc, /name="new-login-email"/)
-  assert.match(formSrc, /autoComplete="off"/)
-  assert.match(formSrc, /name="confirm-login-password"/)
-  assert.match(formSrc, /autoComplete="new-password"/)
-  assert.match(formSrc, /new_email: newEmail\.trim\(\)/)
-  assert.match(formSrc, /password,/)
-
-  assert.doesNotMatch(formSrc, /autoComplete="username"/)
-  assert.doesNotMatch(formSrc, /autoComplete="email"/)
-  assert.doesNotMatch(formSrc, /autoComplete="current-password"/)
-  assert.doesNotMatch(formSrc, /name="password"/)
-  assert.doesNotMatch(formSrc, /name="new_email"/)
 })

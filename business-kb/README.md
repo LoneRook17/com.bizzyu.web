@@ -19,8 +19,6 @@ Files:
 - `00-policies.md` — bot persona, hard rules, escalation, answer style (business).
 - `01-overview.md` — dashboard overview, accounts/approval, venues, fees.
 - `10-events.md` — events lifecycle: create, approval, manage, edit, cancel.
-- `15-recurring-events.md` — named weekly series (Trivia Tuesdays); each night is a green Event.
-- `16-weekly-cover.md` — Weekly Cover (`product_kind` weekly_cover): series of nights, custom still WC, camera check-in.
 - `20-tickets.md` — ticket types, drag-reorder, mark sold out, hide, scan window.
 - `30-promo-codes.md` — per-event promo codes.
 - `40-promoters.md` — Promoter Program, commissions, in-app wallet + on-demand payouts.

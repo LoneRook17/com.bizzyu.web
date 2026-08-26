@@ -174,7 +174,7 @@ export function normalizePayout(raw: Partial<Payout>): Payout {
         host_net_cents: num(e?.host_net_cents),
         by_tier: Array.isArray(e?.by_tier)
           ? e.by_tier.map((t) => ({
-              tier: str(t?.tier) ?? "-",
+              tier: str(t?.tier) ?? "—",
               qty: num(t?.qty),
               host_net_cents: num(t?.host_net_cents),
             }))

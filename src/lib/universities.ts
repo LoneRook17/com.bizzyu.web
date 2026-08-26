@@ -106,10 +106,3 @@ export const fetchUniversities = unstable_cache(
   ["universities"],
   { revalidate: 3600 },
 );
-
-/** Known school by slug, including ones that have not earned a published page. */
-export async function fetchUniversityBySlug(slug: string): Promise<University | null> {
-  const universities = await fetchUniversities();
-  if (universities.length === 0) return null;
-  return universities.find((u) => u.slug === slug) ?? null;
-}

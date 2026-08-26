@@ -22,7 +22,7 @@ interface Props {
 }
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "-"
+  if (!iso) return "—"
   try {
     return new Date(iso).toLocaleString(undefined, {
       weekday: "short",
@@ -99,7 +99,7 @@ export default function EventsTab({ venueId }: Props) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</p>
                 <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                  {formatDate(e.start_date_time)} · {e.venue_name || "-"}
+                  {formatDate(e.start_date_time)} · {e.venue_name || "—"}
                 </p>
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{e.ticket_sales_count} tickets sold</p>
               </div>
