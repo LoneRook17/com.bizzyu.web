@@ -30,3 +30,28 @@ export function applySaveAsDraftFlag<T extends Record<string, unknown>>(
 export function promoterToggleDisabled(hasPaidTier: boolean): boolean {
   return !hasPaidTier
 }
+
+/**
+ * Leftover services copy from `validateAndNormalizePromotion` when the host
+ * has no Connect payout path. Flutter create already accepts escrow promoter.
+ * Dash used to hard-gate the toggle on this; D4 removed that. The same text
+ * still comes back as a 400 on dash-only `validate-step` and can land in the
+ * Review `serverError` box. It is not a product block — Settings "Connected"
+ * is promoter payout onboarding, not this gate.
+ */
+export function isLeftoverPromoterPayoutPathError(message: string): boolean {
+  const text = message.trim().toLowerCase()
+  if (!text) return false
+  const mentionsPromoter = text.includes("promoter")
+  const mentionsPayoutPath = text.includes("payout path")
+  const mentionsConnectBefore =
+    text.includes("connect stripe before enabling") ||
+    text.includes("connect stripe to enable")
+  return mentionsPromoter && (mentionsPayoutPath || mentionsConnectBefore)
+}
+
+/** Review/Continue must not upsell Connect for the leftover promoter gate. */
+export function shouldOfferStripeConnectForError(message: string): boolean {
+  if (isLeftoverPromoterPayoutPathError(message)) return false
+  return /stripe connect/i.test(message)
+}
