@@ -333,6 +333,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isEditing && form.is_recurring) {
+      goToStep(1)
+      return
+    }
     await submitCreateOrEdit(false)
   }
 

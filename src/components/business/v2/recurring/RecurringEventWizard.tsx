@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { promoterToggleDisabled } from "@/lib/business/create-publish"
 import { EVENT_ACCENT } from "@/lib/business/door-access"
-import { greenRecurringCreatePayload } from "@/lib/business/recurring-event-create"
+import { greenRecurringCreatePayload, todayIsoDate } from "@/lib/business/recurring-event-create"
 import type { RecurringGenerationSummary, RecurringSeriesDetail } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
@@ -24,7 +24,8 @@ import {
   type RecurringTierRow,
 } from "./RecurringTierEditor"
 import { stashCreationReport } from "./SeriesForm"
-import { ISO_DAYS, fmtTimeOfDay, scheduleSentence, upcomingScheduleDates } from "./schedule"
+import { ISO_DAYS, fmtTimeOfDay, isoDayFull, scheduleSentence, upcomingScheduleDates } from "./schedule"
+import { SERIES_NIGHTS_WINDOW_DAYS, addIsoDays } from "@/lib/business/series-nights-window"
 
 /** Same contract as EventForm commissionInputToStored — kept local so this
  *  wizard does not import EventForm (EventForm mounts this file). */
@@ -45,12 +46,15 @@ function commissionToStored(
   return { value: Math.round(num * 100), error: null }
 }
 
-const STEPS = [
-  { key: "days", label: "Nights" },
-  { key: "template", label: "Hours and tickets" },
-  { key: "more", label: "Promoter" },
-  { key: "review", label: "Review" },
-] as const
+function wizardSteps(ticketed: boolean): { key: string; label: string }[] {
+  const steps = [
+    { key: "days", label: "Nights" },
+    { key: "hours", label: "Hours" },
+  ]
+  if (ticketed) steps.push({ key: "tickets", label: "Tickets" })
+  steps.push({ key: "more", label: "Promoter" }, { key: "review", label: "Review" })
+  return steps
+}
 
 export type RecurringEventSeed = {
   name: string
@@ -96,10 +100,12 @@ export function RecurringEventWizard({
 
   const hasPaidTier = seed.type === "Ticketed" && tiers.some((t) => (parseFloat(t.priceInput) || 0) > 0)
   const promoDisabled = promoterToggleDisabled(hasPaidTier)
-  const previewDates = useMemo(
-    () => upcomingScheduleDates(daysOfWeek, undefined, undefined, 4),
-    [daysOfWeek],
-  )
+  const STEPS = useMemo(() => wizardSteps(seed.type === "Ticketed"), [seed.type])
+  const stepKey = STEPS[step]?.key ?? "days"
+  const previewDates = useMemo(() => {
+    const start = todayIsoDate()
+    return upcomingScheduleDates(daysOfWeek, start, addIsoDays(start, SERIES_NIGHTS_WINDOW_DAYS), 8)
+  }, [daysOfWeek])
 
   const toggleDay = (day: number) => {
     setErrors((prev) => ({ ...prev, days_of_week: "" }))
@@ -115,10 +121,16 @@ export function RecurringEventWizard({
     return Object.keys(errs).length === 0
   }
 
-  const validateTemplate = (): boolean => {
+  const validateHours = (): boolean => {
     const errs: Record<string, string> = {}
     if (!startTime) errs.start_time = "Start time is required"
     if (!endTime) errs.end_time = "End time is required"
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const validateTickets = (): boolean => {
+    const errs: Record<string, string> = {}
     if (seed.type === "Ticketed") {
       if (tiers.length === 0) errs.tickets = "At least one ticket tier is required"
       else if (tiers.some((t) => !t.name.trim())) errs.tickets = "All ticket tiers must have a name"
@@ -138,9 +150,10 @@ export function RecurringEventWizard({
   }
 
   const goNext = () => {
-    if (step === 0 && !validateDays()) return
-    if (step === 1 && !validateTemplate()) return
-    if (step === 2 && !validateMore()) return
+    if (stepKey === "days" && !validateDays()) return
+    if (stepKey === "hours" && !validateHours()) return
+    if (stepKey === "tickets" && !validateTickets()) return
+    if (stepKey === "more" && !validateMore()) return
     setServerError("")
     const next = step + 1
     setStep(next)
@@ -148,7 +161,7 @@ export function RecurringEventWizard({
   }
 
   const handlePublish = async () => {
-    if (!validateDays() || !validateTemplate() || !validateMore()) return
+    if (!validateDays() || !validateHours() || !validateTickets() || !validateMore()) return
     setSubmitting(true)
     setServerError("")
     try {
@@ -220,7 +233,7 @@ export function RecurringEventWizard({
         accent={EVENT_ACCENT}
       />
 
-      {step === 0 && (
+      {stepKey === "days" && (
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Nights it repeats</CardTitle>
@@ -251,6 +264,24 @@ export function RecurringEventWizard({
               })}
             </div>
             {errors.days_of_week && <p className="text-xs text-red-600 dark:text-red-400">{errors.days_of_week}</p>}
+            {daysOfWeek.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {daysOfWeek.map((day) => (
+                  <div
+                    key={day}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#05EB54]/40 bg-[#05EB54]/[0.04] px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{isoDayFull(day)}</p>
+                      <p className="text-[13px] text-neutral-500">Weekday template</p>
+                    </div>
+                    <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                      {fmtTimeOfDay(startTime)} - {fmtTimeOfDay(endTime)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="rounded-xl bg-neutral-50 px-4 py-3 dark:bg-neutral-800/50">
               {daysOfWeek.length === 0 ? (
                 <p className="text-sm text-neutral-500">Pick the nights this event repeats.</p>
@@ -260,7 +291,7 @@ export function RecurringEventWizard({
                     {scheduleSentence(daysOfWeek)}
                   </p>
                   <p className="mt-1 text-[13px] text-neutral-500">
-                    Next: {previewDates.length ? previewDates.join(" · ") : "none in the next few weeks"}
+                    Next two weeks: {previewDates.length ? previewDates.join(" · ") : "none"}
                   </p>
                 </>
               )}
@@ -269,10 +300,15 @@ export function RecurringEventWizard({
         </Card>
       )}
 
-      {step === 1 && (
+      {stepKey === "hours" && (
         <>
           <Card>
-            <CardHeader><CardTitle>Hours</CardTitle></CardHeader>
+            <CardHeader className="flex-col items-start gap-1">
+              <CardTitle>Hours</CardTitle>
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+                Same hours for every night you picked. This is the weekday template, not a Custom night.
+              </p>
+            </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 pt-0 sm:grid-cols-2">
               <div>
                 <Label htmlFor="rc_start" className="mb-1.5 block">Opens</Label>
@@ -286,20 +322,6 @@ export function RecurringEventWizard({
               </div>
             </CardContent>
           </Card>
-          {seed.type === "Ticketed" && (
-            <Card>
-              <CardHeader className="flex-col items-start gap-1">
-                <CardTitle>Tickets</CardTitle>
-                <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                  This weekday template stamps onto every night you picked. Custom is only after a later one-date edit.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <RecurringTierEditor tiers={tiers} onChange={setTiers} />
-                {errors.tickets && <p className="mt-2 text-xs text-red-600">{errors.tickets}</p>}
-              </CardContent>
-            </Card>
-          )}
           <Card>
             <CardHeader><CardTitle>Flyer</CardTitle></CardHeader>
             <CardContent className="pt-0">
@@ -309,7 +331,22 @@ export function RecurringEventWizard({
         </>
       )}
 
-      {step === 2 && (
+      {stepKey === "tickets" && (
+        <Card>
+          <CardHeader className="flex-col items-start gap-1">
+            <CardTitle>Tickets</CardTitle>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+              One ticket template for every weekday you picked. Custom is only after a later one-date edit.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <RecurringTierEditor tiers={tiers} onChange={setTiers} />
+            {errors.tickets && <p className="mt-2 text-xs text-red-600">{errors.tickets}</p>}
+          </CardContent>
+        </Card>
+      )}
+
+      {stepKey === "more" && (
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Promoter program</CardTitle>
@@ -365,7 +402,7 @@ export function RecurringEventWizard({
         </Card>
       )}
 
-      {step === 3 && (
+      {stepKey === "review" && (
         <>
           <Card>
             <CardHeader><CardTitle>Review</CardTitle></CardHeader>
@@ -373,7 +410,7 @@ export function RecurringEventWizard({
               <dl className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 <ReviewRow label="Name" value={seed.name || "-"} />
                 <ReviewRow label="Repeats" value={scheduleSentence(daysOfWeek) || "-"} />
-                <ReviewRow label="Hours" value={`${fmtTimeOfDay(startTime)} – ${fmtTimeOfDay(endTime)}`} />
+                <ReviewRow label="Hours" value={`${fmtTimeOfDay(startTime)} - ${fmtTimeOfDay(endTime)}`} />
                 <ReviewRow label="Where" value={[seed.venue_name, seed.venue_address].filter(Boolean).join(" · ") || "-"} />
                 <ReviewRow label="Type" value={seed.type} />
                 {seed.is_21_plus && <ReviewRow label="Age" value="21+" />}

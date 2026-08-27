@@ -180,6 +180,14 @@ export interface EventListItem {
    */
   recurring_series_id?: number | null
   /**
+   * Present on `SELECT e.*` list rows when the night was hand-edited off the
+   * weekday template. Optional so an older payload still lists; Host Upcoming
+   * treats a missing value as "not Custom" and applies the 14-day series window.
+   */
+  series_customized_at?: string | null
+  /** Wire alias for series_customized_at IS NOT NULL on some list payloads. */
+  is_customized?: boolean | number | string | null
+  /**
    * V5 F14 — the pink flag. `'door_access'` marks one night of a Weekly Access
    * program; `'event'` is everything else and is the column default.
    *
