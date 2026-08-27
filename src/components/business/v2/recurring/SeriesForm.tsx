@@ -22,6 +22,7 @@ import { Label } from "@/components/business/v2/ui/label"
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from "@/components/business/v2/ui/dialog"
+import { promoterToggleDisabled } from "@/lib/business/create-publish"
 import {
   commissionValueToInput, commissionInputToStored,
   lowstockValueToInput, lowstockInputToStored,
@@ -129,8 +130,8 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
   )
 
   const hasPaidTicket = type === "Ticketed" && tiers.some((t) => (parseFloat(t.priceInput) || 0) > 0)
-  const promoToggleDisabled = !hasPaidTicket
-  const promoDisabledReason = !hasPaidTicket
+  const promoToggleDisabled = promoterToggleDisabled(hasPaidTicket)
+  const promoDisabledReason = promoToggleDisabled
     ? "Add a paid ticket to enable the promoter program."
     : ""
 

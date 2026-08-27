@@ -24,6 +24,7 @@ import { cn } from "@/lib/v2/utils"
 import {
   applySaveAsDraftFlag,
   promoterToggleDisabled,
+  shouldOfferStripeConnectForError,
   willDraftOnCreate,
 } from "@/lib/business/create-publish"
 import { shouldAutoPublishCreatedDraft } from "@/lib/business/live-after-approve"
@@ -950,7 +951,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       {serverError && (
         <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
           <p>{serverError}</p>
-          {/Stripe Connect/i.test(serverError) && (
+          {shouldOfferStripeConnectForError(serverError) && (
             <Button type="button" variant="primary" size="sm" className="mt-2" disabled={stripeConnecting} onClick={handleConnectStripe}>
               {stripeConnecting ? <><Loader2 className="size-3.5 animate-spin" /> Connecting…</> : "Connect Stripe →"}
             </Button>
