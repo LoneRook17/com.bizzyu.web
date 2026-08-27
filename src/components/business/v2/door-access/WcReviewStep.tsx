@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Image as ImageIcon } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ACCESS_ACCENT, ACCESS_INK, fmtTime, usdPrice } from "@/lib/business/door-access"
 import {
-  nightLabelFor,
   nightPriceSummary,
   reviewFlyerUrlForDay,
+  reviewFormatLabel,
   reviewSkipCoverSuffix,
   type NightDraft,
   type WcProducts,
@@ -15,13 +15,16 @@ import {
 import { ISO_DAYS, isoDayFull } from "@/components/business/v2/recurring/schedule"
 
 /**
- * Flutter "Look it over". Day chips switch the preview (copy + flyer); Publish
- * is the only CTA. Game-day overrides stay listed under the weekly default so a
- * host who priced a Saturday game still sees it before they send the POST.
+ * Flutter "Look it over". Day chips switch the preview. WHEN / WHERE / FORMAT
+ * rows, Cover + Skip as cards, venue photo when they skipped a custom flyer.
+ * Publish is the only CTA. Game-day overrides stay listed under the weekly
+ * default so a host who priced a Saturday game still sees it.
  */
 export function WcReviewStep({
   products,
   venueName,
+  venueAddress,
+  venuePhotoUrl,
   derivedName,
   daysOfWeek,
   weekdayEdits,
@@ -33,6 +36,8 @@ export function WcReviewStep({
 }: {
   products: WcProducts | null
   venueName: string
+  venueAddress?: string
+  venuePhotoUrl?: string
   derivedName: string
   daysOfWeek: number[]
   weekdayEdits: Record<number, NightDraft>
@@ -45,8 +50,10 @@ export function WcReviewStep({
   const sorted = [...daysOfWeek].sort((a, b) => a - b)
   const day = previewDay != null && daysOfWeek.includes(previewDay) ? previewDay : sorted[0] ?? null
   const draft = day != null ? weekdayEdits[day] : undefined
-  const flyerUrl = reviewFlyerUrlForDay(weekdayEdits, day)
+  const flyerUrl = reviewFlyerUrlForDay(weekdayEdits, day, venuePhotoUrl ?? "")
   const dateKeys = Object.keys(dateEdits).sort()
+  const liveTiers = (draft?.tiers ?? []).filter((t) => !t.is_disabled)
+  const whereLine = [venueName || "Your venue", (venueAddress ?? "").trim()].filter(Boolean)
 
   return (
     <div className="flex flex-col gap-5">
@@ -88,37 +95,59 @@ export function WcReviewStep({
       </div>
 
       {day != null ? (
-        <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
           <ReviewFlyerPreview url={flyerUrl} dayName={isoDayFull(day)} />
-          <p className="mt-4 text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            Every {isoDayFull(day)}
-          </p>
-          <p className="mt-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-            {isoDayFull(day)} {nightLabelFor(products)}
-          </p>
-          {draft ? (
-            <div className="mt-3 flex flex-col gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-              <p>
-                {fmtTime(draft.startTime)} - {fmtTime(draft.endTime)}
-              </p>
-              <p className="font-medium">{nightPriceSummary(draft)}</p>
-              {draft.is21Plus || draft.tiers.some((t) => t.is_21_plus) ? <p>21+</p> : null}
-              {draft.tiers
-                .filter((t) => !t.is_disabled)
-                .map((tier, i) => (
-                  <p key={i} className="text-[13px] text-neutral-600 dark:text-neutral-400">
-                    {tier.name || (tier.kind === "skip" ? "Skip the Line" : "Cover")}{" "}
-                    {usdPrice(Number.parseFloat(tier.priceInput) || 0)}
-                    {tier.quantityInput === "" || tier.quantityInput === "0"
-                      ? " · Unlimited"
-                      : ` · ${tier.quantityInput}`}
-                    {tier.kind === "skip" ? reviewSkipCoverSuffix(tier.includes_cover) : ""}
-                  </p>
+
+          <div className="flex flex-col gap-4 p-4">
+            <ReviewMetaRow label="WHEN">
+              <p className="font-semibold text-neutral-900 dark:text-neutral-100">Every {isoDayFull(day)}</p>
+              {draft ? (
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  {fmtTime(draft.startTime)} - {fmtTime(draft.endTime)}
+                </p>
+              ) : (
+                <p className="text-sm text-neutral-500">Not set up</p>
+              )}
+            </ReviewMetaRow>
+
+            <ReviewMetaRow label="WHERE">
+              {whereLine.map((line) => (
+                <p key={line} className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                  {line}
+                </p>
+              ))}
+            </ReviewMetaRow>
+
+            <ReviewMetaRow label="FORMAT">
+              <p className="font-semibold text-neutral-900 dark:text-neutral-100">{reviewFormatLabel(products)}</p>
+              {draft && (draft.is21Plus || draft.tiers.some((t) => t.is_21_plus)) ? (
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">21+</p>
+              ) : null}
+            </ReviewMetaRow>
+
+            {liveTiers.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {liveTiers.map((tier, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl border px-3 py-3"
+                    style={{ borderColor: `${ACCESS_ACCENT}40`, backgroundColor: `${ACCESS_ACCENT}10` }}
+                  >
+                    <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: ACCESS_ACCENT }}>
+                      {tier.name || (tier.kind === "skip" ? "Skip the Line" : "Cover")}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+                      {usdPrice(Number.parseFloat(tier.priceInput) || 0)}
+                    </p>
+                    <p className="text-[13px] text-neutral-600 dark:text-neutral-400">
+                      {tier.quantityInput === "" || tier.quantityInput === "0" ? "Unlimited" : `${tier.quantityInput} spots`}
+                      {tier.kind === "skip" ? reviewSkipCoverSuffix(tier.includes_cover) : ""}
+                    </p>
+                  </div>
                 ))}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">Not set up</p>
-          )}
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -143,16 +172,26 @@ export function WcReviewStep({
       ) : null}
 
       <p className="text-[13px] text-neutral-600 dark:text-neutral-400">
-        {promotionEnabled ? `Promoter on. ${commissionSummary}` : "Promoter off."} At the door:
-        any phone camera, tap Check In.
+        {promotionEnabled ? `Promoter on. ${commissionSummary}` : "Promoter off."} At the door: any phone camera, tap Check In.
       </p>
     </div>
   )
 }
 
+function ReviewMetaRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex gap-4">
+      <p className="w-16 shrink-0 text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+        {label}
+      </p>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
 /**
- * Night flyer for the selected day chip. A missing or broken URL is a
- * placeholder so Look it over never blocks Publish.
+ * Night flyer or venue photo for the selected day chip. A missing or broken
+ * URL is a quiet frame so Look it over never blocks Publish.
  */
 function ReviewFlyerPreview({ url, dayName }: { url: string; dayName: string }) {
   const [broken, setBroken] = useState(false)
@@ -165,7 +204,7 @@ function ReviewFlyerPreview({ url, dayName }: { url: string; dayName: string }) 
 
   return (
     <div
-      className="overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-950"
+      className="overflow-hidden bg-neutral-100 dark:bg-neutral-950"
       aria-label={`${dayName} flyer preview`}
     >
       {showImage ? (
@@ -177,12 +216,11 @@ function ReviewFlyerPreview({ url, dayName }: { url: string; dayName: string }) 
           onError={() => setBroken(true)}
         />
       ) : (
-        <div className="flex min-h-[200px] w-full flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+        <div className="flex min-h-[160px] w-full flex-col items-center justify-center gap-2 px-4 py-10 text-center">
           <span className="flex size-11 items-center justify-center rounded-full bg-neutral-200/80 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
             <ImageIcon className="size-5" aria-hidden />
           </span>
-          <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">No flyer</p>
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">This night has no flyer yet.</p>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Venue photo will show here.</p>
         </div>
       )}
     </div>

@@ -37,6 +37,9 @@ import {
   dateEditsToWire,
   daysQuestion,
   defaultTierDescription,
+  reviewFormatLabel,
+  setTierCustomDescription,
+  tierHasCustomDescription,
   applyIncludesCover,
   derivedWeeklyCoverName,
   reviewSkipCoverSuffix,
@@ -137,15 +140,21 @@ test("an inherited flyer is never mistaken for the night's own", () => {
   )
 })
 
-test("Look it over flyer is the night's own artwork, not the inherited venue photo", () => {
+test("Look it over flyer prefers own artwork, then the venue photo", () => {
   assert.equal(
     reviewFlyerUrl(night({ flyerImageUrl: "https://cdn/wed.jpg", inheritedFlyerUrl: "https://cdn/venue.jpg" })),
     "https://cdn/wed.jpg"
   )
-  assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" })), "")
-  assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "   ", inheritedFlyerUrl: "https://cdn/venue.jpg" })), "")
+  assert.equal(
+    reviewFlyerUrl(night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" })),
+    "https://cdn/venue.jpg"
+  )
+  assert.equal(
+    reviewFlyerUrl(night({ flyerImageUrl: "   ", inheritedFlyerUrl: "https://cdn/venue.jpg" })),
+    "https://cdn/venue.jpg"
+  )
   assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "", flyerRemoved: true })), "")
-  assert.equal(reviewFlyerUrl(undefined), "")
+  assert.equal(reviewFlyerUrl(undefined, "https://cdn/venue.jpg"), "https://cdn/venue.jpg")
   assert.equal(reviewFlyerUrl(null), "")
 })
 
@@ -155,9 +164,9 @@ test("Look it over flyer follows the selected weekday", () => {
     5: night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" }),
   }
   assert.equal(reviewFlyerUrlForDay(edits, 3), "https://cdn/wed.jpg")
-  assert.equal(reviewFlyerUrlForDay(edits, 5), "", "Friday has no own flyer, so review shows a placeholder")
-  assert.equal(reviewFlyerUrlForDay(edits, 1), "", "an unpicked Monday is empty, not a throw")
-  assert.equal(reviewFlyerUrlForDay(edits, null), "")
+  assert.equal(reviewFlyerUrlForDay(edits, 5), "https://cdn/venue.jpg", "Friday with no own flyer shows the venue photo")
+  assert.equal(reviewFlyerUrlForDay(edits, 1, "https://cdn/venue.jpg"), "https://cdn/venue.jpg")
+  assert.equal(reviewFlyerUrlForDay(edits, null, "https://cdn/venue.jpg"), "https://cdn/venue.jpg")
 })
 
 test("copying a weekday onto another does not carry its artwork", () => {
@@ -167,6 +176,14 @@ test("copying a weekday onto another does not carry its artwork", () => {
   assert.equal(copied.flyerRemoved, false)
   // Prices DO come across — that is the point of Copy.
   assert.equal(copied.tiers[0].priceInput, "20")
+  assert.equal(copied.tiers[0].description, "", "custom description stays off when the source had none")
+})
+
+test("copying a weekday with a custom description rewrites the day name", () => {
+  const source = night({
+    tiers: [tier({ priceInput: "20", description: "Cover at The Bar on Fridays. Grants entry." })],
+  })
+  const copied = copyNightToDay(source, { venueName: "The Bar", dayName: "Saturday" })
   assert.match(copied.tiers[0].description, /Saturdays/)
 })
 
@@ -489,7 +506,7 @@ test("a skip tier's blurb says whether cover is included", () => {
   assert.equal(reviewSkipCoverSuffix(false), " · Cover NOT Included")
 })
 
-test("toggling Cover included rewrites the skip ticket description", () => {
+test("toggling Cover included rewrites the skip ticket description when custom is on", () => {
   const seeded = seedNightDraft({
     products: "skip",
     startTime: "21:00",
@@ -498,9 +515,16 @@ test("toggling Cover included rewrites the skip ticket description", () => {
     dayName: "Friday",
   })
   assert.equal(seeded.tiers[0].includes_cover, true)
-  assert.equal(seeded.tiers[0].description, "Skip the line at The Bar on Fridays. Cover included.")
+  assert.equal(seeded.tiers[0].description, "", "fresh create leaves Custom description off")
 
-  const off = applyIncludesCover(seeded.tiers[0], false, { venueName: "The Bar", dayName: "Friday" })
+  const offEmpty = applyIncludesCover(seeded.tiers[0], false, { venueName: "The Bar", dayName: "Friday" })
+  assert.equal(offEmpty.includes_cover, false)
+  assert.equal(offEmpty.description, "")
+
+  const custom = setTierCustomDescription(seeded.tiers[0], true, { venueName: "The Bar", dayName: "Friday" })
+  assert.equal(custom.description, "Skip the line at The Bar on Fridays. Cover included.")
+
+  const off = applyIncludesCover(custom, false, { venueName: "The Bar", dayName: "Friday" })
   assert.equal(off.includes_cover, false)
   assert.equal(off.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
 
@@ -527,6 +551,10 @@ test("create payload skip description follows the Cover included toggle", () => 
   const skipOn = onNight.tiers.find((t) => t.kind === "skip")
   assert.ok(skipOn)
   skipOn.priceInput = "25"
+  Object.assign(skipOn, setTierCustomDescription(skipOn, true, venue))
+  const coverOn = onNight.tiers.find((t) => t.kind === "cover")
+  assert.ok(coverOn)
+  Object.assign(coverOn, setTierCustomDescription(coverOn, true, venue))
   const onWire = weekdayTemplateToWire(onNight)
   const onSkip = (onWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]).find(
     (t) => t.kind === "skip"
@@ -558,6 +586,18 @@ test("create payload skip description follows the Cover included toggle", () => 
 
   const coverTicket = tickets.find((t) => t.tier_key === "cover")
   assert.equal(coverTicket?.description, "Cover at The Bar on Fridays. Grants entry.")
+})
+
+test("Custom description toggle fills the default template and clears it when off", () => {
+  const base = emptyTier("cover")
+  assert.equal(tierHasCustomDescription(base), false)
+  const on = setTierCustomDescription(base, true, { venueName: "The Bar", dayName: "Wednesday" })
+  assert.equal(on.description, "Cover at The Bar on Wednesdays. Grants entry.")
+  assert.equal(tierHasCustomDescription(on), true)
+  assert.equal(setTierCustomDescription(on, false).description, "")
+  assert.equal(reviewFormatLabel("cover"), "Weekly Cover")
+  assert.equal(reviewFormatLabel("both"), "Cover & Skip the Line")
+  assert.equal(reviewFormatLabel("skip"), "Skip the Line")
 })
 
 test("tierToWire rewrites a stale Cover included clause when the toggle is off", () => {
