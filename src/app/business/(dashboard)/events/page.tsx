@@ -52,6 +52,7 @@ import {
 } from "@/lib/business/door-access"
 import { mergeUpcomingWithQueuedDrafts } from "@/lib/business/live-after-approve"
 import { customUpcomingNightsFromSeries } from "@/lib/business/wc-upcoming"
+import { eventsForHostUpcomingList } from "@/lib/business/series-nights-window"
 import {
   HostCardThumbnail,
   HostListCard,
@@ -255,7 +256,12 @@ export default function V2EventsPage() {
   const visibleOneOffs = tab === "upcoming" && showsAccess(effectiveType) ? oneOffNights : []
 
   const rows = showsEvents(effectiveType)
-    ? groupEventRows(events, venueSeries, wcSeriesIds, inactiveWcIds)
+    ? groupEventRows(
+        tab === "upcoming" ? eventsForHostUpcomingList(events, easternToday()) : events,
+        venueSeries,
+        wcSeriesIds,
+        inactiveWcIds,
+      )
     : []
   // AccessProgramRow uses GET /business/door-access ids. Stamped WC nights
   // still group by recurring_series_id when that list omits the series
