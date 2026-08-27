@@ -149,7 +149,13 @@ export function normalizeEscrowSummary(raw: Partial<EscrowSummary> | null | unde
 
 // ── Panel state ─────────────────────────────────────────────────────────────
 
-export type EscrowPanelState = "empty" | "claimable" | "ready" | "processing" | "paid"
+export type EscrowPanelState = "empty" | "claimable" | "ready" | "processing" | "in_transit" | "paid"
+
+/** Stripe / Payouts money the Payments tab already shows. Display only. */
+export interface PayoutsMoneyHint {
+  in_transit_cents: number
+  deposited_cents: number
+}
 
 function transferIdInFlight(e: EscrowLedgerEntry): boolean {
   const id = e.stripe_transfer_id?.trim()
@@ -173,25 +179,39 @@ export function hasInFlightEscrowPayout(summary: EscrowSummary): boolean {
  * - `ready`: onboarded, money still held, no withdrawal/transfer yet. Hold
  *   until sent; do not claim it is on the way to the bank.
  * - `claimable`: settled money is waiting and Stripe isn't connected.
- * - `paid`: nothing left and at least one settled withdrawal proves a payout
- *   happened (a ledger that merely netted to zero via reversals is `empty`).
+ * - `in_transit`: escrow cleared (or Payouts reports in-transit) but the
+ *   money is not in the bank. Never "Paid" / "to your bank".
+ * - `paid`: Payouts confirms a deposit and nothing is still in transit.
  */
-export function deriveEscrowPanelState(summary: EscrowSummary, stripeOnboarded: boolean): EscrowPanelState {
+export function deriveEscrowPanelState(
+  summary: EscrowSummary,
+  stripeOnboarded: boolean,
+  payouts?: PayoutsMoneyHint | null,
+): EscrowPanelState {
   if (hasInFlightEscrowPayout(summary)) return "processing"
   if (summary.available_cents > 0) return stripeOnboarded ? "ready" : "claimable"
-  if (summary.entries.some((e) => e.entry_type === "withdrawal" && e.status === "settled")) return "paid"
+  if (summary.entries.length === 0) return "empty"
+  if (payouts && payouts.in_transit_cents > 0) return "in_transit"
+  if (payouts && payouts.deposited_cents > 0) return "paid"
+  if (summary.entries.some((e) => e.entry_type === "withdrawal" && e.status === "settled")) {
+    // Escrow→Stripe is not a bank payout. Without a deposited hint, stay honest.
+    return "in_transit"
+  }
   return "empty"
 }
 
 /** The single hero number (A4): what is waiting, moving, or was paid out. */
 export function escrowHeroCents(summary: EscrowSummary, state: EscrowPanelState): number {
-  if (state === "processing") {
+  if (state === "processing" || state === "in_transit") {
     const pendingOut = summary.entries
       .filter((e) => e.entry_type === "withdrawal" && e.status === "pending")
       .reduce((sum, e) => sum + e.amount_cents, 0)
-    // Withdrawals are negative; show the amount on its way. Fall back to
-    // the balance if only a transfer id marks the row in flight.
-    return pendingOut < 0 ? -pendingOut : summary.available_cents
+    if (pendingOut < 0) return -pendingOut
+    const settledOut = summary.entries
+      .filter((e) => e.entry_type === "withdrawal" && e.status === "settled")
+      .reduce((sum, e) => sum + e.amount_cents, 0)
+    if (settledOut < 0) return -settledOut
+    return summary.available_cents
   }
   if (state === "paid") {
     const settledOut = summary.entries
@@ -246,7 +266,7 @@ export function entryLabel(e: EscrowLedgerEntry): EntryLabel {
     case "reversal":
       return { title: "Refund", reference: ref }
     case "withdrawal":
-      return { title: "Payout to your bank", reference: null }
+      return { title: "Released from escrow", reference: null }
     case "withdrawal_fee":
       return { title: "Payout fee", reference: null }
     case "adjustment":

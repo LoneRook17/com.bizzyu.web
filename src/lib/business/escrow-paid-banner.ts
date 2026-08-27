@@ -12,6 +12,7 @@ import {
   type EscrowLedgerEntry,
   type EscrowPanelData,
   type EscrowSummary,
+  type PayoutsMoneyHint,
 } from "./escrow.ts"
 
 export const ESCROW_PAID_BANNER_TTL_MS = 24 * 60 * 60 * 1000
@@ -106,6 +107,7 @@ export interface EscrowPanelRenderOpts {
   demo?: boolean
   authBusinessId?: number | null
   storage: PaidBannerStorage
+  payouts?: PayoutsMoneyHint | null
 }
 
 /**
@@ -118,7 +120,7 @@ export function shouldRenderEscrowPanel(
   opts: EscrowPanelRenderOpts,
 ): boolean {
   if (!data) return false
-  const state = deriveEscrowPanelState(data.summary, data.stripeOnboarded)
+  const state = deriveEscrowPanelState(data.summary, data.stripeOnboarded, opts.payouts)
   if (state === "empty") return false
   if (state !== "paid") return true
   if (opts.demo) return true

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Clock, Copy } from "lucide-react"
+import { Clock, Copy } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ACCESS_ACCENT, ACCESS_INK, fmtTime } from "@/lib/business/door-access"
 import {
@@ -128,7 +128,7 @@ export function WcNightsStep({
                 )}
                 style={done ? { backgroundColor: ACCESS_ACCENT, color: ACCESS_INK } : undefined}
               >
-                {done ? <Check className="size-4" /> : ISO_DAYS.find((d) => d.value === day)?.letter}
+                {ISO_DAYS.find((d) => d.value === day)?.letter}
               </span>
 
               <span className="min-w-0 flex-1">
@@ -150,20 +150,32 @@ export function WcNightsStep({
                 </span>
               </span>
 
-              {canCopy && (
+              <span className="flex shrink-0 items-center gap-2">
+                {canCopy && (
+                  <span
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      copyFrom(copySource, day)
+                    }}
+                  >
+                    <Button type="button" variant="secondary" size="sm">
+                      <Copy /> Copy {copyName}
+                    </Button>
+                  </span>
+                )}
                 <span
-                  className="shrink-0"
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    copyFrom(copySource, day)
+                    openEditor(day)
                   }}
                 >
                   <Button type="button" variant="secondary" size="sm">
-                    <Copy /> Copy {copyName}
+                    Edit
                   </Button>
                 </span>
-              )}
+              </span>
             </button>
           )
         })}

@@ -127,9 +127,11 @@ function InstanceList({ instances, isAllVenues }: { instances: LineSkipOverviewI
 export default function LineSkipsOverviewView({
   data,
   isAllVenues = false,
+  fullPage = false,
 }: {
   data: LineSkipAnalyticsOverview
   isAllVenues?: boolean
+  fullPage?: boolean
 }) {
   const activeInstances = data.instances.filter((inst) => inst.status === "active" && isUpcoming(inst.date))
   const pastInstances = data.instances.filter((inst) => inst.status !== "active" || !isUpcoming(inst.date))
@@ -150,12 +152,12 @@ export default function LineSkipsOverviewView({
       ) : (
         <>
           {activeInstances.length > 0 && (
-            <Section title={ANALYTICS_ACCESS_ACTIVE_SECTION} count={activeInstances.length} defaultOpen>
+            <Section title={ANALYTICS_ACCESS_ACTIVE_SECTION} count={activeInstances.length} defaultOpen fullPage={fullPage} accent="weekly_cover">
               <InstanceList instances={activeInstances} isAllVenues={isAllVenues} />
             </Section>
           )}
           {pastInstances.length > 0 && (
-            <Section title={ANALYTICS_ACCESS_PAST_SECTION} count={pastInstances.length} defaultOpen={false}>
+            <Section title={ANALYTICS_ACCESS_PAST_SECTION} count={pastInstances.length} defaultOpen={false} fullPage={fullPage} accent="weekly_cover">
               <InstanceList instances={pastInstances} isAllVenues={isAllVenues} />
             </Section>
           )}

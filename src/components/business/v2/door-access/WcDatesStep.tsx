@@ -157,21 +157,27 @@ export function WcDatesStep({
             const runsTonight = runs.has(date)
             const hasOverride = !!dateEdits[date]
             const dayNumber = Number(date.slice(8, 10))
+            const past = date < today.toLocaleDateString("en-CA")
             return (
               <button
                 key={date}
                 type="button"
-                disabled={!runsTonight}
+                disabled={past}
                 onClick={() => setEditing(date)}
-                aria-label={`${fmtGameDay(date)}${hasOverride ? " (has its own prices)" : ""}`}
+                aria-label={`${fmtGameDay(date)}${hasOverride ? " (has its own prices)" : runsTonight ? "" : " (one-off)"}`}
                 className={cn(
                   "relative flex aspect-square items-center justify-center rounded-lg text-[13px] font-medium tabular-nums transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-access/40",
-                  !runsTonight && "text-neutral-300 dark:text-neutral-700",
-                  runsTonight &&
+                  past && "text-neutral-300 dark:text-neutral-700",
+                  !past &&
+                    !runsTonight &&
+                    !hasOverride &&
+                    "border border-dashed border-neutral-300 text-neutral-500 hover:border-access hover:text-access dark:border-neutral-700",
+                  !past &&
+                    runsTonight &&
                     !hasOverride &&
                     "border border-neutral-200 text-neutral-700 hover:border-access hover:text-access dark:border-neutral-700 dark:text-neutral-300",
-                  runsTonight && hasOverride && "bg-access font-bold text-white"
+                  hasOverride && "bg-access font-bold text-white"
                 )}
               >
                 {dayNumber}
@@ -184,7 +190,7 @@ export function WcDatesStep({
         </div>
 
         <p className="mt-3 text-[12px] text-neutral-500 dark:text-neutral-400">
-          Dotted nights are the ones this program runs. Filled ones have their own prices.
+          Dotted nights are the weekly series. Any other future day can be a one-off. Filled ones have their own prices.
         </p>
       </div>
 
