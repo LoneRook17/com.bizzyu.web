@@ -1,12 +1,14 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import {
+  isIsoDateString,
+  isIsoTimeString,
   joinDateTimeLocal,
   monthCells,
-  parseDateTimeLocal,
   shiftMonth,
+  splitDateTimeLocal,
 } from "@/lib/business/datetime-value"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input } from "@/components/business/v2/ui/input"
@@ -96,42 +98,47 @@ export function DateTimeField({
   onChange: (next: string) => void
   className?: string
 }) {
-  const [open, setOpen] = useState(false)
-  const parsed = parseDateTimeLocal(value)
-  const date = parsed?.date ?? value.slice(0, 10)
-  const time = parsed?.time ?? value.slice(11, 16)
+  const parts = splitDateTimeLocal(value)
+  const [date, setDate] = useState(parts.date)
+  const [time, setTime] = useState(parts.time)
+  const lastEmitted = useRef(value)
+
+  useEffect(() => {
+    if (value === lastEmitted.current) return
+    lastEmitted.current = value
+    const next = splitDateTimeLocal(value)
+    setDate(next.date)
+    setTime(next.time)
+  }, [value])
+
+  const commit = (nextDate: string, nextTime: string) => {
+    let nextTimeResolved = nextTime
+    if (isIsoDateString(nextDate) && !nextTimeResolved) nextTimeResolved = "00:00"
+    setDate(nextDate)
+    setTime(nextTimeResolved)
+    if (!nextDate && !nextTimeResolved) {
+      lastEmitted.current = ""
+      onChange("")
+      return
+    }
+    if (isIsoDateString(nextDate) && isIsoTimeString(nextTimeResolved)) {
+      const emitted = joinDateTimeLocal(nextDate, nextTimeResolved)
+      lastEmitted.current = emitted
+      onChange(emitted)
+    }
+  }
 
   return (
-    <div className={cn("relative", className)}>
-      <div className="flex gap-2">
-        <Input
-          id={id}
-          name={name}
-          type="text"
-          inputMode="numeric"
-          placeholder="YYYY-MM-DDTHH:MM"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <Button type="button" variant="secondary" size="sm" onClick={() => setOpen((o) => !o)} aria-label="Open date and time picker">
-          <CalendarDays className="size-4" />
-        </Button>
+    <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2", className)}>
+      {name ? <input type="hidden" name={name} value={value} /> : null}
+      <div>
+        <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Date</p>
+        <DateField id={id} value={date} onChange={(next) => commit(next, time)} />
       </div>
-      {open && (
-        <div className="absolute z-30 mt-2 rounded-xl border border-neutral-200 bg-white p-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-          <CalendarGrid
-            value={date}
-            onPick={(next) => onChange(joinDateTimeLocal(next, time || "00:00"))}
-          />
-          <div className="mt-3">
-            <Input
-              type="time"
-              value={time}
-              onChange={(e) => onChange(joinDateTimeLocal(date || new Date().toLocaleDateString("en-CA"), e.target.value))}
-            />
-          </div>
-        </div>
-      )}
+      <div>
+        <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Time</p>
+        <TimeField id={id ? `${id}_time` : undefined} value={time} onChange={(next) => commit(date, next)} />
+      </div>
     </div>
   )
 }

@@ -1,9 +1,10 @@
 /**
  * Date / time values for dash create/edit fields.
  *
- * Event forms store `YYYY-MM-DDTHH:MM` (datetime-local). Series and WC store
- * a date (`YYYY-MM-DD`) or a time (`HH:MM`) separately. Parsing is string
- * math — never `new Date("2026-08-29")`, which is UTC midnight.
+ * Event forms still submit `YYYY-MM-DDTHH:MM` to the API. The host-facing
+ * widgets are a date (`YYYY-MM-DD`) plus a time (`HH:MM`), same as series and
+ * WC. Parsing is string math — never `new Date("2026-08-29")`, which is UTC
+ * midnight.
  */
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -40,6 +41,24 @@ export function joinDateTimeLocal(date: string, time: string): string {
   if (d && t) return `${d}T${t}`
   if (d) return `${d}T00:00`
   return t ? `T${t}` : ""
+}
+
+/** UI split: complete datetimes, date-only, time-only, or leftover `T21:00`. */
+export function splitDateTimeLocal(value: string): { date: string; time: string } {
+  const parsed = parseDateTimeLocal(value)
+  if (parsed) return parsed
+  const raw = String(value ?? "").trim()
+  if (isIsoDateString(raw)) return { date: raw, time: "" }
+  if (isIsoTimeString(raw)) return { date: "", time: raw.slice(0, 5) }
+  if (raw.startsWith("T") && isIsoTimeString(raw.slice(1))) {
+    return { date: "", time: raw.slice(1, 6) }
+  }
+  const datePart = raw.slice(0, 10)
+  const timePart = raw.includes("T") ? raw.slice(raw.indexOf("T") + 1).slice(0, 5) : ""
+  return {
+    date: DATE_RE.test(datePart) ? datePart : "",
+    time: TIME_RE.test(timePart) ? timePart : "",
+  }
 }
 
 export function isoDateOfParts(year: number, monthIndex: number, day: number): string {

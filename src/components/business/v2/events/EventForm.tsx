@@ -567,7 +567,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       {/* Date & time */}
       <Card>
         <CardHeader><CardTitle>Date and time</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 pt-0 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-4 pt-0">
           <div>
             <Label htmlFor="start_date_time" className="mb-1.5 block">Starts</Label>
             <DateTimeField
