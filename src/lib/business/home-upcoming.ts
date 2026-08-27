@@ -15,11 +15,12 @@
 // isDoorAccessKind is a pure helper in door-access.ts (api-client stays behind
 // a lazy import), so `node --test` can load this module without a browser.
 import type { EventListItem } from "./types"
-import { isWeeklyCoverProduct, type DoorAccessProgramSummary } from "./door-access.ts"
+import { easternToday, isWeeklyCoverProduct, type DoorAccessProgramSummary } from "./door-access.ts"
 import {
   isApprovedCanceledStatus,
   weeklyCoverNightNeedsPendingCancel,
 } from "./weekly-cover-visibility.ts"
+import { hostUpcomingShowsGreenNight } from "./series-nights-window.ts"
 
 export type UpcomingEntry =
   | { kind: "event"; key: string; sortKey: string; event: EventListItem }
@@ -56,6 +57,7 @@ export function homeUpcoming(
   limit = 4,
   inactiveWcSeriesIds: readonly number[] = [],
   oneOffNights: readonly OneOffUpcomingNight[] = [],
+  today: string = easternToday(),
 ): UpcomingEntry[] {
   const inactive = new Set(inactiveWcSeriesIds)
   const entries: UpcomingEntry[] = events
@@ -66,8 +68,10 @@ export function homeUpcoming(
       // Unstamped leftover nights of a host-ended series still arrive as
       // green event rows. 0-sales nights leave; sold nights stay pending-cancel.
       if (ended) return weeklyCoverNightNeedsPendingCancel(event, false)
-      if (!isWeeklyCoverProduct(event)) return true
-      return false
+      if (isWeeklyCoverProduct(event)) return false
+      // Green series nights: today + 2 weeks. Standalone one-off and Custom always show.
+      if (!hostUpcomingShowsGreenNight(event, today)) return false
+      return true
     })
     .map((event) => ({
       kind: "event",

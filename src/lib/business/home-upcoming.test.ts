@@ -155,6 +155,22 @@ test("cancelled nights do not appear on Home", () => {
   assert.deepEqual(out.map((e) => e.key), ["event-1"])
 })
 
+test("a far uncustomized green series night leaves Host Upcoming", () => {
+  const seriesNight = ev(7, "2026-12-01 21:00:00")
+  seriesNight.recurring_series_id = 12
+  const oneOff = ev(1, "2026-12-01 21:00:00")
+  const out = homeUpcoming([seriesNight, oneOff], [], 4, [], [], "2026-08-27")
+  assert.deepEqual(out.map((e) => e.key), ["event-1"])
+})
+
+test("a Custom green series night stays on Host Upcoming even far out", () => {
+  const custom = ev(8, "2026-12-01 21:00:00")
+  custom.recurring_series_id = 12
+  custom.series_customized_at = "2026-08-20 10:00:00"
+  const out = homeUpcoming([custom], [], 4, [], [], "2026-08-27")
+  assert.deepEqual(out.map((e) => e.key), ["event-8"])
+})
+
 test("no programs at all ⇒ byte-identical to the events-only list it replaced", () => {
   const events = [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-02 21:00:00")]
   const out = homeUpcoming(events, [])

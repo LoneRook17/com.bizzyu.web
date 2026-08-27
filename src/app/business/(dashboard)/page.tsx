@@ -27,6 +27,7 @@ import {
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { homeUpcoming, nextAccessNight, type OneOffUpcomingNight } from "@/lib/business/home-upcoming"
+import { hostUpcomingShowsGreenNight } from "@/lib/business/series-nights-window"
 import { oneOffNightsFromSeries } from "@/lib/business/wc-upcoming"
 import { inactiveWeeklyCoverSeriesIds } from "@/lib/business/events-list"
 import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
@@ -199,7 +200,14 @@ export default function V2HomePage() {
   const soonestNight = nextNights[0] ?? null
 
   // The interleaved list (green events + pink nights) this card now shows.
-  const upcoming = homeUpcoming(showEventsSection ? events : [], activePrograms, 4, inactiveWcIds, oneOffNights)
+  const upcoming = homeUpcoming(
+    showEventsSection ? events : [],
+    activePrograms,
+    4,
+    inactiveWcIds,
+    oneOffNights,
+    easternToday(),
+  )
   const showUpcomingCard = showEventsSection || showAccessSection
 
   // The "next night" tile answers across BOTH systems while they coexist — a
@@ -218,6 +226,7 @@ export default function V2HomePage() {
         if (inactiveWcIds.includes(seriesId) && !weeklyCoverNightNeedsPendingCancel(event, false)) {
           return false
         }
+        if (!hostUpcomingShowsGreenNight(event, easternToday())) return false
         return true
       })
     : undefined
