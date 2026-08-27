@@ -1,12 +1,17 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import {
+  clock12hSlots,
+  formatClock12h,
+  isIsoDateString,
+  isIsoTimeString,
   joinDateTimeLocal,
+  parseClock12h,
   monthCells,
-  parseDateTimeLocal,
   shiftMonth,
+  splitDateTimeLocal,
 } from "@/lib/business/datetime-value"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input } from "@/components/business/v2/ui/input"
@@ -96,42 +101,47 @@ export function DateTimeField({
   onChange: (next: string) => void
   className?: string
 }) {
-  const [open, setOpen] = useState(false)
-  const parsed = parseDateTimeLocal(value)
-  const date = parsed?.date ?? value.slice(0, 10)
-  const time = parsed?.time ?? value.slice(11, 16)
+  const parts = splitDateTimeLocal(value)
+  const [date, setDate] = useState(parts.date)
+  const [time, setTime] = useState(parts.time)
+  const lastEmitted = useRef(value)
+
+  useEffect(() => {
+    if (value === lastEmitted.current) return
+    lastEmitted.current = value
+    const next = splitDateTimeLocal(value)
+    setDate(next.date)
+    setTime(next.time)
+  }, [value])
+
+  const commit = (nextDate: string, nextTime: string) => {
+    let nextTimeResolved = nextTime
+    if (isIsoDateString(nextDate) && !nextTimeResolved) nextTimeResolved = "00:00"
+    setDate(nextDate)
+    setTime(nextTimeResolved)
+    if (!nextDate && !nextTimeResolved) {
+      lastEmitted.current = ""
+      onChange("")
+      return
+    }
+    if (isIsoDateString(nextDate) && isIsoTimeString(nextTimeResolved)) {
+      const emitted = joinDateTimeLocal(nextDate, nextTimeResolved)
+      lastEmitted.current = emitted
+      onChange(emitted)
+    }
+  }
 
   return (
-    <div className={cn("relative", className)}>
-      <div className="flex gap-2">
-        <Input
-          id={id}
-          name={name}
-          type="text"
-          inputMode="numeric"
-          placeholder="YYYY-MM-DDTHH:MM"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <Button type="button" variant="secondary" size="sm" onClick={() => setOpen((o) => !o)} aria-label="Open date and time picker">
-          <CalendarDays className="size-4" />
-        </Button>
+    <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2", className)}>
+      {name ? <input type="hidden" name={name} value={value} /> : null}
+      <div>
+        <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Date</p>
+        <DateField id={id} value={date} onChange={(next) => commit(next, time)} />
       </div>
-      {open && (
-        <div className="absolute z-30 mt-2 rounded-xl border border-neutral-200 bg-white p-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-          <CalendarGrid
-            value={date}
-            onPick={(next) => onChange(joinDateTimeLocal(next, time || "00:00"))}
-          />
-          <div className="mt-3">
-            <Input
-              type="time"
-              value={time}
-              onChange={(e) => onChange(joinDateTimeLocal(date || new Date().toLocaleDateString("en-CA"), e.target.value))}
-            />
-          </div>
-        </div>
-      )}
+      <div>
+        <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Time</p>
+        <TimeField id={id ? `${id}_time` : undefined} value={time} onChange={(next) => commit(date, next)} />
+      </div>
     </div>
   )
 }
@@ -178,6 +188,36 @@ export function DateField({
   )
 }
 
+function TimeList({
+  value,
+  onPick,
+}: {
+  value: string
+  onPick: (time: string) => void
+}) {
+  const slots = useMemo(() => clock12hSlots(), [])
+  const selected = isIsoTimeString(value.slice(0, 5)) ? value.slice(0, 5) : ""
+  return (
+    <div className="max-h-56 overflow-y-auto">
+      {slots.map((slot) => (
+        <button
+          key={slot}
+          type="button"
+          onClick={() => onPick(slot)}
+          className={cn(
+            "flex w-full rounded-md px-2 py-1.5 text-left text-sm tabular-nums",
+            slot === selected
+              ? "bg-[#05EB54] font-semibold text-white"
+              : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
+          )}
+        >
+          {formatClock12h(slot)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function TimeField({
   id,
   value,
@@ -192,25 +232,46 @@ export function TimeField({
   disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState(() => formatClock12h(value))
+
+  useEffect(() => {
+    const next = formatClock12h(value)
+    if (next) setTyped(next)
+    else if (!value) setTyped("")
+  }, [value])
+
+  const commitTyped = (raw: string) => {
+    setTyped(raw)
+    const parsed = parseClock12h(raw)
+    if (parsed) onChange(parsed)
+    else if (raw.trim() === "") onChange("")
+  }
+
   return (
     <div className={cn("relative", className)}>
       <div className="flex gap-2">
         <Input
           id={id}
           type="text"
-          inputMode="numeric"
-          placeholder="HH:MM"
-          value={value}
+          placeholder="7:00 PM"
+          value={typed}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => commitTyped(e.target.value)}
         />
         <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => setOpen((o) => !o)} aria-label="Open time picker">
           <Clock className="size-4" />
         </Button>
       </div>
       {open && (
-        <div className="absolute z-30 mt-2 w-full rounded-xl border border-neutral-200 bg-white p-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-          <Input type="time" value={value} onChange={(e) => onChange(e.target.value)} />
+        <div className="absolute z-30 mt-2 w-full rounded-xl border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+          <TimeList
+            value={value}
+            onPick={(next) => {
+              onChange(next)
+              setTyped(formatClock12h(next))
+              setOpen(false)
+            }}
+          />
         </div>
       )}
     </div>

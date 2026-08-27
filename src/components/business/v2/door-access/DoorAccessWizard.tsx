@@ -37,7 +37,10 @@ import {
 } from "@/lib/business/weekly-cover-nights"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
-import { promoterToggleDisabled } from "@/lib/business/create-publish"
+import {
+  isLeftoverPromoterPayoutPathError,
+  promoterToggleDisabled,
+} from "@/lib/business/create-publish"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
 import {
   readyWcPromoDrafts,
@@ -354,6 +357,10 @@ export function DoorAccessWizard({
       return true
     } catch (err) {
       if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+        // Flutter create does not Stripe-gate promoter. This dash-only
+        // validate-step still throws the leftover payout-path copy; D4
+        // opened the toggle and must not leave Continue blocked on it.
+        if (isLeftoverPromoterPayoutPathError(err.message)) return true
         setServerError(err.message)
         return false
       }

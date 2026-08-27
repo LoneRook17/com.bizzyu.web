@@ -24,6 +24,7 @@ import { cn } from "@/lib/v2/utils"
 import {
   applySaveAsDraftFlag,
   promoterToggleDisabled,
+  shouldOfferStripeConnectForError,
   willDraftOnCreate,
 } from "@/lib/business/create-publish"
 import { shouldAutoPublishCreatedDraft } from "@/lib/business/live-after-approve"
@@ -567,7 +568,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       {/* Date & time */}
       <Card>
         <CardHeader><CardTitle>Date and time</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 pt-0 sm:grid-cols-2">
+        <CardContent className="grid grid-cols-1 gap-4 pt-0">
           <div>
             <Label htmlFor="start_date_time" className="mb-1.5 block">Starts</Label>
             <DateTimeField
@@ -686,11 +687,15 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </CardContent>
       </Card>
 
-      {/* Artwork — flyer, or a template when there isn't one (D10/D-F4.1) */}
+      {/* Artwork — flyer upload. Create does not ask for a template (Classic is silent). */}
       <Card>
         <CardHeader className="flex-col items-start gap-1">
           <CardTitle>Artwork</CardTitle>
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Your flyer if you have one, a Bizzy template if you don&apos;t.</p>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+            {isEditing
+              ? "Your flyer if you have one, a Bizzy template if you don't."
+              : "Optional flyer. Skip it and we use Classic."}
+          </p>
         </CardHeader>
         <CardContent className="pt-0">
           <ArtworkSection
@@ -700,6 +705,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             onTemplateChange={(t) => setForm((prev) => ({ ...prev, artwork_template: t }))}
             accent={form.artwork_accent}
             onAccentChange={(a) => setForm((prev) => ({ ...prev, artwork_accent: a }))}
+            showTemplatePicker={isEditing}
           />
         </CardContent>
       </Card>
@@ -945,7 +951,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       {serverError && (
         <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
           <p>{serverError}</p>
-          {/Stripe Connect/i.test(serverError) && (
+          {shouldOfferStripeConnectForError(serverError) && (
             <Button type="button" variant="primary" size="sm" className="mt-2" disabled={stripeConnecting} onClick={handleConnectStripe}>
               {stripeConnecting ? <><Loader2 className="size-3.5 animate-spin" /> Connecting…</> : "Connect Stripe →"}
             </Button>

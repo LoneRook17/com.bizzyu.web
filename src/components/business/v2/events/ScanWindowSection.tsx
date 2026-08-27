@@ -111,7 +111,7 @@ export function ScanWindowSection({
 }) {
   return (
     <ScanWindowToggle hasWindow={!!(valid_from || valid_until)} info={<ScanWindowInfo />} onClear={onClear}>
-      <div className="mt-1 grid grid-cols-2 gap-3">
+      <div className="mt-1 grid grid-cols-1 gap-3">
         <div>
           <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">From</Label>
           <DateTimeField
