@@ -38,6 +38,13 @@ import {
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
+import {
+  readyWcPromoDrafts,
+  validateWcPromoDraft,
+  wcPromoCreatePath,
+  wcPromoCreatePayload,
+  type WcPromoDraft,
+} from "@/lib/business/wc-create-promo"
 import { isoDayFull } from "@/components/business/v2/recurring/schedule"
 import { WcProductsStep } from "@/components/business/v2/door-access/WcProductsStep"
 import { WcDaysStep } from "@/components/business/v2/door-access/WcDaysStep"
@@ -53,9 +60,11 @@ import { WcProgressBar } from "@/components/business/v2/door-access/WcProgressBa
  * Luke's per-weekday / per-date write (weekday_edits, date_edits,
  * template_tickets from the first night, cover/skip keys, flyer omit/null
  * rules, promoter gate) stays. What this rewrite removes from CREATE is
- * everything the app does not ask: typed name, description, program 21+,
- * program hours, date range, program flyer, venue picker, VIP, scan windows,
- * stock alerts, promo codes, follower blast, save-as-draft.
+ * everything the app does not ask: typed name, program 21+,
+ * program hours, date range, program flyer, venue picker, VIP,
+ * stock alerts, follower blast, save-as-draft. Scan Window and Custom
+ * description live on the weekday Prices editor. Promo codes live on the
+ * last page and POST to the program-scoped promo API after Publish.
  *
  * Screens (Flutter 2-9; 1 is the create-funnel choice):
  *   0 Sell     what it sells — Cover / Skip / Both
@@ -74,6 +83,13 @@ const STEP_NIGHTS = 2
 const STEP_DATES = 3
 const STEP_DOOR = 4
 const STEP_REVIEW = 5
+
+async function persistProgramPromoDrafts(programId: number, drafts: WcPromoDraft[]) {
+  const ready = readyWcPromoDrafts(drafts)
+  for (const draft of ready) {
+    await apiClient.post(wcPromoCreatePath(programId), wcPromoCreatePayload(draft))
+  }
+}
 
 interface CreateResponse {
   program: DoorAccessProgram & { id: number }
@@ -129,6 +145,7 @@ export function DoorAccessWizard({
   const [promotionValueInput, setPromotionValueInput] = useState(
     commissionValueToInput(initialData?.promotion_commission_type ?? "percent", initialData?.promotion_commission_value)
   )
+  const [promoDrafts, setPromoDrafts] = useState<WcPromoDraft[]>([])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [nightErrors, setNightErrors] = useState<string[]>([])
@@ -318,6 +335,9 @@ export function DoorAccessWizard({
         }
       }
     }
+    const started = promoDrafts.filter((d) => d.code.trim() !== "" || d.discount_value.trim() !== "")
+    const promoProblem = started.map(validateWcPromoDraft).find((m) => m != null)
+    if (promoProblem) errs.promo_codes = promoProblem
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -394,6 +414,11 @@ export function DoorAccessWizard({
           setGenerationNotice({ id: programId, message: data.restamp_error, kind: "updated" })
           return
         }
+        try {
+          await persistProgramPromoDrafts(programId, promoDrafts)
+        } catch {
+          // Program saved. Codes can still be added on the program page.
+        }
         router.push(programHref(programId))
         return
       }
@@ -403,6 +428,13 @@ export function DoorAccessWizard({
         withDoorAccessProgramKind(body),
       )
       const id = Number(data.program?.id)
+      if (Number.isFinite(id) && id > 0) {
+        try {
+          await persistProgramPromoDrafts(id, promoDrafts)
+        } catch {
+          // Program is live. Codes can still be added on the program page.
+        }
+      }
       let restamped = false
       if (Number.isFinite(id) && id > 0) {
         try {
@@ -594,6 +626,12 @@ export function DoorAccessWizard({
               promoDisabledReason={promoDisabledReason}
               cheapestPaid={cheapestPaid}
               commissionError={errors.promotion_commission_value}
+              promoDrafts={promoDrafts}
+              onPromoDrafts={(next) => {
+                setPromoDrafts(next)
+                setErrors((p) => ({ ...p, promo_codes: "" }))
+              }}
+              promoDraftsError={errors.promo_codes}
             />
           </CardContent>
         </Card>
@@ -605,6 +643,8 @@ export function DoorAccessWizard({
             <WcReviewStep
               products={products}
               venueName={scopedVenueName}
+              venueAddress={scopedVenueAddress}
+              venuePhotoUrl={currentVenue?.photo_url || ""}
               derivedName={programName}
               daysOfWeek={daysOfWeek}
               weekdayEdits={weekdayEdits}
