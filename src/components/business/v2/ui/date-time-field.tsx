@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import {
+  clock12hSlots,
+  formatClock12h,
   isIsoDateString,
   isIsoTimeString,
   joinDateTimeLocal,
+  parseClock12h,
   monthCells,
   shiftMonth,
   splitDateTimeLocal,
@@ -185,6 +188,36 @@ export function DateField({
   )
 }
 
+function TimeList({
+  value,
+  onPick,
+}: {
+  value: string
+  onPick: (time: string) => void
+}) {
+  const slots = useMemo(() => clock12hSlots(), [])
+  const selected = isIsoTimeString(value.slice(0, 5)) ? value.slice(0, 5) : ""
+  return (
+    <div className="max-h-56 overflow-y-auto">
+      {slots.map((slot) => (
+        <button
+          key={slot}
+          type="button"
+          onClick={() => onPick(slot)}
+          className={cn(
+            "flex w-full rounded-md px-2 py-1.5 text-left text-sm tabular-nums",
+            slot === selected
+              ? "bg-[#05EB54] font-semibold text-white"
+              : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
+          )}
+        >
+          {formatClock12h(slot)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function TimeField({
   id,
   value,
@@ -199,25 +232,46 @@ export function TimeField({
   disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState(() => formatClock12h(value))
+
+  useEffect(() => {
+    const next = formatClock12h(value)
+    if (next) setTyped(next)
+    else if (!value) setTyped("")
+  }, [value])
+
+  const commitTyped = (raw: string) => {
+    setTyped(raw)
+    const parsed = parseClock12h(raw)
+    if (parsed) onChange(parsed)
+    else if (raw.trim() === "") onChange("")
+  }
+
   return (
     <div className={cn("relative", className)}>
       <div className="flex gap-2">
         <Input
           id={id}
           type="text"
-          inputMode="numeric"
-          placeholder="HH:MM"
-          value={value}
+          placeholder="7:00 PM"
+          value={typed}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => commitTyped(e.target.value)}
         />
         <Button type="button" variant="secondary" size="sm" disabled={disabled} onClick={() => setOpen((o) => !o)} aria-label="Open time picker">
           <Clock className="size-4" />
         </Button>
       </div>
       {open && (
-        <div className="absolute z-30 mt-2 w-full rounded-xl border border-neutral-200 bg-white p-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-          <Input type="time" value={value} onChange={(e) => onChange(e.target.value)} />
+        <div className="absolute z-30 mt-2 w-full rounded-xl border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+          <TimeList
+            value={value}
+            onPick={(next) => {
+              onChange(next)
+              setTyped(formatClock12h(next))
+              setOpen(false)
+            }}
+          />
         </div>
       )}
     </div>

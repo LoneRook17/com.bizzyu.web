@@ -83,3 +83,45 @@ export function shiftMonth(year: number, monthIndex: number, delta: number): { y
   const d = new Date(year, monthIndex + delta, 1)
   return { year: d.getFullYear(), monthIndex: d.getMonth() }
 }
+
+/** "19:52" or "19:52:00" → "7:52 PM". Empty/junk → "". */
+export function formatClock12h(value: string): string {
+  const raw = String(value ?? "").trim()
+  const t = raw.length >= 5 && isIsoTimeString(raw.slice(0, 5)) ? raw.slice(0, 5) : ""
+  if (!t) return ""
+  const hh = Number(t.slice(0, 2))
+  const mm = t.slice(3, 5)
+  const suffix = hh < 12 ? "AM" : "PM"
+  const h12 = hh % 12 === 0 ? 12 : hh % 12
+  return `${h12}:${mm} ${suffix}`
+}
+
+/**
+ * Host-facing 12-hour text → `HH:MM`. Also accepts a 24-hour paste.
+ * "7:52 PM", "7:52PM", "7 pm", "19:52".
+ */
+export function parseClock12h(value: string): string | null {
+  const raw = String(value ?? "").trim()
+  if (!raw) return null
+  if (/^\d{2}:\d{2}$/.test(raw) && isIsoTimeString(raw)) return raw
+  const m = /^(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*([AaPp][Mm])$/.exec(raw)
+  if (!m) return null
+  let h = Number(m[1])
+  const min = m[2] ?? "00"
+  const ap = m[3].toUpperCase()
+  if (ap === "AM") {
+    if (h === 12) h = 0
+  } else if (h !== 12) {
+    h += 12
+  }
+  return `${String(h).padStart(2, "0")}:${min}`
+}
+
+/** 15-minute slots for the time popover. Values are `HH:MM`. */
+export function clock12hSlots(): string[] {
+  return Array.from({ length: 24 * 4 }, (_, i) => {
+    const hh = String(Math.floor(i / 4)).padStart(2, "0")
+    const mm = String((i % 4) * 15).padStart(2, "0")
+    return `${hh}:${mm}`
+  })
+}
