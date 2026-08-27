@@ -16,6 +16,7 @@ import type {
 } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
+import { DateField, TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import {
@@ -343,12 +344,10 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="date_range_start" className="mb-1.5 block">First night on or after</Label>
-              <Input
+              <DateField
                 id="date_range_start"
-                type="date"
                 value={dateRangeStart}
-                onChange={(e) => { setDateRangeStart(e.target.value); setErrors((p) => ({ ...p, date_range_start: "" })) }}
-                className={cn(errors.date_range_start && errClass)}
+                onChange={(next) => { setDateRangeStart(next); setErrors((p) => ({ ...p, date_range_start: "" })) }}
               />
               {errors.date_range_start && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_start}</p>}
             </div>
@@ -356,12 +355,10 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               <Label htmlFor="date_range_end" className="mb-1.5 block">
                 Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional. Leave blank to run until you suspend it)</span>
               </Label>
-              <Input
+              <DateField
                 id="date_range_end"
-                type="date"
                 value={dateRangeEnd}
-                onChange={(e) => { setDateRangeEnd(e.target.value); setErrors((p) => ({ ...p, date_range_end: "" })) }}
-                className={cn(errors.date_range_end && errClass)}
+                onChange={(next) => { setDateRangeEnd(next); setErrors((p) => ({ ...p, date_range_end: "" })) }}
               />
               {errors.date_range_end && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_end}</p>}
             </div>
@@ -370,23 +367,19 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="start_time" className="mb-1.5 block">Starts at</Label>
-              <Input
+              <TimeField
                 id="start_time"
-                type="time"
                 value={startTime}
-                onChange={(e) => { setStartTime(e.target.value); setErrors((p) => ({ ...p, start_time: "" })) }}
-                className={cn(errors.start_time && errClass)}
+                onChange={(next) => { setStartTime(next); setErrors((p) => ({ ...p, start_time: "" })) }}
               />
               {errors.start_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.start_time}</p>}
             </div>
             <div>
               <Label htmlFor="end_time" className="mb-1.5 block">Ends at</Label>
-              <Input
+              <TimeField
                 id="end_time"
-                type="time"
                 value={endTime}
-                onChange={(e) => { setEndTime(e.target.value); setErrors((p) => ({ ...p, end_time: "" })) }}
-                className={cn(errors.end_time && errClass)}
+                onChange={(next) => { setEndTime(next); setErrors((p) => ({ ...p, end_time: "" })) }}
               />
               {errors.end_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_time}</p>}
               <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">

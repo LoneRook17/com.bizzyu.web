@@ -52,6 +52,7 @@ import {
   venueEmptyDepositsCopy,
   customWindow,
   buildBreakdownTable,
+  displayAllocateUnallocated,
   showBreakdownTable,
   signedMoneyStr,
   freshnessLabel,
@@ -323,7 +324,7 @@ function BreakdownTableView({ table }: { table: BreakdownTable }) {
  *  unallocated = total, per metric); against an older server it degrades to the
  *  original trio line + "Also includes deposits for" caveat. */
 function CombinedAccountLine({ summary, venueId }: { summary: PayoutsSummary; venueId?: number }) {
-  const table = buildBreakdownTable(summary, venueId)
+  const table = displayAllocateUnallocated(buildBreakdownTable(summary, venueId))
   return (
     <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/60">
       <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{COMBINED_ACCOUNT_LABEL}</p>

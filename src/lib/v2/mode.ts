@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/business/auth-context"
 import type { DashboardMode } from "@/lib/business/types"
+import { readCachedDashboardMode, resolveDashboardMode } from "@/lib/v2/mode-cache"
 
 /**
  * Single source of truth for what each dashboard mode shows.
@@ -62,7 +63,9 @@ export function useDashboardMode(): {
   config: (typeof MODE_CONFIG)[DashboardMode]
 } {
   const { business } = useAuth()
-  const raw = business?.dashboard_mode ?? null
+  const cached =
+    typeof window === "undefined" ? null : readCachedDashboardMode(window.sessionStorage)
+  const raw = resolveDashboardMode(business?.dashboard_mode, cached)
   const mode: DashboardMode = raw ?? "hybrid"
   return {
     mode,

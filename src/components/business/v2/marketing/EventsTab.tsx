@@ -5,6 +5,15 @@ import Link from "next/link"
 import { CalendarDays, Megaphone } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { EventListItem } from "@/lib/business/types"
+import {
+  ACCESS_ACCENT,
+  EVENT_ACCENT,
+  fetchDoorAccessProgramsSafe,
+  loadProgramsUpcomingNights,
+} from "@/lib/business/door-access"
+import { marketingUpcomingRows, type MarketingEventRow } from "@/lib/business/marketing-events"
+import { marketingNightsFromSeries } from "@/lib/business/wc-upcoming"
+import { easternToday } from "@/lib/business/door-access"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
@@ -13,9 +22,8 @@ import { EmptyState } from "@/components/business/v2/ui/empty-state"
 /**
  * Marketing → Events sub-tab.
  *
- * Lists upcoming events, scoped to a venue when one is selected. Each card
- * links to the per-event Announcements + SMS Blast composers under
- * /business/v2/events/[id]/manage/.
+ * Upcoming green events AND upcoming Weekly Cover nights. A venue that only
+ * has live WC nights must not empty-state.
  */
 interface Props {
   venueId: number | null
@@ -23,6 +31,16 @@ interface Props {
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "-"
+  const day = iso.slice(0, 10)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day) && iso.length <= 19) {
+    const [y, m, d] = day.split("-")
+    const dt = new Date(Number(y), Number(m) - 1, Number(d))
+    return dt.toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    })
+  }
   try {
     return new Date(iso).toLocaleString(undefined, {
       weekday: "short",
@@ -37,7 +55,7 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 export default function EventsTab({ venueId }: Props) {
-  const [events, setEvents] = useState<EventListItem[]>([])
+  const [rows, setRows] = useState<MarketingEventRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -47,18 +65,28 @@ export default function EventsTab({ venueId }: Props) {
     setError(null)
     const params = new URLSearchParams({ tab: "upcoming", limit: "50" })
     if (venueId != null) params.set("venue_id", String(venueId))
-    apiClient
-      .get<{ events: EventListItem[]; total: number }>(`/business/events?${params.toString()}`)
-      .then((res) => {
+    void (async () => {
+      try {
+        const [eventsRes, programs] = await Promise.all([
+          apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?${params.toString()}`),
+          fetchDoorAccessProgramsSafe(venueId),
+        ])
+        const loaded = await loadProgramsUpcomingNights(programs.filter((p) => p.is_active))
         if (cancelled) return
-        setEvents(res.events ?? [])
+        setRows(
+          marketingUpcomingRows({
+            events: eventsRes.events ?? [],
+            programs,
+            nights: marketingNightsFromSeries(loaded, easternToday()),
+          }),
+        )
         setLoading(false)
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (cancelled) return
         setError(err instanceof ApiError ? err.message : "Could not load events")
         setLoading(false)
-      })
+      }
+    })()
     return () => {
       cancelled = true
     }
@@ -76,15 +104,15 @@ export default function EventsTab({ venueId }: Props) {
   if (error) {
     return <EmptyState icon={CalendarDays} title="Couldn't load events" description={error} />
   }
-  if (events.length === 0) {
+  if (rows.length === 0) {
     return (
       <EmptyState
         icon={CalendarDays}
         title="No upcoming events"
         description={
           venueId == null
-            ? "Create an event to start sending event-specific blasts to ticket holders."
-            : "No upcoming events at the selected venue."
+            ? "Create an event or weekly cover night to start sending blasts to ticket holders."
+            : "No upcoming events or weekly cover nights at the selected venue."
         }
       />
     )
@@ -92,28 +120,32 @@ export default function EventsTab({ venueId }: Props) {
 
   return (
     <ul className="space-y-3">
-      {events.map((e) => (
-        <li key={e.event_id}>
-          <Card className="p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</p>
-                <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                  {formatDate(e.start_date_time)} · {e.venue_name || "-"}
-                </p>
-                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{e.ticket_sales_count} tickets sold</p>
+      {rows.map((row) => {
+        const ring = row.kind === "weekly_cover" ? ACCESS_ACCENT : EVENT_ACCENT
+        return (
+          <li key={row.key}>
+            <Card className="p-4" style={{ borderColor: `${ring}55` }}>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{row.name}</p>
+                  <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                    {formatDate(row.start)} · {row.venueName || "-"}
+                    {row.kind === "weekly_cover" ? " · Weekly Cover" : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{row.ticketsSold} tickets sold</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button variant="secondary" size="sm" asChild>
+                    <Link href={row.announceHref}>
+                      <Megaphone /> Announce
+                    </Link>
+                  </Button>
+                </div>
               </div>
-              <div className="flex shrink-0 gap-2">
-                <Button variant="secondary" size="sm" asChild>
-                  <Link href={`/business/events/${e.event_id}/manage/announcements`}>
-                    <Megaphone /> Announce
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </li>
-      ))}
+            </Card>
+          </li>
+        )
+      })}
     </ul>
   )
 }

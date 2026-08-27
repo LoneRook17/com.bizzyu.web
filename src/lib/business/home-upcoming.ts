@@ -45,11 +45,17 @@ export function nextAccessNight(
  * night with. Parsing to Date() here would re-introduce the US/Eastern vs UTC
  * skew this codebase keeps getting bitten by, for no gain.
  */
+export type OneOffUpcomingNight = {
+  program: DoorAccessProgramSummary
+  date: string
+}
+
 export function homeUpcoming(
   events: EventListItem[],
   programs: DoorAccessProgramSummary[],
   limit = 4,
   inactiveWcSeriesIds: readonly number[] = [],
+  oneOffNights: readonly OneOffUpcomingNight[] = [],
 ): UpcomingEntry[] {
   const inactive = new Set(inactiveWcSeriesIds)
   const entries: UpcomingEntry[] = events
@@ -82,6 +88,26 @@ export function homeUpcoming(
     })
   }
 
+  for (const night of oneOffNights) {
+    if (!night.date || !night.program.is_active) continue
+    const already = entries.some(
+      (entry) =>
+        entry.kind === "access" &&
+        entry.program.id === night.program.id &&
+        entry.date === night.date,
+    )
+    if (already) continue
+    entries.push({
+      kind: "access",
+      key: `access-oneoff-${night.program.id}-${night.date}`,
+      sortKey: night.date,
+      program: night.program,
+      date: night.date,
+    })
+  }
+
   entries.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
-  return entries.slice(0, limit)
+  const pinned = entries.filter((entry) => entry.key.startsWith("access-oneoff-"))
+  const rest = entries.filter((entry) => !entry.key.startsWith("access-oneoff-")).slice(0, limit)
+  return [...rest, ...pinned].sort((a, b) => a.sortKey.localeCompare(b.sortKey))
 }

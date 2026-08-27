@@ -23,6 +23,7 @@ import { AccessInfoTip } from "@/components/business/v2/door-access/AccessInfoTi
 import { AccessPillToggle } from "@/components/business/v2/door-access/AccessPillToggle"
 import { Button } from "@/components/business/v2/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/business/v2/ui/dialog"
+import { TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
@@ -113,7 +114,7 @@ export function NightEditorDialog({
     })
 
   const addTier = (kind: NightTierKind) =>
-    setDraft((d) => ({ ...d, tiers: [...d.tiers, emptyTier(kind)] }))
+    setDraft((d) => ({ ...d, tiers: [...d.tiers, emptyTier(kind, { venueName, dayName })] }))
 
   const removeTier = (index: number) =>
     setDraft((d) => ({ ...d, tiers: d.tiers.filter((_, i) => i !== index) }))
@@ -366,7 +367,7 @@ export function NightEditorDialog({
                           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                             <div>
                               <Label className="mb-1 block text-xs text-neutral-400">From</Label>
-                              <Input type="time" value={tier.valid_from_time} onChange={(e) => patchTier(i, { valid_from_time: e.target.value })} />
+                              <TimeField value={tier.valid_from_time} onChange={(next) => patchTier(i, { valid_from_time: next })} />
                             </div>
                             <div>
                               <Label className="mb-1 block text-xs text-neutral-400">&nbsp;</Label>
@@ -374,7 +375,7 @@ export function NightEditorDialog({
                             </div>
                             <div>
                               <Label className="mb-1 block text-xs text-neutral-400">Until</Label>
-                              <Input type="time" value={tier.valid_until_time} onChange={(e) => patchTier(i, { valid_until_time: e.target.value })} />
+                              <TimeField value={tier.valid_until_time} onChange={(next) => patchTier(i, { valid_until_time: next })} />
                             </div>
                             <div>
                               <Label className="mb-1 block text-xs text-neutral-400">&nbsp;</Label>
@@ -432,11 +433,11 @@ export function NightEditorDialog({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <Label className="mb-1 block text-xs text-neutral-400">Starts</Label>
-                    <Input type="time" value={draft.startTime} onChange={(e) => patch({ startTime: e.target.value })} />
+                    <TimeField value={draft.startTime} onChange={(next) => patch({ startTime: next })} />
                   </div>
                   <div>
                     <Label className="mb-1 block text-xs text-neutral-400">Ends</Label>
-                    <Input type="time" value={draft.endTime} onChange={(e) => patch({ endTime: e.target.value })} />
+                    <TimeField value={draft.endTime} onChange={(next) => patch({ endTime: next })} />
                   </div>
                 </div>
               </div>

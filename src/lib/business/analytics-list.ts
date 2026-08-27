@@ -15,3 +15,26 @@ export const ANALYTICS_LIST_PREVIEW_ROW_COUNT = 4
 
 export const ANALYTICS_LIST_PREVIEW_CLASS =
   "max-h-[24rem] overflow-y-auto overscroll-contain"
+
+export const ANALYTICS_LIST_FULL_CLASS = "min-h-0"
+
+export type AnalyticsListSection = "upcoming" | "past"
+
+function eventSortKey(event: { start_date_time?: string | null; end_date_time?: string | null }): string {
+  return event.start_date_time || event.end_date_time || ""
+}
+
+/**
+ * Most recent (soonest / just-happened) at the top, furthest at the bottom.
+ * Upcoming is nearest-first. Past is most-recently-ended first.
+ */
+export function sortAnalyticsEvents<
+  T extends { start_date_time?: string | null; end_date_time?: string | null },
+>(events: T[], section: AnalyticsListSection): T[] {
+  const copy = [...events]
+  copy.sort((a, b) => {
+    const cmp = eventSortKey(a).localeCompare(eventSortKey(b))
+    return section === "past" ? -cmp : cmp
+  })
+  return copy
+}

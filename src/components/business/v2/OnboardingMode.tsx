@@ -5,6 +5,7 @@ import { Tag, CalendarDays, LayoutGrid, Loader2, Check } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import { MODE_CONFIG } from "@/lib/v2/mode"
+import { writeCachedDashboardMode } from "@/lib/v2/mode-cache"
 import type { DashboardMode } from "@/lib/business/types"
 import { cn } from "@/lib/v2/utils"
 
@@ -17,7 +18,7 @@ const OPTIONS: { mode: DashboardMode; icon: React.ElementType; bullets: string[]
   {
     mode: "events",
     icon: CalendarDays,
-    bullets: ["Sell tickets & line skips", "Door scanning & check-ins", "Promoters & SMS blasts"],
+    bullets: ["Sell tickets & weekly cover", "Door scanning & check-ins", "Promoters & SMS blasts"],
   },
   {
     mode: "hybrid",
@@ -32,7 +33,7 @@ const OPTIONS: { mode: DashboardMode; icon: React.ElementType; bullets: string[]
  * forever in Settings → Dashboard preferences.
  */
 export default function OnboardingMode() {
-  const { user, refreshProfile } = useAuth()
+  const { user, refreshProfile, applyBusinessPatch } = useAuth()
   const [selected, setSelected] = useState<DashboardMode | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -46,11 +47,15 @@ export default function OnboardingMode() {
     setError("")
     try {
       await apiClient.put("/business/profile/preferences", { dashboard_mode: mode })
+      writeCachedDashboardMode(mode, typeof window === "undefined" ? null : window.sessionStorage)
+      applyBusinessPatch({ dashboard_mode: mode })
       await refreshProfile()
+      applyBusinessPatch({ dashboard_mode: mode })
     } catch {
       setError("Couldn't save your choice. Please try again.")
-      setSaving(false)
       setSelected(null)
+    } finally {
+      setSaving(false)
     }
   }
 

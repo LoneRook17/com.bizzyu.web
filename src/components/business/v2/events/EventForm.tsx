@@ -26,6 +26,8 @@ import {
   promoterToggleDisabled,
   willDraftOnCreate,
 } from "@/lib/business/create-publish"
+import { shouldAutoPublishCreatedDraft } from "@/lib/business/live-after-approve"
+import { DateTimeField } from "@/components/business/v2/ui/date-time-field"
 import { ArtworkSection } from "./ArtworkSection"
 import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
 import { fmtDateTime, fmtTime } from "./eventStatus"
@@ -438,7 +440,20 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           requires_stripe_to_publish?: boolean
           requires_approval_to_publish?: boolean
         }>("/business/events", body)
-        if (data.status === "draft") {
+        if (
+          shouldAutoPublishCreatedDraft({
+            returnedStatus: data.status,
+            isPending,
+            saveAsDraft,
+          })
+        ) {
+          try {
+            await apiClient.post(`/business/events/${data.event_id}/publish`)
+            router.push("/business/events")
+          } catch {
+            router.push(`/business/events/${data.event_id}`)
+          }
+        } else if (data.status === "draft") {
           // Saved as a draft (explicit Save as draft, or still pending approval).
           router.push(`/business/events/${data.event_id}`)
         } else if (data.moderation_status === "pending_review") {
@@ -555,12 +570,28 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <CardContent className="grid grid-cols-1 gap-4 pt-0 sm:grid-cols-2">
           <div>
             <Label htmlFor="start_date_time" className="mb-1.5 block">Starts</Label>
-            <Input id="start_date_time" name="start_date_time" type="datetime-local" value={form.start_date_time} onChange={handleChange} />
+            <DateTimeField
+              id="start_date_time"
+              name="start_date_time"
+              value={form.start_date_time}
+              onChange={(next) => {
+                setForm((prev) => ({ ...prev, start_date_time: next }))
+                setErrors((prev) => ({ ...prev, start_date_time: "" }))
+              }}
+            />
             {errors.start_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.start_date_time}</p>}
           </div>
           <div>
             <Label htmlFor="end_date_time" className="mb-1.5 block">Ends</Label>
-            <Input id="end_date_time" name="end_date_time" type="datetime-local" value={form.end_date_time} onChange={handleChange} />
+            <DateTimeField
+              id="end_date_time"
+              name="end_date_time"
+              value={form.end_date_time}
+              onChange={(next) => {
+                setForm((prev) => ({ ...prev, end_date_time: next }))
+                setErrors((prev) => ({ ...prev, end_date_time: "" }))
+              }}
+            />
             {errors.end_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_date_time}</p>}
           </div>
         </CardContent>

@@ -4,6 +4,7 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { DEV_LARAVEL_CHECKOUT_ORIGIN } from "../laravel-checkout.ts"
 import {
   WEB_BASE_URL,
   eventCheckoutUrl,
@@ -14,9 +15,11 @@ import {
 
 // ── The URL shapes themselves ───────────────────────────────────────────────
 
-test("an event link is the bare AASA checkout path — no ?ref, ever", () => {
+test("an event link is the Laravel checkout path — no Next/Vercel, no ?ref", () => {
   const url = eventCheckoutUrl(1785)
-  assert.equal(url, `${WEB_BASE_URL}/event/1785/checkout`)
+  assert.equal(url, `${DEV_LARAVEL_CHECKOUT_ORIGIN}/checkout/1785`)
+  assert.ok(!url.includes("/event/"))
+  assert.ok(!url.includes("vercel.app"))
   // A ?ref here would make the operator's own shares count as promoter sales.
   assert.ok(!url.includes("?"))
 })
@@ -72,7 +75,7 @@ test("a stamped-but-draft night is withheld, not shared broken", () => {
 test("a stamped, published night is ready to hand out", () => {
   assert.deepEqual(nightLinkState({ event_id: 900, status: "published" }), {
     kind: "ready",
-    url: `${WEB_BASE_URL}/event/900/checkout`,
+    url: `${DEV_LARAVEL_CHECKOUT_ORIGIN}/checkout/900`,
   })
 })
 

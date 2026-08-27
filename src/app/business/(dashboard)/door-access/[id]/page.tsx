@@ -10,7 +10,8 @@ import {
   ACCESS_ACCENT,
   ACCESS_BUTTON_VARIANT,
   DEFAULT_NIGHT_PREVIEW_COUNT,
-  DEFAULT_SERIES_LOOKAHEAD_DAYS,
+  ONE_OFF_SERIES_LOOKAHEAD_DAYS,
+  isPinnedUpcomingNight,
   easternToday,
   loadDoorAccessSeriesForPath,
   fmtNightDate,
@@ -83,7 +84,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const [nights, setNights] = useState<DoorAccessNight[]>([])
   const [loading, setLoading] = useState(programId != null)
   const [error, setError] = useState<string | null>(null)
-  const [lookahead, setLookahead] = useState(DEFAULT_SERIES_LOOKAHEAD_DAYS)
+  const [lookahead, setLookahead] = useState(ONE_OFF_SERIES_LOOKAHEAD_DAYS)
   const [showMoreNights, setShowMoreNights] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
@@ -129,7 +130,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   )
   const { upcoming } = useMemo(() => splitNights(dashNights, today), [dashNights, today])
   const visibleNights = useMemo(
-    () => visibleUpcomingNights(upcoming, showMoreNights),
+    () => visibleUpcomingNights(upcoming, showMoreNights, DEFAULT_NIGHT_PREVIEW_COUNT, isPinnedUpcomingNight),
     [upcoming, showMoreNights]
   )
   const hiddenCount = Math.max(0, upcoming.length - visibleNights.length)
@@ -286,7 +287,6 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                   variant="ghost"
                   onClick={() => {
                     setShowMoreNights(false)
-                    setLookahead(DEFAULT_SERIES_LOOKAHEAD_DAYS)
                   }}
                 >
                   Show fewer nights

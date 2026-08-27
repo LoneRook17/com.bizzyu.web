@@ -37,6 +37,7 @@ import {
   dateEditsToWire,
   daysQuestion,
   defaultTierDescription,
+  defaultTierNameForNight,
   reviewFormatLabel,
   setTierCustomDescription,
   tierHasCustomDescription,
@@ -413,13 +414,13 @@ test("a weekday no longer on the schedule is not sent", () => {
   assert.deepEqual(Object.keys(wire), ["5"])
 })
 
-test("an off-schedule game day is dropped instead of 400ing the create", () => {
+test("a one-off can land on a weekday with no series cover", () => {
   // 2026-08-29 is a Saturday (6); 2026-08-28 is a Friday (5).
   const wire = dateEditsToWire(
     { "2026-08-28": night(), "2026-08-29": night() },
     [5]
   )
-  assert.deepEqual(Object.keys(wire), ["2026-08-28"])
+  assert.deepEqual(Object.keys(wire), ["2026-08-28", "2026-08-29"])
 })
 
 test("a night write always states is_closed and is_21_plus", () => {
@@ -983,6 +984,25 @@ test("weekdayDraftFromWire keeps the weekday poster when it matches the program 
     program,
   )
   assert.equal(draft.flyerImageUrl, "https://cdn/thursday.jpg")
+})
+
+test("default ticket names are {Venue} {Day} Cover / Skip the Line", () => {
+  assert.equal(defaultTierNameForNight("cover", { venueName: "The Bar", dayName: "Friday" }), "The Bar Friday Cover")
+  assert.equal(
+    defaultTierNameForNight("skip", { venueName: "The Bar", dayName: "Friday" }),
+    "The Bar Friday Skip the Line",
+  )
+  const seeded = seedNightDraft({
+    products: "both",
+    startTime: "21:00",
+    endTime: "02:00",
+    venueName: "The Bar",
+    dayName: "Friday",
+  })
+  assert.deepEqual(
+    seeded.tiers.map((t) => t.name),
+    ["The Bar Friday Cover", "The Bar Friday Skip the Line"],
+  )
 })
 
 test("create derives {Venue} Cover and never asks for a typed name", () => {

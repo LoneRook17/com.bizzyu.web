@@ -22,6 +22,7 @@ import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2
 import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
 
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -54,6 +55,25 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   }, [id])
 
   useEffect(() => { fetchEvent() }, [fetchEvent])
+
+  useEffect(() => {
+    if (!event || event.status !== "draft" || !canEdit) return
+    if (!shouldTreatDraftAsLive(isPending)) return
+    let cancelled = false
+    setPublishing(true)
+    apiClient
+      .post(`/business/events/${id}/publish`)
+      .then(() => {
+        if (!cancelled) fetchEvent()
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setPublishing(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canEdit, event?.event_id, event?.status, fetchEvent, id, isPending])
 
   const openPriceEdit = (ticket: TicketTier) => {
     setEditingTicketId(ticket.ticket_id ?? null)
@@ -193,7 +213,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
               >
                 {isPending
                   ? "It goes live once Bizzy approves your business. You can keep editing in the meantime."
-                  : "Publish it when you are ready."}
+                  : "Your business is approved. This publishes now. Money stays in escrow until Stripe."}
               </p>
               {publishError && (
                 <p className="mt-2 text-xs text-red-600 dark:text-red-400">{publishError}</p>
@@ -203,7 +223,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
               <Button variant="secondary" asChild>
                 <Link href={`/business/events/${event.event_id}/edit`}><Pencil /> Edit</Link>
               </Button>
-              <Button onClick={handlePublish} disabled={publishing || isPending}>
+              <Button onClick={handlePublish} disabled={publishing || !shouldTreatDraftAsLive(isPending)}>
                 {publishing ? <Loader2 className="animate-spin" /> : <Rocket />} Publish
               </Button>
             </div>

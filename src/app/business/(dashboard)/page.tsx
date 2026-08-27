@@ -19,12 +19,15 @@ import {
   ACCESS_ACCENT,
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
+  easternToday,
   fetchDoorAccessProgramsSafe,
   isWeeklyCoverProduct,
+  loadProgramsUpcomingNights,
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
-import { homeUpcoming, nextAccessNight } from "@/lib/business/home-upcoming"
+import { homeUpcoming, nextAccessNight, type OneOffUpcomingNight } from "@/lib/business/home-upcoming"
+import { oneOffNightsFromSeries } from "@/lib/business/wc-upcoming"
 import { inactiveWeeklyCoverSeriesIds } from "@/lib/business/events-list"
 import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
 import {
@@ -93,6 +96,7 @@ export default function V2HomePage() {
   // degrade to [] — a business that runs no door access, or a build where the
   // endpoint is down, gets exactly the homepage it had before.
   const [programs, setPrograms] = useState<DoorAccessProgramSummary[]>([])
+  const [oneOffNights, setOneOffNights] = useState<OneOffUpcomingNight[]>([])
   const [probedInactiveIds, setProbedInactiveIds] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -134,7 +138,12 @@ export default function V2HomePage() {
   useEffect(() => {
     if (needsSetup || venuesLoading) return
     let cancelled = false
-    fetchDoorAccessProgramsSafe().then((rows) => { if (!cancelled) setPrograms(rows) })
+    fetchDoorAccessProgramsSafe().then(async (rows) => {
+      if (cancelled) return
+      setPrograms(rows)
+      const loaded = await loadProgramsUpcomingNights(rows.filter((p) => p.is_active))
+      if (!cancelled) setOneOffNights(oneOffNightsFromSeries(loaded, easternToday()))
+    })
     return () => { cancelled = true }
   }, [needsSetup, venuesLoading])
 
@@ -190,7 +199,7 @@ export default function V2HomePage() {
   const soonestNight = nextNights[0] ?? null
 
   // The interleaved list (green events + pink nights) this card now shows.
-  const upcoming = homeUpcoming(showEventsSection ? events : [], activePrograms, 4, inactiveWcIds)
+  const upcoming = homeUpcoming(showEventsSection ? events : [], activePrograms, 4, inactiveWcIds, oneOffNights)
   const showUpcomingCard = showEventsSection || showAccessSection
 
   // The "next night" tile answers across BOTH systems while they coexist — a
