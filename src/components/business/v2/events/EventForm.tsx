@@ -32,6 +32,7 @@ import { DateTimeField } from "@/components/business/v2/ui/date-time-field"
 import { ArtworkSection } from "./ArtworkSection"
 import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
 import { fmtDateTime, fmtTime } from "./eventStatus"
+import { RecurringEventWizard } from "@/components/business/v2/recurring/RecurringEventWizard"
 import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
 
@@ -569,6 +570,25 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       <Card>
         <CardHeader><CardTitle>Date and time</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 pt-0">
+          {!isEditing && (
+            <div>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="is_recurring"
+                  checked={!!form.is_recurring}
+                  onChange={handleChange}
+                  className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
+                />
+                <span className="text-sm text-neutral-700 dark:text-neutral-300">Repeats weekly</span>
+              </label>
+              <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+                Same event every week you pick. Stays a green event, not Weekly Cover.
+              </p>
+            </div>
+          )}
+          {!form.is_recurring && (
+          <>
           <div>
             <Label htmlFor="start_date_time" className="mb-1.5 block">Starts</Label>
             <DateTimeField
@@ -595,6 +615,8 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             />
             {errors.end_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_date_time}</p>}
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
 
@@ -982,6 +1004,24 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       </div>
     </>
   )
+
+  if (!isEditing && form.is_recurring && step > 0) {
+    return (
+      <RecurringEventWizard
+        seed={{
+          name: form.name,
+          description: form.description,
+          venue_id: form.venue_id ?? selectedVenue?.id ?? null,
+          venue_name: form.venue_name,
+          venue_address: form.venue_address,
+          type: form.type === "Free" ? "Free" : "Ticketed",
+          is_21_plus: !!form.is_21_plus,
+          flyer_image_url: form.flyer_image_url || "",
+        }}
+        onBackToDetails={() => goToStep(0)}
+      />
+    )
+  }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
