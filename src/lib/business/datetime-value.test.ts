@@ -121,4 +121,5 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   assert.ok(!wcEditor.includes("DateTimeField"), "WC nights do not use a combined datetime")
   assert.ok(!wcEditor.includes("YYYY-MM-DDTHH:MM"))
   assert.ok(!wcEditor.includes("datetime-local"))
+  assert.ok(!wcEditor.includes('type="time"'), "WC hours do not mount a native time wheel")
 })
