@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react"
 import type { RecurringTemplateTicket } from "@/lib/business/types"
 import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Button } from "@/components/business/v2/ui/button"
+import { TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { ScanWindowExamples, ScanWindowInfo, ScanWindowToggle } from "@/components/business/v2/events/ScanWindowSection"
@@ -197,7 +198,7 @@ export function RecurringTierEditor({
             <div className="mt-1 grid grid-cols-2 gap-3 md:grid-cols-4">
               <div>
                 <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">From</Label>
-                <Input type="time" value={tier.valid_from_time} onChange={(e) => update(i, { valid_from_time: e.target.value })} />
+                <TimeField value={tier.valid_from_time} onChange={(next) => update(i, { valid_from_time: next })} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>
@@ -205,7 +206,7 @@ export function RecurringTierEditor({
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Until</Label>
-                <Input type="time" value={tier.valid_until_time} onChange={(e) => update(i, { valid_until_time: e.target.value })} />
+            <TimeField value={tier.valid_until_time} onChange={(next) => update(i, { valid_until_time: next })} />
               </div>
               <div>
                 <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">&nbsp;</Label>

@@ -40,11 +40,22 @@ import { Pagination } from "@/components/business/v2/events/Pagination"
 import { AccessEventGroupRow } from "@/components/business/v2/door-access/AccessEventGroupRow"
 import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
 import {
+  easternToday,
   fetchDoorAccessProgramsSafe,
+  fmtNightDate,
+  loadProgramsUpcomingNights,
+  nightHref,
   WEEKLY_ACCESS_CREATION_LABEL,
   WEEKLY_ACCESS_SECTION_LABEL,
+  type DoorAccessNight,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
+import { mergeUpcomingWithQueuedDrafts } from "@/lib/business/live-after-approve"
+import { customUpcomingNightsFromSeries } from "@/lib/business/wc-upcoming"
+import {
+  HostCardThumbnail,
+  HostListCard,
+} from "@/components/business/v2/host/HostListCard"
 
 /**
  * THE manage surface (D2-4). One page, two types, one create funnel.
@@ -86,6 +97,7 @@ export default function V2EventsPage() {
   // to sort on, so they PIN ABOVE the dated rows rather than being given a
   // fake one, and they are never paginated with the events below them.
   const [programs, setPrograms] = useState<DoorAccessProgramSummary[]>([])
+  const [oneOffNights, setOneOffNights] = useState<Array<{ program: DoorAccessProgramSummary; night: DoorAccessNight }>>([])
   const [programsLoading, setProgramsLoading] = useState(true)
   // D2-2: the series a night belongs to, so a run of Tuesdays collapses into
   // one row. Degrades to [] — an ungrouped list is a worse list, not a broken
@@ -147,15 +159,24 @@ export default function V2EventsPage() {
       const data = await apiClient.get<{ events: EventListItem[]; total: number }>(
         `/business/events?tab=${tab}&page=${page}&limit=${limit}${venueParam}`
       )
-      setEvents(data.events)
-      setTotal(data.total)
+      let next = data.events
+      let nextTotal = data.total
+      if (tab === "upcoming" && !isPending) {
+        const drafts = await apiClient.get<{ events: EventListItem[]; total: number }>(
+          `/business/events?tab=drafts&page=1&limit=50${venueParam}`
+        )
+        next = mergeUpcomingWithQueuedDrafts(next, drafts.events ?? [], isPending)
+        nextTotal = data.total + Math.max(0, next.length - data.events.length)
+      }
+      setEvents(next)
+      setTotal(nextTotal)
     } catch {
       setEvents([])
       setTotal(0)
     } finally {
       setLoading(false)
     }
-  }, [tab, page, venueParam])
+  }, [tab, page, venueParam, isPending])
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
@@ -168,9 +189,11 @@ export default function V2EventsPage() {
   useEffect(() => {
     let cancelled = false
     setProgramsLoading(true)
-    fetchDoorAccessProgramsSafe(scopedVenueId).then((rows) => {
+    fetchDoorAccessProgramsSafe(scopedVenueId).then(async (rows) => {
       if (cancelled) return
       setPrograms(rows)
+      const loaded = await loadProgramsUpcomingNights(rows.filter((p) => p.is_active))
+      if (!cancelled) setOneOffNights(customUpcomingNightsFromSeries(loaded, easternToday()))
       setProgramsLoading(false)
     })
     return () => { cancelled = true }
@@ -229,6 +252,7 @@ export default function V2EventsPage() {
     : effectiveType === "access"
       ? activePrograms
       : tab === "upcoming" ? activePrograms : []
+  const visibleOneOffs = tab === "upcoming" && showsAccess(effectiveType) ? oneOffNights : []
 
   const rows = showsEvents(effectiveType)
     ? groupEventRows(events, venueSeries, wcSeriesIds, inactiveWcIds)
@@ -251,6 +275,7 @@ export default function V2EventsPage() {
   const isEmpty =
     rows.length === 0 &&
     visiblePrograms.length === 0 &&
+    visibleOneOffs.length === 0 &&
     eventAccessGroups.length === 0 &&
     pendingCancelNights.length === 0
 
@@ -359,6 +384,24 @@ export default function V2EventsPage() {
         <div className="flex flex-col gap-3">
           {visiblePrograms.map((program) => (
             <AccessProgramRow key={`program-${program.id}`} program={program} />
+          ))}
+          {visibleOneOffs.map(({ program, night }) => (
+            <HostListCard
+              key={`oneoff-${program.id}-${night.occurrence_date}`}
+              kind="access"
+              href={nightHref(program.id, night.occurrence_date)}
+              title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
+              meta={[fmtNightDate(night.occurrence_date), program.venue_name].filter(Boolean).join(" · ")}
+              secondary="One-off night"
+              thumbnail={
+                <HostCardThumbnail
+                  kind="access"
+                  src={night.flyer_image_url || program.flyer_image_url}
+                  alt={program.name}
+                  icon={Zap}
+                />
+              }
+            />
           ))}
           {eventAccessGroups.map((group) => (
             <AccessEventGroupRow key={`access-event-${group.programId}`} group={group} />

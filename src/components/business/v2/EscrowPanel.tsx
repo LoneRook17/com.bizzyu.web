@@ -31,6 +31,7 @@ import { useSearchParams } from "next/navigation"
 import { ArrowUpRight, CheckCircle2, Clock, Landmark, Loader2, Send } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
+import { canAccessPayouts } from "@/lib/business/payouts-access"
 import {
   fetchEscrowPanelData,
   deriveEscrowPanelState,
@@ -39,7 +40,9 @@ import {
   isEscrowDemoScenario,
   type EscrowPanelData,
   type EscrowPanelState,
+  type PayoutsMoneyHint,
 } from "@/lib/business/escrow"
+import { fetchPayoutsSummary } from "@/lib/business/payouts-reconcile"
 import {
   localStoragePaidBannerAdapter,
   shouldRenderEscrowPanel,
@@ -110,6 +113,7 @@ const HERO_STATE_BORDER: Record<Exclude<EscrowPanelState, "empty">, string> = {
   claimable: "border-green-200 dark:border-green-900/70",
   ready: "border-green-200 dark:border-green-900/70",
   processing: "border-blue-200 dark:border-blue-900/70",
+  in_transit: "border-blue-200 dark:border-blue-900/70",
   paid: "",
 }
 
@@ -131,11 +135,17 @@ const STATE_HEADER: Record<Exclude<EscrowPanelState, "empty">, { icon: React.Ele
     label: "Payment processing",
     badge: { variant: "info", text: "Processing" },
   },
+  in_transit: {
+    icon: Clock,
+    tint: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400",
+    label: "In transit",
+    badge: { variant: "info", text: "In transit" },
+  },
   paid: {
     icon: CheckCircle2,
     tint: "bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400",
-    label: "Escrow paid out",
-    badge: { variant: "success", text: "Paid" },
+    label: "Deposited",
+    badge: { variant: "success", text: "Deposited" },
   },
 }
 
@@ -150,13 +160,14 @@ function EscrowPanelInner({
 }) {
   const searchParams = useSearchParams()
   const demoScenario = searchParams.get("escrow_demo")
-  const { business } = useAuth()
+  const { business, user } = useAuth()
   const [data, setData] = useState<EscrowPanelData | null>(null)
+  const [payouts, setPayouts] = useState<PayoutsMoneyHint | null>(null)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    const applyPanel = (next: EscrowPanelData | null) => {
+    const applyPanel = (next: EscrowPanelData | null, money?: PayoutsMoneyHint | null) => {
       setData(next)
       setVisible(
         shouldRenderEscrowPanel(next, {
@@ -164,13 +175,32 @@ function EscrowPanelInner({
           demo: isEscrowDemoScenario(demoScenario),
           authBusinessId: business?.business_id ?? null,
           storage: localStoragePaidBannerAdapter(),
+          payouts: money,
         }),
       )
     }
     ;(async () => {
       const first = await fetchEscrowPanelData({ demoScenario })
       if (cancelled) return
-      applyPanel(first)
+      let money: PayoutsMoneyHint | null = null
+      if (!isEscrowDemoScenario(demoScenario) && canAccessPayouts(user?.business_role, user?.can_view_payouts)) {
+        try {
+          const result = await fetchPayoutsSummary({ window: 90 })
+          if (result?.kind === "ready") {
+            money = {
+              in_transit_cents: result.summary.in_transit_cents ?? 0,
+              deposited_cents: result.summary.deposited_cents ?? 0,
+            }
+          }
+        } catch {
+          money = null
+        }
+      } else if (demoScenario === "paid") {
+        money = { in_transit_cents: 0, deposited_cents: 1 }
+      }
+      if (cancelled) return
+      setPayouts(money)
+      applyPanel(first, money)
 
       // Payments compact only: if Stripe is already onboarded, POST complete
       // so services can run the escrow claim. Home hero does not kick this.
@@ -187,13 +217,13 @@ function EscrowPanelInner({
       }
       if (cancelled) return
       const second = await fetchEscrowPanelData({ demoScenario })
-      if (!cancelled) applyPanel(second)
+      if (!cancelled) applyPanel(second, money)
     })()
     return () => { cancelled = true }
-  }, [demoScenario, variant, refreshToken, business?.business_id])
+  }, [demoScenario, variant, refreshToken, business?.business_id, user?.business_role, user?.can_view_payouts])
 
   if (!data || !visible) return null
-  const state = deriveEscrowPanelState(data.summary, data.stripeOnboarded)
+  const state = deriveEscrowPanelState(data.summary, data.stripeOnboarded, payouts)
   if (state === "empty") return null
 
   const header = STATE_HEADER[state]
@@ -220,6 +250,9 @@ function EscrowPanelInner({
           {state === "ready" && (
             <span className={cn("ml-2 font-medium text-neutral-500 dark:text-neutral-400", sizing.heroSuffix)}>ready to send</span>
           )}
+          {state === "in_transit" && (
+            <span className={cn("ml-2 font-medium text-neutral-500 dark:text-neutral-400", sizing.heroSuffix)}>in transit</span>
+          )}
         </p>
 
         {state === "claimable" && (
@@ -243,15 +276,22 @@ function EscrowPanelInner({
 
         {state === "processing" && (
           <p className="mt-2 max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
-            Stripe is connected and this payout is on its way to your bank. No action needed.
-            It typically arrives within a few business days.
+            Stripe is connected and this amount is moving out of Bizzy escrow. It is not in your
+            bank yet.
+          </p>
+        )}
+
+        {state === "in_transit" && (
+          <p className="mt-2 max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
+            This left Bizzy escrow and is in transit through Stripe. It has not been deposited
+            to your bank yet.
           </p>
         )}
 
         {state === "paid" && (
           <p className="mt-2 max-w-prose text-sm text-neutral-600 dark:text-neutral-400">
-            Everything Bizzy held for you has been paid out to your business Stripe account.
-            New ticket sales pay out directly. Nothing waits in escrow anymore.
+            Stripe has deposited this to your bank. New ticket sales pay out on Stripe&apos;s
+            schedule.
           </p>
         )}
       </div>

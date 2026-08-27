@@ -112,6 +112,7 @@ import {
   NIGHT_CUSTOMIZED_NOTICE,
   EDIT_PROGRAM_LABEL,
   DEFAULT_NIGHT_PREVIEW_COUNT,
+  isPinnedUpcomingNight,
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
@@ -463,7 +464,7 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   assert.ok(!src.includes("Use default"))
   assert.ok(!src.includes(">Override<") && !src.includes("Override</"))
   assert.ok(src.includes("Reset to program default"), "hours reset matches the price Reset pattern")
-  assert.ok(src.includes('type="time"'), "hour inputs stay visible")
+  assert.ok(src.includes("TimeField"), "hour inputs stay visible with a typed field and picker")
   assert.ok(src.includes("applyNightHours"), "typing a time is the override")
   assert.ok(src.includes("Closed this night"))
   assert.ok(src.includes("@radix-ui/react-switch"), "closed is a real switch, not a grey button")
@@ -1089,6 +1090,17 @@ test("visibleUpcomingNights defaults to the next 4, then expands", () => {
   )
 })
 
+test("visibleUpcomingNights keeps a far customized one-off in the preview", () => {
+  const dates = ["2026-08-28", "2026-08-29", "2026-09-04", "2026-09-05", "2026-09-11", "2026-12-31"]
+  const rows = dates.map((occurrence_date) =>
+    night({ occurrence_date, is_customized: occurrence_date === "2026-12-31" }),
+  )
+  assert.deepEqual(
+    visibleUpcomingNights(rows, false, 4, isPinnedUpcomingNight).map((n) => n.occurrence_date),
+    ["2026-08-28", "2026-08-29", "2026-09-04", "2026-09-05", "2026-12-31"],
+  )
+})
+
 test("nightDateBlock is calendar parts, never a tz-shifted day", () => {
   assert.deepEqual(nightDateBlock("2026-08-28"), { weekday: "Fri", month: "Aug", day: 28 })
   assert.equal(nightDateBlock("nonsense"), null)
@@ -1310,6 +1322,8 @@ test("the program page is look-and-open, with Edit program as a dedicated route"
   assert.ok(src.includes("More nights"), "far-future nights stay behind More nights")
   assert.ok(src.includes("resolveNightCardImageUrl"), "each night card resolves its own flyer")
   assert.ok(src.includes("weekdayFlyerByDayFromNights"), "nights without Custom art keep the weekday flyer")
+  assert.ok(src.includes("ONE_OFF_SERIES_LOOKAHEAD_DAYS"), "series fetch must reach far one-off nights")
+  assert.ok(src.includes("isPinnedUpcomingNight"), "custom nights stay in the 4-card preview")
 })
 
 test("Weekly Access has a dedicated program editor, same fields as create", () => {
@@ -1809,7 +1823,7 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   assert.ok(!editor.includes("Limit when this ticket can be scanned"), "long scan-window label stays off the weekday editor")
   assert.ok(!editor.includes("ScanWindowToggle"), "weekday editor owns its own From/Until scan window")
   assert.ok(!editor.includes("ScanWindowExamples"), "scan window examples sit behind (i), not inline")
-  assert.ok(editor.includes('type="time"'), "scan window is relative HH:mm, not a calendar datetime")
+  assert.ok(editor.includes("TimeField"), "scan window is relative HH:mm, not a calendar datetime")
   assert.ok(!editor.includes("datetime-local"), "WC templates must not send standalone valid_from / valid_until")
   assert.ok(!editor.includes("<ScanWindowSection"), "absolute ScanWindowSection stays off weekday / game-day templates")
   const surgeAt = editor.indexOf('label="Surge"')

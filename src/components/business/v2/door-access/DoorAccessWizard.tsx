@@ -37,6 +37,7 @@ import {
 } from "@/lib/business/weekly-cover-nights"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { promoterToggleDisabled } from "@/lib/business/create-publish"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
 import {
   readyWcPromoDrafts,
@@ -218,12 +219,11 @@ export function DoorAccessWizard({
   const hasPaidTier = hasPaidPrice(paidPrices)
   const cheapestPaid = cheapestPaidPrice(paidPrices)
 
-  const promoToggleDisabled = !hasPaidTier || !stripeOnboarded
-  const promoDisabledReason = !hasPaidTier
+  const promoToggleDisabled = promoterToggleDisabled(hasPaidTier)
+  const promoDisabledReason = promoToggleDisabled
     ? "Price at least one night before you can run a promoter program."
-    : !stripeOnboarded
-      ? "Connect Stripe before enabling the promoter program. Promoters need a payout path to sell into."
-      : ""
+    : ""
+  void stripeOnboarded
 
   useEffect(() => {
     if (promoToggleDisabled && promotionEnabled) setPromotionEnabled(false)

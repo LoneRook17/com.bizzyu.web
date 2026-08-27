@@ -36,6 +36,7 @@ import {
   untilIsPast,
   hasBreakdown,
   buildBreakdownTable,
+  displayAllocateUnallocated,
   showBreakdownTable,
   signedMoneyStr,
   UNALLOCATED_ROW_LABEL,
@@ -856,4 +857,27 @@ test("all-venues-unchanged", () => {
     sharedAccountCaveat(preBreakdown.shared_with_venues),
     "Also includes deposits for: Little Saint James, Mar a Lago, Lukes Castle",
   )
+})
+
+test("after connect, a leftover Unallocated slice display-attaches to the only venue", () => {
+  const s = normalizeSummary({
+    deposited_cents: 0,
+    in_transit_cents: 8000,
+    refunded_cents: 0,
+    venue_scoped: true,
+    breakdown: [
+      { venue_id: 1, name: "Bizzy Just Wins", deposited_cents: 0, in_transit_cents: 0, refunded_cents: 0 },
+    ],
+    unallocated_deposited_cents: 0,
+    unallocated_in_transit_cents: 8000,
+    unallocated_refunded_cents: 0,
+  } as never)
+  const raw = buildBreakdownTable(s, 1)
+  const allocated = displayAllocateUnallocated(raw, [{ id: 1, name: "Bizzy Just Wins" }])
+  assert.ok(allocated)
+  const venue = allocated.rows.find((r) => r.kind === "venue")
+  const leftover = allocated.rows.find((r) => r.kind === "unallocated")
+  assert.equal(venue?.in_transit_cents, 8000)
+  assert.equal(leftover?.in_transit_cents, 0)
+  assert.equal(allocated.foots, true)
 })

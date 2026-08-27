@@ -26,6 +26,7 @@ import {
 
 const NOW = Date.parse("2026-08-23T12:00:00.000Z")
 const HOUR = 60 * 60 * 1000
+const DEPOSITED = { in_transit_cents: 0, deposited_cents: 1500 }
 
 function entry(overrides: Partial<EscrowLedgerEntry> = {}): EscrowLedgerEntry {
   return {
@@ -83,6 +84,7 @@ function render(data: EscrowPanelData | null, over: Partial<Parameters<typeof sh
     demo: false,
     authBusinessId: null,
     storage,
+    payouts: DEPOSITED,
     ...over,
   })
 }
@@ -193,7 +195,7 @@ test("claimable, ready, and processing always render and never write a paid stam
 test("first view while paid shows the banner and stamps now, refresh does not reset", () => {
   const storage = memoryStorage()
   const data = paidData()
-  assert.equal(deriveEscrowPanelState(data.summary, true), "paid")
+  assert.equal(deriveEscrowPanelState(data.summary, true, DEPOSITED), "paid")
   assert.equal(render(data, { storage, nowMs: NOW }), true)
 
   const key = escrowPaidBannerStorageKey(42, "tr_15_example")
@@ -272,7 +274,7 @@ test("corrupt storage is treated as a first view: show and re-stamp", () => {
 
 test("the $15 paid fixture is the existing paid state, not a new money write", () => {
   const data = paidData()
-  assert.equal(deriveEscrowPanelState(data.summary, true), "paid")
+  assert.equal(deriveEscrowPanelState(data.summary, true, DEPOSITED), "paid")
   const withdrawn = data.summary.entries
     .filter((e) => e.entry_type === "withdrawal" && e.status === "settled")
     .reduce((sum, e) => sum + e.amount_cents, 0)

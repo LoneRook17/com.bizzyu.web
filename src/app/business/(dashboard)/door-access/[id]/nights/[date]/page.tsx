@@ -44,7 +44,7 @@ import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
-import { Input } from "@/components/business/v2/ui/input"
+import { TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 
 /**
@@ -387,15 +387,14 @@ function HoursCard({
             <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
               Opens
             </span>
-            <Input
-              type="time"
+            <TimeField
               value={toTimeInput(draft.start_time)}
               disabled={!editable}
-              onChange={(e) =>
+              onChange={(next) =>
                 setDraft(
                   applyNightHours(
                     draft,
-                    fromTimeInput(e.target.value),
+                    fromTimeInput(next),
                     draft.end_time,
                     program.start_time,
                     program.end_time
@@ -408,16 +407,15 @@ function HoursCard({
             <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
               Closes
             </span>
-            <Input
-              type="time"
+            <TimeField
               value={toTimeInput(draft.end_time)}
               disabled={!editable}
-              onChange={(e) =>
+              onChange={(next) =>
                 setDraft(
                   applyNightHours(
                     draft,
                     draft.start_time,
-                    fromTimeInput(e.target.value),
+                    fromTimeInput(next),
                     program.start_time,
                     program.end_time
                   )

@@ -213,6 +213,30 @@ export function defaultTierName(kind: NightTierKind): string {
   return kind === "skip" ? "Skip the Line" : "Cover"
 }
 
+/** `{Venue} {Day} Cover` / `{Venue} {Day} Skip the Line` when both are known. */
+export function defaultTierNameForNight(
+  kind: NightTierKind,
+  opts?: { venueName?: string; dayName?: string },
+): string {
+  const venue = (opts?.venueName ?? "").trim()
+  const day = (opts?.dayName ?? "").trim()
+  const suffix = defaultTierName(kind)
+  if (venue && day) return `${venue} ${day} ${suffix}`
+  if (venue) return `${venue} ${suffix}`
+  if (day) return `${day} ${suffix}`
+  return suffix
+}
+
+export function looksLikeDefaultTierName(
+  name: string | null | undefined,
+  kind: NightTierKind,
+): boolean {
+  const trimmed = String(name ?? "").trim()
+  if (trimmed === "") return true
+  if (trimmed === defaultTierName(kind)) return true
+  return trimmed.endsWith(` ${defaultTierName(kind)}`)
+}
+
 /**
  * Binding Cover-included clause on a Skip the Line ticket. Exact app copy:
  * on → `Cover included.` / off → `Cover NOT Included` (no trailing period).
@@ -383,10 +407,13 @@ export function syncSkipTierDescriptions(
   }
 }
 
-export function emptyTier(kind: NightTierKind): NightTierDraft {
+export function emptyTier(
+  kind: NightTierKind,
+  opts?: { venueName?: string; dayName?: string },
+): NightTierDraft {
   return {
     kind,
-    name: defaultTierName(kind),
+    name: defaultTierNameForNight(kind, opts),
     description: "",
     priceInput: "",
     quantityInput: "0",
@@ -427,7 +454,10 @@ export function seedNightDraft(opts: {
   venueName?: string
   dayName?: string
 }): NightDraft {
-  const tiers = seedTiersForProducts(opts.products ?? "cover")
+  const tiers = seedTiersForProducts(opts.products ?? "cover").map((tier) => ({
+    ...tier,
+    name: defaultTierNameForNight(tier.kind, { venueName: opts.venueName, dayName: opts.dayName }),
+  }))
   return {
     startTime: opts.startTime,
     endTime: opts.endTime,
@@ -461,6 +491,9 @@ export function copyNightToDay(
   next.flyerImageUrl = ""
   next.flyerRemoved = false
   for (const tier of next.tiers) {
+    if (looksLikeDefaultTierName(tier.name, tier.kind)) {
+      tier.name = defaultTierNameForNight(tier.kind, opts)
+    }
     if (!tierHasCustomDescription(tier)) continue
     tier.description = defaultTierDescription({
       kind: tier.kind,
@@ -541,7 +574,7 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
       : tier.description.trim()
   return {
     tier_key: resolveTierKey(tier.kind, tier.tier_key),
-    name: tier.name.trim() || defaultTierName(tier.kind),
+    name: tier.name.trim() || defaultTierNameForNight(tier.kind),
     description: description === "" ? null : description,
     price_usd: price,
     quantity: parseCount(tier.quantityInput),
@@ -623,19 +656,16 @@ export function weekdayEditsToWire(
 /**
  * `date_edits` — Y-m-d → night write.
  *
- * Off-schedule dates are dropped rather than sent: services 400s a
- * `date_edits` key that is not a scheduled night, and one bad date would take
- * the whole create down with it. The calendar already refuses to open them, so
- * this is the belt to that braces.
+ * One-off / Custom nights may land on any calendar day, including a weekday
+ * that has no series cover. Invalid date keys are still dropped.
  */
 export function dateEditsToWire(
   edits: Record<string, NightDraft>,
-  daysOfWeek: number[]
+  _daysOfWeek?: number[]
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const date of Object.keys(edits).sort()) {
-    const weekday = isoWeekdayOfDate(date)
-    if (weekday == null || !daysOfWeek.includes(weekday)) continue
+    if (isoWeekdayOfDate(date) == null) continue
     out[date] = nightToWire(edits[date])
   }
   return out

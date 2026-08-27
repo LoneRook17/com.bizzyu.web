@@ -168,14 +168,20 @@ test("a settled withdrawal with a stripe_transfer_id is not in flight", () => {
     ],
   })
   assert.equal(hasInFlightEscrowPayout(s), false)
-  assert.equal(deriveEscrowPanelState(s, true), "paid")
+  assert.equal(deriveEscrowPanelState(s, true), "in_transit")
+  assert.equal(deriveEscrowPanelState(s, true, { in_transit_cents: 1500, deposited_cents: 0 }), "in_transit")
+  assert.equal(deriveEscrowPanelState(s, true, { in_transit_cents: 0, deposited_cents: 1500 }), "paid")
 })
 
-test("zero balance with a settled withdrawal is paid", () => {
+test("zero balance with a settled withdrawal is in transit, not paid to the bank", () => {
   const s = summary({
     entries: [entry({ id: 6, entry_type: "withdrawal", amount_cents: -42350, status: "settled", reference_type: "payout", reference_id: 501 }), entry({})],
   })
-  assert.equal(deriveEscrowPanelState(s, true), "paid")
+  assert.equal(deriveEscrowPanelState(s, true), "in_transit")
+  assert.equal(
+    deriveEscrowPanelState(s, true, { in_transit_cents: 42350, deposited_cents: 0 }),
+    "in_transit",
+  )
 })
 
 test("a ledger that merely netted to zero via reversals is empty, not paid", () => {
@@ -241,7 +247,7 @@ test("fmtEntryTimestamp falls back to the raw string on malformed input", () => 
 test("entryLabel maps types and order references", () => {
   assert.deepEqual(entryLabel(entry({})), { title: "Ticket sale", reference: "Order #9931" })
   assert.deepEqual(entryLabel(entry({ entry_type: "reversal", amount_cents: -1750 })), { title: "Refund", reference: "Order #9931" })
-  assert.deepEqual(entryLabel(entry({ entry_type: "withdrawal", reference_type: "payout", reference_id: 501 })), { title: "Payout to your bank", reference: null })
+  assert.deepEqual(entryLabel(entry({ entry_type: "withdrawal", reference_type: "payout", reference_id: 501 })), { title: "Released from escrow", reference: null })
   assert.deepEqual(entryLabel(entry({ entry_type: "adjustment", reference_type: "manual", reference_id: null })), { title: "Adjustment", reference: null })
 })
 
@@ -320,7 +326,16 @@ test("fixtures land in their intended panel states", () => {
   assert.equal(deriveEscrowPanelState(f.zero.summary, f.zero.stripeOnboarded), "empty")
   assert.equal(deriveEscrowPanelState(f.claimable.summary, f.claimable.stripeOnboarded), "claimable")
   assert.equal(deriveEscrowPanelState(f.processing.summary, f.processing.stripeOnboarded), "processing")
-  assert.equal(deriveEscrowPanelState(f.paid.summary, f.paid.stripeOnboarded), "paid")
+  assert.equal(deriveEscrowPanelState(f.paid.summary, f.paid.stripeOnboarded), "in_transit")
+  assert.equal(
+    deriveEscrowPanelState(f.paid.summary, f.paid.stripeOnboarded, {
+      in_transit_cents: 0,
+      deposited_cents: f.paid.summary.entries
+        .filter((e) => e.entry_type === "withdrawal" && e.status === "settled")
+        .reduce((sum, e) => sum - e.amount_cents, 0),
+    }),
+    "paid",
+  )
   assert.equal(deriveEscrowPanelState(f.long.summary, f.long.stripeOnboarded), "claimable")
 })
 

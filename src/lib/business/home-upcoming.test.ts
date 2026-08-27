@@ -85,6 +85,19 @@ test("a program contributes exactly ONE entry, not every night it runs", () => {
   assert.equal(out.length, 1)
 })
 
+test("a far-future one-off WC night always stays on Upcoming", () => {
+  const prog = program(9, "2026-09-03")
+  const out = homeUpcoming(
+    [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-04 21:00:00"), ev(3, "2026-09-06 21:00:00")],
+    [prog],
+    4,
+    [],
+    [{ program: prog, date: "2026-12-31" }],
+  )
+  assert.ok(out.some((e) => e.key === "access-oneoff-9-2026-12-31"))
+  assert.equal(out[out.length - 1].sortKey, "2026-12-31")
+})
+
 test("the card's row budget is respected across both types", () => {
   const out = homeUpcoming(
     [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-04 21:00:00"), ev(3, "2026-09-06 21:00:00")],

@@ -1,3 +1,5 @@
+import { laravelCheckoutBaseUrl } from "../laravel-checkout.ts"
+
 // DASH2-D — THE public link builders. One file, one shape per surface.
 //
 // Before this, `${WEB_BASE_URL}/event/${id}/checkout` was inlined in the event
@@ -8,15 +10,11 @@
 // Inventing `/night/:programId/:date` would have produced a URL nothing in the
 // pipeline resolves.
 //
-// VERIFIED PATH (DASH2-D task 2), for eventCheckoutUrl():
-//   bizzyu.com/event/:id/checkout
-//     → app/event/[id]/checkout/page.tsx  (OG tags from services GET /ui/events/:id,
-//       which is models.events.getById — no access_kind filter, no status filter)
-//     → meta-refresh + location.replace
-//     → /checkout/:id (named events and Weekly Cover share EventCheckoutClient)
-//     → ?ticket_id= preselects the venue-selected ticket.
-// Nothing on that path reads access_kind, so a door_access night resolves
-// exactly as a one-off event does. No /cover buy path.
+// Dash share links go to Laravel ticket checkout, not this Next/Vercel app.
+//   {laravel}/checkout/:id
+//     → core PublicController GET /checkout/{eventId}
+// Missing env on DEV still hits https://dev.bizzy-deals.com. Do not point
+// operators at /event/:id/checkout or same-origin /checkout/:id.
 //
 // venuePageUrl() is the program-level surface: bizzyu.com/venue/:id lists the
 // venue's `status='published'` future events (again no access_kind filter), so
@@ -26,15 +24,15 @@
 export const WEB_BASE_URL = process.env.NEXT_PUBLIC_WEB_BASE_URL || "https://bizzyu.com"
 
 /**
- * The canonical public checkout link for ONE event — the AASA-claimed
- * Universal Link shape shared with the app and promoter tracking links.
+ * The canonical checkout link the dashboard hands out for ONE event.
+ * Laravel `/checkout/:id` — never Next/Vercel `/event/:id/checkout`.
  *
  * Stays BARE on purpose. Promoter links append ?ref for attribution; an
  * operator's own share must not, or their sales would count as promoter-
  * attributed.
  */
 export function eventCheckoutUrl(eventId: number | string): string {
-  return `${WEB_BASE_URL}/event/${eventId}/checkout`
+  return `${laravelCheckoutBaseUrl()}/checkout/${eventId}`
 }
 
 /** The public venue page — every published upcoming night/event at one venue. */

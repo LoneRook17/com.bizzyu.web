@@ -571,6 +571,13 @@ export const DEFAULT_NIGHT_PREVIEW_COUNT = 4
 /** Days fetched before the host opens More nights. Server clamps at 180. */
 export const DEFAULT_SERIES_LOOKAHEAD_DAYS = 28
 
+/** Far-future one-off / Custom nights must still load on Upcoming. */
+export const ONE_OFF_SERIES_LOOKAHEAD_DAYS = 180
+
+export function isPinnedUpcomingNight(night: { is_customized?: boolean }): boolean {
+  return !!night.is_customized
+}
+
 // ── Wire shapes (services/src/services/DoorAccessProgramService.ts) ─────────
 
 export const REDEMPTION_MODES = ["native_scan", "camera_tap"] as const
@@ -1134,6 +1141,30 @@ export async function fetchDoorAccessSeries(
   }
 }
 
+export async function fetchDoorAccessSeriesSafe(
+  programId: number,
+  lookaheadDays?: number,
+): Promise<DoorAccessSeries | null> {
+  try {
+    return await fetchDoorAccessSeries(programId, lookaheadDays)
+  } catch {
+    return null
+  }
+}
+
+/** Load every program's nights with a far lookahead so one-offs are not clipped. */
+export async function loadProgramsUpcomingNights(
+  programs: DoorAccessProgramSummary[],
+  lookaheadDays: number = ONE_OFF_SERIES_LOOKAHEAD_DAYS,
+): Promise<Array<{ program: DoorAccessProgramSummary; nights: DoorAccessNight[] }>> {
+  return Promise.all(
+    programs.map(async (program) => {
+      const series = await fetchDoorAccessSeriesSafe(program.id, lookaheadDays)
+      return { program, nights: series?.nights ?? [] }
+    }),
+  )
+}
+
 /** GET /business/door-access/:id/nights/:date — the override editor's load. */
 export async function fetchDoorAccessNight(
   programId: number,
@@ -1602,14 +1633,24 @@ export function nightPreviewPrice(night: DoorAccessNight): string {
   return `From ${usdPrice(lowest)}`
 }
 
-/** Default view is a short strip; More nights reveals the rest of the fetch. */
+/** Default view is a short strip; More nights reveals the rest of the fetch.
+ *  Custom / one-off nights always stay visible, even when they are far out. */
 export function visibleUpcomingNights<T>(
   nights: T[],
   expanded: boolean,
-  limit: number = DEFAULT_NIGHT_PREVIEW_COUNT
+  limit: number = DEFAULT_NIGHT_PREVIEW_COUNT,
+  isPinned: (night: T) => boolean = () => false,
 ): T[] {
   if (expanded) return nights
-  return nights.slice(0, limit)
+  const pinned = new Set(nights.filter((night) => isPinned(night)))
+  const regular: T[] = []
+  for (const night of nights) {
+    if (pinned.has(night)) continue
+    if (regular.length >= limit) continue
+    regular.push(night)
+  }
+  const keep = new Set([...regular, ...pinned])
+  return nights.filter((night) => keep.has(night))
 }
 
 /**
