@@ -686,11 +686,15 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </CardContent>
       </Card>
 
-      {/* Artwork — flyer, or a template when there isn't one (D10/D-F4.1) */}
+      {/* Artwork — flyer upload. Create does not ask for a template (Classic is silent). */}
       <Card>
         <CardHeader className="flex-col items-start gap-1">
           <CardTitle>Artwork</CardTitle>
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Your flyer if you have one, a Bizzy template if you don&apos;t.</p>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+            {isEditing
+              ? "Your flyer if you have one, a Bizzy template if you don't."
+              : "Optional flyer. Skip it and we use Classic."}
+          </p>
         </CardHeader>
         <CardContent className="pt-0">
           <ArtworkSection
@@ -700,6 +704,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             onTemplateChange={(t) => setForm((prev) => ({ ...prev, artwork_template: t }))}
             accent={form.artwork_accent}
             onAccentChange={(a) => setForm((prev) => ({ ...prev, artwork_accent: a }))}
+            showTemplatePicker={isEditing}
           />
         </CardContent>
       </Card>

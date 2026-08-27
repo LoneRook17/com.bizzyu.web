@@ -16,6 +16,8 @@ interface ArtworkSectionProps {
   onTemplateChange: (template: ArtworkTemplate | null) => void
   accent: string | null | undefined
   onAccentChange: (accent: string | null) => void
+  /** Create hides the picker and silently uses Classic. Edit can still change it. */
+  showTemplatePicker?: boolean
 }
 
 /**
@@ -36,6 +38,7 @@ export function ArtworkSection({
   onTemplateChange,
   accent,
   onAccentChange,
+  showTemplatePicker = false,
 }: ArtworkSectionProps) {
   const hasFlyer = !!flyerUrl
   const active = template ?? DEFAULT_ARTWORK_TEMPLATE
@@ -47,6 +50,10 @@ export function ArtworkSection({
       {hasFlyer ? (
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
           Your flyer is what people will see. Remove it to fall back to a Bizzy template.
+        </p>
+      ) : !showTemplatePicker ? (
+        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+          Optional. Skip it and we use Classic.
         </p>
       ) : (
         <div className="space-y-4 rounded-xl border border-neutral-200 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">

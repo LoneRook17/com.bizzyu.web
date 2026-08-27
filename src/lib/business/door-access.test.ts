@@ -1850,6 +1850,7 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   assert.ok(eventForm.includes("DateTimeField"), "Starts/Ends stay on the shared date+time widgets")
   assert.ok(!eventForm.includes("datetime-local"), "event create must not fall back to native datetime-local")
   assert.ok(!eventForm.includes("YYYY-MM-DDTHH:MM"), "event create must not show an ISO T string")
+  assert.ok(eventForm.includes("showTemplatePicker={isEditing}"), "one-off create does not ask for a flyer template")
 })
 
 test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker", () => {

@@ -78,6 +78,15 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   assert.ok(eventForm.includes("DateTimeField"), "green event create/edit still uses the shared control")
   assert.ok(!eventForm.includes("YYYY-MM-DDTHH:MM"), "event form does not show an ISO T string")
   assert.ok(!eventForm.includes("datetime-local"))
+  assert.ok(eventForm.includes("showTemplatePicker={isEditing}"), "one-off create hides the flyer template picker")
+  assert.ok(!eventForm.includes("No flyer? Pick a template."), "event form itself does not mount the create picker copy")
+
+  const artwork = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/events/ArtworkSection.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(artwork.includes("showTemplatePicker"), "template cards are gated, not removed from edit")
+  assert.ok(artwork.includes('showTemplatePicker = false'), "create default is no template picker")
 
   assert.ok(scanWindow.includes("DateTimeField"), "ticket scan windows use the same split widgets")
   assert.ok(!scanWindow.includes("YYYY-MM-DDTHH:MM"))
