@@ -86,6 +86,24 @@ test("applying an event template copies tickets and artwork and drops ids and da
     { name: "GA", price_usd: 15, quantity: 100, ticket_type: "paid" },
   ])
   assert.ok(!("ticket_id" in (applied.tickets?.[0] ?? {})))
+  assert.equal(applied.promotion_enabled, true)
+})
+
+test("create-from-template does not treat leftover promoter flags as on", () => {
+  const off = applyEventAsCreateTemplate({
+    name: "Rumble",
+    type: "Ticketed",
+    tickets: [],
+    promotion_enabled: 0,
+  } as unknown as EventDetail)
+  const junk = applyEventAsCreateTemplate({
+    name: "Rumble",
+    type: "Ticketed",
+    tickets: [],
+    promotion_enabled: "false",
+  } as unknown as EventDetail)
+  assert.equal(off.promotion_enabled, false)
+  assert.equal(junk.promotion_enabled, false)
 })
 
 test("applying a Weekly Cover program resets the window and drops source tier keys", () => {

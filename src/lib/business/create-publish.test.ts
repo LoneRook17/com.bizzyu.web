@@ -3,6 +3,8 @@ import assert from "node:assert/strict"
 import {
   applySaveAsDraftFlag,
   isLeftoverPromoterPayoutPathError,
+  isPromotionEnabled,
+  promoterExtrasVisible,
   promoterToggleDisabled,
   shouldOfferStripeConnectForError,
   willDraftOnCreate,
@@ -23,6 +25,29 @@ test("Publish omits save_as_draft; Save as draft is the only path that sends it"
 test("promoter toggle is disabled only when there is no paid tier", () => {
   assert.equal(promoterToggleDisabled(false), true)
   assert.equal(promoterToggleDisabled(true), false)
+})
+
+test("isPromotionEnabled is only explicit on values", () => {
+  assert.equal(isPromotionEnabled(true), true)
+  assert.equal(isPromotionEnabled(1), true)
+  assert.equal(isPromotionEnabled("1"), true)
+  assert.equal(isPromotionEnabled(false), false)
+  assert.equal(isPromotionEnabled(0), false)
+  assert.equal(isPromotionEnabled("0"), false)
+  assert.equal(isPromotionEnabled("false"), false)
+  assert.equal(isPromotionEnabled(""), false)
+  assert.equal(isPromotionEnabled(null), false)
+  assert.equal(isPromotionEnabled(undefined), false)
+})
+
+test("promoter extras hide when the toggle is off or disabled", () => {
+  assert.equal(promoterExtrasVisible(true, false), true)
+  assert.equal(promoterExtrasVisible(1, false), true)
+  assert.equal(promoterExtrasVisible(false, false), false)
+  assert.equal(promoterExtrasVisible(0, false), false)
+  assert.equal(promoterExtrasVisible("false", false), false)
+  assert.equal(promoterExtrasVisible(true, true), false)
+  assert.equal(promoterExtrasVisible(1, true), false)
 })
 
 test("leftover promoter payout-path copy is not a dash hard block", () => {

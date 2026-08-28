@@ -11,6 +11,7 @@
  * After publish, DoorAccessWizard still routes through programHref().
  */
 
+import { isPromotionEnabled } from "./create-publish.ts"
 import { isDoorAccessKind, programHref, programIdFromOwnedEvent } from "./door-access.ts"
 import type { DoorAccessProgram, DoorAccessTemplateTier } from "./door-access.ts"
 import type { EventDetail, EventFormData, TicketTier } from "./types.ts"
@@ -78,7 +79,7 @@ export function applyEventAsCreateTemplate(event: EventDetail): Partial<EventFor
     is_21_plus: !!event.is_21_plus,
     flyer_image_url: event.flyer_image_url || "",
     tickets: stripTicketIds(event.tickets ?? []),
-    promotion_enabled: !!event.promotion_enabled,
+    promotion_enabled: isPromotionEnabled(event.promotion_enabled),
     promotion_commission_type: event.promotion_commission_type ?? "percent",
     promotion_commission_value: event.promotion_commission_value ?? null,
     lowstock_alerts_enabled: !!event.lowstock_alerts_enabled,

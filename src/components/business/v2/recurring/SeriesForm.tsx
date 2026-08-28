@@ -22,7 +22,7 @@ import { Label } from "@/components/business/v2/ui/label"
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from "@/components/business/v2/ui/dialog"
-import { promoterToggleDisabled } from "@/lib/business/create-publish"
+import { isPromotionEnabled, promoterExtrasVisible, promoterToggleDisabled } from "@/lib/business/create-publish"
 import {
   commissionValueToInput, commissionInputToStored,
   lowstockValueToInput, lowstockInputToStored,
@@ -83,7 +83,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
       : [{ ...EMPTY_RECURRING_TIER, name: "General Admission" }]
   )
 
-  const [promotionEnabled, setPromotionEnabled] = useState(!!initialData?.promotion_enabled)
+  const [promotionEnabled, setPromotionEnabled] = useState(isPromotionEnabled(initialData?.promotion_enabled))
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">(initialData?.promotion_commission_type ?? "percent")
   const [promotionValueInput, setPromotionValueInput] = useState<string>(
     commissionValueToInput(initialData?.promotion_commission_type ?? "percent", initialData?.promotion_commission_value)
@@ -134,6 +134,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
   const promoDisabledReason = promoToggleDisabled
     ? "Add a paid ticket to enable the promoter program."
     : ""
+  const showPromoterExtras = promoterExtrasVisible(promotionEnabled, promoToggleDisabled)
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
@@ -573,7 +574,9 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Promoter program</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share each night&apos;s link and earn this on every sale.</p>
+            {showPromoterExtras && (
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share each night&apos;s link and earn this on every sale.</p>
+            )}
           </CardHeader>
           <CardContent className="pt-0">
             <label
@@ -591,7 +594,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             </label>
             {promoToggleDisabled && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoDisabledReason}</p>}
 
-            {promotionEnabled && !promoToggleDisabled && (
+            {showPromoterExtras && (
               <div className="mt-4 space-y-3">
                 <div>
                   <p className="mb-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">Commission type</p>

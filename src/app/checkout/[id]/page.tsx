@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import EventCheckoutClient from "./EventCheckoutClient"
+import { isPromotionEnabled } from "@/lib/business/create-publish"
 import {
   loadVenuePublicEventIdSet,
   weeklyCoverSaleOpenForPayloads,
@@ -36,7 +37,11 @@ async function getEventData(eventId: string) {
       const uiRow = ui as Record<string, unknown>
       data.event = {
         ...data.event,
-        promotion_enabled: data.event?.promotion_enabled ?? uiRow.promotion_enabled,
+        promotion_enabled: isPromotionEnabled(
+          uiRow.promotion_enabled !== undefined
+            ? uiRow.promotion_enabled
+            : data.event?.promotion_enabled,
+        ),
         access_kind: data.event?.access_kind ?? uiRow.access_kind ?? null,
         product_kind: data.event?.product_kind ?? uiRow.product_kind ?? null,
         recurring_series_id: data.event?.recurring_series_id ?? uiRow.recurring_series_id,

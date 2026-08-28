@@ -49,6 +49,7 @@ export default function HomeStripeConnectPrompt() {
         nowMs: Date.now(),
         authBusinessId: business?.business_id ?? null,
         storage: localStoragePaidBannerAdapter(),
+        variant: "hero",
       })
 
       // When the escrow read succeeded it already carries the Stripe flag, so

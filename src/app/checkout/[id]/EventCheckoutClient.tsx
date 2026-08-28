@@ -7,6 +7,7 @@ import { isAppleWalletCapable } from "@/lib/apple-wallet"
 import { parseVenueStripeBlock, type VenueStripeBlock } from "@/lib/venue-stripe-block"
 import VenueSalesPausedNotice from "@/components/checkout/VenueSalesPausedNotice"
 
+import { isPromotionEnabled } from "@/lib/business/create-publish"
 import { isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { ACCESS, EVENT, EVENT_FILL } from "@/lib/checkout/surfaces"
 import {
@@ -395,14 +396,16 @@ export default function EventCheckoutClient({
   // ─── Fetch event data if not provided by server ─────────────────────────
 
   const applyPromotionFlag = useCallback(async (base: EventInfo) => {
-    if (base.promotion_enabled !== undefined) return base
+    if (base.promotion_enabled !== undefined) {
+      return { ...base, promotion_enabled: isPromotionEnabled(base.promotion_enabled) }
+    }
     try {
       const res = await fetch(`${API_URL}/ui/events/${eventId}`)
-      if (!res.ok) return base
+      if (!res.ok) return { ...base, promotion_enabled: false }
       const ui = await res.json()
       return {
         ...base,
-        promotion_enabled: ui.promotion_enabled,
+        promotion_enabled: isPromotionEnabled(ui.promotion_enabled),
         access_kind: base.access_kind ?? ui.access_kind ?? null,
         product_kind: base.product_kind ?? ui.product_kind ?? null,
         recurring_series_id: base.recurring_series_id ?? ui.recurring_series_id,
@@ -410,7 +413,7 @@ export default function EventCheckoutClient({
         series_is_active: base.series_is_active ?? ui.series_is_active,
       }
     } catch {
-      return base
+      return { ...base, promotion_enabled: false }
     }
   }, [eventId])
 
@@ -1052,7 +1055,7 @@ export default function EventCheckoutClient({
                   </div>
                 )}
 
-                {!!event.promotion_enabled && (
+                {isPromotionEnabled(event.promotion_enabled) && (
                   <a
                     href={`/promote/${event.event_id}`}
                     className="mt-6 block w-full rounded-xl bg-gradient-to-r from-[#05EB54] to-[#03b840] py-4 text-center text-lg font-bold text-white transition hover:from-[#33f77c] hover:to-[#05EB54]"
