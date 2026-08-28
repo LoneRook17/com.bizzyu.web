@@ -46,8 +46,8 @@ function commissionToStored(
   return { value: Math.round(num * 100), error: null }
 }
 
-function wizardSteps(ticketed: boolean): { key: string; label: string }[] {
-  const steps = [
+function wizardSteps(ticketed: boolean, skipDays: boolean): { key: string; label: string }[] {
+  const steps = skipDays ? [{ key: "hours", label: "Hours" }] : [
     { key: "days", label: "Nights" },
     { key: "hours", label: "Hours" },
   ]
@@ -65,6 +65,9 @@ export type RecurringEventSeed = {
   type: "Ticketed" | "Free"
   is_21_plus: boolean
   flyer_image_url: string
+  days_of_week?: number[]
+  date_range_start?: string
+  date_range_end?: string | null
 }
 
 /**
@@ -83,7 +86,7 @@ export function RecurringEventWizard({
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [furthest, setFurthest] = useState(0)
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([])
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(() => [...(seed.days_of_week ?? [])].sort((a, b) => a - b))
   const [startTime, setStartTime] = useState("21:00")
   const [endTime, setEndTime] = useState("02:00")
   const [flyerImageUrl, setFlyerImageUrl] = useState(seed.flyer_image_url)
@@ -100,7 +103,8 @@ export function RecurringEventWizard({
 
   const hasPaidTier = seed.type === "Ticketed" && tiers.some((t) => (parseFloat(t.priceInput) || 0) > 0)
   const promoDisabled = promoterToggleDisabled(hasPaidTier)
-  const STEPS = useMemo(() => wizardSteps(seed.type === "Ticketed"), [seed.type])
+  const skipDays = (seed.days_of_week ?? []).length > 0
+  const STEPS = useMemo(() => wizardSteps(seed.type === "Ticketed", skipDays), [seed.type, skipDays])
   const stepKey = STEPS[step]?.key ?? "days"
   const previewDates = useMemo(() => {
     const start = todayIsoDate()
@@ -175,6 +179,8 @@ export function RecurringEventWizard({
         venue_name: seed.venue_name,
         venue_address: seed.venue_address,
         days_of_week: daysOfWeek,
+        date_range_start: seed.date_range_start,
+        date_range_end: seed.date_range_end ?? null,
         start_time: startTime,
         end_time: endTime,
         type: seed.type,
