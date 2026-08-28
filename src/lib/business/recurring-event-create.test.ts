@@ -39,6 +39,22 @@ test("fresh green RC create does not send Custom date_edits", () => {
   assert.equal("date_edits" in payload, false)
 })
 
+test("green RC create uses the When Starts / Ends dates", () => {
+  const payload = greenRecurringCreatePayload({
+    ...seed,
+    date_range_start: "2026-08-27",
+    date_range_end: null,
+  })
+  assert.equal(payload.date_range_start, "2026-08-27")
+  assert.equal(payload.date_range_end, null)
+  const bounded = greenRecurringCreatePayload({
+    ...seed,
+    date_range_start: "2026-08-27",
+    date_range_end: "2026-12-31",
+  })
+  assert.equal(bounded.date_range_end, "2026-12-31")
+})
+
 test("EventForm branches to the green recurring wizard instead of hardcoding one-off", () => {
   const src = readFileSync(
     join(process.cwd(), "src/components/business/v2/events/EventForm.tsx"),
@@ -46,6 +62,8 @@ test("EventForm branches to the green recurring wizard instead of hardcoding one
   )
   assert.ok(src.includes("RecurringEventWizard"), "repeating Event create must open the green wizard")
   assert.ok(src.includes("Repeats weekly") || src.includes("repeats weekly"), "green Event create has a repeating toggle")
+  assert.ok(src.includes("RepeatsOnDays"), "Repeats on chips are on the When section, not after Continue")
+  assert.ok(src.includes("No end date"), "series Ends can be left open")
   assert.ok(src.includes("!isEditing && form.is_recurring"), "Repeats weekly must not POST a one-off event")
   assert.ok(!src.includes("#05EB54") || src.includes("RecurringEventWizard"), "event path stays green")
 })
@@ -71,5 +89,6 @@ test("green wizard posts recurring-series, not door-access", () => {
   assert.ok(!src.includes("ACCESS_ACCENT"), "green RC must not use pink Weekly Cover chrome")
   assert.ok(!/Weekly Cover|Cover included|Skip the Line/.test(src), "green RC must not use Cover wording")
   assert.equal(src.includes("date_edits"), false, "fresh create must not send Custom date_edits")
-  assert.ok(src.includes('label: "Hours"') && src.includes('label: "Tickets"'), "wizard is nights → hours → tickets")
+  assert.ok(src.includes('label: "Hours"') && src.includes('label: "Tickets"'), "wizard still does hours and tickets")
+  assert.ok(src.includes("skipDays"), "nights already picked on When are not asked again")
 })

@@ -28,11 +28,14 @@ import {
   willDraftOnCreate,
 } from "@/lib/business/create-publish"
 import { shouldAutoPublishCreatedDraft } from "@/lib/business/live-after-approve"
-import { DateTimeField } from "@/components/business/v2/ui/date-time-field"
+import { DateField, DateTimeField } from "@/components/business/v2/ui/date-time-field"
 import { ArtworkSection } from "./ArtworkSection"
 import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
 import { fmtDateTime, fmtTime } from "./eventStatus"
 import { RecurringEventWizard } from "@/components/business/v2/recurring/RecurringEventWizard"
+import { RepeatsOnDays } from "@/components/business/v2/recurring/RepeatsOnDays"
+import { todayIsoDate } from "@/lib/business/recurring-event-create"
+import { splitDateTimeLocal } from "@/lib/business/datetime-value"
 import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
 
@@ -162,6 +165,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   const [loading, setLoading] = useState(false)
   const [moderationNotice, setModerationNotice] = useState("")
   const [stripeConnecting, setStripeConnecting] = useState(false)
+  const [repeatDays, setRepeatDays] = useState<number[]>([])
+  const [seriesStarts, setSeriesStarts] = useState(() => todayIsoDate())
+  const [seriesEnds, setSeriesEnds] = useState("")
 
   const [addressPredictions, setAddressPredictions] = useState<{ description: string; place_id: string }[]>([])
   const [showPredictions, setShowPredictions] = useState(false)
@@ -258,6 +264,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       if (!form.end_date_time) errs.end_date_time = "End date is required"
       if (form.start_date_time && form.end_date_time && form.start_date_time >= form.end_date_time) {
         errs.end_date_time = "End date must be after start date"
+      }
+    } else if (!isEditing) {
+      if (repeatDays.length === 0) errs.days_of_week = "Pick at least one night of the week"
+      if (!seriesStarts) errs.date_range_start = "Start date is required"
+      if (seriesEnds && seriesStarts && seriesEnds < seriesStarts) {
+        errs.date_range_end = "End date must be on or after the start date"
       }
     }
     return errs
@@ -570,9 +582,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </CardContent>
       </Card>
 
-      {/* Date & time */}
+      {/* Date & time / Flutter When */}
       <Card>
-        <CardHeader><CardTitle>Date and time</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{!isEditing ? "When" : "Date and time"}</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 pt-0">
           {!isEditing && (
             <div>
@@ -581,7 +593,13 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   type="checkbox"
                   name="is_recurring"
                   checked={!!form.is_recurring}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    handleChange(e)
+                    if (e.target.checked && !seriesStarts) {
+                      setSeriesStarts(splitDateTimeLocal(form.start_date_time).date || todayIsoDate())
+                    }
+                    setErrors((prev) => ({ ...prev, days_of_week: "", date_range_start: "", date_range_end: "" }))
+                  }}
                   className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
                 />
                 <span className="text-sm text-neutral-700 dark:text-neutral-300">Repeats weekly</span>
@@ -590,6 +608,47 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                 Same event every week you pick. Stays a green event, not Weekly Cover.
               </p>
             </div>
+          )}
+          {!isEditing && form.is_recurring && (
+            <>
+              <RepeatsOnDays
+                days={repeatDays}
+                onToggle={(day) => {
+                  setRepeatDays((prev) =>
+                    prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
+                  )
+                  setErrors((prev) => ({ ...prev, days_of_week: "" }))
+                }}
+                error={errors.days_of_week}
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="series_starts" className="mb-1.5 block">Starts</Label>
+                  <DateField
+                    id="series_starts"
+                    value={seriesStarts}
+                    onChange={(next) => {
+                      setSeriesStarts(next)
+                      setErrors((prev) => ({ ...prev, date_range_start: "" }))
+                    }}
+                  />
+                  {errors.date_range_start && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_start}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="series_ends" className="mb-1.5 block">Ends</Label>
+                  <DateField
+                    id="series_ends"
+                    value={seriesEnds}
+                    placeholder="No end date"
+                    onChange={(next) => {
+                      setSeriesEnds(next)
+                      setErrors((prev) => ({ ...prev, date_range_end: "" }))
+                    }}
+                  />
+                  {errors.date_range_end && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_end}</p>}
+                </div>
+              </div>
+            </>
           )}
           {!form.is_recurring && (
           <>
@@ -1021,6 +1080,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           type: form.type === "Free" ? "Free" : "Ticketed",
           is_21_plus: !!form.is_21_plus,
           flyer_image_url: form.flyer_image_url || "",
+          days_of_week: repeatDays,
+          date_range_start: seriesStarts,
+          date_range_end: seriesEnds || null,
         }}
         onBackToDetails={() => goToStep(0)}
       />
