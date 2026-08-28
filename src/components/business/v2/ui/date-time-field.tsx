@@ -5,10 +5,12 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import {
   clock12hSlots,
   formatClock12h,
+  formatDateUs,
   isIsoDateString,
   isIsoTimeString,
   joinDateTimeLocal,
   parseClock12h,
+  parseDateUs,
   monthCells,
   shiftMonth,
   splitDateTimeLocal,
@@ -158,6 +160,21 @@ export function DateField({
   className?: string
 }) {
   const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState(() => formatDateUs(value))
+
+  useEffect(() => {
+    const next = formatDateUs(value)
+    if (next) setTyped(next)
+    else if (!value) setTyped("")
+  }, [value])
+
+  const commitTyped = (raw: string) => {
+    setTyped(raw)
+    const parsed = parseDateUs(raw)
+    if (parsed) onChange(parsed)
+    else if (raw.trim() === "") onChange("")
+  }
+
   return (
     <div className={cn("relative", className)}>
       <div className="flex gap-2">
@@ -165,9 +182,9 @@ export function DateField({
           id={id}
           type="text"
           inputMode="numeric"
-          placeholder="YYYY-MM-DD"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          placeholder="8/27/2026"
+          value={typed}
+          onChange={(e) => commitTyped(e.target.value)}
         />
         <Button type="button" variant="secondary" size="sm" onClick={() => setOpen((o) => !o)} aria-label="Open date picker">
           <CalendarDays className="size-4" />
@@ -179,6 +196,7 @@ export function DateField({
             value={value}
             onPick={(next) => {
               onChange(next)
+              setTyped(formatDateUs(next))
               setOpen(false)
             }}
           />

@@ -5,12 +5,14 @@ import { fileURLToPath } from "node:url"
 import {
   clock12hSlots,
   formatClock12h,
+  formatDateUs,
   isIsoDateString,
   isIsoTimeString,
   joinDateTimeLocal,
   monthCells,
   parseClock12h,
   parseDateTimeLocal,
+  parseDateUs,
   shiftMonth,
   splitDateTimeLocal,
 } from "./datetime-value.ts"
@@ -54,6 +56,22 @@ test("shiftMonth walks year boundaries", () => {
   assert.deepEqual(shiftMonth(2026, 11, 1), { year: 2027, monthIndex: 0 })
 })
 
+test("date display is American month-day-year, not ISO or day-first", () => {
+  assert.equal(formatDateUs("2026-08-27"), "8/27/2026")
+  assert.equal(formatDateUs("2026-01-05"), "1/5/2026")
+  assert.equal(formatDateUs(""), "")
+  assert.equal(parseDateUs("8/27/2026"), "2026-08-27")
+  assert.equal(parseDateUs("5/6/2026"), "2026-05-06", "ambiguous numeric is month-first")
+  assert.equal(parseDateUs("08/27/26"), "2026-08-27")
+  assert.equal(parseDateUs("8-27-2026"), "2026-08-27")
+  assert.equal(parseDateUs("Aug 27, 2026"), "2026-08-27")
+  assert.equal(parseDateUs("August 27 2026"), "2026-08-27")
+  assert.equal(parseDateUs("2026-08-27"), "2026-08-27")
+  assert.equal(parseDateUs("27/8/2026"), null, "day-first numeric is rejected")
+  assert.equal(parseDateUs("27 Aug 2026"), null, "day-first month name is rejected")
+  assert.equal(parseDateUs("2/30/2026"), null)
+})
+
 test("clock 12-hour format and parse do not show 24-hour blobs", () => {
   assert.equal(formatClock12h("19:52"), "7:52 PM")
   assert.equal(formatClock12h("07:52"), "7:52 AM")
@@ -91,11 +109,16 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   )
 
   const datetimeFn = widget.slice(widget.indexOf("export function DateTimeField"))
+  const dateFn = widget.slice(widget.indexOf("export function DateField"), widget.indexOf("function TimeList"))
   const timeFn = widget.slice(widget.indexOf("export function TimeField"))
   assert.ok(datetimeFn.includes("<DateField"), "combined control is the existing date widget")
   assert.ok(datetimeFn.includes("<TimeField"), "combined control is the existing time widget")
   assert.ok(!datetimeFn.includes("YYYY-MM-DDTHH:MM"), "host never sees a datetime-local placeholder")
   assert.ok(!widget.includes("datetime-local"), "typed+picker widgets, not native datetime-local")
+  assert.ok(!dateFn.includes('placeholder="YYYY-MM-DD"'), "date field is not ISO")
+  assert.ok(dateFn.includes("8/27/2026"), "date field is American month-day-year")
+  assert.ok(dateFn.includes("formatDateUs"), "date field displays M/D/YYYY")
+  assert.ok(dateFn.includes("parseDateUs"), "date field accepts American typed dates")
   assert.ok(!timeFn.includes('type="time"'), "time picker is not a native 12-hour wheel")
   assert.ok(timeFn.includes("7:00 PM"), "time field is 12-hour")
   assert.ok(!timeFn.includes("HH:MM"), "time field does not show a 24-hour placeholder")
@@ -119,6 +142,7 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
 
   assert.ok(wcEditor.includes("TimeField"), "WC hours stay a time widget")
   assert.ok(!wcEditor.includes("DateTimeField"), "WC nights do not use a combined datetime")
+  assert.ok(!wcEditor.includes("DateField"), "WC hours show no date field")
   assert.ok(!wcEditor.includes("YYYY-MM-DDTHH:MM"))
   assert.ok(!wcEditor.includes("datetime-local"))
   assert.ok(!wcEditor.includes('type="time"'), "WC hours do not mount a native time wheel")
