@@ -1,6 +1,7 @@
 "use client"
 
 import { ACCESS_ACCENT } from "@/lib/business/door-access"
+import { promoterExtrasVisible } from "@/lib/business/create-publish"
 import { trimMoney } from "@/lib/business/weekly-cover-nights"
 import type { WcPromoDraft } from "@/lib/business/wc-create-promo"
 import { AccessInfoTip } from "@/components/business/v2/door-access/AccessInfoTip"
@@ -44,6 +45,7 @@ export function WcDoorStep({
   onPromoDrafts: (next: WcPromoDraft[]) => void
   promoDraftsError?: string
 }) {
+  const showPromoterExtras = promoterExtrasVisible(promotionEnabled, promoToggleDisabled)
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -63,9 +65,11 @@ export function WcDoorStep({
       <div>
         <div className="flex items-center gap-1.5">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promoter</h3>
-          <AccessInfoTip label="What is the promoter program?">
-            Promoters share the program link and earn this on every pass they sell.
-          </AccessInfoTip>
+          {showPromoterExtras ? (
+            <AccessInfoTip label="What is the promoter program?">
+              Promoters share the program link and earn this on every pass they sell.
+            </AccessInfoTip>
+          ) : null}
         </div>
 
         <div className="mt-3 max-w-md rounded-xl border border-neutral-200 px-4 py-3 dark:border-neutral-800">
@@ -81,7 +85,7 @@ export function WcDoorStep({
           <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoDisabledReason}</p>
         ) : null}
 
-        {promotionEnabled && !promoToggleDisabled ? (
+        {showPromoterExtras ? (
           <div className="mt-4 space-y-3">
             <div>
               <p className="mb-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">Commission</p>

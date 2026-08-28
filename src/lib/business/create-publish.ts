@@ -32,6 +32,24 @@ export function promoterToggleDisabled(hasPaidTier: boolean): boolean {
 }
 
 /**
+ * Wire/API promoter flag. Only explicit on values count.
+ * MySQL 0, "0", "false", null, and missing are off — `!!value` is not safe
+ * (`!!"false"` is true) and was lighting Get paid / commission extras
+ * on events whose Promoter toggle is off.
+ */
+export function isPromotionEnabled(value: unknown): boolean {
+  return value === true || value === 1 || value === "1"
+}
+
+/**
+ * Get-paid / commission / payout extra chrome. The Promoter toggle stays
+ * visible; this is only the extra block under it.
+ */
+export function promoterExtrasVisible(enabled: unknown, toggleDisabled: boolean): boolean {
+  return isPromotionEnabled(enabled) && !toggleDisabled
+}
+
+/**
  * Leftover services copy from `validateAndNormalizePromotion` when the host
  * has no Connect payout path. Flutter create already accepts escrow promoter.
  * Dash used to hard-gate the toggle on this; D4 removed that. The same text

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import { promoterToggleDisabled } from "@/lib/business/create-publish"
+import { promoterExtrasVisible, promoterToggleDisabled } from "@/lib/business/create-publish"
 import { EVENT_ACCENT } from "@/lib/business/door-access"
 import { greenRecurringCreatePayload, todayIsoDate } from "@/lib/business/recurring-event-create"
 import type { RecurringGenerationSummary, RecurringSeriesDetail } from "@/lib/business/types"
@@ -103,6 +103,7 @@ export function RecurringEventWizard({
 
   const hasPaidTier = seed.type === "Ticketed" && tiers.some((t) => (parseFloat(t.priceInput) || 0) > 0)
   const promoDisabled = promoterToggleDisabled(hasPaidTier)
+  const showPromoterExtras = promoterExtrasVisible(promotionEnabled, promoDisabled)
   const skipDays = (seed.days_of_week ?? []).length > 0
   const STEPS = useMemo(() => wizardSteps(seed.type === "Ticketed", skipDays), [seed.type, skipDays])
   const stepKey = STEPS[step]?.key ?? "days"
@@ -188,7 +189,7 @@ export function RecurringEventWizard({
         flyer_image_url: flyerImageUrl,
         template_tickets: seed.type === "Ticketed" ? tierRowsToTemplate(tiers) : [],
         notify_followers_on_publish: notifyFollowers,
-        promotion_enabled: promo.value != null,
+        promotion_enabled: showPromoterExtras && promo.value != null,
         promotion_commission_type: commissionType,
         promotion_commission_value: promo.value,
       })
@@ -206,7 +207,7 @@ export function RecurringEventWizard({
     }
   }
 
-  const commissionSummary = promotionEnabled && !promoDisabled
+  const commissionSummary = showPromoterExtras
     ? commissionType === "percent"
       ? `${promotionValueInput || "0"}%`
       : `$${promotionValueInput || "0"}`
@@ -356,9 +357,11 @@ export function RecurringEventWizard({
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Promoter program</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-              Promoters share each night&apos;s link and earn this on every sale. Escrow hosts can turn this on.
-            </p>
+            {showPromoterExtras && (
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+                Promoters share each night&apos;s link and earn this on every sale. Escrow hosts can turn this on.
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-3 pt-0">
             <label className={cn("flex items-center gap-2", promoDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer")}>
@@ -374,7 +377,7 @@ export function RecurringEventWizard({
             {promoDisabled && (
               <p className="text-xs text-amber-600">Add a paid ticket to enable the promoter program.</p>
             )}
-            {promotionEnabled && !promoDisabled && (
+            {showPromoterExtras && (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-4">
                   <label className="flex cursor-pointer items-center gap-2">
