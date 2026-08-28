@@ -19,6 +19,8 @@ export type GreenRecurringCreateInput = {
   venue_name: string
   venue_address: string
   days_of_week: number[]
+  date_range_start?: string
+  date_range_end?: string | null
   start_time: string
   end_time: string
   type: "Ticketed" | "Free"
@@ -39,8 +41,8 @@ export function greenRecurringCreatePayload(
     name: input.name.trim(),
     description: input.description.trim() || null,
     days_of_week: [...input.days_of_week].sort((a, b) => a - b),
-    date_range_start: todayIsoDate(now),
-    date_range_end: null,
+    date_range_start: input.date_range_start || todayIsoDate(now),
+    date_range_end: input.date_range_end || null,
     start_time: input.start_time,
     end_time: input.end_time,
     venue_id: input.venue_id,

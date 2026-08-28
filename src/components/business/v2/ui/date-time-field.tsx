@@ -153,11 +153,13 @@ export function DateField({
   value,
   onChange,
   className,
+  placeholder = "8/27/2026",
 }: {
   id?: string
   value: string
   onChange: (next: string) => void
   className?: string
+  placeholder?: string
 }) {
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = useState(() => formatDateUs(value))
@@ -182,7 +184,7 @@ export function DateField({
           id={id}
           type="text"
           inputMode="numeric"
-          placeholder="8/27/2026"
+          placeholder={placeholder}
           value={typed}
           onChange={(e) => commitTyped(e.target.value)}
         />
