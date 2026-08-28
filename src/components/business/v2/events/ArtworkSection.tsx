@@ -3,7 +3,6 @@
 import {
   ARTWORK_ACCENTS,
   ARTWORK_TEMPLATE_OPTIONS,
-  DEFAULT_ARTWORK_TEMPLATE,
   type ArtworkTemplate,
 } from "@/lib/business/constants"
 import { cn } from "@/lib/v2/utils"
@@ -16,20 +15,15 @@ interface ArtworkSectionProps {
   onTemplateChange: (template: ArtworkTemplate | null) => void
   accent: string | null | undefined
   onAccentChange: (accent: string | null) => void
-  /** Create hides the picker and silently uses Classic. Edit can still change it. */
+  /** Create hides the picker. Edit can still change a template. Classic is not required. */
   showTemplatePicker?: boolean
+  /** Venue record photo. Empty-state default when they skip a custom flyer. */
+  venuePhotoUrl?: string
 }
 
 /**
- * 5.0 D10 / D-F4.1 — artwork with a fallback that is never broken.
- *
- * Chain: uploaded flyer → venue logo → Bizzy template. The template is a CHOICE,
- * not an image: the app renders it as a widget at display time, so all that
- * travels with the event is which style (and optionally which accent). Picking
- * one is skippable — the default path stays a single upload.
- *
- * The picker only shows when there is no flyer, because an uploaded flyer wins
- * the chain outright and a template choice underneath it would never render.
+ * Artwork: uploaded flyer, else the venue photo already on the venue record.
+ * Classic is not a required pick and is not the empty-state default.
  */
 export function ArtworkSection({
   flyerUrl,
@@ -39,28 +33,39 @@ export function ArtworkSection({
   accent,
   onAccentChange,
   showTemplatePicker = false,
+  venuePhotoUrl = "",
 }: ArtworkSectionProps) {
   const hasFlyer = !!flyerUrl
-  const active = template ?? DEFAULT_ARTWORK_TEMPLATE
+  const venuePhoto = venuePhotoUrl.trim()
+  const active = template ?? null
 
   return (
     <div className="space-y-5">
-      <ImageUpload value={flyerUrl} onChange={onFlyerChange} />
+      <ImageUpload
+        value={flyerUrl}
+        onChange={onFlyerChange}
+        fallbackSrc={venuePhoto || null}
+        fallbackCaption={venuePhoto ? "Venue photo. This is what people see until you add a flyer." : undefined}
+      />
 
       {hasFlyer ? (
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          Your flyer is what people will see. Remove it to fall back to a Bizzy template.
+          Your flyer is what people will see. Remove it to fall back to your venue photo.
         </p>
       ) : !showTemplatePicker ? (
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          Optional. Skip it and we use Classic.
+          {venuePhoto
+            ? "Optional. Skip it and we use your venue photo."
+            : "Optional. Add a flyer, or skip it."}
         </p>
       ) : (
         <div className="space-y-4 rounded-xl border border-neutral-200 bg-neutral-50/60 p-4 dark:border-neutral-800 dark:bg-neutral-800/40">
           <div>
-            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">No flyer? Pick a template.</p>
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">No flyer? A template is optional.</p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-              Bizzy draws the artwork from your venue and event details. Optional. Skip it and we use Classic.
+              {venuePhoto
+                ? "Skip it and we use your venue photo. Classic is not required."
+                : "Optional. Skip it if you do not want a generated template."}
             </p>
           </div>
 
@@ -71,7 +76,7 @@ export function ArtworkSection({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => onTemplateChange(opt.value)}
+                  onClick={() => onTemplateChange(selected ? null : opt.value)}
                   className={cn(
                     "group flex flex-col gap-2 rounded-lg border p-2 text-left transition-colors",
                     selected

@@ -7,7 +7,6 @@ import { ArrowLeft, Loader2, MapPin } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import {
   ARTWORK_TEMPLATE_OPTIONS,
-  DEFAULT_ARTWORK_TEMPLATE,
   EVENT_TYPES,
   EVENT_TYPE_HINTS,
   EVENT_TYPE_LABELS,
@@ -38,6 +37,7 @@ import { RecurringEventWizard } from "@/components/business/v2/recurring/Recurri
 import { RepeatsOnDays } from "@/components/business/v2/recurring/RepeatsOnDays"
 import { todayIsoDate } from "@/lib/business/recurring-event-create"
 import { splitDateTimeLocal } from "@/lib/business/datetime-value"
+import { artworkTemplateForSave, resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
 import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
 
@@ -381,17 +381,22 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         type: form.type,
         is_21_plus: form.is_21_plus,
         is_recurring: false,
-        flyer_image_url: form.flyer_image_url || undefined,
+        flyer_image_url: resolvedCreateFlyerUrl(form.flyer_image_url, currentVenue?.photo_url) || undefined,
         // V5 REDEMPTION — `redemption_mode` is NOT sent. The server derives it
         // from access_kind (services Event.createFullEvent / updateEvent), and a
         // value posted from here would be accepted and discarded anyway. Omitted
         // rather than sent-and-ignored so the payload states the actual contract.
       }
 
-      // 5.0 D10 — the template is only meaningful when there is no flyer; an
-      // uploaded flyer wins the artwork chain outright.
-      if (!form.flyer_image_url) {
-        payload.artwork_template = form.artwork_template || DEFAULT_ARTWORK_TEMPLATE
+      // Uploaded flyer or the venue photo. Classic is never implied.
+      const artworkTemplate = artworkTemplateForSave({
+        uploadedFlyer: form.flyer_image_url,
+        venuePhoto: currentVenue?.photo_url,
+        explicitTemplate: form.artwork_template,
+        isEditing,
+      })
+      if (artworkTemplate) {
+        payload.artwork_template = artworkTemplate
         payload.artwork_accent = form.artwork_accent || null
       }
 
@@ -775,14 +780,14 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </CardContent>
       </Card>
 
-      {/* Artwork — flyer upload. Create does not ask for a template (Classic is silent). */}
+      {/* Artwork — flyer upload. Create does not ask for a template. Venue photo is the empty-state default. */}
       <Card>
         <CardHeader className="flex-col items-start gap-1">
           <CardTitle>Artwork</CardTitle>
           <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
             {isEditing
-              ? "Your flyer if you have one, a Bizzy template if you don't."
-              : "Optional flyer. Skip it and we use Classic."}
+              ? "Your flyer if you have one. Skip it and we use your venue photo."
+              : "Optional flyer. Skip it and we use your venue photo."}
           </p>
         </CardHeader>
         <CardContent className="pt-0">
@@ -794,6 +799,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             accent={form.artwork_accent}
             onAccentChange={(a) => setForm((prev) => ({ ...prev, artwork_accent: a }))}
             showTemplatePicker={isEditing}
+            venuePhotoUrl={currentVenue?.photo_url || ""}
           />
         </CardContent>
       </Card>
@@ -976,7 +982,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                 door will do, they just don't get to pick it. Reads off the same
                 derived value the server will stamp. */}
             <ReviewRow label="Door" value="Bizzy scanner" />
-            <ReviewRow label="Artwork" value={summariseArtwork(form.flyer_image_url, form.artwork_template)} />
+            <ReviewRow label="Artwork" value={summariseArtwork(form.flyer_image_url, form.artwork_template, currentVenue?.photo_url)} />
             {form.type === "Ticketed" && (
               <ReviewRow
                 label="Promoters"
@@ -1085,6 +1091,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           type: form.type === "Free" ? "Free" : "Ticketed",
           is_21_plus: !!form.is_21_plus,
           flyer_image_url: form.flyer_image_url || "",
+          venue_photo_url: currentVenue?.photo_url || "",
           days_of_week: repeatDays,
           date_range_start: seriesStarts,
           date_range_end: seriesEnds || null,
@@ -1176,9 +1183,16 @@ function summariseTiers(tiers: TicketTier[]): string {
   return min === max ? `${count} · $${max.toFixed(2)}` : `${count} · ${min.toFixed(2)}-${max.toFixed(2)}`
 }
 
-function summariseArtwork(flyerUrl: string, template: ArtworkTemplate | null | undefined): string {
+function summariseArtwork(
+  flyerUrl: string,
+  template: ArtworkTemplate | null | undefined,
+  venuePhoto?: string | null,
+): string {
   if (flyerUrl) return "Your flyer"
-  const chosen = template ?? DEFAULT_ARTWORK_TEMPLATE
-  const label = ARTWORK_TEMPLATE_OPTIONS.find((o) => o.value === chosen)?.label ?? chosen
-  return `${label} template`
+  if (venuePhoto?.trim()) return "Venue photo"
+  if (template && template !== "classic") {
+    const label = ARTWORK_TEMPLATE_OPTIONS.find((o) => o.value === template)?.label ?? template
+    return `${label} template`
+  }
+  return "Venue photo"
 }

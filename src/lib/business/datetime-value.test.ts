@@ -128,6 +128,8 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   assert.ok(!eventForm.includes("datetime-local"))
   assert.ok(eventForm.includes("showTemplatePicker={isEditing}"), "one-off create hides the flyer template picker")
   assert.ok(!eventForm.includes("No flyer? Pick a template."), "event form itself does not mount the create picker copy")
+  assert.ok(!eventForm.includes("we use Classic"), "create copy must not promise Classic")
+  assert.ok(eventForm.includes("venue photo"), "create empty-state is the venue photo")
 
   const artwork = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/events/ArtworkSection.tsx", import.meta.url)),
@@ -135,6 +137,8 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   )
   assert.ok(artwork.includes("showTemplatePicker"), "template cards are gated, not removed from edit")
   assert.ok(artwork.includes('showTemplatePicker = false'), "create default is no template picker")
+  assert.ok(!artwork.includes("we use Classic"), "artwork empty-state is not Classic")
+  assert.ok(artwork.includes("venuePhotoUrl"), "empty-state preview is the venue photo")
 
   assert.ok(scanWindow.includes("DateTimeField"), "ticket scan windows use the same split widgets")
   assert.ok(!scanWindow.includes("YYYY-MM-DDTHH:MM"))

@@ -91,4 +91,7 @@ test("green wizard posts recurring-series, not door-access", () => {
   assert.equal(src.includes("date_edits"), false, "fresh create must not send Custom date_edits")
   assert.ok(src.includes('label: "Hours"') && src.includes('label: "Tickets"'), "wizard still does hours and tickets")
   assert.ok(src.includes("skipDays"), "nights already picked on When are not asked again")
+  assert.ok(!src.includes("ImageUpload"), "second RC photo-add screen is gone")
+  assert.ok(src.includes("WcPromoCodesDraft"), "promo codes stay on the remaining Promoter step")
+  assert.ok(src.includes("resolvedCreateFlyerUrl"), "RC publish defaults to the venue photo")
 })
