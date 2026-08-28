@@ -479,9 +479,21 @@ export function RecurringEventWizard({
       )}
 
       <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="secondary" size="lg" asChild>
-          <Link href="/business/events">Cancel</Link>
-        </Button>
+        {step > 0 ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="lg"
+            disabled={submitting}
+            onClick={() => setStep(step - 1)}
+          >
+            Back
+          </Button>
+        ) : (
+          <Button type="button" variant="secondary" size="lg" asChild>
+            <Link href="/business/events">Cancel</Link>
+          </Button>
+        )}
         {step < STEPS.length - 1 ? (
           <Button type="button" size="lg" onClick={goNext}>Continue</Button>
         ) : (
