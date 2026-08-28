@@ -18,6 +18,9 @@
 //   ready       onboarded, balance held, no withdrawal/transfer yet. Honest
 //               hold-until-sent copy. Never "on the way to your bank".
 //   processing  a pending withdrawal or in-flight Transfer ("Payment processing")
+//   in_transit  escrow cleared, money not in the bank. Home hero hides 24h
+//               after the latest settled withdrawal `created_at`. Settings
+//               compact stays visible. Display-only: no Stripe or money writes.
 //   paid        everything claimed. Quiet confirmation + shared EscrowHistory.
 //               First dash view while paid starts a 24h localStorage clock
 //               (business_id + payout/transfer id). After that window the
@@ -176,6 +179,7 @@ function EscrowPanelInner({
           authBusinessId: business?.business_id ?? null,
           storage: localStoragePaidBannerAdapter(),
           payouts: money,
+          variant,
         }),
       )
     }
