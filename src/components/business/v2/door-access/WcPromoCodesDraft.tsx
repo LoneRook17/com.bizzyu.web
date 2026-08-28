@@ -20,10 +20,16 @@ export function WcPromoCodesDraft({
   drafts,
   onChange,
   error,
+  addButtonVariant = "access-secondary",
+  infoLabel = "What are program promo codes?",
+  infoText = "These apply to every night of this Weekly Cover, not the whole venue.",
 }: {
   drafts: WcPromoDraft[]
   onChange: (next: WcPromoDraft[]) => void
   error?: string
+  addButtonVariant?: "access-secondary" | "secondary"
+  infoLabel?: string
+  infoText?: string
 }) {
   const patch = (index: number, next: Partial<WcPromoDraft>) => {
     const copy = [...drafts]
@@ -35,8 +41,8 @@ export function WcPromoCodesDraft({
     <div>
       <div className="flex items-center gap-1.5">
         <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promo codes</h3>
-        <AccessInfoTip label="What are program promo codes?">
-          These apply to every night of this Weekly Cover, not the whole venue.
+        <AccessInfoTip label={infoLabel}>
+          {infoText}
         </AccessInfoTip>
       </div>
 
@@ -114,7 +120,7 @@ export function WcPromoCodesDraft({
 
       <Button
         type="button"
-        variant="access-secondary"
+        variant={addButtonVariant}
         size="sm"
         className="mt-3"
         onClick={() => onChange([...drafts, emptyWcPromoDraft(`draft-${drafts.length + 1}-${drafts.length}`)])}

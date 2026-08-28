@@ -37,6 +37,17 @@ export function wcPromoCreatePath(programId: number): string {
   return seriesPromoBasePath(programId)
 }
 
+/** After a series exists, POST ready drafts to the existing series promo API. */
+export async function persistSeriesPromoDrafts(
+  post: (path: string, body: unknown) => Promise<unknown>,
+  seriesId: number,
+  drafts: WcPromoDraft[],
+): Promise<void> {
+  for (const draft of readyWcPromoDrafts(drafts)) {
+    await post(wcPromoCreatePath(seriesId), wcPromoCreatePayload(draft))
+  }
+}
+
 export function wcPromoCreatePayload(draft: WcPromoDraft): {
   code: string
   discount_type: "percentage" | "flat"

@@ -31,6 +31,7 @@ import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
 import { ISO_DAYS, upcomingScheduleDates, fmtDateOnlyLong } from "./schedule"
 import { RestampReport } from "./RestampReport"
 import { RecurringTierEditor, EMPTY_RECURRING_TIER, type RecurringTierRow, tierRowsToTemplate, templateToTierRows } from "./RecurringTierEditor"
+import { resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
 
 const NAME_MAX_LENGTH = 100
 
@@ -191,7 +192,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
       venue_address: venueAddress,
       type,
       is_21_plus: is21Plus,
-      flyer_image_url: flyerImageUrl || null,
+      flyer_image_url: resolvedCreateFlyerUrl(flyerImageUrl, currentVenue?.photo_url) || null,
       template_tickets: type === "Ticketed" ? tierRowsToTemplate(tiers) : [],
       notify_followers_on_publish: notifyFollowers,
     }
@@ -525,9 +526,19 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
 
       {/* Flyer */}
       <Card>
-        <CardHeader><CardTitle>Flyer image</CardTitle></CardHeader>
+        <CardHeader className="flex-col items-start gap-1">
+          <CardTitle>Flyer image</CardTitle>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+            Optional. Skip it and we use your venue photo.
+          </p>
+        </CardHeader>
         <CardContent className="pt-0">
-          <ImageUpload value={flyerImageUrl} onChange={setFlyerImageUrl} />
+          <ImageUpload
+            value={flyerImageUrl}
+            onChange={setFlyerImageUrl}
+            fallbackSrc={currentVenue?.photo_url || null}
+            fallbackCaption="Venue photo. Nights use this until you add a flyer."
+          />
         </CardContent>
       </Card>
 
