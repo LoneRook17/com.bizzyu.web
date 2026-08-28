@@ -2,10 +2,37 @@
  * Date / time values for dash create/edit fields.
  *
  * Event forms still submit `YYYY-MM-DDTHH:MM` to the API. The host-facing
- * widgets are a date (`YYYY-MM-DD`) plus a time (`HH:MM`), same as series and
- * WC. Parsing is string math — never `new Date("2026-08-29")`, which is UTC
- * midnight.
+ * date widget is American month-day-year (`8/27/2026`). Time is 12-hour
+ * (`7:00 PM`). Parsing is string math — never `new Date("2026-08-29")`,
+ * which is UTC midnight.
  */
+
+const MONTH_NAME_TO_INDEX: Record<string, number> = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
+}
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 const TIME_RE = /^(\d{2}):(\d{2})/
@@ -59,6 +86,51 @@ export function splitDateTimeLocal(value: string): { date: string; time: string 
     date: DATE_RE.test(datePart) ? datePart : "",
     time: TIME_RE.test(timePart) ? timePart : "",
   }
+}
+
+/** "2026-08-27" → "8/27/2026". Empty/junk → "". Never day-first. */
+export function formatDateUs(value: string): string {
+  if (!isIsoDateString(value)) return ""
+  const [, y, m, d] = DATE_RE.exec(value)!
+  return `${Number(m)}/${Number(d)}/${y}`
+}
+
+function isoFromUsParts(year: number, monthIndex: number, day: number): string | null {
+  const iso = isoDateOfParts(year, monthIndex, day)
+  return isIsoDateString(iso) ? iso : null
+}
+
+/**
+ * Host-facing US date → `YYYY-MM-DD`.
+ * "8/27/2026", "08/27/26", "8-27-2026", "Aug 27, 2026", "August 27 2026".
+ * ISO paste `YYYY-MM-DD` still parses so calendar/API values round-trip.
+ * Day-first ("27/8/2026", "27 Aug 2026") is rejected.
+ */
+export function parseDateUs(value: string): string | null {
+  const raw = String(value ?? "").trim()
+  if (!raw) return null
+  if (isIsoDateString(raw)) return raw
+
+  const numeric = /^(1[0-2]|0?[1-9])[/\-.](3[01]|[12]\d|0?[1-9])[/\-.](\d{2}|\d{4})$/.exec(raw)
+  if (numeric) {
+    const month = Number(numeric[1])
+    const day = Number(numeric[2])
+    let year = Number(numeric[3])
+    if (numeric[3].length === 2) year += 2000
+    return isoFromUsParts(year, month - 1, day)
+  }
+
+  const named =
+    /^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+([0-9]{1,2}),?\s+(\d{4})$/i.exec(
+      raw,
+    )
+  if (named) {
+    const monthIndex = MONTH_NAME_TO_INDEX[named[1].toLowerCase()]
+    if (monthIndex == null) return null
+    return isoFromUsParts(Number(named[3]), monthIndex, Number(named[2]))
+  }
+
+  return null
 }
 
 export function isoDateOfParts(year: number, monthIndex: number, day: number): string {
