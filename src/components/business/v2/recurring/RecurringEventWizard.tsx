@@ -8,6 +8,12 @@ import { apiClient, ApiError } from "@/lib/business/api-client"
 import { promoterExtrasVisible, promoterToggleDisabled } from "@/lib/business/create-publish"
 import { EVENT_ACCENT } from "@/lib/business/door-access"
 import { greenRecurringCreatePayload, todayIsoDate } from "@/lib/business/recurring-event-create"
+import { resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
+import {
+  persistSeriesPromoDrafts,
+  validateWcPromoDraft,
+  type WcPromoDraft,
+} from "@/lib/business/wc-create-promo"
 import type { RecurringGenerationSummary, RecurringSeriesDetail } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
@@ -15,7 +21,7 @@ import { TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Input } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { EventStepNav } from "@/components/business/v2/events/EventStepNav"
-import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
+import { WcPromoCodesDraft } from "@/components/business/v2/door-access/WcPromoCodesDraft"
 import { cn } from "@/lib/v2/utils"
 import {
   EMPTY_RECURRING_TIER,
@@ -65,6 +71,7 @@ export type RecurringEventSeed = {
   type: "Ticketed" | "Free"
   is_21_plus: boolean
   flyer_image_url: string
+  venue_photo_url?: string
   days_of_week?: number[]
   date_range_start?: string
   date_range_end?: string | null
@@ -72,9 +79,10 @@ export type RecurringEventSeed = {
 
 /**
  * Green recurring create after the host turns on Repeats weekly on Event
- * create. Same spine as the access wizard (nights → template → extras → review)
+ * create. Same spine as the access wizard (nights → hours → extras → review)
  * but stays an Event: green chrome, no access-product wording, POST /business/recurring-series
- * with product_kind=event.
+ * with product_kind=event. Photo lives on Event details only. Promo codes stay
+ * on Promoter, not on a second flyer screen.
  */
 export function RecurringEventWizard({
   seed,
@@ -89,7 +97,6 @@ export function RecurringEventWizard({
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(() => [...(seed.days_of_week ?? [])].sort((a, b) => a - b))
   const [startTime, setStartTime] = useState("21:00")
   const [endTime, setEndTime] = useState("02:00")
-  const [flyerImageUrl, setFlyerImageUrl] = useState(seed.flyer_image_url)
   const [tiers, setTiers] = useState<RecurringTierRow[]>([
     { ...EMPTY_RECURRING_TIER, name: "General Admission" },
   ])
@@ -97,6 +104,7 @@ export function RecurringEventWizard({
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">("percent")
   const [promotionValueInput, setPromotionValueInput] = useState("")
   const [notifyFollowers, setNotifyFollowers] = useState(false)
+  const [promoDrafts, setPromoDrafts] = useState<WcPromoDraft[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -150,6 +158,9 @@ export function RecurringEventWizard({
       const { error } = commissionToStored(commissionType, promotionValueInput)
       if (error) errs.promotion_commission_value = error
     }
+    const started = promoDrafts.filter((d) => d.code.trim() !== "" || d.discount_value.trim() !== "")
+    const promoProblem = started.map(validateWcPromoDraft).find((m) => m != null)
+    if (promoProblem) errs.promo_codes = promoProblem
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -186,7 +197,7 @@ export function RecurringEventWizard({
         end_time: endTime,
         type: seed.type,
         is_21_plus: seed.is_21_plus,
-        flyer_image_url: flyerImageUrl,
+        flyer_image_url: resolvedCreateFlyerUrl(seed.flyer_image_url, seed.venue_photo_url),
         template_tickets: seed.type === "Ticketed" ? tierRowsToTemplate(tiers) : [],
         notify_followers_on_publish: notifyFollowers,
         promotion_enabled: showPromoterExtras && promo.value != null,
@@ -198,6 +209,14 @@ export function RecurringEventWizard({
         generation: RecurringGenerationSummary | null
         generation_error: string | null
       }>("/business/recurring-series", payload)
+      const seriesId = Number(data.series.id)
+      if (Number.isFinite(seriesId) && seriesId > 0) {
+        try {
+          await persistSeriesPromoDrafts((path, body) => apiClient.post(path, body), seriesId, promoDrafts)
+        } catch {
+          // Series is live. Codes can still be added after create.
+        }
+      }
       stashCreationReport(data.series.id, data.generation, data.generation_error)
       router.push(`/business/recurring/${data.series.id}`)
     } catch (err) {
@@ -329,12 +348,6 @@ export function RecurringEventWizard({
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader><CardTitle>Flyer</CardTitle></CardHeader>
-            <CardContent className="pt-0">
-              <ImageUpload value={flyerImageUrl} onChange={setFlyerImageUrl} />
-            </CardContent>
-          </Card>
         </>
       )}
 
@@ -407,6 +420,19 @@ export function RecurringEventWizard({
                 </div>
               </div>
             )}
+            <div className="border-t border-neutral-200 pt-5 dark:border-neutral-800">
+              <WcPromoCodesDraft
+                drafts={promoDrafts}
+                onChange={(next) => {
+                  setPromoDrafts(next)
+                  setErrors((p) => ({ ...p, promo_codes: "" }))
+                }}
+                error={errors.promo_codes}
+                addButtonVariant="secondary"
+                infoLabel="What are series promo codes?"
+                infoText="These apply to every night of this event, not the whole venue."
+              />
+            </div>
           </CardContent>
         </Card>
       )}

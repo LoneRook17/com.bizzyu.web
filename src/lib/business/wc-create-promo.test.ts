@@ -2,6 +2,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
   emptyWcPromoDraft,
+  persistSeriesPromoDrafts,
   readyWcPromoDrafts,
   validateWcPromoDraft,
   wcPromoCreatePath,
@@ -36,4 +37,16 @@ test("half-filled promo rows stay off the wire", () => {
   const ready = { ...emptyWcPromoDraft("ok"), code: "SAVE", discount_value: "15" }
   assert.equal(validateWcPromoDraft(ready), null)
   assert.deepEqual(readyWcPromoDrafts([blank, ready]).map((d) => d.localId), ["ok"])
+})
+
+test("persistSeriesPromoDrafts posts only ready drafts to the series promo API", async () => {
+  const posted: Array<{ path: string; body: unknown }> = []
+  const blank = emptyWcPromoDraft("blank")
+  const ready = { ...emptyWcPromoDraft("ok"), code: "SAVE", discount_value: "15" }
+  await persistSeriesPromoDrafts(async (path, body) => {
+    posted.push({ path, body })
+  }, 44, [blank, ready])
+  assert.equal(posted.length, 1)
+  assert.equal(posted[0].path, "/business/door-access/44/promo-codes")
+  assert.deepEqual(posted[0].body, wcPromoCreatePayload(ready))
 })
