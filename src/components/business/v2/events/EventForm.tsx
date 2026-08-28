@@ -23,6 +23,8 @@ import { Label } from "@/components/business/v2/ui/label"
 import { cn } from "@/lib/v2/utils"
 import {
   applySaveAsDraftFlag,
+  isPromotionEnabled,
+  promoterExtrasVisible,
   promoterToggleDisabled,
   shouldOfferStripeConnectForError,
   willDraftOnCreate,
@@ -134,7 +136,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     recurring_event: initialData?.recurring_event || undefined,
     flyer_image_url: initialData?.flyer_image_url || "",
     tickets: initialData?.tickets || [{ ...EMPTY_TICKET }],
-    promotion_enabled: !!initialData?.promotion_enabled,
+    promotion_enabled: isPromotionEnabled(initialData?.promotion_enabled),
     promotion_commission_type: initialData?.promotion_commission_type || "percent",
     promotion_commission_value: initialData?.promotion_commission_value ?? null,
     notify_followers_on_publish: !!initialData?.notify_followers_on_publish,
@@ -506,6 +508,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   const promoDisabledReason = promoToggleDisabled
     ? "Add a paid ticket to enable the promoter program."
     : ""
+  const showPromoterExtras = promoterExtrasVisible(form.promotion_enabled, promoToggleDisabled)
   const commissionType = form.promotion_commission_type || "percent"
   const lowstockType = form.lowstock_threshold_type || "percent"
 
@@ -835,7 +838,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Promoter program</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share your event link and earn this on each sale.</p>
+            {showPromoterExtras && (
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share your event link and earn this on each sale.</p>
+            )}
           </CardHeader>
           <CardContent className="pt-0">
             <label
@@ -856,7 +861,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             </label>
             {promoToggleDisabled && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoDisabledReason}</p>}
 
-            {form.promotion_enabled && !promoToggleDisabled && (
+            {showPromoterExtras && (
               <div className="mt-4 space-y-3">
                 <div>
                   <p className="mb-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">Commission type</p>

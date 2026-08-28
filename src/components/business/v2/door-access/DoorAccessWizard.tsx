@@ -39,6 +39,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import {
   isLeftoverPromoterPayoutPathError,
+  isPromotionEnabled,
   promoterToggleDisabled,
 } from "@/lib/business/create-publish"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
@@ -142,7 +143,7 @@ export function DoorAccessWizard({
   })
   const [dateEdits, setDateEdits] = useState<Record<string, NightDraft>>({})
 
-  const [promotionEnabled, setPromotionEnabled] = useState(!!initialData?.promotion_enabled)
+  const [promotionEnabled, setPromotionEnabled] = useState(isPromotionEnabled(initialData?.promotion_enabled))
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">(
     initialData?.promotion_commission_type ?? "percent"
   )

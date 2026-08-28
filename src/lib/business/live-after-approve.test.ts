@@ -81,6 +81,7 @@ test("DoorAccessWizard promoter gate is paid-tier only — approved escrow is no
     "utf8",
   )
   assert.ok(src.includes("promoterToggleDisabled"), "wizard must use the shared promoter gate")
+  assert.ok(src.includes("isPromotionEnabled"), "wizard must hydrate Promoter from the real flag")
   assert.ok(src.includes("isLeftoverPromoterPayoutPathError"), "validate-step leftover must not hard-block Continue")
   assert.ok(
     !src.includes("promoToggleDisabled = !hasPaidTier || !stripeOnboarded"),
@@ -96,6 +97,7 @@ test("EventForm promoter gate is paid-ticket only — Review does not upsell Con
   )
   assert.ok(src.includes("promoterToggleDisabled"), "event create must use the shared promoter gate")
   assert.ok(src.includes("shouldOfferStripeConnectForError"), "Review must not treat leftover promoter copy as a Connect CTA")
+  assert.ok(src.includes("promoterExtrasVisible"), "commission / get-paid extras must follow the Promoter toggle")
   assert.ok(
     !src.includes("promoToggleDisabled = !hasPaidTicket || !stripeOnboarded"),
     "Stripe must not hard-block promoter on event create",
@@ -110,10 +112,33 @@ test("SeriesForm promoter gate is paid-ticket only", () => {
     "utf8",
   )
   assert.ok(src.includes("promoterToggleDisabled"), "series form must use the shared promoter gate")
+  assert.ok(src.includes("promoterExtrasVisible"), "series extras must follow the Promoter toggle")
   assert.ok(
     !src.includes("promoToggleDisabled = !hasPaidTicket || !stripeOnboarded"),
     "Stripe must not hard-block promoter on series create",
   )
+})
+
+test("green RC and WC create hide promoter extras unless the toggle is on", () => {
+  const wizard = readFileSync(
+    join(process.cwd(), "src/components/business/v2/recurring/RecurringEventWizard.tsx"),
+    "utf8",
+  )
+  const wc = readFileSync(
+    join(process.cwd(), "src/components/business/v2/door-access/WcDoorStep.tsx"),
+    "utf8",
+  )
+  assert.ok(wizard.includes("promoterExtrasVisible"), "green RC extras must follow the Promoter toggle")
+  assert.ok(wc.includes("promoterExtrasVisible"), "WC extras must follow the Promoter toggle")
+})
+
+test("checkout Get paid is gated on the real promoter flag", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/app/checkout/[id]/EventCheckoutClient.tsx"),
+    "utf8",
+  )
+  assert.ok(src.includes("isPromotionEnabled(event.promotion_enabled)"), "Get paid must not use !!promotion_enabled")
+  assert.ok(!src.includes("{!!event.promotion_enabled &&"), "Get paid must not render on a leftover truthy flag")
 })
 
 test("dashboard shell runs live-after-approve once the host is approved", () => {
