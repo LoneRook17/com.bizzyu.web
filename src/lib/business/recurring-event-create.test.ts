@@ -95,3 +95,23 @@ test("green wizard posts recurring-series, not door-access", () => {
   assert.ok(src.includes("WcPromoCodesDraft"), "promo codes stay on the remaining Promoter step")
   assert.ok(src.includes("resolvedCreateFlyerUrl"), "RC publish defaults to the venue photo")
 })
+
+test("green RC Review bottom is Back to the prior step, not Cancel", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/components/business/v2/recurring/RecurringEventWizard.tsx"),
+    "utf8",
+  )
+  const footerStart = src.lastIndexOf("flex items-center justify-between")
+  assert.ok(footerStart >= 0, "wizard still has a bottom action row")
+  const footer = src.slice(footerStart)
+  assert.ok(footer.includes("step > 0"), "Review and other later steps leave the first-step Cancel")
+  assert.ok(footer.includes("setStep(step - 1)"), "bottom Back returns to Promoter, not /business/events")
+  assert.ok(footer.includes("Back"), "bottom left on Review is Back")
+  assert.ok(footer.includes("Publish event"), "Publish event stays")
+  assert.ok(footer.indexOf("Back") < footer.indexOf("Publish event"), "Back stays left; Publish is not relabeled Back")
+  assert.ok(footer.includes("Cancel"), "first wizard step can still abort")
+  assert.ok(
+    footer.indexOf("step > 0") < footer.indexOf("Cancel"),
+    "Cancel is not the Review left action",
+  )
+})
