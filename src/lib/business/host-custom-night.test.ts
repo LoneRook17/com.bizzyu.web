@@ -55,14 +55,51 @@ test("own flyer override is a later one-date edit", () => {
   )
 })
 
-test("SLOT diverge or off-pattern date is Custom", () => {
+test("SLOT diverge or off-pattern date is Custom only when the SLOT is established", () => {
   assert.equal(
     isHostCustomNight({ product_kind: "weekly_cover" }, { differsFromWeekdaySlot: true }),
-    true,
+    false,
+    "empty SLOT hint without slotEstablished is the series-119 false voter",
   )
   assert.equal(
     isHostCustomNight({ product_kind: "weekly_cover" }, { offPatternDate: true }),
+    false,
+    "off-pattern without an established weekday pattern is not Custom",
+  )
+  assert.equal(
+    isHostCustomNight(
+      { product_kind: "weekly_cover" },
+      { differsFromWeekdaySlot: true, slotEstablished: true },
+    ),
     true,
+  )
+  assert.equal(
+    isHostCustomNight(
+      { product_kind: "weekly_cover" },
+      { offPatternDate: true, slotEstablished: true },
+    ),
+    true,
+  )
+})
+
+test("Saturday-only with no stamp is not Custom (series 119)", () => {
+  assert.equal(
+    isHostCustomNight({
+      product_kind: "weekly_cover",
+      series_customized_at: null,
+      is_customized: false,
+    }),
+    false,
+  )
+  assert.equal(
+    isHostCustomNight(
+      {
+        product_kind: "weekly_cover",
+        series_customized_at: null,
+      },
+      { slotEstablished: false, differsFromWeekdaySlot: true, offPatternDate: true },
+    ),
+    false,
   )
 })
 

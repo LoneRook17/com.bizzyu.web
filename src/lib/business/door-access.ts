@@ -34,6 +34,12 @@ import {
   isHostCustomNight,
   type HostCustomNightInput,
 } from "./host-custom-night.ts"
+import {
+  WC_DRAFT_CHIP_LABEL,
+  isWeeklyCoverHoldStatus,
+  queuedWeeklyCoverNightEventIds,
+  weeklyCoverHoldChip,
+} from "./wc-draft-hold.ts"
 
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
@@ -588,7 +594,7 @@ export function isPinnedUpcomingNight(night: HostCustomNightInput): boolean {
 /** WC program nights are in a series; omit recurring_series_id so leftovers stay Custom. */
 export function isHostCustomWeeklyCoverNight(
   night: HostCustomNightInput,
-  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean },
 ): boolean {
   return isHostCustomNight(
     {
@@ -1343,22 +1349,25 @@ export async function stampHostCreatedDates(
 }
 
 /**
- * D3 after business approve: leftover `pending_approval` nights go published.
- * Do not call this on create — Node already holds/promotes. Do not target draft.
+ * D3 after business approve / approved create: leftover draft nights go
+ * published. Also promotes leftover `pending_approval` from services #109.
+ * Pending hosts must not call this.
  */
-export async function promotePendingApprovalNightsForProgram(programId: number): Promise<void> {
+export async function publishDraftNightsForProgram(programId: number): Promise<void> {
   const { nights } = await fetchDoorAccessSeries(programId)
   const api = await client()
-  for (const night of nights) {
-    const eventId = Number(night.event_id)
-    if (!Number.isFinite(eventId) || eventId <= 0) continue
-    if ((night.status ?? "").toLowerCase() !== "pending_approval") continue
+  for (const eventId of queuedWeeklyCoverNightEventIds(nights)) {
     try {
       await api.post(`/business/events/${eventId}/publish`)
     } catch {
       // LiveAfterApprove still promotes after business approve.
     }
   }
+}
+
+/** @deprecated Use publishDraftNightsForProgram. */
+export async function promotePendingApprovalNightsForProgram(programId: number): Promise<void> {
+  return publishDraftNightsForProgram(programId)
 }
 
 /** PUT /business/door-access/:id — save the whole program template. */
@@ -1761,8 +1770,8 @@ export function nightChips(night: DoorAccessNight, seriesActive = true): NightCh
   const chips: NightChip[] = []
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
-  if ((night.status ?? "").toLowerCase() === "pending_approval") {
-    chips.push({ label: "In review", variant: "warning" })
+  if (isWeeklyCoverHoldStatus(night.status)) {
+    chips.push({ label: WC_DRAFT_CHIP_LABEL, variant: "neutral" })
   }
   if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
@@ -1776,17 +1785,18 @@ export function nightChips(night: DoorAccessNight, seriesActive = true): NightCh
 /**
  * The ONE chip on a program-page preview card.
  *
- * Custom (pink) matches Flutter `isHostCustomNight`. Regular unstamped
- * weekday slots say Not generated. A host-created far date must be stamped
- * (`event_id`) and then chip Custom — never "Not generated".
+ * Custom (pink) is a later one-date edit vs that weekday SLOT. Fresh
+ * weekday-template nights never chip Custom, even when Mon/Wed/Fri differ
+ * or a far lookahead is still "Not generated". Unstamped weekday slots
+ * say Not generated. Unapproved-shop nights say Draft, not In review.
  */
 export function nightPreviewChip(
   night: DoorAccessNight,
   seriesActive = true,
-  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean },
   isPending = false,
 ): NightChip | null {
-  if (isHostCustomWeeklyCoverNight(night, slot)) {
+  if (paintsWeeklyCoverCustomChip(night, slot)) {
     return { label: HOST_CUSTOM_CHIP_LABEL, variant: "access" }
   }
   if (!night.is_stamped || night.event_id == null) {
@@ -1797,14 +1807,32 @@ export function nightPreviewChip(
     return { label: "Cancellation pending", variant: "warning" }
   }
   if (!seriesActive) return null
-  const status = (night.status ?? "").toLowerCase()
-  if (status === "pending_approval" || isPending) {
-    return { label: "In review", variant: "warning" }
+  if (isPending || isWeeklyCoverHoldStatus(night.status)) {
+    return weeklyCoverHoldChip()
   }
+  const status = (night.status ?? "").toLowerCase()
   if (status === "published" || status === "approved" || status === "active") {
     return { label: "On sale", variant: "info" }
   }
   return null
+}
+
+/**
+ * Pink Custom on a night card. Unstamped weekday slots and is_customized
+ * alone are not Custom. A later one-date stamp, own flyer override, or
+ * off-pattern game day is. SLOT diverge only chips on a stamped night.
+ */
+export function paintsWeeklyCoverCustomChip(
+  night: DoorAccessNight,
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean },
+): boolean {
+  if (!isHostCustomWeeklyCoverNight(night, slot)) return false
+  const stamped = night.is_stamped && night.event_id != null
+  if (stamped) return true
+  if (slot?.offPatternDate) return true
+  const stamp = typeof night.series_customized_at === "string" && night.series_customized_at.trim() !== ""
+  const flyer = typeof night.flyer_image_url_override === "string" && night.flyer_image_url_override.trim() !== ""
+  return stamp || flyer
 }
 
 /** Lowest priced tier still on sale, or a short empty phrase. Never an em dash. */

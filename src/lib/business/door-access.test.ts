@@ -1079,7 +1079,8 @@ test("nightChips are additive — a night can be several things at once", () => 
     labels(night({ is_closed: true, has_override: true, is_customized: true, is_stamped: false })),
     ["Closed", "Overridden", "Customized", "Not generated yet"]
   )
-  assert.deepEqual(labels(night({ status: "pending_approval" })), ["In review"])
+  assert.deepEqual(labels(night({ status: "pending_approval" })), ["Draft"])
+  assert.deepEqual(labels(night({ status: "draft" })), ["Draft"])
 })
 
 test("nightPreviewChip names Custom like the app after a one-date stamp, never from is_customized alone", () => {
@@ -1105,17 +1106,22 @@ test("nightPreviewChip names Custom like the app after a one-date stamp, never f
   )
   assert.deepEqual(
     nightPreviewChip(night({ is_stamped: false, event_id: null }), true, { differsFromWeekdaySlot: true }),
-    { label: "Custom", variant: "access" },
-    "host-created far date that diverges from the weekday SLOT chips Custom",
+    { label: "Not generated", variant: "neutral" },
+    "unstamped weekday SLOT diverge is Not generated, not Custom",
   )
-  assert.equal(nightPreviewChip(night({ status: "draft" })), null, "draft is not the WC hold")
+  assert.deepEqual(
+    nightPreviewChip(night({ status: "draft" })),
+    { label: "Draft", variant: "neutral" },
+    "unapproved WC hold is draft",
+  )
   assert.deepEqual(
     nightPreviewChip(night({ status: "pending_approval" })),
-    { label: "In review", variant: "warning" },
+    { label: "Draft", variant: "neutral" },
+    "leftover pending_approval paints Draft, not In review",
   )
   assert.deepEqual(
     nightPreviewChip(night(), true, undefined, true),
-    { label: "In review", variant: "warning" },
+    { label: "Draft", variant: "neutral" },
     "pending hosts must not see On sale even if the night stamped published",
   )
   assert.deepEqual(
@@ -1143,6 +1149,36 @@ test("nightPreviewChip names Custom like the app after a one-date stamp, never f
     label: "On sale",
     variant: "info",
   })
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-08-29",
+        event_id: 1340,
+        status: "pending_approval",
+        series_customized_at: null,
+        is_customized: false,
+      }),
+      true,
+      { slotEstablished: true, differsFromWeekdaySlot: false, offPatternDate: false },
+      true,
+    ),
+    { label: "Draft", variant: "neutral" },
+    "series 119 Sat-only pending night is Draft, not Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-08-29",
+        event_id: 1340,
+        series_customized_at: null,
+        is_customized: false,
+      }),
+      true,
+      { differsFromWeekdaySlot: true, offPatternDate: true },
+    ),
+    { label: "On sale", variant: "info" },
+    "empty SLOT hints without slotEstablished must not paint Custom",
+  )
 })
 
 test("nightPreviewPrice leads with From and never uses an em dash", () => {
@@ -1402,9 +1438,10 @@ test("the program page is look-and-open, with Edit program as a dedicated route"
   assert.ok(src.includes("nightHref("), "cards must keep the existing per-night href")
   assert.ok(src.includes("NightPreviewCard"), "nights render as preview cards")
   assert.ok(src.includes("nightsForHostWeeklyCoverGrid"), "grid matches Flutter Host today+14")
-  assert.ok(src.includes("In review"), "pending program must chip In review, not Live")
+  assert.ok(src.includes("WC_DRAFT_CHIP_LABEL") || src.includes("Draft"), "pending program must chip Draft, not Live")
+  assert.ok(!src.includes("In review"), "pending program must not chip In review")
   assert.ok(src.includes("!isPending"), "pending program must not hand out the public venue link")
-  assert.ok(src.includes("not live and not selling"), "pending program copy must not look public")
+  assert.ok(src.includes("WC_DRAFT_WAITING_COPY") || src.includes("waiting on business approval"), "pending program copy must not look public")
   assert.ok(src.includes("SERIES_NIGHTS_WINDOW_DAYS"), "window is the shared 14-day helper")
   assert.ok(!src.includes("More nights"), "do not hide weeks 3–N behind More nights")
   assert.ok(!src.includes("LookaheadPicker"), "do not dump 4/12/24 weeks of Not generated lookaheads")
@@ -1539,7 +1576,7 @@ test("create writes stay program_kind=door_access and Save night PUTs publish/re
   assert.equal(payload.is_closed, false)
   assert.ok(payload.tiers?.length)
   const heldSave = buildNightSavePayload(draftFromNight(night(), program()), { publish: false })
-  assert.equal("publish" in heldSave, false, "pending save must omit publish so Node can hold pending_approval")
+  assert.equal("publish" in heldSave, false, "pending save must omit publish so the night stays draft")
 
   const wizard = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
@@ -1755,8 +1792,9 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
     "utf8",
   )
   assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
-  assert.ok(accessRow.includes("isPending"), "pending hosts see In review, not a live program row")
-  assert.ok(accessRow.includes("In review"), "unapproved WC must not look Live")
+  assert.ok(accessRow.includes("isPending"), "pending hosts see Draft, not a live program row")
+  assert.ok(accessRow.includes("WC_DRAFT_CHIP_LABEL") || accessRow.includes("Draft"), "unapproved WC must not look Live")
+  assert.ok(!accessRow.includes("In review"), "unapproved WC must not chip In review")
   assert.ok(eventsPage.includes("programs={venuePrograms}"), "EventCard/SeriesGroupRow rematch against the venue-scoped programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
   assert.ok(eventCard.includes("eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)"), "EventCard hrefs WC nights via eventListHref")
@@ -2022,6 +2060,7 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
     "utf8",
   )
+  assert.ok(wizard.includes("weeklyCoverCreateSalesMaps"), "create writes weekday_edits via the sales-map helper")
   assert.ok(wizard.includes("weekday_edits"), "create still writes weekday_edits")
   assert.ok(wizard.includes("date_edits"), "create still writes date_edits")
   assert.ok(wizard.includes("template_tickets"), "create still writes template_tickets")
@@ -2038,9 +2077,11 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(!wizard.includes("withDoorAccessProgramKind({})"), "create must not empty-PATCH the new program")
   assert.ok(wizard.includes('kind: "created"'), "successful create still shows Program created + Open the program")
   assert.ok(wizard.includes("stampHostCreatedDates"), "create date_edits must stamp those nights")
-  assert.ok(!wizard.includes("applySaveAsDraftFlag"), "WC must not send save_as_draft — draft is sellable")
-  assert.ok(!wizard.includes("willDraftOnCreate"), "WC hold is pending_approval, not draft")
-  assert.ok(wizard.includes("pendingApproval"), "success copy must distinguish pending vs live")
+  assert.ok(wizard.includes("applySaveAsDraftFlag"), "unapproved WC create sends save_as_draft")
+  assert.ok(wizard.includes("willDraftOnCreate"), "WC hold is draft until the business is approved")
+  assert.ok(wizard.includes("asDraft"), "success copy must distinguish draft vs live")
+  assert.ok(wizard.includes("WC_DRAFT_CREATED_COPY") || wizard.includes("Saved as a draft"), "success must say draft")
+  assert.ok(!wizard.includes("pendingApproval"), "do not use pending-approval success copy")
   assert.ok(wizard.includes("shouldTreatDraftAsLive"), "pending WC must not stamp publish:true")
   assert.ok(wizard.includes("saved && generationNotice.message"), "amber leftover is save-only, never after a successful create")
 

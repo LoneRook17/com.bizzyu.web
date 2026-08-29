@@ -10,14 +10,14 @@ import {
 } from "@/lib/business/live-after-approve"
 import {
   fetchDoorAccessProgramsSafe,
-  promotePendingApprovalNightsForProgram,
+  publishDraftNightsForProgram,
 } from "@/lib/business/door-access"
 import type { EventListItem } from "@/lib/business/types"
 
 /**
  * After admin approve the BUSINESS, queued posts go live (D3). One-off
- * leftovers may still be draft. Weekly Cover leftovers are pending_approval
- * (services #109) — draft WC is sellable, so it is not the hold.
+ * leftovers and Weekly Cover leftovers are drafts. Leftover
+ * `pending_approval` nights still promote so an older stamp does not stick.
  */
 export default function LiveAfterApprove() {
   const { isPending, business, refreshProfile } = useAuth()
@@ -67,9 +67,9 @@ export default function LiveAfterApprove() {
         for (const program of programs) {
           if (cancelled) return
           try {
-            await promotePendingApprovalNightsForProgram(program.id)
+            await publishDraftNightsForProgram(program.id)
           } catch {
-            // Night status is pending_approval until the next approve pass.
+            // Night status is draft until the next approve pass.
           }
         }
       } catch {
