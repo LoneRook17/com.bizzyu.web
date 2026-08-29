@@ -1,33 +1,35 @@
 "use client"
 
-import { use, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Fragment, use, useEffect, useState } from "react"
 import { apiClient } from "@/lib/business/api-client"
-import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
+import { isWeeklyCoverProduct } from "@/lib/business/door-access"
 import type { EventDetail } from "@/lib/business/types"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
 import { ManageSalesTickets } from "@/components/business/v2/events/ManageSalesTickets"
+import { WeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 
 export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const router = useRouter()
   const [ready, setReady] = useState(false)
+  const [pink, setPink] = useState(false)
 
-  // WC FLAW 3 — ManageSalesTickets writes PUT /business/events/:id and the
-  // event ticket PUTs. Every WC night with a resolvable program edits tiers
-  // on the night-override editor instead — including one already stamped
-  // customized (Custom WC, never a green Event). The writer only mounts for
-  // named events and for rows with no program to protect.
+  // Luke (2026-08-29): a WC night's Manage Tickets is this same page in
+  // pink, tickets only, never the night editor (that page mixes in door
+  // hours). The old WC redirect guarded against the event ticket writes
+  // skipping Custom; the services ticket-manage routes now stamp the WC
+  // night Custom and persist per-date tier overrides themselves
+  // (stampOccurrenceCustomFromTicketManage), so a tier edit here chips
+  // that night only and series saves leave it alone. The read decides the
+  // accent, nothing else.
   useEffect(() => {
     let cancelled = false
     apiClient
       .get<EventDetail>(`/business/events/${id}`)
       .then((event) => {
         if (cancelled) return
-        const wcNightEdit = weeklyCoverNightEditHref(event)
-        if (wcNightEdit != null) router.replace(wcNightEdit)
-        else setReady(true)
+        setPink(isWeeklyCoverProduct(event))
+        setReady(true)
       })
       // On a failed read, mount the editor: it fetches the same event itself
       // and owns the error state, so the host sees the real failure, not a
@@ -38,7 +40,7 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
     return () => {
       cancelled = true
     }
-  }, [id, router])
+  }, [id])
 
   if (!ready) {
     return (
@@ -49,16 +51,19 @@ export default function V2ManageTicketsPage({ params }: { params: Promise<{ id: 
     )
   }
 
+  const AccentScope = pink ? WeeklyCoverAccent : Fragment
   return (
-    <ManageSalesTickets
-      eventId={id}
-      header={({ editing, addButton }) => (
-        <ManageSubheader
-          eventId={id}
-          title="Manage Tickets"
-          actions={!editing ? addButton : undefined}
-        />
-      )}
-    />
+    <AccentScope>
+      <ManageSalesTickets
+        eventId={id}
+        header={({ editing, addButton }) => (
+          <ManageSubheader
+            eventId={id}
+            title="Manage Tickets"
+            actions={!editing ? addButton : undefined}
+          />
+        )}
+      />
+    </AccentScope>
   )
 }
