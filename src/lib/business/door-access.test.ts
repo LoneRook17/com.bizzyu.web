@@ -114,6 +114,9 @@ import {
   EDIT_PROGRAM_LABEL,
   DEFAULT_NIGHT_PREVIEW_COUNT,
   isPinnedUpcomingNight,
+  weeklyCoverNightCancelEventId,
+  weeklyCoverNightCancelPath,
+  weeklyCoverProgramCancelPath,
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
@@ -1374,12 +1377,42 @@ test("the program page is look-and-open, with Edit program as a dedicated route"
   assert.ok(!src.includes("toggleDay"), "night cards must not edit nights of week")
   assert.ok(src.includes("nightHref("), "cards must keep the existing per-night href")
   assert.ok(src.includes("NightPreviewCard"), "nights render as preview cards")
-  assert.ok(src.includes("More nights"), "far-future nights stay behind More nights")
+  assert.ok(src.includes("nightsForHostWeeklyCoverGrid"), "grid matches Flutter Host today+14")
+  assert.ok(src.includes("SERIES_NIGHTS_WINDOW_DAYS"), "window is the shared 14-day helper")
+  assert.ok(!src.includes("More nights"), "do not hide weeks 3–N behind More nights")
+  assert.ok(!src.includes("LookaheadPicker"), "do not dump 4/12/24 weeks of Not generated lookaheads")
   assert.ok(src.includes("resolveNightCardImageUrl"), "each night card resolves its own flyer")
   assert.ok(src.includes("weekdayFlyerByDayFromNights"), "nights without Custom art keep the weekday flyer")
   assert.ok(src.includes("ONE_OFF_SERIES_LOOKAHEAD_DAYS"), "series fetch must reach far one-off nights")
-  assert.ok(src.includes("customOccurrenceDates"), "custom nights stay in the 4-card preview")
   assert.ok(src.includes("nightPreviewChip"), "cards use the shared Custom / On sale chip")
+  assert.ok(src.includes(">Cancel<") || src.includes("Cancel"), "Cancel is on each night card")
+  assert.ok(src.includes("CancelEventModal"), "night Cancel uses the existing event cancel path")
+  assert.ok(src.includes("weeklyCoverNightCancelEventId"), "Cancel is wired to the stamped event id")
+  assert.ok(src.includes("CancelWeeklyCoverProgramDialog") || src.includes("Cancel program"), "program cancel matches Flutter Host series cancel")
+})
+
+test("WC night cancel uses the existing event request-cancellation path", () => {
+  assert.equal(weeklyCoverNightCancelEventId(night()), 4410)
+  assert.equal(weeklyCoverNightCancelEventId(night({ event_id: null })), null)
+  assert.equal(weeklyCoverNightCancelEventId(night({ status: "cancelled" })), null)
+  assert.equal(weeklyCoverNightCancelPath(4410), "/business/events/4410/request-cancellation")
+  assert.equal(weeklyCoverProgramCancelPath(23), "/business/recurring-series/23/suspend")
+  const modal = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/events/CancelEventModal.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(modal.includes("/request-cancellation"), "do not invent a second money path")
+  const dialog = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/CancelWeeklyCoverProgramDialog.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(dialog.includes("cancelWeeklyCoverProgram"), "program cancel calls the existing suspend path")
+  const nightPage = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(nightPage.includes("CancelEventModal"), "instance page Cancel is the same one-off request")
+  assert.ok(nightPage.includes("weeklyCoverNightCancelEventId"), "instance Cancel is wired")
 })
 
 test("Weekly Access has a dedicated program editor, same fields as create", () => {

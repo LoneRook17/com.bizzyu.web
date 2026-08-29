@@ -1,11 +1,16 @@
 /**
- * Host Upcoming / Events-list window for green recurring nights.
+ * Host Upcoming / Events-list window for green recurring nights, and the
+ * Weekly Cover program Nights grid (Flutter Host today+14, US/Eastern).
  *
- * Standalone one-offs always show. A generated series night only shows for
- * today plus two weeks, unless it is Custom (a later one-date edit). Weekly
- * Cover nights are not this helper's job.
+ * Green: standalone one-offs always show. A generated series night only
+ * shows for today plus two weeks, unless it is Custom (a later one-date
+ * edit). Green series manage (`/business/recurring/:id`) still lists the
+ * full series.
  *
- * Series manage (`/business/recurring/:id`) still lists the full series.
+ * Weekly Cover program grid: default = today through today+14. A
+ * host-stamped Custom date (event_id + isHostCustomNight) may still appear
+ * past +14. Generator lookaheads with no event_id / Not generated past +14
+ * must not. Do not invent a 30/60-day dump.
  */
 
 import { isHostCustomNight } from "./host-custom-night.ts"
@@ -83,4 +88,85 @@ export function eventsForHostUpcomingList<T extends {
   start_date_time?: string | null
 }>(events: T[], today: string, windowDays: number = SERIES_NIGHTS_WINDOW_DAYS): T[] {
   return events.filter((event) => hostUpcomingShowsGreenNight(event, today, windowDays))
+}
+
+export type WeeklyCoverHostNight = {
+  occurrence_date?: string | null
+  start_date_time?: string | null
+  is_stamped?: boolean
+  event_id?: number | string | null
+  series_customized_at?: string | null
+  flyer_image_url_override?: string | null
+  override_scope?: string | null
+  product_kind?: string | null
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+}
+
+export type HostCustomSlotHint = {
+  differsFromWeekdaySlot?: boolean
+  offPatternDate?: boolean
+}
+
+/** Stamped night with a real events row — not a generator lookahead. */
+export function weeklyCoverNightIsHostStamped(night: {
+  is_stamped?: boolean
+  event_id?: number | string | null
+}): boolean {
+  const eventId = night.event_id == null || night.event_id === "" ? null : Number(night.event_id)
+  return eventId != null && Number.isFinite(eventId) && eventId > 0
+}
+
+/**
+ * Far-window exception: host already created/edited this date (Custom) AND
+ * core stamped an event_id. is_customized / has_override alone must not
+ * pin a Not generated lookahead.
+ */
+export function isHostStampedCustomWeeklyCoverNight(
+  night: WeeklyCoverHostNight,
+  slot?: HostCustomSlotHint,
+): boolean {
+  if (!weeklyCoverNightIsHostStamped(night)) return false
+  return isHostCustomNight(
+    {
+      product_kind: night.product_kind ?? "weekly_cover",
+      access_kind: night.access_kind,
+      recurring_series_id: night.recurring_series_id,
+      series_customized_at: night.series_customized_at,
+      flyer_image_url_override: night.flyer_image_url_override,
+      override_scope: night.override_scope,
+      occurrence_date: night.occurrence_date ?? eventOccurrenceDate(night),
+    },
+    slot,
+  )
+}
+
+/**
+ * Flutter Host list for a Weekly Cover program: today through today+14.
+ * A host-stamped Custom date beyond +14 may still appear. Unstamped /
+ * Not generated generator lookaheads beyond +14 must not.
+ */
+export function hostShowsWeeklyCoverNight(
+  night: WeeklyCoverHostNight,
+  today: string,
+  windowDays: number = SERIES_NIGHTS_WINDOW_DAYS,
+  slot?: HostCustomSlotHint,
+): boolean {
+  const date = eventOccurrenceDate(night)
+  if (!date) return false
+  if (date < today) return false
+  const horizon = addIsoDays(today, windowDays)
+  if (date <= horizon) return true
+  return isHostStampedCustomWeeklyCoverNight(night, slot)
+}
+
+export function nightsForHostWeeklyCoverGrid<T extends WeeklyCoverHostNight>(
+  nights: T[],
+  today: string,
+  windowDays: number = SERIES_NIGHTS_WINDOW_DAYS,
+  slotFor?: (night: T) => HostCustomSlotHint | undefined,
+): T[] {
+  return nights.filter((night) =>
+    hostShowsWeeklyCoverNight(night, today, windowDays, slotFor?.(night)),
+  )
 }
