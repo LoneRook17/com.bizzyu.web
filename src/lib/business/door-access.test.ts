@@ -1531,7 +1531,9 @@ test("WC night cancel uses the existing event request-cancellation path", () => 
   assert.equal(weeklyCoverNightCancelEventId(night({ event_id: null })), null)
   assert.equal(weeklyCoverNightCancelEventId(night({ status: "cancelled" })), null)
   assert.equal(weeklyCoverNightCancelPath(4410), "/business/events/4410/request-cancellation")
-  assert.equal(weeklyCoverProgramCancelPath(23), "/business/recurring-series/23/suspend")
+  // Door-access suspend, same as the app. The recurring-series suspend
+  // 404s WC program kinds ("Series not found") on purpose — V5 F14.
+  assert.equal(weeklyCoverProgramCancelPath(23), "/business/door-access/23/suspend")
   const modal = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/events/CancelEventModal.tsx", import.meta.url)),
     "utf8",
