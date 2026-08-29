@@ -1073,16 +1073,32 @@ test("programScheduleLine leads with the window and singularizes one night", () 
   )
 })
 
-test("nightChips are additive — a night can be several things at once", () => {
+test("nightChips are additive — and speak ONE Custom vocabulary (the voter)", () => {
   assert.deepEqual(nightChips(night()), [])
 
   const labels = (n: DoorAccessNight) => nightChips(n).map((c) => c.label)
   assert.deepEqual(labels(night({ is_closed: true })), ["Closed"])
-  assert.deepEqual(labels(night({ has_override: true })), ["Overridden"])
+  // Custom-chip audit (2026-08-29): "Overridden"/"Customized" are gone — an
+  // override row or is_customized flag ALONE never chips; the pink Custom
+  // chip follows the same voter every other host surface uses (the stamp).
+  assert.deepEqual(labels(night({ has_override: true })), [])
+  assert.deepEqual(labels(night({ is_customized: true })), [])
+  assert.deepEqual(
+    labels(night({ series_customized_at: "2026-08-20T01:00:00Z" })),
+    ["Custom"]
+  )
   assert.deepEqual(labels(night({ is_stamped: false })), ["Not generated yet"])
   assert.deepEqual(
-    labels(night({ is_closed: true, has_override: true, is_customized: true, is_stamped: false })),
-    ["Closed", "Overridden", "Customized", "Not generated yet"]
+    labels(
+      night({
+        is_closed: true,
+        has_override: true,
+        is_customized: true,
+        series_customized_at: "2026-08-20T01:00:00Z",
+        is_stamped: false,
+      })
+    ),
+    ["Closed", "Custom", "Not generated yet"]
   )
   assert.deepEqual(labels(night({ status: "pending_approval" })), ["Draft"])
   assert.deepEqual(labels(night({ status: "draft" })), ["Draft"])
