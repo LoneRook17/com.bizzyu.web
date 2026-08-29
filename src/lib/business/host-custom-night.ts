@@ -95,10 +95,22 @@ export function isDetachedSeriesLeftover(input: HostCustomNightInput): boolean {
  * Does not chip from `is_customized` / `has_override` on Weekly Cover.
  * Pass `differsFromWeekdaySlot` / `offPatternDate` from the SLOT helper
  * in weekly-cover-nights.ts (flyer, tickets, prices, doors, title).
+ * Those hints are ignored for Weekly Cover unless `slotEstablished`.
  */
+export type HostCustomSlotHint = {
+  differsFromWeekdaySlot?: boolean
+  offPatternDate?: boolean
+  /**
+   * False when days_of_week is empty / missing (no weekday SLOT).
+   * Series 119: 0 weekday_templates + Sat-only nights must not chip.
+   * Slot hints only count when this is true.
+   */
+  slotEstablished?: boolean
+}
+
 export function isHostCustomNight(
   input: HostCustomNightInput,
-  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+  slot?: HostCustomSlotHint,
 ): boolean {
   if (isNeverChipOverrideScope(input.override_scope)) return false
   if (isDetachedSeriesLeftover(input)) return false
@@ -112,6 +124,12 @@ export function isHostCustomNight(
     return true
   }
 
+  // Empty SLOT / Sat-only template / fresh weekday diffs: do not chip.
+  // Custom is a later one-date edit, or a game day off the weekday pattern.
+  if (slot?.slotEstablished === false) return false
+  if (weeklyCover && slot?.slotEstablished !== true) {
+    if (slot?.offPatternDate || slot?.differsFromWeekdaySlot) return false
+  }
   if (slot?.offPatternDate) return true
   if (slot?.differsFromWeekdaySlot) return true
 
@@ -121,7 +139,7 @@ export function isHostCustomNight(
 /** Chip paint: pink Weekly Cover vs green named-event Custom. */
 export function hostCustomChipTone(
   input: HostCustomNightInput,
-  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+  slot?: HostCustomSlotHint,
 ): "wc" | "event" | null {
   if (!isHostCustomNight(input, slot)) return null
   return isWeeklyCoverKind(input) ? "wc" : "event"

@@ -47,6 +47,7 @@ import { isSeriesActive, weeklyCoverNightNeedsPendingCancel, weeklyCoverNightVis
 import { CancelWeeklyCoverProgramDialog } from "@/components/business/v2/door-access/CancelWeeklyCoverProgramDialog"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { venuePageUrl } from "@/lib/business/public-links"
+import { WC_DRAFT_CHIP_LABEL, WC_DRAFT_WAITING_COPY } from "@/lib/business/wc-draft-hold"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import ShareLinkRow from "@/components/business/v2/ShareLinkRow"
@@ -193,7 +194,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
             >
               {WEEKLY_ACCESS_TYPE_LABEL}
             </span>
-            {isPending && <Badge variant="warning">In review</Badge>}
+            {isPending && <Badge variant="neutral">{WC_DRAFT_CHIP_LABEL}</Badge>}
             {!program.is_active && <Badge variant="neutral">Ended</Badge>}
           </span>
         }
@@ -232,8 +233,8 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
       />
 
       {isPending && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-          This program is pending until Bizzy approves your business. It is not live and not selling.
+        <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
+          {WC_DRAFT_WAITING_COPY}
         </div>
       )}
 

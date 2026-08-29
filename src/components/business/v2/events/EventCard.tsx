@@ -19,6 +19,8 @@ import {
   type HostCardChip,
 } from "@/components/business/v2/host/HostListCard"
 import { eventStatusBadge, fmtDate, fmtTime } from "./eventStatus"
+import { isWeeklyCoverProduct } from "@/lib/business/door-access"
+import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 
 /**
  * A green EVENT row on the combined list (F9).
@@ -46,7 +48,10 @@ export function EventCard({
 }) {
   const { user } = useAuth()
   const canScan = user?.business_role !== "promoter"
-  const badge = eventStatusBadge(event.status)
+  const badge =
+    isWeeklyCoverProduct(event) && isWeeklyCoverHoldStatus(event.status)
+      ? { variant: "neutral" as const, label: WC_DRAFT_CHIP_LABEL }
+      : eventStatusBadge(event.status)
   const programId = listedWeeklyCoverProgramId(event, wcSeriesIds)
   const seriesActive = programId == null || !inactiveWcSeriesIds.includes(programId)
 

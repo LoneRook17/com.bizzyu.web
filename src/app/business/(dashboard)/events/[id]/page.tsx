@@ -21,7 +21,8 @@ import {
 import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2/events/eventStatus"
 import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
-import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
+import { isWeeklyCoverProduct, weeklyCoverNightEditHref } from "@/lib/business/door-access"
+import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
 
@@ -145,7 +146,10 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  const badge = eventStatusBadge(event.status)
+  const badge =
+    isWeeklyCoverProduct(event) && isWeeklyCoverHoldStatus(event.status)
+      ? { variant: "neutral" as const, label: WC_DRAFT_CHIP_LABEL }
+      : eventStatusBadge(event.status)
   const editingTicket = event.tickets.find((t) => t.ticket_id === editingTicketId)
 
   // WC FLAW 3 — a Weekly Cover night must not take price edits on the event
@@ -209,7 +213,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {event.status === "draft" && canEdit && (
+      {event.status === "draft" && canEdit && wcNightEdit == null && !isWeeklyCoverProduct(event) && (
         <Card className={isPending
           ? "border-amber-200 dark:border-amber-900 bg-amber-50/60 dark:bg-amber-950/30"
           : undefined}

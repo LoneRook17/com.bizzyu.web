@@ -11,6 +11,7 @@ import {
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_CREATION_LABEL,
   programHref,
+  publishDraftNightsForProgram,
   stampHostCreatedDates,
   updateDoorAccessProgram,
   withDoorAccessProgramKind,
@@ -20,6 +21,7 @@ import {
 import {
   cheapestPaidPrice,
   dateEditsToWire,
+  weeklyCoverCreateSalesMaps,
   weeklyCoverProgramDescription,
   weeklyCoverProgramName,
   firstConfiguredNight,
@@ -33,18 +35,20 @@ import {
   trimMoney,
   validateAllNights,
   weekdayEditsFromNights,
-  weekdayEditsToWire,
   type NightDraft,
   type WcProducts,
 } from "@/lib/business/weekly-cover-nights"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import {
+  applySaveAsDraftFlag,
   isLeftoverPromoterPayoutPathError,
   isPromotionEnabled,
   promoterToggleDisabled,
+  willDraftOnCreate,
 } from "@/lib/business/create-publish"
 import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
+import { WC_DRAFT_CREATED_COPY, WC_DRAFT_REVIEW_BANNER } from "@/lib/business/wc-draft-hold"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
 import {
   readyWcPromoDrafts,
@@ -118,12 +122,13 @@ export function DoorAccessWizard({
   initialData?: DoorAccessProgram
   initialNights?: DoorAccessNight[]
   stripeOnboarded?: boolean
-  /** Same pending-approval hold as unapproved one-off events. Not draft. */
+  /** Same draft-until-business-approve hold as EventForm. */
   isPending?: boolean
 }) {
   const router = useRouter()
   const { isPending: authPending } = useAuth()
   const isPending = isPendingProp ?? authPending
+  const willDraft = willDraftOnCreate(isPending)
   const isEdit = mode === "edit"
   const { venues, selectedVenue } = useVenue()
   const backHref = isEdit && programId ? programHref(programId) : "/business/create"
@@ -170,7 +175,7 @@ export function DoorAccessWizard({
     id: number
     message: string
     kind: "created" | "updated"
-    pendingApproval?: boolean
+    asDraft?: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -288,8 +293,12 @@ export function DoorAccessWizard({
     // date_edits are Custom one-offs from THIS session (create game days).
     // Edit never hydrates Custom nights into dateEdits, so a program save
     // cannot send night-local Custom fields to restamp onto those nights.
-    const weekday = weekdayEditsToWire(weekdayEdits, daysOfWeek)
-    const dates = dateEditsToWire(dateEdits, daysOfWeek)
+    const maps = weeklyCoverCreateSalesMaps({
+      daysOfWeek,
+      weekdayEdits,
+      dateEdits,
+      fallbackNight: firstNight,
+    })
     const flyer = (firstNight?.flyerImageUrl || "").trim()
 
     const payload: Record<string, unknown> = {
@@ -299,10 +308,12 @@ export function DoorAccessWizard({
       flyer_image_url: flyer || null,
     }
 
-    if (Object.keys(weekday).length > 0) payload.weekday_edits = weekday
-    // Create may send date_edits. Edit only sends them when the host set a
-    // game day in this session — never the already-Custom nights on the series.
-    if (Object.keys(dates).length > 0) payload.date_edits = dates
+    // Always send weekday_edits for the picked days. Omitting them left
+    // series 119 with an empty SLOT (0 weekday_templates) and a false Custom voter.
+    if (daysOfWeek.length > 0) payload.weekday_edits = maps.weekday_edits
+    // Create may send date_edits. Saturday-only weekday create is not Custom.
+    // Edit only sends them when the host set a game day in this session.
+    if (maps.dateEditsAreCustom) payload.date_edits = maps.date_edits
 
     if (promotionEnabled && !promoToggleDisabled) {
       const { value } = commissionInputToStored(commissionType, promotionValueInput)
@@ -418,10 +429,13 @@ export function DoorAccessWizard({
     setSubmitting(true)
     setServerError("")
     try {
-      const body = withDoorAccessProgramKind({
-        ...detailsPayload(),
-        ...salesPayload(),
-      })
+      const body = applySaveAsDraftFlag(
+        withDoorAccessProgramKind({
+          ...detailsPayload(),
+          ...salesPayload(),
+        }),
+        willDraft,
+      )
 
       if (isEdit && programId != null) {
         const data = await updateDoorAccessProgram(programId, body)
@@ -457,7 +471,14 @@ export function DoorAccessWizard({
             publish: shouldTreatDraftAsLive(isPending),
           })
         }
-        setGenerationNotice({ id, message: "", kind: "created", pendingApproval: isPending })
+        if (shouldTreatDraftAsLive(isPending)) {
+          try {
+            await publishDraftNightsForProgram(id)
+          } catch {
+            // LiveAfterApprove still promotes queued drafts after approve.
+          }
+        }
+        setGenerationNotice({ id, message: "", kind: "created", asDraft: willDraft })
         return
       }
       router.push(programHref(id))
@@ -495,8 +516,8 @@ export function DoorAccessWizard({
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
             {saved
               ? "The template is saved. Upcoming nights that still follow it will pick up the new defaults."
-              : generationNotice.pendingApproval
-                ? "Saved. It stays pending until Bizzy approves your business — not live and not selling. You can keep editing in the meantime."
+              : generationNotice.asDraft
+                ? WC_DRAFT_CREATED_COPY
                 : `${programName} is live and selling.`}
           </p>
         </div>
@@ -659,14 +680,12 @@ export function DoorAccessWizard({
             {!isEdit && (
               <div
                 className={
-                  isPending
-                    ? "mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                  willDraft
+                    ? "mt-4 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300"
                     : "mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300"
                 }
               >
-                {isPending
-                  ? "Your business is still in review, so this stays pending — not live and not selling — until you're approved."
-                  : "This publishes the moment you create it."}
+                {willDraft ? WC_DRAFT_REVIEW_BANNER : "This publishes the moment you create it."}
               </div>
             )}
           </CardContent>

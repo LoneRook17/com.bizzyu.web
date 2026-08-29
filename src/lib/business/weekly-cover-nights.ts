@@ -54,6 +54,7 @@
 
 import type { DoorAccessNight, DoorAccessProgram, DoorAccessTemplateTier } from "./door-access"
 import { isHostCustomNight } from "./host-custom-night.ts"
+import { weeklyCoverNightIsHostStamped } from "./series-nights-window.ts"
 import type { RecurringTemplateTicket } from "./types"
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -643,15 +644,44 @@ export function weekdayTemplateToWire(draft: NightDraft): Record<string, unknown
 /** `weekday_edits` — ISO weekday (as a string key) → full weekday template. */
 export function weekdayEditsToWire(
   edits: Record<number, NightDraft>,
-  daysOfWeek: number[]
+  daysOfWeek: number[],
+  fallback?: NightDraft | null,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {}
-  for (const day of [...daysOfWeek].sort((a, b) => a - b)) {
-    const draft = edits[day]
+  for (const day of normalizeIsoWeekdays(daysOfWeek)) {
+    const draft = edits[day] ?? fallback ?? null
     if (!draft) continue
     out[String(day)] = weekdayTemplateToWire(draft)
   }
   return out
+}
+
+/** Host set at least one game-day date_edit. Saturday-only weekday create is false. */
+export function dateEditsAreCustom(dateEdits: Record<string, unknown>): boolean {
+  return Object.keys(dateEdits).length > 0
+}
+
+/**
+ * Create sales maps. Saturday-only (or any weekday template) always sends
+ * `weekday_edits`. `date_edits` only when the host set a game day.
+ */
+export function weeklyCoverCreateSalesMaps(opts: {
+  daysOfWeek: number[]
+  weekdayEdits: Record<number, NightDraft>
+  dateEdits: Record<string, NightDraft>
+  fallbackNight?: NightDraft | null
+}): {
+  weekday_edits: Record<string, unknown>
+  date_edits: Record<string, unknown>
+  dateEditsAreCustom: boolean
+} {
+  const weekday_edits = weekdayEditsToWire(opts.weekdayEdits, opts.daysOfWeek, opts.fallbackNight)
+  const date_edits = dateEditsToWire(opts.dateEdits, opts.daysOfWeek)
+  return {
+    weekday_edits,
+    date_edits,
+    dateEditsAreCustom: dateEditsAreCustom(date_edits),
+  }
 }
 
 /**
@@ -1047,15 +1077,28 @@ export function hostCustomInputFromNight(night: {
   }
 }
 
-/** Off-pattern: a date the weekday schedule does not run. */
+/** ISO weekdays 1–7. Coerce string keys so `["6"]` still means Saturday. */
+export function normalizeIsoWeekdays(days: unknown): number[] {
+  if (!Array.isArray(days)) return []
+  const out: number[] = []
+  for (const raw of days) {
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n < 1 || n > 7) continue
+    if (!out.includes(n)) out.push(n)
+  }
+  return out.sort((a, b) => a - b)
+}
+
+/** Off-pattern: a date the weekday schedule does not run. Empty SLOT is not off-pattern. */
 export function nightIsOffPatternDate(
   occurrenceDate: string | null | undefined,
-  daysOfWeek: number[] | undefined,
+  daysOfWeek: unknown,
 ): boolean {
-  if (!occurrenceDate || !daysOfWeek || daysOfWeek.length === 0) return false
+  const days = normalizeIsoWeekdays(daysOfWeek)
+  if (!occurrenceDate || days.length === 0) return false
   const weekday = isoWeekdayOfDate(occurrenceDate)
   if (weekday == null) return false
-  return !daysOfWeek.includes(weekday)
+  return !days.includes(weekday)
 }
 
 /**
@@ -1076,17 +1119,22 @@ export function nightDiffersFromWeekdaySlot(
   nights: DoorAccessNight[],
   program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
 ): boolean {
+  // Unstamped / Not generated lookaheads are not Custom. Comparing them
+  // to a 180-day dump is the #97 leftover that painted every fresh night.
+  if (!weeklyCoverNightIsHostStamped(night)) return false
   const weekday = isoWeekdayOfDate(night.occurrence_date)
   if (weekday == null) return false
   const self = hostCustomSlotSignature(night as DoorAccessNight & Record<string, unknown>)
   const siblings = nights.filter((row) => {
     if (row.occurrence_date === night.occurrence_date) return false
     if (isoWeekdayOfDate(row.occurrence_date) !== weekday) return false
+    if (!weeklyCoverNightIsHostStamped(row)) return false
     if (isNeverChipOrStampCustom(row)) return false
     return !isTerminal(row)
   })
-  if (siblings.length === 0) {
-    // Alone on that weekday is the SLOT itself (fresh create / only night).
+  if (siblings.length < 2) {
+    // Alone, or only one sibling, is the SLOT itself (fresh create).
+    // One later-edited date still chips via series_customized_at / flyer.
     // Off-pattern dates chip via `nightIsOffPatternDate`, not this compare.
     void program
     return false
@@ -1104,11 +1152,14 @@ export function hostCustomSlot(
   night: { occurrence_date?: string | null; override_scope?: string | null },
   nights?: DoorAccessNight[],
   program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
-): { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean } {
+): { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean } {
+  const days = normalizeIsoWeekdays(program?.days_of_week)
+  const slotEstablished = days.length > 0
   return {
-    offPatternDate: nightIsOffPatternDate(night.occurrence_date, program?.days_of_week),
+    slotEstablished,
+    offPatternDate: slotEstablished && nightIsOffPatternDate(night.occurrence_date, days),
     differsFromWeekdaySlot:
-      nights != null && night.occurrence_date
+      slotEstablished && nights != null && night.occurrence_date
         ? nightDiffersFromWeekdaySlot(night as DoorAccessNight, nights, program)
         : false,
   }

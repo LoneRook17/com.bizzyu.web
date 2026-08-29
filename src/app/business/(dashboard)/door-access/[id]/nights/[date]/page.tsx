@@ -43,6 +43,7 @@ import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTi
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
+import { WC_DRAFT_WAITING_COPY, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
@@ -273,9 +274,9 @@ export default function DoorAccessNightPage({
         </Notice>
       )}
 
-      {(night.status === "pending_approval" || isPending) && (
-        <Notice tone="warning">
-          This night is pending until Bizzy approves your business. It is not live and not selling.
+      {(isWeeklyCoverHoldStatus(night.status) || isPending) && (
+        <Notice tone="draft">
+          {WC_DRAFT_WAITING_COPY}
         </Notice>
       )}
 
@@ -373,7 +374,7 @@ function Notice({
   tone,
   children,
 }: {
-  tone: "info" | "warning" | "danger" | "success"
+  tone: "info" | "warning" | "danger" | "success" | "draft"
   children: React.ReactNode
 }) {
   const tones = {
@@ -383,6 +384,8 @@ function Notice({
     danger: "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300",
     success:
       "border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300",
+    draft:
+      "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300",
   }
   return (
     <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-[13px] ${tones[tone]}`}>
