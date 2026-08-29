@@ -114,6 +114,11 @@ import {
   EDIT_PROGRAM_LABEL,
   DEFAULT_NIGHT_PREVIEW_COUNT,
   isPinnedUpcomingNight,
+  stampHostCreatedDatePayload,
+  stampHostCreatedDateHasNightWrite,
+  assertHostCreatedNightHasEventRow,
+  STAMP_EMPTY_NIGHT_WRITE,
+  hostCreatedNightMissingEventMessage,
   weeklyCoverNightCancelEventId,
   weeklyCoverNightCancelPath,
   weeklyCoverProgramCancelPath,
@@ -1179,6 +1184,56 @@ test("nightPreviewChip names Custom like the app after a one-date stamp, never f
     { label: "On sale", variant: "info" },
     "empty SLOT hints without slotEstablished must not paint Custom",
   )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-10-15",
+        event_id: 2001,
+        status: "draft",
+        series_customized_at: null,
+        is_customized: false,
+      }),
+      true,
+      { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: true },
+      true,
+    ),
+    { label: "Custom", variant: "access" },
+    "stamped Oct 15 date_edit that diverges from the Thursday SLOT chips Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-10-15",
+        is_stamped: false,
+        event_id: null,
+        status: "draft",
+        series_customized_at: null,
+        has_override: true,
+      }),
+      true,
+      { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: true },
+      true,
+    ),
+    { label: "Not generated", variant: "neutral" },
+    "override-only Oct 15 without an events row is not Custom yet",
+  )
+})
+
+test("draft stamp of a create date_edit sends the night write, not an empty body", () => {
+  const body = { is_closed: false, is_21_plus: false, start_time: "21:00", end_time: "02:00" }
+  assert.equal(stampHostCreatedDateHasNightWrite({}), false)
+  assert.equal(stampHostCreatedDateHasNightWrite({ publish: true }), false)
+  assert.equal(stampHostCreatedDateHasNightWrite(body), true)
+  assert.deepEqual(stampHostCreatedDatePayload(body, false), body)
+  assert.equal("publish" in stampHostCreatedDatePayload(body, false), false)
+  assert.deepEqual(stampHostCreatedDatePayload(body, true), { ...body, publish: true })
+  assert.throws(() => stampHostCreatedDatePayload({}, false), { message: STAMP_EMPTY_NIGHT_WRITE })
+  assert.throws(() => stampHostCreatedDatePayload({}, true), { message: STAMP_EMPTY_NIGHT_WRITE })
+  assert.doesNotThrow(() => assertHostCreatedNightHasEventRow({ event_id: 2001, is_stamped: true }, "2026-10-15"))
+  assert.throws(
+    () => assertHostCreatedNightHasEventRow({ event_id: null, is_stamped: false }, "2026-10-15"),
+    { message: hostCreatedNightMissingEventMessage("2026-10-15") },
+  )
 })
 
 test("nightPreviewPrice leads with From and never uses an em dash", () => {
@@ -2077,6 +2132,13 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(!wizard.includes("withDoorAccessProgramKind({})"), "create must not empty-PATCH the new program")
   assert.ok(wizard.includes('kind: "created"'), "successful create still shows Program created + Open the program")
   assert.ok(wizard.includes("stampHostCreatedDates"), "create date_edits must stamp those nights")
+  assert.ok(wizard.includes("createdDateEdits") || wizard.includes("dateEditsToWire(dateEdits"), "stamp uses the date_edits night write, not date keys only")
+  const stampSrc = readFileSync(
+    fileURLToPath(new URL("./door-access.ts", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(stampSrc.includes("assertHostCreatedNightHasEventRow"), "stamp fails if the events row is missing")
+  assert.ok(!stampSrc.includes("Nightly generate-now still picks these up"), "do not swallow a missing night row")
   assert.ok(wizard.includes("applySaveAsDraftFlag"), "unapproved WC create sends save_as_draft")
   assert.ok(wizard.includes("willDraftOnCreate"), "WC hold is draft until the business is approved")
   assert.ok(wizard.includes("asDraft"), "success copy must distinguish draft vs live")

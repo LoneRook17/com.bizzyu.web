@@ -1146,6 +1146,36 @@ test("Saturday-only create sends weekday_edits and dateEditsAreCustom is false",
   assert.deepEqual(Object.keys(fallbackOnly.weekday_edits), ["6"], "missing Sat draft still sends weekday_edits")
 })
 
+test("series 120 Thursday templates stay un-chipped; stamped Oct 15 price diverge is Custom", () => {
+  // DEV recon: Thursday SLOT $10, Oct 15 date_edit $99.13. Custom after stamp.
+  const thursdays = ["2026-09-03", "2026-09-10", "2026-09-17"].map((date, i) =>
+    servedNight(date, 10, {
+      event_id: 1400 + i,
+      series_customized_at: null,
+      is_customized: false,
+      name: "Cover",
+    }),
+  )
+  const october = servedNight("2026-10-15", 99.13, {
+    event_id: 2001,
+    series_customized_at: null,
+    is_customized: false,
+    name: "Cover",
+  })
+  const nights = [...thursdays, october]
+  const program = { days_of_week: [4], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  for (const row of thursdays) {
+    assert.equal(isCustomWeeklyCoverNight(row, nights, program), false, row.occurrence_date)
+    assert.equal(nightIsOffPatternDate(row.occurrence_date, [4]), false)
+  }
+  assert.equal(nightIsOffPatternDate("2026-10-15", [4]), false, "Oct 15 2026 is Thursday")
+  assert.equal(nightDiffersFromWeekdaySlot(october, nights, program), true)
+  assert.equal(isCustomWeeklyCoverNight(october, nights, program), true)
+  const dates = customOccurrenceDates(nights, program)
+  assert.equal(dates.has("2026-09-03"), false)
+  assert.equal(dates.has("2026-10-15"), true)
+})
+
 test("fresh Mon/Wed/Fri weekday templates that differ are not Custom", () => {
   const nights = [
     servedNight("2026-08-31", 10),

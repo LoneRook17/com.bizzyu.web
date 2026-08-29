@@ -7,10 +7,10 @@
  * edit). Green series manage (`/business/recurring/:id`) still lists the
  * full series.
  *
- * Weekly Cover program grid: default = today through today+14. A
- * host-stamped Custom date (event_id + isHostCustomNight) may still appear
- * past +14. Generator lookaheads with no event_id / Not generated past +14
- * must not. Do not invent a 30/60-day dump.
+ * Weekly Cover program grid: default = today through today+14 (W9, series
+ * nights only). D6: a one-off / Custom date always appears, even far out.
+ * Generator lookaheads with no event_id / Not generated past +14 must not.
+ * Do not invent a 30/60-day dump.
  */
 
 import { isHostCustomNight, type HostCustomSlotHint } from "./host-custom-night.ts"
@@ -103,6 +103,8 @@ export type WeeklyCoverHostNight = {
   product_kind?: string | null
   access_kind?: string | null
   recurring_series_id?: number | string | null
+  /** Date-local override (create date_edit) even before an events row exists. */
+  has_override?: boolean
 }
 
 /** Stamped night with a real events row — not a generator lookahead. */
@@ -139,9 +141,12 @@ export function isHostStampedCustomWeeklyCoverNight(
 }
 
 /**
- * Flutter Host list for a Weekly Cover program: today through today+14.
- * A host-stamped Custom date beyond +14 may still appear. Unstamped /
- * Not generated generator lookaheads beyond +14 must not.
+ * Flutter Host list for a Weekly Cover program: today through today+14
+ * for series / weekday-template nights (W9). D6: a one-off / Custom night
+ * always shows, even far out (+48d). Unstamped generator lookaheads on a
+ * series weekday beyond +14 must not. Override-only dates (create
+ * date_edit, maybe no events row yet) still surface so a healed stamp is
+ * not hidden.
  */
 export function hostShowsWeeklyCoverNight(
   night: WeeklyCoverHostNight,
@@ -154,6 +159,8 @@ export function hostShowsWeeklyCoverNight(
   if (date < today) return false
   const horizon = addIsoDays(today, windowDays)
   if (date <= horizon) return true
+  if (night.has_override) return true
+  if (slot?.slotEstablished && (slot.offPatternDate || slot.differsFromWeekdaySlot)) return true
   return isHostStampedCustomWeeklyCoverNight(night, slot)
 }
 

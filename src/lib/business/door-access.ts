@@ -1326,25 +1326,59 @@ export interface ProgramUpdateResult {
   restamp_error: string | null
 }
 
+/** Create-time date_edit PUT must send a night write. Empty `{}` no-ops. */
+export const STAMP_EMPTY_NIGHT_WRITE =
+  "This date edit needs a night write. An empty save will not create the night."
+
+export function hostCreatedNightMissingEventMessage(date: string): string {
+  return `This night was not created (${date}). The date edit is saved but there is no event row yet.`
+}
+
+export function stampHostCreatedDateHasNightWrite(body: Record<string, unknown>): boolean {
+  return Object.keys(body).some((key) => key !== "publish" && body[key] !== undefined)
+}
+
+/**
+ * Night PUT body for a create-time date_edit. Draft still sends the night
+ * write and omits `publish`. Empty `{}` is a no-op and must not be sent.
+ */
+export function stampHostCreatedDatePayload(
+  body: Record<string, unknown>,
+  publish?: boolean,
+): Record<string, unknown> {
+  if (!stampHostCreatedDateHasNightWrite(body)) {
+    throw new Error(STAMP_EMPTY_NIGHT_WRITE)
+  }
+  const payload = { ...body }
+  if (publish !== false) payload.publish = true
+  return payload
+}
+
+/** Services is the source of truth: a stamped night has an events row. */
+export function assertHostCreatedNightHasEventRow(
+  night: { event_id?: number | string | null; is_stamped?: boolean },
+  date: string,
+): void {
+  const eventId = night.event_id == null || night.event_id === "" ? null : Number(night.event_id)
+  if (eventId != null && Number.isFinite(eventId) && eventId > 0) return
+  throw new Error(hostCreatedNightMissingEventMessage(date))
+}
+
 /**
  * Stamp host-created one-off dates (create `date_edits` / game days).
- * Empty program PUT is what leaked "No editable program fields provided"
- * onto the create success amber box — do not do that. PUT each date so
- * the night is stamped and can chip Custom.
+ * PUT the night write so services can materialize the events row. Do not
+ * swallow a missing night — the grid cannot chip Custom without event_id.
  */
 export async function stampHostCreatedDates(
   programId: number,
-  dates: string[],
+  dateEdits: Record<string, Record<string, unknown>>,
   opts?: { publish?: boolean },
 ): Promise<void> {
-  const payload = opts?.publish === false ? {} : { publish: true }
-  for (const date of dates) {
+  for (const date of Object.keys(dateEdits).sort()) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
-    try {
-      await saveNightOverride(programId, date, payload)
-    } catch {
-      // Nightly generate-now still picks these up.
-    }
+    const payload = stampHostCreatedDatePayload(dateEdits[date] ?? {}, opts?.publish)
+    const result = await saveNightOverride(programId, date, payload as NightOverridePayload)
+    assertHostCreatedNightHasEventRow(result.night, date)
   }
 }
 
@@ -1785,10 +1819,11 @@ export function nightChips(night: DoorAccessNight, seriesActive = true): NightCh
 /**
  * The ONE chip on a program-page preview card.
  *
- * Custom (pink) is a later one-date edit vs that weekday SLOT. Fresh
- * weekday-template nights never chip Custom, even when Mon/Wed/Fri differ
- * or a far lookahead is still "Not generated". Unstamped weekday slots
- * say Not generated. Unapproved-shop nights say Draft, not In review.
+ * Custom (pink) is a later one-date edit vs that weekday SLOT, after the
+ * night is stamped. Fresh weekday-template nights never chip Custom, even
+ * when Mon/Wed/Fri differ or a far lookahead is still "Not generated".
+ * Unstamped weekday slots say Not generated. Unapproved-shop nights say
+ * Draft, not In review.
  */
 export function nightPreviewChip(
   night: DoorAccessNight,
@@ -1818,21 +1853,16 @@ export function nightPreviewChip(
 }
 
 /**
- * Pink Custom on a night card. Unstamped weekday slots and is_customized
- * alone are not Custom. A later one-date stamp, own flyer override, or
- * off-pattern game day is. SLOT diverge only chips on a stamped night.
+ * Pink Custom on a night card. Create-time one-off = a date_edit that
+ * diverges from the weekday SLOT, after services stamps an events row.
+ * Unstamped weekday slots and is_customized alone are not Custom.
  */
 export function paintsWeeklyCoverCustomChip(
   night: DoorAccessNight,
   slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean },
 ): boolean {
   if (!isHostCustomWeeklyCoverNight(night, slot)) return false
-  const stamped = night.is_stamped && night.event_id != null
-  if (stamped) return true
-  if (slot?.offPatternDate) return true
-  const stamp = typeof night.series_customized_at === "string" && night.series_customized_at.trim() !== ""
-  const flyer = typeof night.flyer_image_url_override === "string" && night.flyer_image_url_override.trim() !== ""
-  return stamp || flyer
+  return night.is_stamped === true && night.event_id != null
 }
 
 /** Lowest priced tier still on sale, or a short empty phrase. Never an em dash. */
