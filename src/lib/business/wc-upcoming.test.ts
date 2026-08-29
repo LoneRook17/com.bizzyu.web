@@ -44,9 +44,10 @@ function night(over: Partial<DoorAccessNight> = {}): DoorAccessNight {
     end_date_time: "2027-01-01 02:00:00",
     passes_sold: 1,
     paid_orders: 1,
-    is_customized: true,
+    is_customized: false,
+    series_customized_at: "2026-08-20 10:00:00",
     is_closed: false,
-    has_override: true,
+    has_override: false,
     start_time: "22:00:00",
     end_time: "02:00:00",
     tiers: [],
@@ -56,7 +57,7 @@ function night(over: Partial<DoorAccessNight> = {}): DoorAccessNight {
 
 test("a far-future customized night is an upcoming one-off", () => {
   assert.equal(isCustomUpcomingNight(night(), "2026-08-27"), true)
-  assert.equal(isCustomUpcomingNight(night({ is_customized: false }), "2026-08-27"), false)
+  assert.equal(isCustomUpcomingNight(night({ series_customized_at: null }), "2026-08-27"), false)
   assert.equal(isCustomUpcomingNight(night({ occurrence_date: "2026-08-20" }), "2026-08-27"), false)
 })
 
@@ -65,8 +66,8 @@ test("home one-offs come from customized upcoming nights only", () => {
     {
       program: program(),
       nights: [
-        night({ occurrence_date: "2026-08-28", is_customized: false }),
-        night({ occurrence_date: "2026-12-31", is_customized: true }),
+        night({ occurrence_date: "2026-08-28", series_customized_at: null }),
+        night({ occurrence_date: "2026-12-31", series_customized_at: "2026-08-20 10:00:00" }),
       ],
     },
   ]
@@ -83,9 +84,9 @@ test("marketing lists every upcoming WC night, not only one-offs", () => {
     {
       program: program(),
       nights: [
-        night({ occurrence_date: "2026-08-28", is_customized: false, event_id: 100 }),
-        night({ occurrence_date: "2026-12-31", is_customized: true, event_id: 1592 }),
-        night({ occurrence_date: "2026-08-20", is_customized: false, event_id: 90 }),
+        night({ occurrence_date: "2026-08-28", series_customized_at: null, event_id: 100 }),
+        night({ occurrence_date: "2026-12-31", series_customized_at: "2026-08-20 10:00:00", event_id: 1592 }),
+        night({ occurrence_date: "2026-08-20", series_customized_at: null, event_id: 90 }),
       ],
     },
   ]

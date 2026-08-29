@@ -11,7 +11,6 @@ import {
   ACCESS_BUTTON_VARIANT,
   DEFAULT_NIGHT_PREVIEW_COUNT,
   ONE_OFF_SERIES_LOOKAHEAD_DAYS,
-  isPinnedUpcomingNight,
   easternToday,
   loadDoorAccessSeriesForPath,
   fmtNightDate,
@@ -43,7 +42,7 @@ import {
   type DoorAccessNight,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
-import { isoWeekdayOfDate, weekdayFlyerByDayFromNights } from "@/lib/business/weekly-cover-nights"
+import { customOccurrenceDates, hostCustomSlot, isoWeekdayOfDate, weekdayFlyerByDayFromNights } from "@/lib/business/weekly-cover-nights"
 import { isSeriesActive, weeklyCoverNightVisibleOnDash } from "@/lib/business/weekly-cover-visibility"
 import { venuePageUrl } from "@/lib/business/public-links"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
@@ -129,9 +128,16 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
     [nights, seriesActive],
   )
   const { upcoming } = useMemo(() => splitNights(dashNights, today), [dashNights, today])
+  const customDates = useMemo(
+    () => (program ? customOccurrenceDates(upcoming, program) : new Set<string>()),
+    [program, upcoming],
+  )
   const visibleNights = useMemo(
-    () => visibleUpcomingNights(upcoming, showMoreNights, DEFAULT_NIGHT_PREVIEW_COUNT, isPinnedUpcomingNight),
-    [upcoming, showMoreNights]
+    () =>
+      visibleUpcomingNights(upcoming, showMoreNights, DEFAULT_NIGHT_PREVIEW_COUNT, (night) =>
+        customDates.has(night.occurrence_date),
+      ),
+    [upcoming, showMoreNights, customDates],
   )
   const hiddenCount = Math.max(0, upcoming.length - visibleNights.length)
   const showMoreControl = upcoming.length > DEFAULT_NIGHT_PREVIEW_COUNT || showMoreNights || program?.is_active
@@ -257,6 +263,8 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                   night={night}
                   programId={programId}
                   seriesActive={seriesActive}
+                  nights={upcoming}
+                  program={program}
                   flyerUrl={resolveNightCardImageUrl(
                     night,
                     program,
@@ -378,13 +386,17 @@ function NightPreviewCard({
   programId,
   flyerUrl,
   seriesActive = true,
+  nights = [],
+  program,
 }: {
   night: DoorAccessNight
   programId: number
   flyerUrl: string | null
   seriesActive?: boolean
+  nights?: DoorAccessNight[]
+  program?: DoorAccessProgram
 }) {
-  const chip = nightPreviewChip(night, seriesActive)
+  const chip = nightPreviewChip(night, seriesActive, hostCustomSlot(night, nights, program))
   const href = seriesActive && nightIsEditable(night, { is_active: seriesActive })
     ? nightHref(programId, night.occurrence_date)
     : night.event_id != null

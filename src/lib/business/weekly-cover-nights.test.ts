@@ -80,6 +80,9 @@ import {
   weekdayEditsFromNights,
   weekdayEditsToWire,
   weekdayFlyerByDayFromNights,
+  customOccurrenceDates,
+  nightDiffersFromWeekdaySlot,
+  nightIsOffPatternDate,
   weekdayHydrationNight,
   weekdayTemplateFlyer,
   weekdayTemplateToWire,
@@ -846,7 +849,7 @@ test("a weekday with nothing left returns null, so the caller falls back", () =>
 test("weekday hydration never seeds from a Custom night", () => {
   // Custom Friday at $30 must not become the Friday template when siblings are $10.
   const nights = [
-    servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
     servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
     servedNight("2026-09-11", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
   ]
@@ -857,8 +860,8 @@ test("weekday hydration never seeds from a Custom night", () => {
 
 test("a weekday whose every remaining night is Custom has no template to read", () => {
   const nights = [
-    servedNight("2026-08-28", 30, { is_customized: true }),
-    servedNight("2026-09-04", 25, { is_customized: true }),
+    servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00" }),
+    servedNight("2026-09-04", 25, { series_customized_at: "2026-08-20 10:00:00" }),
   ]
   assert.equal(weekdayHydrationNight({ isoWeekday: 5, nights, today: "2026-08-24" }), null)
 })
@@ -870,7 +873,7 @@ test("weekday night-card flyers skip Custom art and keep the weekday poster", ()
     photo_url: "https://cdn/venue.jpg",
   } as never
   const nights = [
-    servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
     servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
     servedNight("2026-09-11", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
   ]
@@ -880,8 +883,8 @@ test("weekday night-card flyers skip Custom art and keep the weekday poster", ()
     weekdayFlyerByDayFromNights({
       program,
       nights: [
-        servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
-        servedNight("2026-09-04", 25, { is_customized: true, flyer_image_url: "https://cdn/other.jpg" }),
+        servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
+        servedNight("2026-09-04", 25, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/other.jpg" }),
       ],
       today: "2026-08-24",
     })[5],
@@ -893,7 +896,7 @@ test("weekday night-card flyers skip Custom art and keep the weekday poster", ()
 test("a flyer-only Custom Friday does not become the Friday template", () => {
   const nights = [
     servedNight("2026-08-28", 10, {
-      is_customized: true,
+      series_customized_at: "2026-08-20 10:00:00",
       flyer_image_url: "https://cdn/one-off.jpg",
     }),
     servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
@@ -933,7 +936,7 @@ test("weekdayEditsFromNights hydrates the full Friday template and skips Custom 
     template_tickets: [],
   } as never
   const nights = [
-    servedNight("2026-08-28", 40, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-08-28", 40, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
     servedNight("2026-09-04", 12, {
       flyer_image_url: "https://cdn/friday.jpg",
       start_time: "22:00",
@@ -1052,6 +1055,21 @@ test("Flutter wizard progress is screens 2-9, with the editor and copy as 5 and 
   assert.equal(flutterWizardStep({ wizardIndex: 3 }), 7)
   assert.equal(flutterWizardStep({ wizardIndex: 4 }), 8)
   assert.equal(flutterWizardStep({ wizardIndex: 5 }), 9)
+})
+
+test("fresh weekday SLOTs are not Custom; one later date that diverges is", () => {
+  const fridayA = servedNight("2026-08-28", 10)
+  const fridayB = servedNight("2026-09-04", 10)
+  const fridayC = servedNight("2026-09-11", 10)
+  const customFriday = servedNight("2026-09-18", 40)
+  const program = { days_of_week: [5], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  assert.equal(nightDiffersFromWeekdaySlot(fridayA, [fridayA, fridayB, fridayC], program), false)
+  assert.equal(nightDiffersFromWeekdaySlot(customFriday, [fridayA, fridayB, fridayC, customFriday], program), true)
+  assert.equal(nightIsOffPatternDate("2026-12-31", [5]), true)
+  assert.equal(nightIsOffPatternDate("2026-08-28", [5]), false)
+  const dates = customOccurrenceDates([fridayA, fridayB, fridayC, customFriday], program)
+  assert.equal(dates.has("2026-08-28"), false)
+  assert.equal(dates.has("2026-09-18"), true)
 })
 
 test("blank qty and max serialize as 0 (unlimited)", () => {

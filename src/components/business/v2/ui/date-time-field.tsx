@@ -3,17 +3,22 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import {
-  clock12hSlots,
+  CLOCK_HOURS_12,
+  CLOCK_MINUTES_15,
   formatClock12h,
   formatDateUs,
   isIsoDateString,
   isIsoTimeString,
+  joinClock12hParts,
   joinDateTimeLocal,
   parseClock12h,
   parseDateUs,
   monthCells,
   shiftMonth,
+  snapMinute15,
+  splitClock12hParts,
   splitDateTimeLocal,
+  type ClockPeriod,
 } from "@/lib/business/datetime-value"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input } from "@/components/business/v2/ui/input"
@@ -208,32 +213,92 @@ export function DateField({
   )
 }
 
-function TimeList({
+function WheelColumn<T extends string | number>({
+  label,
+  options,
   value,
-  onPick,
+  onChange,
+  format,
+}: {
+  label: string
+  options: readonly T[]
+  value: T
+  onChange: (next: T) => void
+  format?: (v: T) => string
+}) {
+  const selectedRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: "center", inline: "nearest" })
+  }, [value])
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-col">
+      <p className="mb-1 text-center text-[10px] font-bold uppercase tracking-wide text-neutral-400">{label}</p>
+      <div className="h-36 overflow-y-auto rounded-lg bg-neutral-50 py-1 dark:bg-neutral-800/60" role="listbox" aria-label={label}>
+        {options.map((option) => {
+          const selected = option === value
+          return (
+            <button
+              key={String(option)}
+              ref={selected ? selectedRef : undefined}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              onClick={() => onChange(option)}
+              className={cn(
+                "flex w-full justify-center px-1 py-1.5 text-sm tabular-nums",
+                selected
+                  ? "bg-[#05EB54] font-semibold text-white"
+                  : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
+              )}
+            >
+              {format ? format(option) : String(option)}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function TimeWheels({
+  value,
+  onChange,
 }: {
   value: string
-  onPick: (time: string) => void
+  onChange: (time: string) => void
 }) {
-  const slots = useMemo(() => clock12hSlots(), [])
-  const selected = isIsoTimeString(value.slice(0, 5)) ? value.slice(0, 5) : ""
+  const parts = splitClock12hParts(value) ?? { hour12: 7, minute: 0, period: "PM" as ClockPeriod }
+  const minute = CLOCK_MINUTES_15.includes(parts.minute as (typeof CLOCK_MINUTES_15)[number])
+    ? parts.minute
+    : snapMinute15(parts.minute)
+
+  const commit = (hour12: number, nextMinute: number, period: ClockPeriod) => {
+    onChange(joinClock12hParts(hour12, nextMinute, period))
+  }
+
   return (
-    <div className="max-h-56 overflow-y-auto">
-      {slots.map((slot) => (
-        <button
-          key={slot}
-          type="button"
-          onClick={() => onPick(slot)}
-          className={cn(
-            "flex w-full rounded-md px-2 py-1.5 text-left text-sm tabular-nums",
-            slot === selected
-              ? "bg-[#05EB54] font-semibold text-white"
-              : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
-          )}
-        >
-          {formatClock12h(slot)}
-        </button>
-      ))}
+    <div className="flex gap-2">
+      <WheelColumn
+        label="Hour"
+        options={CLOCK_HOURS_12}
+        value={parts.hour12}
+        onChange={(hour12) => commit(hour12, minute, parts.period)}
+      />
+      <WheelColumn
+        label="Min"
+        options={CLOCK_MINUTES_15}
+        value={minute as (typeof CLOCK_MINUTES_15)[number]}
+        onChange={(nextMinute) => commit(parts.hour12, nextMinute, parts.period)}
+        format={(n) => String(n).padStart(2, "0")}
+      />
+      <WheelColumn
+        label="AM/PM"
+        options={["AM", "PM"] as const}
+        value={parts.period}
+        onChange={(period) => commit(parts.hour12, minute, period)}
+      />
     </div>
   )
 }
@@ -253,12 +318,29 @@ export function TimeField({
 }) {
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = useState(() => formatClock12h(value))
+  const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const next = formatClock12h(value)
     if (next) setTyped(next)
     else if (!value) setTyped("")
   }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false)
+    }
+    document.addEventListener("mousedown", onPointer)
+    document.addEventListener("keydown", onKey)
+    return () => {
+      document.removeEventListener("mousedown", onPointer)
+      document.removeEventListener("keydown", onKey)
+    }
+  }, [open])
 
   const commitTyped = (raw: string) => {
     setTyped(raw)
@@ -267,8 +349,13 @@ export function TimeField({
     else if (raw.trim() === "") onChange("")
   }
 
+  const commitPicked = (next: string) => {
+    onChange(next)
+    setTyped(formatClock12h(next))
+  }
+
   return (
-    <div className={cn("relative", className)}>
+    <div ref={rootRef} className={cn("relative", className)}>
       <div className="flex gap-2">
         <Input
           id={id}
@@ -283,15 +370,8 @@ export function TimeField({
         </Button>
       </div>
       {open && (
-        <div className="absolute z-30 mt-2 w-full rounded-xl border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-          <TimeList
-            value={value}
-            onPick={(next) => {
-              onChange(next)
-              setTyped(formatClock12h(next))
-              setOpen(false)
-            }}
-          />
+        <div className="absolute z-30 mt-2 w-full min-w-[220px] rounded-xl border border-neutral-200 bg-white p-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+          <TimeWheels value={value} onChange={commitPicked} />
         </div>
       )}
     </div>

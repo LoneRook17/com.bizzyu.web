@@ -10,6 +10,7 @@ import {
   listedWeeklyCoverProgramId,
   type ListedProgramRef,
 } from "@/lib/business/events-list"
+import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { Button } from "@/components/business/v2/ui/button"
 import {
@@ -55,6 +56,19 @@ export function EventCard({
   }
   if (event.cancellation_status === "denied") {
     chips.push({ label: "Cancellation denied", variant: "danger" })
+  }
+  const customTone = hostCustomChipTone({
+    product_kind: event.product_kind,
+    access_kind: event.access_kind,
+    recurring_series_id: event.recurring_series_id,
+    series_customized_at: event.series_customized_at,
+    is_customized: event.is_customized,
+    override_scope: (event as { override_scope?: string | null }).override_scope,
+  })
+  if (customTone === "wc") {
+    chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "access" })
+  } else if (customTone === "event") {
+    chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "custom" })
   }
 
   // The F9 metadata line: when first — this list's whole job is what's coming
