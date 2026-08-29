@@ -79,7 +79,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const { id } = use(params)
   const programId = parseProgramPathId(id)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const { venues } = useVenue()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
@@ -193,6 +193,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
             >
               {WEEKLY_ACCESS_TYPE_LABEL}
             </span>
+            {isPending && <Badge variant="warning">In review</Badge>}
             {!program.is_active && <Badge variant="neutral">Ended</Badge>}
           </span>
         }
@@ -230,7 +231,13 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
         }
       />
 
-      {program.venue_id != null && program.is_active && (
+      {isPending && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          This program is pending until Bizzy approves your business. It is not live and not selling.
+        </div>
+      )}
+
+      {program.venue_id != null && program.is_active && !isPending && (
         <ShareLinkRow
           url={venuePageUrl(program.venue_id)}
           title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
@@ -276,6 +283,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                   seriesActive={seriesActive}
                   nights={upcomingAll}
                   program={program}
+                  isPending={isPending}
                   showCancel={showCancel}
                   cancelEnabled={cancelWired}
                   onCancel={() => setCancelNight(night)}
@@ -402,6 +410,7 @@ function NightPreviewCard({
   seriesActive = true,
   nights = [],
   program,
+  isPending = false,
   showCancel = false,
   cancelEnabled = false,
   onCancel,
@@ -412,11 +421,12 @@ function NightPreviewCard({
   seriesActive?: boolean
   nights?: DoorAccessNight[]
   program?: DoorAccessProgram
+  isPending?: boolean
   showCancel?: boolean
   cancelEnabled?: boolean
   onCancel?: () => void
 }) {
-  const chip = nightPreviewChip(night, seriesActive, hostCustomSlot(night, nights, program))
+  const chip = nightPreviewChip(night, seriesActive, hostCustomSlot(night, nights, program), isPending)
   const href = seriesActive && nightIsEditable(night, { is_active: seriesActive })
     ? nightHref(programId, night.occurrence_date)
     : night.event_id != null

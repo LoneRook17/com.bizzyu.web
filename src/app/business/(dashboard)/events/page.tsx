@@ -18,6 +18,8 @@ import {
   inactiveWeeklyCoverSeriesIds,
   parseEventTypeFilter,
   pendingCancelWeeklyCoverNights,
+  shouldShowWeeklyCoverOnEventsTab,
+  shouldShowWeeklyCoverOneOffsOnEventsTab,
   showsAccess,
   showsEvents,
   weeklyCoverProgramsForDash,
@@ -248,12 +250,12 @@ export default function V2EventsPage() {
   // "Drafts" / "Recurring" are questions about dated events; an ongoing program
   // is not an answer to any of them. The Weekly Cover segment used to keep
   // Ended rows; a host series delete with 0 sales must leave the dash entirely.
-  const visiblePrograms = !showsAccess(effectiveType)
-    ? []
-    : effectiveType === "access"
-      ? activePrograms
-      : tab === "upcoming" ? activePrograms : []
-  const visibleOneOffs = tab === "upcoming" && showsAccess(effectiveType) ? oneOffNights : []
+  const visiblePrograms = shouldShowWeeklyCoverOnEventsTab(tab, isPending, effectiveType)
+    ? activePrograms
+    : []
+  const visibleOneOffs = shouldShowWeeklyCoverOneOffsOnEventsTab(tab, isPending, effectiveType)
+    ? oneOffNights
+    : []
 
   const rows = showsEvents(effectiveType)
     ? groupEventRows(
@@ -268,7 +270,7 @@ export default function V2EventsPage() {
   // (program_kind=event). Host-deleted series (is_active=0) do not resurrect
   // from published nights. EventCard / SeriesGroupRow open the series id,
   // never /door-access/{event_id}.
-  const eventAccessGroups = showsAccess(effectiveType)
+  const eventAccessGroups = showsAccess(effectiveType) && !(isPending && tab === "upcoming")
     ? eventAccessGroupsForVenue(
         eventAccessGroupsForPrograms(events, venuePrograms, wcSeriesIds, inactiveWcIds),
         scopedVenueId,

@@ -42,6 +42,7 @@ import { NightLeaveGuard } from "@/components/business/v2/door-access/NightLeave
 import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
@@ -76,7 +77,7 @@ export default function DoorAccessNightPage({
   const { id, date } = use(params)
   const programId = Number(id)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [night, setNight] = useState<DoorAccessNight | null>(null)
@@ -155,7 +156,11 @@ export default function DoorAccessNightPage({
     setNotice(null)
     setRestampWarning(null)
     try {
-      const result = await saveNightOverride(programId, date, buildNightSavePayload(draft))
+      const result = await saveNightOverride(
+        programId,
+        date,
+        buildNightSavePayload(draft, { publish: shouldTreatDraftAsLive(isPending) }),
+      )
       showSaveOutcome(result, "Saved.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save this night.")
@@ -265,6 +270,12 @@ export default function DoorAccessNightPage({
             : !program.is_active && (night.passes_sold > 0 || night.paid_orders > 0)
               ? "Cancellation pending. This night stays until admin refunds complete. It is not live or editable."
               : "This program is no longer active. This night is not live or editable."}
+        </Notice>
+      )}
+
+      {(night.status === "pending_approval" || isPending) && (
+        <Notice tone="warning">
+          This night is pending until Bizzy approves your business. It is not live and not selling.
         </Notice>
       )}
 

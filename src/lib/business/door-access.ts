@@ -1329,13 +1329,34 @@ export interface ProgramUpdateResult {
 export async function stampHostCreatedDates(
   programId: number,
   dates: string[],
+  opts?: { publish?: boolean },
 ): Promise<void> {
+  const payload = opts?.publish === false ? {} : { publish: true }
   for (const date of dates) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
     try {
-      await saveNightOverride(programId, date, { publish: true })
+      await saveNightOverride(programId, date, payload)
     } catch {
       // Nightly generate-now still picks these up.
+    }
+  }
+}
+
+/**
+ * D3 after business approve: leftover `pending_approval` nights go published.
+ * Do not call this on create — Node already holds/promotes. Do not target draft.
+ */
+export async function promotePendingApprovalNightsForProgram(programId: number): Promise<void> {
+  const { nights } = await fetchDoorAccessSeries(programId)
+  const api = await client()
+  for (const night of nights) {
+    const eventId = Number(night.event_id)
+    if (!Number.isFinite(eventId) || eventId <= 0) continue
+    if ((night.status ?? "").toLowerCase() !== "pending_approval") continue
+    try {
+      await api.post(`/business/events/${eventId}/publish`)
+    } catch {
+      // LiveAfterApprove still promotes after business approve.
     }
   }
 }
@@ -1740,6 +1761,9 @@ export function nightChips(night: DoorAccessNight, seriesActive = true): NightCh
   const chips: NightChip[] = []
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
+  if ((night.status ?? "").toLowerCase() === "pending_approval") {
+    chips.push({ label: "In review", variant: "warning" })
+  }
   if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
   }
@@ -1760,6 +1784,7 @@ export function nightPreviewChip(
   night: DoorAccessNight,
   seriesActive = true,
   slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+  isPending = false,
 ): NightChip | null {
   if (isHostCustomWeeklyCoverNight(night, slot)) {
     return { label: HOST_CUSTOM_CHIP_LABEL, variant: "access" }
@@ -1773,6 +1798,9 @@ export function nightPreviewChip(
   }
   if (!seriesActive) return null
   const status = (night.status ?? "").toLowerCase()
+  if (status === "pending_approval" || isPending) {
+    return { label: "In review", variant: "warning" }
+  }
   if (status === "published" || status === "approved" || status === "active") {
     return { label: "On sale", variant: "info" }
   }
@@ -2119,8 +2147,13 @@ export function buildNightOverridePayload(draft: NightDraft): NightOverridePaylo
 }
 
 /** Save night: override fields plus the restamp/publish path, not times_only. */
-export function buildNightSavePayload(draft: NightDraft): NightOverridePayload {
-  return { ...buildNightOverridePayload(draft), publish: true }
+export function buildNightSavePayload(
+  draft: NightDraft,
+  opts?: { publish?: boolean },
+): NightOverridePayload {
+  const body = buildNightOverridePayload(draft)
+  if (opts?.publish === false) return body
+  return { ...body, publish: true }
 }
 
 /** Does this draft still say anything the template doesn't? Drives "Reset". */
