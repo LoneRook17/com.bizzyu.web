@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Camera, ListChecks, Pencil, QrCode, Repeat, ScanLine, Ticket, Users, Tag, ChevronRight,
+  Camera, ListChecks, Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
@@ -13,7 +13,6 @@ import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-link
 import {
   ACCESS_ACCENT,
   isWeeklyCoverProduct,
-  programEditHref,
   programIdFromOwnedEvent,
   weeklyCoverNightEditHref,
 } from "@/lib/business/door-access"
@@ -243,11 +242,16 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // Event Setup — the things you configure before the doors open. "Manage
   // Tickets" is the tickets page, which owns tiers, the group sellout toggle and
   // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
+  // Luke (2026-08-29): the WC night manage mirrors green's setup row, so
+  // "Manage Tickets" replaces "Edit program" here. Program/weekday editing
+  // lives on the program page. Both WC tiles open the night-override
+  // editor, the ONLY tier writer for a night (WC FLAW 3 above): Manage
+  // Tickets for tiers, Edit night for hours and closing.
   const setupTiles: Tile[] =
     wcNightEdit != null && wcProgramId != null
       ? [
-          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Cover prices, door hours, or close this night only", show: canEdit && seriesActive },
-          { href: programEditHref(wcProgramId), icon: Repeat, title: "Edit program", subtitle: "Weekday setup for future nights. Custom nights stay as they are", show: canEdit && seriesActive },
+          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Door hours, or close this night only", show: canEdit && seriesActive },
+          { href: wcNightEdit, icon: Ticket, title: "Manage Tickets", subtitle: "Cover tiers and prices for this night", show: canEdit && seriesActive },
           { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
         ]
       : [
