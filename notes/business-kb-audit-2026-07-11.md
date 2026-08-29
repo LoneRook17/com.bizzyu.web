@@ -121,8 +121,8 @@ Ground-truth code lives in the sibling repos `com.bizzyu.services` (Node) and
 - ✅ Accrues to in-app wallet; Pending → Available after event end + chargeback buffer
   (2 days after that night's event) (`core WalletSettlementService.php:10-21,39`).
 - ✅ **$20 minimum** withdrawal (`services WithdrawalService.ts:68`, 2000¢).
-- ✅ Standard withdrawal free; instant costs a fee (max $0.50 or 2.5%,
-  `WithdrawalService.ts:140-141`).
+- ✅ Withdraw is Transfer-only. Stripe automatic daily pays the bank. Instant is
+  gone. A withdrawal is not a bank deposit yet.
 - ✅ Stripe connected at first withdrawal, not signup (`WithdrawalService.ts:524-558`).
 - ✅ **No weekly payout** — on-demand only; the weekly payout cron is explicitly RETIRED
   (`core app/Console/Kernel.php:36-43`). (This is what the student pack got wrong — fixed.)

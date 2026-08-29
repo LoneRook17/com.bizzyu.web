@@ -55,9 +55,10 @@ Venue payout accounts**.
 
 ## Your Bizzy balance (earnings held before payout)
 
-Some earnings land in a **balance on your Bizzy account** first, and move to your bank
-when you withdraw them. This is the balance you see in the app, separate from your Stripe
-dashboard.
+Some earnings land in a **balance on your Bizzy account** first, and move to your Stripe
+account when you withdraw them. Stripe then deposits that money to your bank on its
+daily schedule. A withdrawal is not a bank deposit yet. This is the balance you see in
+the app, separate from your Stripe dashboard.
 
 - Earnings arrive as **Pending** and become **Available** once the event they came from
   is safely past. Pending money is not withdrawable yet.
@@ -95,7 +96,9 @@ support@bizzyu.com rather than answering from this pack.
 
 - If you run the Promoter Program, promoter commissions accrue to each promoter's **in-app
   wallet**, become **Available 2 days after that night's event**, and they **withdraw on
-  demand** — there is no weekly payout. This is separate from your own revenue (commission
+  demand to Stripe**. Stripe then deposits to their bank on its daily schedule. A
+  withdrawal is not a bank deposit yet. There is no weekly payout and no instant option.
+  This is separate from your own revenue (commission
   comes out of the host's share). See the "Promoters & commissions" article for the full
   flow.
 - Promoter withdrawals have a **$20 minimum**. Your own earnings do not. These are two
