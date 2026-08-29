@@ -244,14 +244,15 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
   // Luke (2026-08-29): the WC night manage mirrors green's setup row, so
   // "Manage Tickets" replaces "Edit program" here. Program/weekday editing
-  // lives on the program page. Both WC tiles open the night-override
-  // editor, the ONLY tier writer for a night (WC FLAW 3 above): Manage
-  // Tickets for tiers, Edit night for hours and closing.
+  // lives on the program page. Manage Tickets is the SAME tickets page as
+  // green, rendered pink and tickets-only; the services ticket-manage
+  // routes stamp the WC night Custom themselves, so edits there touch
+  // this night only. Edit night keeps door hours and closing.
   const setupTiles: Tile[] =
     wcNightEdit != null && wcProgramId != null
       ? [
           { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Door hours, or close this night only", show: canEdit && seriesActive },
-          { href: wcNightEdit, icon: Ticket, title: "Manage Tickets", subtitle: "Cover tiers and prices for this night", show: canEdit && seriesActive },
+          { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit && seriesActive },
           { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
         ]
       : [
