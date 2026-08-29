@@ -102,10 +102,11 @@ test("eventsForHostUpcomingList keeps one-offs and Custom, clips template nights
 
 test("Events upcoming list applies the series nights window", () => {
   const src = readFileSync(
-    join(process.cwd(), "src/app/business/(dashboard)/events/page.tsx"),
+    join(process.cwd(), "src/lib/business/host-dash-sections.ts"),
     "utf8",
   )
-  assert.ok(src.includes("eventsForHostUpcomingList"), "Upcoming tab clips green series nights to today+2 weeks")
+  assert.ok(src.includes("hostUpcomingShowsGreenNight"), "Host Upcoming clips green series nights to today+2 weeks")
+  assert.ok(src.includes("nightsForHostWeeklyCoverGrid"), "Host Upcoming clips WC series nights to today+14")
 })
 
 test("series manage still lists the full series — window is Host Upcoming / Events list only", () => {
