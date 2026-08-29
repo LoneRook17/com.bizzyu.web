@@ -672,7 +672,7 @@ export function weeklyCoverCreateSalesMaps(opts: {
   fallbackNight?: NightDraft | null
 }): {
   weekday_edits: Record<string, unknown>
-  date_edits: Record<string, unknown>
+  date_edits: Record<string, Record<string, unknown>>
   dateEditsAreCustom: boolean
 } {
   const weekday_edits = weekdayEditsToWire(opts.weekdayEdits, opts.daysOfWeek, opts.fallbackNight)
@@ -693,8 +693,8 @@ export function weeklyCoverCreateSalesMaps(opts: {
 export function dateEditsToWire(
   edits: Record<string, NightDraft>,
   _daysOfWeek?: number[]
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
+): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {}
   for (const date of Object.keys(edits).sort()) {
     if (isoWeekdayOfDate(date) == null) continue
     out[date] = nightToWire(edits[date])
