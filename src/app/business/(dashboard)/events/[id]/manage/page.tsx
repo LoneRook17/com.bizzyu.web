@@ -277,11 +277,14 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
 
   return (
     <AccentScope>
+      {/* Round 3 (Luke, 2026-08-29): a WC night's manage IS its page — backing
+          into the event detail half-page resurrects a surface WC shouldn't
+          have. WC goes back to the Events list; events keep their detail. */}
       <Link
-        href={`/business/events/${id}`}
+        href={isDoorAccess ? "/business/events" : `/business/events/${id}`}
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
-        <ArrowLeft className="size-3.5" /> Back to event
+        <ArrowLeft className="size-3.5" /> {isDoorAccess ? "Back to events" : "Back to event"}
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
