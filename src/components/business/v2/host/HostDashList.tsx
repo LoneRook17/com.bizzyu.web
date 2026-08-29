@@ -23,7 +23,6 @@ import { formatDays } from "@/lib/business/door-access"
 import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
 import { AccessEventGroupRow } from "@/components/business/v2/door-access/AccessEventGroupRow"
 import { EventCard } from "@/components/business/v2/events/EventCard"
-import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { Button } from "@/components/business/v2/ui/button"
 import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/HostListCard"
 import { AccessNightCard } from "@/components/business/v2/host/AccessNightCard"
@@ -33,13 +32,11 @@ function OccurrenceCard({
   programs,
   wcSeriesIds,
   inactiveWcIds,
-  onCancel,
 }: {
   row: HostDashOccurrence
   programs: readonly ListedProgramRef[]
   wcSeriesIds: readonly number[]
   inactiveWcIds: readonly number[]
-  onCancel: (eventId: number, name: string) => void
 }) {
   if (row.kind === "event") {
     return (
@@ -59,7 +56,6 @@ function OccurrenceCard({
         programs={programs}
         wcSeriesIds={wcSeriesIds}
         inactiveWcIds={inactiveWcIds}
-        onCancel={onCancel}
       />
     )
   }
@@ -70,7 +66,6 @@ function OccurrenceCard({
       programs={programs}
       wcSeriesIds={wcSeriesIds}
       inactiveWcIds={inactiveWcIds}
-      onCancel={onCancel}
     />
   )
 }
@@ -109,13 +104,11 @@ function OccurrenceDateGroups({
   programs,
   wcSeriesIds,
   inactiveWcIds,
-  onCancel,
 }: {
   rows: readonly HostDashOccurrence[]
   programs: readonly ListedProgramRef[]
   wcSeriesIds: readonly number[]
   inactiveWcIds: readonly number[]
-  onCancel: (eventId: number, name: string) => void
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -131,7 +124,6 @@ function OccurrenceDateGroups({
               programs={programs}
               wcSeriesIds={wcSeriesIds}
               inactiveWcIds={inactiveWcIds}
-              onCancel={onCancel}
             />
           ))}
         </div>
@@ -165,22 +157,24 @@ function Section({
 /**
  * Flutter Host tab IA on the business Events list: Tonight, expandable
  * Upcoming, then Schedules. Occurrence cards stay pink WC / green Event.
+ *
+ * 2026-08 instance-manage pass: night cards carry View / Manage like
+ * EventCard — the per-card Cancel (and its modal here) is gone. Cancel is
+ * unchanged as a flow; it lives inside the night's manage page and on the
+ * program / night pages.
  */
 export function HostDashList({
   sections,
   programs,
   wcSeriesIds,
   inactiveWcIds,
-  onNightCancelled,
 }: {
   sections: HostDashSections
   programs: readonly ListedProgramRef[]
   wcSeriesIds: readonly number[]
   inactiveWcIds: readonly number[]
-  onNightCancelled?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const [cancel, setCancel] = useState<{ eventId: number; name: string } | null>(null)
   const upcomingRows = visibleHostUpcoming(sections, expanded)
 
   return (
@@ -192,7 +186,6 @@ export function HostDashList({
             programs={programs}
             wcSeriesIds={wcSeriesIds}
             inactiveWcIds={inactiveWcIds}
-            onCancel={(eventId, name) => setCancel({ eventId, name })}
           />
         </Section>
       )}
@@ -204,7 +197,6 @@ export function HostDashList({
             programs={programs}
             wcSeriesIds={wcSeriesIds}
             inactiveWcIds={inactiveWcIds}
-            onCancel={(eventId, name) => setCancel({ eventId, name })}
           />
           {sections.upcomingRestCount > 0 && (
             <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded((v) => !v)}>
@@ -224,21 +216,6 @@ export function HostDashList({
             ))}
           </div>
         </Section>
-      )}
-
-      {cancel != null && (
-        <CancelEventModal
-          open
-          onOpenChange={(open) => {
-            if (!open) setCancel(null)
-          }}
-          eventId={cancel.eventId}
-          eventName={cancel.name}
-          onCancelled={() => {
-            setCancel(null)
-            onNightCancelled?.()
-          }}
-        />
       )}
     </div>
   )
