@@ -1446,9 +1446,15 @@ export function weeklyCoverNightCancelPath(eventId: number): string {
   return `/business/events/${eventId}/request-cancellation`
 }
 
-/** WC program / series-end. Core suspendSeries: is_active=0, unsold nights leave. */
+/**
+ * WC program / series-end — the door-access suspend, same route the app's
+ * DoorAccessApiService.suspend posts. NOT /business/recurring-series/:id
+ * /suspend: that is the green named-event surface, and its
+ * getOwnedSeries 404s weekly_cover / door_access program kinds on purpose
+ * (V5 F14), so posting there reads "Series not found" and cancels nothing.
+ */
 export function weeklyCoverProgramCancelPath(programId: number): string {
-  return `/business/recurring-series/${programId}/suspend`
+  return `/business/door-access/${programId}/suspend`
 }
 
 export function weeklyCoverNightCancelEventId(
@@ -1461,9 +1467,10 @@ export function weeklyCoverNightCancelEventId(
 
 export async function cancelWeeklyCoverProgram(programId: number): Promise<{
   message?: string
-  cancelled: number[]
+  unpublished: number[]
   skipped_customized: number[]
   skipped_with_sales: number[]
+  pending_cancellation: number[]
 }> {
   const api = await client()
   return api.post(weeklyCoverProgramCancelPath(programId))
