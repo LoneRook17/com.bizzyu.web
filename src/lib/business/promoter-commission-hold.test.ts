@@ -30,8 +30,14 @@ test("the promoter hold is 2 days, not 7", () => {
 })
 
 test("dash help and knowledge packs state the 2-day promoter hold", () => {
+  const help = read("../../app/business/(dashboard)/help/content.ts")
+  assert.ok(help.includes("PROMOTER_COMMISSION_AVAILABLE_AFTER_COPY"))
+  assert.ok(help.includes("They become available ${PROMOTER_COMMISSION_AVAILABLE_AFTER_COPY}."))
+  for (const old of OLD_SEVEN) {
+    assert.ok(!help.includes(old), `help/content.ts still has ${JSON.stringify(old)}`)
+  }
+
   const files = [
-    "../../app/business/(dashboard)/help/content.ts",
     "../../../business-kb/40-promoters.md",
     "../../../business-kb/70-stripe-payouts.md",
     "../../../support-kb/01-product-overview.md",
@@ -45,9 +51,6 @@ test("dash help and knowledge packs state the 2-day promoter hold", () => {
       assert.ok(!src.includes(old), `${rel} still has ${JSON.stringify(old)}`)
     }
   }
-
-  const help = read("../../app/business/(dashboard)/help/content.ts")
-  assert.ok(help.includes("PROMOTER_COMMISSION_AVAILABLE_AFTER_COPY"))
 })
 
 test("host escrow and host payout timing copy is unchanged", () => {
