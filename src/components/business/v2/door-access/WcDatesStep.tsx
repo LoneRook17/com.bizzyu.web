@@ -5,8 +5,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import {
   cloneNightDraft,
+  defaultTierNameForNight,
   fmtGameDay,
   isoWeekdayOfDate,
+  looksLikeDefaultTierName,
   nightPriceSummary,
   scheduledDates,
   seedNightDraft,
@@ -95,7 +97,19 @@ export function WcDatesStep({
     const weekday = isoWeekdayOfDate(date)
     // Seed from that weekday's own setup, so the host only changes what differs.
     const fromWeekday = weekday == null ? undefined : weekdayEdits[weekday]
-    if (fromWeekday) return cloneNightDraft(fromWeekday)
+    if (fromWeekday) {
+      // W13: a Saturday game day seeded from the Friday template must not keep
+      // "… Friday Cover" — re-derive default-looking names for THIS date's day.
+      // Host-typed names come across untouched.
+      const next = cloneNightDraft(fromWeekday)
+      const dayName = weekday == null ? undefined : isoDayFull(weekday)
+      for (const tier of next.tiers) {
+        if (looksLikeDefaultTierName(tier.name, tier.kind)) {
+          tier.name = defaultTierNameForNight(tier.kind, { venueName, dayName })
+        }
+      }
+      return next
+    }
     return seedNightDraft({
       products,
       startTime: defaultStartTime || "",

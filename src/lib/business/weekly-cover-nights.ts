@@ -239,14 +239,6 @@ export function looksLikeDefaultTierName(
   return trimmed.endsWith(` ${defaultTierName(kind)}`)
 }
 
-/**
- * Binding Cover-included clause on a Skip the Line ticket. Exact app copy:
- * on → `Cover included.` / off → `Cover NOT Included` (no trailing period).
- */
-export function skipCoverIncludedClause(includesCover: boolean): string {
-  return includesCover ? "Cover included." : "Cover NOT Included"
-}
-
 /** Look it over suffix — same meaning, compact next to price / qty. */
 export function reviewSkipCoverSuffix(includesCover: boolean): string {
   return includesCover ? " · Cover included" : " · Cover NOT Included"
@@ -259,37 +251,18 @@ export function reviewFormatLabel(products: WcProducts | null): string {
   return "Weekly Cover"
 }
 
-/** Custom description is on when the weekday ticket already has text to persist. */
-export function tierHasCustomDescription(tier: { description?: string | null }): boolean {
-  return String(tier.description ?? "").trim() !== ""
-}
-
-const SKIP_COVER_CLAUSE =
-  /(?:Cover included\.?|Cover NOT Included|Cover not included, paid separately\.?)\s*$/i
-
 /**
- * Keep a skip blurb's cover clause aligned with the toggle. Empty and
- * custom (non-clause) text are left alone so a blank seed still serializes
- * as null and a host-written line is not overwritten at the wire.
+ * Custom description is on when the host flipped the toggle (draft flag) or
+ * the served ticket already carries text. O1: the toggle no longer pre-fills
+ * canned copy, so an ON tier can legitimately hold empty text mid-edit — the
+ * flag, not the text, is the source of truth while the dialog is open.
  */
-export function withSkipCoverClause(description: string, includesCover: boolean): string {
-  const trimmed = description.trim()
-  if (trimmed === "" || !SKIP_COVER_CLAUSE.test(trimmed)) return trimmed
-  return trimmed.replace(SKIP_COVER_CLAUSE, skipCoverIncludedClause(includesCover))
-}
-
-/** The default blurb for a Weekly Cover tier. Says what a guest is buying. */
-export function defaultTierDescription(opts: {
-  kind: NightTierKind
-  includesCover: boolean
-  venueName?: string
-  dayName?: string
-}): string {
-  const venue = (opts.venueName ?? "").trim()
-  const at = venue === "" ? "" : ` at ${venue}`
-  const on = opts.dayName ? ` on ${opts.dayName}s` : ""
-  if (opts.kind !== "skip") return `Cover${at}${on}. Grants entry.`
-  return `Skip the line${at}${on}. ${skipCoverIncludedClause(opts.includesCover)}`
+export function tierHasCustomDescription(tier: {
+  custom_description?: boolean
+  description?: string | null
+}): boolean {
+  if (tier.custom_description !== undefined) return tier.custom_description
+  return String(tier.description ?? "").trim() !== ""
 }
 
 // ── Drafts ──────────────────────────────────────────────────────────────────
@@ -314,6 +287,12 @@ export interface NightTierDraft {
   maxPerPersonInput: string
   /** This tier is off for this night. Not the same as the night being closed. */
   is_disabled: boolean
+  /**
+   * The Custom description toggle (O1). ON opens the box for host-written
+   * text; OFF persists null — no canned stand-in. The flag is form state; the
+   * wire only ever carries the text (or null).
+   */
+  custom_description: boolean
   /** Skip tiers only: buying it also gets them in. */
   includes_cover: boolean
   /** Per-tier 21+. Any 21+ tier lights the night's badge, matching the app. */
@@ -354,59 +333,22 @@ export const EMPTY_SURGE_STEP: SurgeStepDraft = { afterSoldInput: "10", priceInp
  * only when Custom description is on. Off leaves description empty so the
  * persist path stays null, same as a fresh Flutter weekday ticket.
  */
-export function applyIncludesCover(
-  tier: NightTierDraft,
-  includesCover: boolean,
-  opts?: { venueName?: string; dayName?: string }
-): NightTierDraft {
+export function applyIncludesCover(tier: NightTierDraft, includesCover: boolean): NightTierDraft {
   if (tier.kind !== "skip") return { ...tier, includes_cover: false }
-  if (!tierHasCustomDescription(tier)) return { ...tier, includes_cover: includesCover }
-  return {
-    ...tier,
-    includes_cover: includesCover,
-    description: defaultTierDescription({
-      kind: "skip",
-      includesCover,
-      venueName: opts?.venueName,
-      dayName: opts?.dayName,
-    }),
-  }
+  // O1: flag only. The old behavior rewrote a custom description with canned
+  // "Skip the line at {Venue}…" copy — guests see Cover included via the
+  // checkout chip (driven by this flag), never via injected text.
+  return { ...tier, includes_cover: includesCover }
 }
 
 /**
- * Flutter Custom description toggle. Off by default on a fresh weekday
- * ticket. On fills the default template (they can edit). Same persist path:
- * `description` on the weekday tier, empty → null on the wire.
+ * Custom description toggle. Off by default and OFF MEANS NO DESCRIPTION —
+ * the wire carries null, nothing canned stands in. On simply opens the box;
+ * the host writes their own text (O1: the old canned template is gone).
  */
-export function setTierCustomDescription(
-  tier: NightTierDraft,
-  on: boolean,
-  opts?: { venueName?: string; dayName?: string }
-): NightTierDraft {
-  if (!on) return { ...tier, description: "" }
-  if (tierHasCustomDescription(tier)) return tier
-  return {
-    ...tier,
-    description: defaultTierDescription({
-      kind: tier.kind,
-      includesCover: tier.includes_cover,
-      venueName: opts?.venueName,
-      dayName: opts?.dayName,
-    }),
-  }
-}
-
-/** Re-derive every skip blurb from the current toggle so a stale seed cannot persist. */
-export function syncSkipTierDescriptions(
-  draft: NightDraft,
-  opts?: { venueName?: string; dayName?: string }
-): NightDraft {
-  return {
-    ...draft,
-    tiers: draft.tiers.map((tier) =>
-      tier.kind === "skip" ? applyIncludesCover(tier, tier.includes_cover, opts) : tier
-    ),
-  }
+export function setTierCustomDescription(tier: NightTierDraft, on: boolean): NightTierDraft {
+  if (!on) return { ...tier, custom_description: false, description: "" }
+  return { ...tier, custom_description: true }
 }
 
 export function emptyTier(
@@ -421,6 +363,7 @@ export function emptyTier(
     quantityInput: "0",
     maxPerPersonInput: "0",
     is_disabled: false,
+    custom_description: false,
     includes_cover: kind === "skip",
     is_21_plus: false,
     surge_enabled: false,
@@ -480,10 +423,11 @@ export function cloneNightDraft(draft: NightDraft): NightDraft {
 }
 
 /**
- * Copy one weekday's setup onto another, re-seeding the day-specific blurbs so
- * "Thursday Cover" becomes "Friday". Prices, hours, surge and 21+ come across
- * untouched; artwork does not — a flyer is chosen for a night, not inherited
- * sideways from one.
+ * Copy one weekday's setup onto another, re-deriving day-specific NAMES so
+ * "Thursday Cover" becomes "Friday Cover". Prices, hours, surge, 21+ and any
+ * host-written description come across untouched (O1: descriptions are never
+ * regenerated); artwork does not — a flyer is chosen for a night, not
+ * inherited sideways from one.
  */
 export function copyNightToDay(
   source: NightDraft,
@@ -496,13 +440,6 @@ export function copyNightToDay(
     if (looksLikeDefaultTierName(tier.name, tier.kind)) {
       tier.name = defaultTierNameForNight(tier.kind, opts)
     }
-    if (!tierHasCustomDescription(tier)) continue
-    tier.description = defaultTierDescription({
-      kind: tier.kind,
-      includesCover: tier.includes_cover,
-      venueName: opts.venueName,
-      dayName: opts.dayName,
-    })
   }
   return next
 }
@@ -570,10 +507,9 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
   const price = parsePrice(tier.priceInput)
   const steps = surgeStepsToWire(tier)
   const hasWindow = tier.valid_from_time !== "" || tier.valid_until_time !== ""
-  const description =
-    tier.kind === "skip"
-      ? withSkipCoverClause(tier.description, tier.includes_cover)
-      : tier.description.trim()
+  // O1: the description is the host's text or nothing. Custom off wires null;
+  // no clause rewriting, no canned stand-in.
+  const description = tierHasCustomDescription(tier) ? tier.description.trim() : ""
   return {
     tier_key: resolveTierKey(tier.kind, tier.tier_key),
     name: tier.name.trim() || defaultTierNameForNight(tier.kind),
@@ -869,6 +805,8 @@ export function tierFromWire(raw: Record<string, unknown>): NightTierDraft {
     kind,
     name: String(raw.name ?? "").trim() || defaultTierName(kind),
     description: raw.description == null ? "" : String(raw.description),
+    // Served text means the toggle was on when this saved.
+    custom_description: String(raw.description ?? "").trim() !== "",
     priceInput: price > 0 ? trimMoney(price) : "",
     quantityInput: String(numOf(raw.quantity)),
     maxPerPersonInput: String(numOf(raw.max_per_person)),

@@ -11,7 +11,6 @@ import {
   parsePrice,
   setTierCustomDescription,
   surgeStepsToWire,
-  syncSkipTierDescriptions,
   tierHasCustomDescription,
   trimMoney,
   validateNightDraft,
@@ -47,7 +46,7 @@ const OFFSET_OPTIONS = [
 const SURGE_INFO = "Price goes up after a set number of tickets sell."
 const SCAN_WINDOW_INFO =
   "Limits when this ticket can be scanned. Guests can still buy earlier. Leave this off if they can get in all night."
-const CUSTOM_DESC_INFO = "What guests see on the ticket. Off uses the usual Cover or Skip the Line text."
+const CUSTOM_DESC_INFO = "What guests see on the ticket. Off shows no description."
 
 function OffsetSelect({ value, onChange, idPrefix }: { value: number; onChange: (v: number) => void; idPrefix: string }) {
   const options = OFFSET_OPTIONS.some((o) => o.value === value)
@@ -172,14 +171,14 @@ export function NightEditorDialog({
   const toggleIncludesCover = (index: number, on: boolean) =>
     setDraft((d) => {
       const tiers = [...d.tiers]
-      tiers[index] = applyIncludesCover(tiers[index], on, { venueName, dayName })
+      tiers[index] = applyIncludesCover(tiers[index], on)
       return { ...d, tiers }
     })
 
   const toggleCustomDescription = (index: number, on: boolean) =>
     setDraft((d) => {
       const tiers = [...d.tiers]
-      tiers[index] = setTierCustomDescription(tiers[index], on, { venueName, dayName })
+      tiers[index] = setTierCustomDescription(tiers[index], on)
       return { ...d, tiers }
     })
 
@@ -201,9 +200,10 @@ export function NightEditorDialog({
       setErrors(problems)
       return
     }
-    const synced = syncSkipTierDescriptions(draft, { venueName, dayName })
-    const is21 = synced.is21Plus || synced.tiers.some((t) => !t.is_disabled && t.is_21_plus)
-    onSave({ ...cloneNightDraft(synced), is21Plus: is21 })
+    // O1: descriptions are the host's text as typed — nothing is re-derived
+    // or injected on save.
+    const is21 = draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus)
+    onSave({ ...cloneNightDraft(draft), is21Plus: is21 })
     onOpenChange(false)
   }
 
