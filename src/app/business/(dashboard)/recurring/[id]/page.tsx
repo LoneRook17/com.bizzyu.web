@@ -250,6 +250,8 @@ function OccurrenceRow({
     product_kind: "event",
     recurring_series_id: seriesId,
     is_customized: o.is_customized,
+    series_customized_at: (o as { series_customized_at?: string | null }).series_customized_at,
+    override_scope: (o as { override_scope?: string | null }).override_scope,
   })
   return (
     <Link

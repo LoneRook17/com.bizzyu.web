@@ -63,6 +63,7 @@ export function EventCard({
     recurring_series_id: event.recurring_series_id,
     series_customized_at: event.series_customized_at,
     is_customized: event.is_customized,
+    override_scope: (event as { override_scope?: string | null }).override_scope,
   })
   if (customTone === "wc") {
     chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "access" })

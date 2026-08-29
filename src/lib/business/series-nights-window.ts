@@ -36,6 +36,7 @@ export function isCustomizedSeriesNight(event: {
   recurring_series_id?: number | string | null
   product_kind?: string | null
   access_kind?: string | null
+  override_scope?: string | null
 }): boolean {
   return isHostCustomNight({
     product_kind: event.product_kind ?? "event",
@@ -43,6 +44,7 @@ export function isCustomizedSeriesNight(event: {
     recurring_series_id: event.recurring_series_id,
     series_customized_at: event.series_customized_at,
     is_customized: event.is_customized,
+    override_scope: event.override_scope,
   })
 }
 

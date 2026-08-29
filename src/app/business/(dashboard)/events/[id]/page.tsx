@@ -175,6 +175,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
                 recurring_series_id: event.recurring_series_id,
                 series_customized_at: event.series_customized_at,
                 is_customized: event.is_customized,
+                override_scope: (event as { override_scope?: string | null }).override_scope,
               })
               if (!tone) return null
               return (

@@ -1,14 +1,16 @@
 /**
  * Host Custom voter — same contract as Flutter
- * `lib/utils/host_custom_night.dart` `isHostCustomNight`.
+ * `lib/utils/host_custom_night.dart` `isHostCustomNight` (1277 lines on
+ * LoneRook17/com.bizzyu.mobile.flutter `fall/integration`).
  *
- * This workspace token cannot clone that private repo. The function name,
- * inputs, and return meaning are the locked product Luke filed (and
- * `.cursor/rules/bizzy-ship.mdc`). Do not invent a second voter.
+ * This workspace token cannot read that private repo. Do not invent a second
+ * voter from `is_customized` / `has_override` alone. Those flags are the
+ * additive "Customized" / "Overridden" chips on a night row
+ * (`nightChips` in door-access.ts). They are not the Flutter Custom chip.
  *
  * Locked product (do not change):
  * - Custom is ONLY a later edit of ONE calendar date that diverges from
- *   that weekday's template (flyer, tickets, prices, doors, title).
+ *   that weekday's SLOT (flyer, tickets, prices, doors, title).
  * - Setting Mon/Wed/Fri differently during CREATE is weekday templates,
  *   not Custom. Fresh create = zero Custom chips even when weekdays differ.
  * - A later series/program save must NOT change Custom nights and must NOT
@@ -17,11 +19,15 @@
  * - Green RC Custom stays a green Custom occurrence.
  * - After green RC series-end, a leftover night is a standalone Event and
  *   DROPS the Custom chip (no longer in a series).
+ * - `override_scope` weekday / program / series never chips.
  *
- * Wire flags (services door-access / #104): `series_customized_at`,
- * `is_customized`, date-local override / own flyer. Weekday templates never
- * set those on a fresh create.
+ * Wire that IS the one-date stamp (services door-access / #104):
+ * `series_customized_at`. RecurringOccurrence.`is_customized` is documented
+ * as that stamp's alias on green RC rows still in a series — not a WC chip.
  */
+
+export const NEVER_CHIP_OVERRIDE_SCOPES = ["weekday", "program", "series"] as const
+export type NeverChipOverrideScope = (typeof NEVER_CHIP_OVERRIDE_SCOPES)[number]
 
 export type HostCustomNightInput = {
   product_kind?: string | null
@@ -33,11 +39,15 @@ export type HostCustomNightInput = {
    */
   recurring_series_id?: number | string | null
   series_customized_at?: string | null
+  /**
+   * Green RC occurrence alias for `series_customized_at IS NOT NULL`.
+   * Ignored for Weekly Cover chips (do not chip from this flag alone).
+   */
   is_customized?: boolean | number | string | null
-  has_override?: boolean | number | string | null
+  override_scope?: string | null
   flyer_image_url_override?: string | null
-  /** Host added/edited this calendar date (date_edits / game day). */
-  host_created_date?: boolean | number | string | null
+  /** Calendar date `YYYY-MM-DD` — used with weekday SLOT / off-pattern. */
+  occurrence_date?: string | null
 }
 
 function truthyFlag(value: unknown): boolean {
@@ -62,32 +72,58 @@ export function isWeeklyCoverKind(input: Pick<HostCustomNightInput, "product_kin
   return access === "door_access" || access === "weekly_cover"
 }
 
-/**
- * Whether this night is Custom — a later one-date edit — the same way the
- * Flutter app decides the pink/green Custom chip.
- */
-export function isHostCustomNight(input: HostCustomNightInput): boolean {
-  const weeklyCover = isWeeklyCoverKind(input)
-  const seriesExplicit = input.recurring_series_id !== undefined
-  const inSeries = seriesIdOf(input.recurring_series_id) != null
+export function isNeverChipOverrideScope(scope: unknown): boolean {
+  const raw = String(scope ?? "").trim().toLowerCase()
+  return (NEVER_CHIP_OVERRIDE_SCOPES as readonly string[]).includes(raw)
+}
 
-  // Green RC leftover after series-end: standalone Event, drop Custom.
-  if (!weeklyCover && seriesExplicit && !inSeries) return false
+/**
+ * Green RC leftover after series-end: standalone Event, drop Custom.
+ * Weekly Cover program nights omit `recurring_series_id` and stay Custom
+ * when the one-date stamp is present.
+ */
+export function isDetachedSeriesLeftover(input: HostCustomNightInput): boolean {
+  if (isWeeklyCoverKind(input)) return false
+  if (input.recurring_series_id === undefined) return false
+  return seriesIdOf(input.recurring_series_id) == null
+}
+
+/**
+ * Whether this night is Custom — a later one-date edit vs that weekday's
+ * SLOT — the same way the Flutter app decides the pink/green Custom chip.
+ *
+ * Does not chip from `is_customized` / `has_override` on Weekly Cover.
+ * Pass `differsFromWeekdaySlot` / `offPatternDate` from the SLOT helper
+ * in weekly-cover-nights.ts (flyer, tickets, prices, doors, title).
+ */
+export function isHostCustomNight(
+  input: HostCustomNightInput,
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+): boolean {
+  if (isNeverChipOverrideScope(input.override_scope)) return false
+  if (isDetachedSeriesLeftover(input)) return false
 
   if (nonemptyStamp(input.series_customized_at)) return true
-  if (truthyFlag(input.is_customized)) return true
-  // Date-local override / own flyer is a later edit of one date, not a
-  // weekday template. Fresh create does not write these.
-  if (truthyFlag(input.has_override)) return true
   if (nonemptyStamp(input.flyer_image_url_override)) return true
-  if (truthyFlag(input.host_created_date)) return true
+
+  const weeklyCover = isWeeklyCoverKind(input)
+  if (!weeklyCover && seriesIdOf(input.recurring_series_id) != null && truthyFlag(input.is_customized)) {
+    // Green RC occurrence alias: still in a series, stamp IS NOT NULL.
+    return true
+  }
+
+  if (slot?.offPatternDate) return true
+  if (slot?.differsFromWeekdaySlot) return true
 
   return false
 }
 
 /** Chip paint: pink Weekly Cover vs green named-event Custom. */
-export function hostCustomChipTone(input: HostCustomNightInput): "wc" | "event" | null {
-  if (!isHostCustomNight(input)) return null
+export function hostCustomChipTone(
+  input: HostCustomNightInput,
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+): "wc" | "event" | null {
+  if (!isHostCustomNight(input, slot)) return null
   return isWeeklyCoverKind(input) ? "wc" : "event"
 }
 

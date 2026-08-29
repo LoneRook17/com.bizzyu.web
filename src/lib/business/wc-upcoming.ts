@@ -14,19 +14,22 @@ export function isUpcomingNightDate(date: string, today: string): boolean {
 }
 
 export function isCustomUpcomingNight(
-  night: Pick<DoorAccessNight, "is_customized" | "occurrence_date" | "is_closed" | "status"> & {
+  night: Pick<DoorAccessNight, "occurrence_date" | "is_closed" | "status"> & {
     series_customized_at?: string | null
-    has_override?: boolean
     flyer_image_url_override?: string | null
+    override_scope?: string | null
+    product_kind?: string | null
+    access_kind?: string | null
   },
   today: string,
 ): boolean {
   if (!isHostCustomNight({
-    product_kind: "weekly_cover",
-    is_customized: night.is_customized,
+    product_kind: night.product_kind ?? "weekly_cover",
+    access_kind: night.access_kind,
     series_customized_at: night.series_customized_at,
-    has_override: night.has_override,
     flyer_image_url_override: night.flyer_image_url_override,
+    override_scope: night.override_scope,
+    occurrence_date: night.occurrence_date,
   })) return false
   if (!isUpcomingNightDate(night.occurrence_date, today)) return false
   if (night.is_closed) return false

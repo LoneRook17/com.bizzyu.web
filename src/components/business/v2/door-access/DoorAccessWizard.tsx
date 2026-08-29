@@ -10,6 +10,7 @@ import {
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_CREATION_LABEL,
   programHref,
+  stampHostCreatedDates,
   updateDoorAccessProgram,
   withDoorAccessProgramKind,
   type DoorAccessNight,
@@ -444,6 +445,10 @@ export function DoorAccessWizard({
         }
       }
       if (Number.isFinite(id) && id > 0) {
+        const createdDates = Object.keys(dateEditsToWire(dateEdits, daysOfWeek))
+        if (createdDates.length > 0) {
+          await stampHostCreatedDates(id, createdDates)
+        }
         setGenerationNotice({ id, message: "", kind: "created" })
         return
       }
