@@ -27,6 +27,13 @@ import {
   weeklyCoverSeriesIds,
   type EventTypeFilter,
 } from "@/lib/business/events-list"
+import {
+  HOST_UPCOMING_FETCH_LIMIT,
+  hostDashIsEmpty,
+  hostDashSections,
+  shouldUseHostDashLayout,
+} from "@/lib/business/host-dash-sections"
+import { HostDashList } from "@/components/business/v2/host/HostDashList"
 import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Button } from "@/components/business/v2/ui/button"
@@ -68,6 +75,10 @@ import {
  *   • the status tabs (Upcoming / Past / Drafts / Recurring) — which STATE,
  *     and only meaningful for dated events, so they hide in the access view.
  *
+ * Live Upcoming matches Flutter Host: Tonight, expandable Upcoming events & WC
+ * (today+14 for series; one-off / Custom always), then Schedules (WC weekday
+ * templates + green RC). Past / Drafts / Recurring keep the older list.
+ *
  * Everything this page replaced still opens its own existing page: a series row
  * → /business/recurring/:id, an access row → /business/door-access/:id, an
  * event row → its manage page. Nothing was rebuilt; the entry points moved.
@@ -100,7 +111,7 @@ export default function V2EventsPage() {
   // to sort on, so they PIN ABOVE the dated rows rather than being given a
   // fake one, and they are never paginated with the events below them.
   const [programs, setPrograms] = useState<DoorAccessProgramSummary[]>([])
-  const [oneOffNights, setOneOffNights] = useState<Array<{ program: DoorAccessProgramSummary; night: DoorAccessNight }>>([])
+  const [programNights, setProgramNights] = useState<Array<{ program: DoorAccessProgramSummary; nights: DoorAccessNight[] }>>([])
   const [programsLoading, setProgramsLoading] = useState(true)
   // D2-2: the series a night belongs to, so a run of Tuesdays collapses into
   // one row. Degrades to [] — an ungrouped list is a worse list, not a broken
@@ -117,7 +128,8 @@ export default function V2EventsPage() {
   const [stripeConnecting, setStripeConnecting] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
 
-  const limit = 20
+  const useHostLayout = shouldUseHostDashLayout(tab, effectiveType)
+  const limit = useHostLayout ? HOST_UPCOMING_FETCH_LIMIT : 20
   const canCreate = user?.business_role === "owner" || user?.business_role === "manager"
 
   const handleConnectStripe = async () => {
@@ -160,7 +172,7 @@ export default function V2EventsPage() {
     setLoading(true)
     try {
       const data = await apiClient.get<{ events: EventListItem[]; total: number }>(
-        `/business/events?tab=${tab}&page=${page}&limit=${limit}${venueParam}`
+        `/business/events?tab=${tab}&page=${page}&limit=${limit}${venueParam}`,
       )
       let next = data.events
       let nextTotal = data.total
@@ -179,7 +191,7 @@ export default function V2EventsPage() {
     } finally {
       setLoading(false)
     }
-  }, [tab, page, venueParam, isPending])
+  }, [tab, page, venueParam, isPending, limit])
 
   useEffect(() => { fetchEvents() }, [fetchEvents])
 
@@ -196,7 +208,7 @@ export default function V2EventsPage() {
       if (cancelled) return
       setPrograms(rows)
       const loaded = await loadProgramsUpcomingNights(rows.filter((p) => p.is_active))
-      if (!cancelled) setOneOffNights(customUpcomingNightsFromSeries(loaded, easternToday()))
+      if (!cancelled) setProgramNights(loaded)
       setProgramsLoading(false)
     })
     return () => { cancelled = true }
@@ -253,11 +265,29 @@ export default function V2EventsPage() {
   const visiblePrograms = shouldShowWeeklyCoverOnEventsTab(tab, isPending, effectiveType)
     ? activePrograms
     : []
+  const oneOffNights = customUpcomingNightsFromSeries(programNights, easternToday())
   const visibleOneOffs = shouldShowWeeklyCoverOneOffsOnEventsTab(tab, isPending, effectiveType)
     ? oneOffNights
     : []
+  const showAccessNights = shouldShowWeeklyCoverOneOffsOnEventsTab(tab, isPending, effectiveType)
+  const showAccessSchedules = shouldShowWeeklyCoverOnEventsTab(tab, isPending, effectiveType)
 
-  const rows = showsEvents(effectiveType)
+  const hostSections = useHostLayout
+    ? hostDashSections({
+        events,
+        programs: visiblePrograms,
+        programNights,
+        series: venueSeries,
+        wcSeriesIds,
+        inactiveWcIds,
+        today: easternToday(),
+        showEvents: showsEvents(effectiveType),
+        showAccessNights,
+        showAccessSchedules,
+      })
+    : null
+
+  const rows = !useHostLayout && showsEvents(effectiveType)
     ? groupEventRows(
         tab === "upcoming" ? eventsForHostUpcomingList(events, easternToday()) : events,
         venueSeries,
@@ -270,22 +300,23 @@ export default function V2EventsPage() {
   // (program_kind=event). Host-deleted series (is_active=0) do not resurrect
   // from published nights. EventCard / SeriesGroupRow open the series id,
   // never /door-access/{event_id}.
-  const eventAccessGroups = showsAccess(effectiveType) && !(isPending && tab === "upcoming")
+  const eventAccessGroups = !useHostLayout && showsAccess(effectiveType) && !(isPending && tab === "upcoming")
     ? eventAccessGroupsForVenue(
         eventAccessGroupsForPrograms(events, venuePrograms, wcSeriesIds, inactiveWcIds),
         scopedVenueId,
         selectedVenue?.name,
       )
     : []
-  const pendingCancelNights = showsAccess(effectiveType) && !showsEvents(effectiveType)
+  const pendingCancelNights = !useHostLayout && showsAccess(effectiveType) && !showsEvents(effectiveType)
     ? pendingCancelWeeklyCoverNights(events, wcSeriesIds, inactiveWcIds)
     : []
-  const isEmpty =
-    rows.length === 0 &&
-    visiblePrograms.length === 0 &&
-    visibleOneOffs.length === 0 &&
-    eventAccessGroups.length === 0 &&
-    pendingCancelNights.length === 0
+  const isEmpty = useHostLayout
+    ? hostSections != null && hostDashIsEmpty(hostSections)
+    : rows.length === 0 &&
+      visiblePrograms.length === 0 &&
+      visibleOneOffs.length === 0 &&
+      eventAccessGroups.length === 0 &&
+      pendingCancelNights.length === 0
 
   const handleTabChange = (newTab: string) => {
     setTab(newTab)
@@ -369,7 +400,10 @@ export default function V2EventsPage() {
       {/* Each half owns its own spinner: the access view must not read "no
           programs yet" while its fetch is still in flight, and the event view
           must not wait on a fetch it doesn't render. */}
-      {(showsEvents(effectiveType) ? loading : programsLoading) ? (
+      {(useHostLayout
+        ? ((showsEvents(effectiveType) && loading) || (showsAccess(effectiveType) && programsLoading))
+        : (showsEvents(effectiveType) ? loading : programsLoading)
+      ) ? (
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[124px] rounded-xl" />)}
         </div>
@@ -387,6 +421,14 @@ export default function V2EventsPage() {
               <Button variant={effectiveType === "access" ? "access" : "primary"} onClick={handleCreate}><Plus /> Create</Button>
             ) : undefined
           }
+        />
+      ) : useHostLayout && hostSections ? (
+        <HostDashList
+          sections={hostSections}
+          programs={venuePrograms}
+          wcSeriesIds={wcSeriesIds}
+          inactiveWcIds={inactiveWcIds}
+          onNightCancelled={fetchEvents}
         />
       ) : (
         <div className="flex flex-col gap-3">
@@ -447,9 +489,8 @@ export default function V2EventsPage() {
         </div>
       )}
 
-      {/* Programs are not paginated (D-F9.2), so the pager belongs to the event
-          half of the list and goes when that half does. */}
-      {showsEvents(effectiveType) && (
+      {/* Host Upcoming is one window, not a pager of generated nights. */}
+      {showsEvents(effectiveType) && !useHostLayout && (
         <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
       )}
 
