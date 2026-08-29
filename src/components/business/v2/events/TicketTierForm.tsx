@@ -1,8 +1,9 @@
 "use client"
 
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, X } from "lucide-react"
 import { TICKET_TYPES } from "@/lib/business/constants"
 import type { TicketTier } from "@/lib/business/types"
+import { nextSurgeStep, seededSurgeStep } from "@/lib/business/event-tier-surge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input, Select, Textarea } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
@@ -23,7 +24,12 @@ const EMPTY_TIER: TicketTier = {
   ticket_type: "paid",
   valid_from: "",
   valid_until: "",
+  surge_enabled: false,
+  surge: [],
 }
+
+// Same explanation the Weekly Cover dialog and the app use.
+const SURGE_INFO = "Price goes up after a set number of tickets sell."
 
 // Matches the mobile app's ticket-description field (optional, 64-char cap).
 export const TICKET_DESCRIPTION_MAX = 64
@@ -47,6 +53,42 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
     const updated = [...tiers]
     updated[index] = { ...updated[index], valid_from: "", valid_until: "" }
     onChange(updated)
+  }
+
+  const patchTier = (index: number, patch: Partial<TicketTier>) => {
+    const updated = [...tiers]
+    updated[index] = { ...updated[index], ...patch }
+    onChange(updated)
+  }
+
+  const toggleSurge = (index: number, on: boolean) => {
+    const tier = tiers[index]
+    patchTier(index, {
+      surge_enabled: on,
+      // Seed the first rung so the toggle never lands on an empty ladder.
+      surge: on && (tier.surge ?? []).length === 0 ? [seededSurgeStep(tier)] : tier.surge,
+    })
+  }
+
+  const addSurgeStep = (index: number) => {
+    const tier = tiers[index]
+    patchTier(index, { surge: [...(tier.surge ?? []), nextSurgeStep(tier)] })
+  }
+
+  const patchSurgeStep = (
+    tierIndex: number,
+    stepIndex: number,
+    patch: Partial<{ afterSoldInput: string; priceInput: string }>
+  ) => {
+    const tier = tiers[tierIndex]
+    const surge = [...(tier.surge ?? [])]
+    surge[stepIndex] = { ...surge[stepIndex], ...patch }
+    patchTier(tierIndex, { surge })
+  }
+
+  const removeSurgeStep = (tierIndex: number, stepIndex: number) => {
+    const tier = tiers[tierIndex]
+    patchTier(tierIndex, { surge: (tier.surge ?? []).filter((_, i) => i !== stepIndex) })
   }
 
   const addTier = () => onChange([...tiers, { ...EMPTY_TIER }])
@@ -126,6 +168,74 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
             onUpdate={(field, value) => updateTier(i, field, value)}
             onClear={() => clearTierWindow(i)}
           />
+
+          {tier.ticket_type === "paid" && Number(tier.price_usd) > 0 && (
+            <div className="mt-3">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!tier.surge_enabled}
+                  onChange={(e) => toggleSurge(i, e.target.checked)}
+                  className="size-4 rounded border-neutral-300 dark:border-neutral-700"
+                />
+                <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Surge pricing</span>
+                <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{SURGE_INFO}</span>
+              </label>
+
+              {tier.surge_enabled && (
+                <div className="mt-2 rounded-xl bg-neutral-100 p-3 dark:bg-neutral-800/70">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                    Price jumps
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {(tier.surge ?? []).map((step, s) => (
+                      <div key={s} className="flex items-end gap-2">
+                        <div className="min-w-0 flex-1">
+                          <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+                            {s === 0 ? "After this sells" : "Then after"}
+                          </Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={step.afterSoldInput}
+                            onChange={(e) => patchSurgeStep(i, s, { afterSoldInput: e.target.value })}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+                            Next price ($)
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            inputMode="decimal"
+                            value={step.priceInput}
+                            onChange={(e) => patchSurgeStep(i, s, { priceInput: e.target.value })}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeSurgeStep(i, s)}
+                          aria-label={`Remove jump ${s + 1}`}
+                          className="mb-1.5 rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => addSurgeStep(i)}
+                    className="mt-2 text-[13px] font-semibold text-neutral-700 hover:underline dark:text-neutral-300"
+                  >
+                    Add another price jump
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">

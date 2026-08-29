@@ -236,6 +236,16 @@ export interface TicketTier {
   // Scheduled tickets: optional sales/scan window (datetime-local strings, US/Eastern wall-clock). Empty/null = no limit.
   valid_from?: string | null
   valid_until?: string | null
+  // Surge ladder (O4). `surge` holds the form's draft rungs (text inputs, so a
+  // half-typed number is never coerced mid-keystroke); `surge_steps` is the
+  // wire/read shape ({after_sold, price_usd} out, {threshold_sold, price_cents,
+  // price_usd} echoed back); `surge_base_price_usd` is the stored ladder base —
+  // an existing ladder validates against it, NOT price_usd, which has already
+  // moved for a part-way-fired ladder.
+  surge_enabled?: boolean
+  surge?: { afterSoldInput: string; priceInput: string }[]
+  surge_steps?: unknown[]
+  surge_base_price_usd?: number | null
 }
 
 export interface EventDetail extends EventListItem {
