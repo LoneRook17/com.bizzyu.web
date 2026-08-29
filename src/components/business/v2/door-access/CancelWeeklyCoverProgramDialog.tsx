@@ -10,10 +10,13 @@ import {
 } from "@/components/business/v2/ui/dialog"
 
 /**
- * WC program / series-end. Calls the existing recurring-series suspend
- * path (core suspendSeries). Do not invent a money path or hard-delete
- * ticket rows. Sold nights stay until admin refunds complete; unsold
- * nights leave. Single-night cancel is a different control.
+ * WC program / series-end. Calls the door-access suspend
+ * (/business/door-access/:id/suspend), matching the app's
+ * DoorAccessApiService.suspend — the recurring-series suspend 404s WC
+ * program kinds on purpose. Do not invent a money path or hard-delete
+ * ticket rows. Sold nights go pending_cancellation; unsold template
+ * nights unpublish; Custom leftovers stay live and detach. Single-night
+ * cancel is a different control.
  */
 export function CancelWeeklyCoverProgramDialog({
   open,
