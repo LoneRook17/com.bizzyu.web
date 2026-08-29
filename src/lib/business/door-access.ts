@@ -1088,10 +1088,7 @@ export function normalizeNight(raw: Record<string, unknown>): DoorAccessNight {
       raw.override_scope == null || raw.override_scope === "" ? null : str(raw.override_scope),
     product_kind: raw.product_kind == null || raw.product_kind === "" ? undefined : str(raw.product_kind),
     access_kind: raw.access_kind == null || raw.access_kind === "" ? undefined : str(raw.access_kind),
-    recurring_series_id:
-      raw.recurring_series_id == null || raw.recurring_series_id === ""
-        ? undefined
-        : raw.recurring_series_id,
+    recurring_series_id: nullableNum(raw.recurring_series_id) ?? undefined,
     is_closed: bool(raw.is_closed),
     has_override: bool(raw.has_override),
     start_time: str(raw.start_time),

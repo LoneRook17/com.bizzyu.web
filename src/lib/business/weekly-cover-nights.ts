@@ -1022,7 +1022,7 @@ export function isCustomWeeklyCoverNight(
     recurring_series_id?: number | string | null
   },
   nights?: DoorAccessNight[],
-  program?: Pick<DoorAccessProgram, "days_of_week">,
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
 ): boolean {
   return isHostCustomNight(hostCustomInputFromNight(night), hostCustomSlot(night, nights, program))
 }
