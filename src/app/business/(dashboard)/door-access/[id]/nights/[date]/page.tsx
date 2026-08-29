@@ -273,6 +273,12 @@ export default function DoorAccessNightPage({
         </Notice>
       )}
 
+      {(night.status === "pending_approval" || isPending) && (
+        <Notice tone="warning">
+          This night is pending until Bizzy approves your business. It is not live and not selling.
+        </Notice>
+      )}
+
       {editable && (
         <Notice tone="info">{NIGHT_CUSTOM_HELPER}</Notice>
       )}

@@ -53,7 +53,7 @@ export function showsAccess(filter: EventTypeFilter): boolean {
   return filter !== "events"
 }
 
-/** Pending hosts see WC on Drafts, like events. Approved hosts see Upcoming. */
+/** Pending hosts keep WC off Upcoming Live. Approved hosts see Upcoming. */
 export function weeklyCoverEventsListTab(isPending: boolean): "upcoming" | "drafts" {
   return isPending ? "drafts" : "upcoming"
 }

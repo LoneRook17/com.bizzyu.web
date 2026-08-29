@@ -1343,20 +1343,20 @@ export async function stampHostCreatedDates(
 }
 
 /**
- * After an approved create, promote nights the generator left as draft.
- * Pending hosts must not call this — same as event create.
+ * D3 after business approve: leftover `pending_approval` nights go published.
+ * Do not call this on create — Node already holds/promotes. Do not target draft.
  */
-export async function publishDraftNightsForProgram(programId: number): Promise<void> {
+export async function promotePendingApprovalNightsForProgram(programId: number): Promise<void> {
   const { nights } = await fetchDoorAccessSeries(programId)
   const api = await client()
   for (const night of nights) {
     const eventId = Number(night.event_id)
     if (!Number.isFinite(eventId) || eventId <= 0) continue
-    if ((night.status ?? "").toLowerCase() !== "draft") continue
+    if ((night.status ?? "").toLowerCase() !== "pending_approval") continue
     try {
       await api.post(`/business/events/${eventId}/publish`)
     } catch {
-      // LiveAfterApprove and event detail still promote.
+      // LiveAfterApprove still promotes after business approve.
     }
   }
 }
@@ -1761,6 +1761,9 @@ export function nightChips(night: DoorAccessNight, seriesActive = true): NightCh
   const chips: NightChip[] = []
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
+  if ((night.status ?? "").toLowerCase() === "pending_approval") {
+    chips.push({ label: "In review", variant: "warning" })
+  }
   if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
   }
@@ -1794,12 +1797,13 @@ export function nightPreviewChip(
     return { label: "Cancellation pending", variant: "warning" }
   }
   if (!seriesActive) return null
-  if (isPending) return { label: "Draft", variant: "neutral" }
   const status = (night.status ?? "").toLowerCase()
+  if (status === "pending_approval" || isPending) {
+    return { label: "In review", variant: "warning" }
+  }
   if (status === "published" || status === "approved" || status === "active") {
     return { label: "On sale", variant: "info" }
   }
-  if (status === "draft") return { label: "Draft", variant: "neutral" }
   return null
 }
 

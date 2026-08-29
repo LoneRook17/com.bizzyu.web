@@ -1079,6 +1079,7 @@ test("nightChips are additive — a night can be several things at once", () => 
     labels(night({ is_closed: true, has_override: true, is_customized: true, is_stamped: false })),
     ["Closed", "Overridden", "Customized", "Not generated yet"]
   )
+  assert.deepEqual(labels(night({ status: "pending_approval" })), ["In review"])
 })
 
 test("nightPreviewChip names Custom like the app after a one-date stamp, never from is_customized alone", () => {
@@ -1107,10 +1108,14 @@ test("nightPreviewChip names Custom like the app after a one-date stamp, never f
     { label: "Custom", variant: "access" },
     "host-created far date that diverges from the weekday SLOT chips Custom",
   )
-  assert.deepEqual(nightPreviewChip(night({ status: "draft" })), { label: "Draft", variant: "neutral" })
+  assert.equal(nightPreviewChip(night({ status: "draft" })), null, "draft is not the WC hold")
+  assert.deepEqual(
+    nightPreviewChip(night({ status: "pending_approval" })),
+    { label: "In review", variant: "warning" },
+  )
   assert.deepEqual(
     nightPreviewChip(night(), true, undefined, true),
-    { label: "Draft", variant: "neutral" },
+    { label: "In review", variant: "warning" },
     "pending hosts must not see On sale even if the night stamped published",
   )
   assert.deepEqual(
@@ -1530,8 +1535,8 @@ test("create writes stay program_kind=door_access and Save night PUTs publish/re
   assert.equal(payload.publish, true)
   assert.equal(payload.is_closed, false)
   assert.ok(payload.tiers?.length)
-  const draftSave = buildNightSavePayload(draftFromNight(night(), program()), { publish: false })
-  assert.equal("publish" in draftSave, false, "pending save must omit publish so nights stay draft")
+  const heldSave = buildNightSavePayload(draftFromNight(night(), program()), { publish: false })
+  assert.equal("publish" in heldSave, false, "pending save must omit publish so Node can hold pending_approval")
 
   const wizard = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
@@ -1740,14 +1745,15 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(eventsPage.includes("inactiveWeeklyCoverSeriesIds"), "host-deleted series do not resurrect from published nights")
   assert.ok(eventsPage.includes("probeInactiveSeriesIds"), "every recurring_series_id is probed for is_active=0")
   assert.ok(eventsPage.includes("weeklyCoverProgramsForDash"), "ended / deleted programs leave the live list")
-  assert.ok(eventsPage.includes("shouldShowWeeklyCoverOnEventsTab"), "pending WC stays on Drafts, not Upcoming Live")
+  assert.ok(eventsPage.includes("shouldShowWeeklyCoverOnEventsTab"), "pending WC stays off Upcoming Live")
   assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
   const accessRow = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/AccessProgramRow.tsx", import.meta.url)),
     "utf8",
   )
   assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
-  assert.ok(accessRow.includes("isPending"), "pending hosts see Draft, not a live program row")
+  assert.ok(accessRow.includes("isPending"), "pending hosts see In review, not a live program row")
+  assert.ok(accessRow.includes("In review"), "unapproved WC must not look Live")
   assert.ok(eventsPage.includes("programs={venuePrograms}"), "EventCard/SeriesGroupRow rematch against the venue-scoped programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
   assert.ok(eventCard.includes("eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)"), "EventCard hrefs WC nights via eventListHref")
@@ -2029,9 +2035,10 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(!wizard.includes("withDoorAccessProgramKind({})"), "create must not empty-PATCH the new program")
   assert.ok(wizard.includes('kind: "created"'), "successful create still shows Program created + Open the program")
   assert.ok(wizard.includes("stampHostCreatedDates"), "create date_edits must stamp those nights")
-  assert.ok(wizard.includes("willDraftOnCreate"), "pending WC create uses the event draft gate")
-  assert.ok(wizard.includes("applySaveAsDraftFlag"), "pending WC create sends save_as_draft")
-  assert.ok(wizard.includes("publishDraftNightsForProgram"), "approved WC create promotes leftover drafts")
+  assert.ok(!wizard.includes("applySaveAsDraftFlag"), "WC must not send save_as_draft — draft is sellable")
+  assert.ok(!wizard.includes("willDraftOnCreate"), "WC hold is pending_approval, not draft")
+  assert.ok(wizard.includes("pendingApproval"), "success copy must distinguish pending vs live")
+  assert.ok(wizard.includes("shouldTreatDraftAsLive"), "pending WC must not stamp publish:true")
   assert.ok(wizard.includes("saved && generationNotice.message"), "amber leftover is save-only, never after a successful create")
 
   const door = readFileSync(

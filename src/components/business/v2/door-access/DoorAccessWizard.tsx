@@ -11,7 +11,6 @@ import {
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_CREATION_LABEL,
   programHref,
-  publishDraftNightsForProgram,
   stampHostCreatedDates,
   updateDoorAccessProgram,
   withDoorAccessProgramKind,
@@ -41,11 +40,9 @@ import {
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import {
-  applySaveAsDraftFlag,
   isLeftoverPromoterPayoutPathError,
   isPromotionEnabled,
   promoterToggleDisabled,
-  willDraftOnCreate,
 } from "@/lib/business/create-publish"
 import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
@@ -121,13 +118,12 @@ export function DoorAccessWizard({
   initialData?: DoorAccessProgram
   initialNights?: DoorAccessNight[]
   stripeOnboarded?: boolean
-  /** Same pending-approval gate as EventForm. Create/save stays draft until approve. */
+  /** Same pending-approval hold as unapproved one-off events. Not draft. */
   isPending?: boolean
 }) {
   const router = useRouter()
   const { isPending: authPending } = useAuth()
   const isPending = isPendingProp ?? authPending
-  const willDraft = willDraftOnCreate(isPending)
   const isEdit = mode === "edit"
   const { venues, selectedVenue } = useVenue()
   const backHref = isEdit && programId ? programHref(programId) : "/business/create"
@@ -174,7 +170,7 @@ export function DoorAccessWizard({
     id: number
     message: string
     kind: "created" | "updated"
-    asDraft?: boolean
+    pendingApproval?: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -422,13 +418,10 @@ export function DoorAccessWizard({
     setSubmitting(true)
     setServerError("")
     try {
-      const body = applySaveAsDraftFlag(
-        withDoorAccessProgramKind({
-          ...detailsPayload(),
-          ...salesPayload(),
-        }),
-        willDraft,
-      )
+      const body = withDoorAccessProgramKind({
+        ...detailsPayload(),
+        ...salesPayload(),
+      })
 
       if (isEdit && programId != null) {
         const data = await updateDoorAccessProgram(programId, body)
@@ -464,14 +457,7 @@ export function DoorAccessWizard({
             publish: shouldTreatDraftAsLive(isPending),
           })
         }
-        if (shouldTreatDraftAsLive(isPending)) {
-          try {
-            await publishDraftNightsForProgram(id)
-          } catch {
-            // LiveAfterApprove still promotes queued drafts after approve.
-          }
-        }
-        setGenerationNotice({ id, message: "", kind: "created", asDraft: willDraft })
+        setGenerationNotice({ id, message: "", kind: "created", pendingApproval: isPending })
         return
       }
       router.push(programHref(id))
@@ -509,8 +495,8 @@ export function DoorAccessWizard({
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
             {saved
               ? "The template is saved. Upcoming nights that still follow it will pick up the new defaults."
-              : generationNotice.asDraft
-                ? "Saved as a draft. It goes live once Bizzy approves your business. You can keep editing in the meantime."
+              : generationNotice.pendingApproval
+                ? "Saved. It stays pending until Bizzy approves your business — not live and not selling. You can keep editing in the meantime."
                 : `${programName} is live and selling.`}
           </p>
         </div>
@@ -673,13 +659,13 @@ export function DoorAccessWizard({
             {!isEdit && (
               <div
                 className={
-                  willDraft
+                  isPending
                     ? "mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                     : "mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300"
                 }
               >
-                {willDraft
-                  ? "Your business is still in review, so this may save as a draft until you're approved."
+                {isPending
+                  ? "Your business is still in review, so this stays pending — not live and not selling — until you're approved."
                   : "This publishes the moment you create it."}
               </div>
             )}

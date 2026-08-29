@@ -66,16 +66,20 @@ export function draftIdsToPublish(drafts: DraftPublishTarget[]): number[] {
   return ids
 }
 
+export function isPendingApprovalStatus(status: string | null | undefined): boolean {
+  return (status ?? "").toLowerCase() === "pending_approval"
+}
+
 /**
- * WC nights only. Empty status is treated as live by guest helpers — do not
- * promote those. Explicit `draft` is the queued-until-approve stamp.
+ * WC hold is `pending_approval` (services #109 / unapproved one-offs).
+ * `draft` is guest-visible and sellable — do not promote or treat it as the hold.
  */
-export function draftNightEventIds(
+export function pendingApprovalNightEventIds(
   nights: Array<{ event_id?: number | null; status?: string | null }>,
 ): number[] {
   const ids: number[] = []
   for (const night of nights) {
-    if ((night.status ?? "").toLowerCase() !== "draft") continue
+    if (!isPendingApprovalStatus(night.status)) continue
     const id = Number(night.event_id)
     if (Number.isFinite(id) && id > 0) ids.push(id)
   }

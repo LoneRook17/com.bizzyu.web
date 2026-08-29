@@ -795,7 +795,7 @@ test("unstamped leftover nights of a host-ended series leave the dash", () => {
   assert.deepEqual(recurringSeriesIdsOnEvents(nights), [66])
 })
 
-test("pending hosts see Weekly Cover on Drafts, not Upcoming", () => {
+test("pending hosts keep Weekly Cover off Upcoming Live", () => {
   assert.equal(weeklyCoverEventsListTab(true), "drafts")
   assert.equal(weeklyCoverEventsListTab(false), "upcoming")
   assert.equal(shouldShowWeeklyCoverOnEventsTab("upcoming", true, "all"), false)

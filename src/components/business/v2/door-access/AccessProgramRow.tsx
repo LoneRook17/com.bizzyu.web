@@ -27,8 +27,8 @@ import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/H
 export function AccessProgramRow({ program }: { program: DoorAccessProgramSummary }) {
   const { venues } = useVenue()
   const { isPending } = useAuth()
-  const chips: Array<{ label: string; variant: "neutral" | "info" }> = []
-  if (isPending) chips.push({ label: "Draft", variant: "neutral" })
+  const chips: Array<{ label: string; variant: "neutral" | "info" | "warning" }> = []
+  if (isPending) chips.push({ label: "In review", variant: "warning" })
   if (!program.is_active) chips.push({ label: "Ended", variant: "neutral" })
   if (program.promotion_enabled) chips.push({ label: "Promoted", variant: "info" })
   const imageUrl = resolveProgramImageUrl(program, venues)
