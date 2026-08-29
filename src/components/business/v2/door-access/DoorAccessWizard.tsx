@@ -465,9 +465,9 @@ export function DoorAccessWizard({
         }
       }
       if (Number.isFinite(id) && id > 0) {
-        const createdDates = Object.keys(dateEditsToWire(dateEdits, daysOfWeek))
-        if (createdDates.length > 0) {
-          await stampHostCreatedDates(id, createdDates, {
+        const createdDateEdits = dateEditsToWire(dateEdits, daysOfWeek)
+        if (Object.keys(createdDateEdits).length > 0) {
+          await stampHostCreatedDates(id, createdDateEdits, {
             publish: shouldTreatDraftAsLive(isPending),
           })
         }
