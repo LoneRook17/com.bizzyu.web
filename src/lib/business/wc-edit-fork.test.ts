@@ -170,8 +170,15 @@ test("manage hub setup tiles fork to the WC path for an uncustomized night", () 
   const src = read(HUB)
   assert.ok(src.includes("weeklyCoverNightEditHref"), "the fork must use the shared helper")
   assert.ok(src.includes('title: "Edit night"'), "WC branch edits the night override")
-  assert.ok(src.includes("programEditHref("), "weekday-global changes go to the program editor")
-  assert.ok(src.includes('title: "Edit program"'), "WC branch names the program editor")
+  // Luke (2026-08-29): the WC setup row mirrors green — Manage Tickets
+  // replaces Edit program, and it opens the night-override editor (the
+  // only WC tier writer), never the green event ticket PUTs.
+  assert.ok(
+    src.includes('href: wcNightEdit, icon: Ticket, title: "Manage Tickets"'),
+    "WC Manage Tickets is the night-override editor",
+  )
+  assert.ok(!src.includes('title: "Edit program"'), "the program editor tile left the night manage")
+  assert.ok(!src.includes("programEditHref("), "no hub route to the program editor remains")
   // The generic branch survives for named events and customized nights.
   assert.ok(src.includes('title: "Edit event"'))
   assert.ok(src.includes('title: "Manage Tickets"'))
