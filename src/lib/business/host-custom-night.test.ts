@@ -189,6 +189,37 @@ test("omitted series id on a WC night does not drop Custom", () => {
   )
 })
 
+test("R4: a detached WC leftover drops Custom too — even with a lingering stamp", () => {
+  // Services clears the stamp on detach; rows detached before that fix (or
+  // when the finalize failed) still carry one. An EXPLICIT null series id is
+  // the detach signal, and it beats the stamp for WC exactly like RC.
+  assert.equal(
+    isDetachedSeriesLeftover({
+      product_kind: "weekly_cover",
+      recurring_series_id: null,
+      series_customized_at: "2026-08-20 10:00:00",
+    }),
+    true,
+  )
+  assert.equal(
+    isHostCustomNight({
+      product_kind: "weekly_cover",
+      recurring_series_id: null,
+      series_customized_at: "2026-08-20 10:00:00",
+      is_customized: true,
+    }),
+    false,
+  )
+  assert.equal(
+    hostCustomChipTone({
+      product_kind: "weekly_cover",
+      recurring_series_id: null,
+      series_customized_at: "2026-08-20 10:00:00",
+    }),
+    null,
+  )
+})
+
 test("seriesIdOf rejects junk", () => {
   assert.equal(seriesIdOf(7), 7)
   assert.equal(seriesIdOf("7"), 7)

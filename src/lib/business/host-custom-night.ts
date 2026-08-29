@@ -78,12 +78,13 @@ export function isNeverChipOverrideScope(scope: unknown): boolean {
 }
 
 /**
- * Green RC leftover after series-end: standalone Event, drop Custom.
- * Weekly Cover program nights omit `recurring_series_id` and stay Custom
- * when the one-date stamp is present.
+ * Series-end leftover: standalone row, drop Custom — WC and green RC alike
+ * (R4, locked 2026-08-29: detached means there is no series to be Custom
+ * relative to). Only an EXPLICIT null/0 series id counts as detached —
+ * Weekly Cover program nights OMIT `recurring_series_id` entirely, and an
+ * omitted field must not drop a live night's stamp.
  */
 export function isDetachedSeriesLeftover(input: HostCustomNightInput): boolean {
-  if (isWeeklyCoverKind(input)) return false
   if (input.recurring_series_id === undefined) return false
   return seriesIdOf(input.recurring_series_id) == null
 }
