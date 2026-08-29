@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { Fragment, useState, useEffect, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -34,6 +34,7 @@ import { CancelEventModal } from "@/components/business/v2/events/CancelEventMod
 import { DoorCodeCard } from "@/components/business/v2/events/DoorCodeCard"
 import { EventVenuePayoutBanner } from "@/components/business/v2/settings/VenuePayoutPaused"
 import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
+import { WeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 
 type Tile = {
   href: string
@@ -43,12 +44,39 @@ type Tile = {
   show: boolean
 }
 
+type ManageAccent = "event" | "access"
+
+// Weekly Cover is pink end to end (Luke, 2026-08-29 round 2): the tile hover,
+// like every other accent on a WC surface, follows ACCESS, never Bizzy green.
+const TILE_HOVER: Record<ManageAccent, { card: string; icon: string; title: string }> = {
+  event: {
+    card: "hover:border-[#05EB54]/40",
+    icon: "group-hover:bg-green-50 dark:group-hover:bg-green-950/40 group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]",
+    title: "group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]",
+  },
+  access: {
+    card: "hover:border-access/40",
+    icon: "group-hover:bg-access/10 group-hover:text-access dark:group-hover:text-access",
+    title: "group-hover:text-access dark:group-hover:text-access",
+  },
+}
+
 // 5.0 F11 / PRD 12.1 — the management page follows the app's control order:
 //   Share Link + Door Code → At the Door → Event Setup → Insights → Promote
 // Every destination below already existed; this is the app's sequence imposed
 // on them, not new surfaces. Door Access programs (DASH-A) get the same order
 // on their own series page.
-function ManageSection({ title, blurb, tiles }: { title: string; blurb: string; tiles: Tile[] }) {
+function ManageSection({
+  title,
+  blurb,
+  tiles,
+  accent = "event",
+}: {
+  title: string
+  blurb: string
+  tiles: Tile[]
+  accent?: ManageAccent
+}) {
   const visible = tiles.filter((t) => t.show)
   if (visible.length === 0) return null
   return (
@@ -59,24 +87,33 @@ function ManageSection({ title, blurb, tiles }: { title: string; blurb: string; 
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {visible.map((t) => (
-          <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} />
+          <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} accent={accent} />
         ))}
       </div>
     </section>
   )
 }
 
-function ManageTile({ href, icon: Icon, title, subtitle }: Omit<Tile, "show">) {
+function ManageTile({ href, icon: Icon, title, subtitle, accent = "event" }: Omit<Tile, "show"> & { accent?: ManageAccent }) {
+  const hover = TILE_HOVER[accent]
   return (
     <Link
       href={href}
-      className="group flex items-start gap-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm transition-all hover:border-[#05EB54]/40 hover:shadow-md"
+      className={cn(
+        "group flex items-start gap-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm transition-all hover:shadow-md",
+        hover.card,
+      )}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors group-hover:bg-green-50 dark:group-hover:bg-green-950/40 group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">
+      <span
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors",
+          hover.icon,
+        )}
+      >
         <Icon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">{title}</span>
+        <span className={cn("block text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors", hover.title)}>{title}</span>
         <span className="mt-0.5 block text-[13px] text-neutral-500 dark:text-neutral-400">{subtitle}</span>
       </span>
       <ChevronRight className="mt-0.5 size-4 shrink-0 text-neutral-300 dark:text-neutral-600" />
@@ -186,9 +223,9 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       href: `${base}/checkins`,
       icon: CircleCheck,
       title: isDoorAccess ? "Redemption list" : "Check-in history",
-      subtitle: isDoorAccess
-        ? "Guests scan with any phone camera. Check names off here"
-        : "Attendee scan status",
+      // View-only, like the app: it SHOWS who has checked in. There is no
+      // check-names-off feature and the copy must not promise one.
+      subtitle: isDoorAccess ? "Everyone who's checked in tonight" : "Attendee scan status",
       show: true,
     },
   ]
@@ -233,8 +270,13 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
   ]
 
+  // WC subtree renders pink end to end — the accent provider flips shared
+  // controls (Button primary, checkboxes) and the props below cover the rest.
+  const AccentScope = isDoorAccess ? WeeklyCoverAccent : Fragment
+  const accent: ManageAccent = isDoorAccess ? "access" : "event"
+
   return (
-    <>
+    <AccentScope>
       <Link
         href={`/business/events/${id}`}
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
@@ -246,14 +288,14 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
-            <Badge variant={badge.variant}>{badge.label}</Badge>
+            <Badge variant={isDoorAccess && badge.variant === "success" ? "access" : badge.variant}>{badge.label}</Badge>
           </div>
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">{fmtDate(event.start_date_time)} · {event.venue_name}</p>
         </div>
         {/* The header CTA is the loudest affordance on the page. A WC night's
             door runs off the redemption list first (guests scan with a phone
             camera), so it stays the primary; the scanner is one tile below. */}
-        <Button variant="secondary" asChild>
+        <Button variant={isDoorAccess ? "access-secondary" : "secondary"} asChild>
           {isDoorAccess ? (
             <Link href={`/business/events/${id}/manage/checkins`}><ListChecks /> Open redemption list</Link>
           ) : (
@@ -269,21 +311,23 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
 
       {/* 1 — Share Link + Door Code. First, because handing out the link and
           putting a staffer on the door are what a host does most. */}
-      {isLive && <ShareLinkRow url={eventCheckoutUrl(id)} title={event.name} label="Event link" />}
+      {isLive && <ShareLinkRow url={eventCheckoutUrl(id)} title={event.name} label="Event link" accent={accent} />}
 
       {/* Door code — the PRIMARY way to put a staffer on the door tonight.
           Owners used to fall back to the (broken) email-invite path because the
           dashboard had no way to hand out a scan credential; this is that way.
           Email invite is demoted to the "Managers & co-hosts" tile below. */}
-      {/* A door code is a SCANNER credential: staff scan with no Bizzy account.
-          Since redemptionGuard accepts native_scan for Weekly Cover, WC nights
-          get the same card events always had (instance-manage pass). */}
-      <DoorCodeCard
-        eventId={id}
-        eventName={event.name}
-        isLive={isLive}
-        canManage={canEdit}
-      />
+      {/* WC nights have NO door codes (Luke, 2026-08-29 round 2) — the guest
+          camera + redemption list run a Weekly Cover door. The door code stays
+          an events-only credential. */}
+      {!isDoorAccess && (
+        <DoorCodeCard
+          eventId={id}
+          eventName={event.name}
+          isLive={isLive}
+          canManage={canEdit}
+        />
+      )}
 
       {/* §5 — the camera reminder, the app's counterpart copy. A door-access
           host's staff need to know the phone camera IS the scanner; without this
@@ -301,8 +345,8 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
               Guests scan with any phone camera
             </p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-              No scanner and no app setup at the door. Open the redemption list and
-              check names off as people arrive.
+              No scanner and no app setup at the door. Open the redemption list to
+              see who&apos;s checked in.
             </p>
           </div>
         </Card>
@@ -313,6 +357,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="At the door"
         blurb="Tonight's tools. Check guests in and see who has arrived."
         tiles={atTheDoorTiles}
+        accent={accent}
       />
 
       {/* 3 — Event Setup */}
@@ -320,6 +365,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="Event setup"
         blurb="Details, what you're selling, and who can help run it."
         tiles={setupTiles}
+        accent={accent}
       />
 
       {/* 4 — Insights */}
@@ -327,6 +373,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="Insights"
         blurb="How the event is performing."
         tiles={insightsTiles}
+        accent={accent}
       />
 
       {/* 5 — Promote */}
@@ -334,6 +381,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="Promote"
         blurb="Reach more people and reward the ones who bring them."
         tiles={promoteTiles}
+        accent={accent}
       />
 
       {/* cancellation banners */}
@@ -383,6 +431,6 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         eventName={event.name}
         onCancelled={() => router.push("/business/events")}
       />
-    </>
+    </AccentScope>
   )
 }

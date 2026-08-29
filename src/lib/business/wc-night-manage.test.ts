@@ -102,16 +102,49 @@ test("HostDashList and the events page no longer carry card-cancel plumbing", ()
 
 // ── Manage page doubles as the WC instance manage ───────────────────────────
 
-test("WC night manage carries the door code and the Scan tile like an event", () => {
+test("WC night manage: no door code, Scan tile stays, redemption list is view-only", () => {
   const src = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
-  assert.ok(!src.includes("{!isDoorAccess && (\n        <DoorCodeCard"), "door code is not WC-gated")
-  assert.ok(src.includes("<DoorCodeCard"), "door code card renders")
+  // Round 2 (Luke, 2026-08-29): WC nights have NO door codes. The card is an
+  // events-only credential again.
+  assert.ok(src.includes("{!isDoorAccess && ("), "door code is WC-gated")
+  assert.ok(src.includes("<DoorCodeCard"), "door code card still renders for events")
   const scanTile = src.indexOf('title: "Scan"')
   assert.ok(scanTile >= 0)
   const tileSlice = src.slice(scanTile, scanTile + 200)
   assert.ok(/show: true/.test(tileSlice), "the Scan tile shows for WC nights too")
-  assert.ok(!/show: !isDoorAccess/.test(src), "nothing at the door is withheld from WC")
   assert.ok(src.includes("Redemption list"), "WC keeps the redemption list")
+  // View-only, like the app: it SHOWS who checked in. No check-off feature.
+  assert.ok(!src.includes("Check names off"), "no check-names-off promise anywhere")
+  assert.ok(!src.includes("check names off"), "no check-names-off promise anywhere")
+  assert.ok(src.includes("Everyone who's checked in tonight"), "redemption copy is view-only")
   assert.ok(src.includes("Guests scan with any phone camera"), "camera reminder stays")
   assert.ok(src.includes("Open redemption list"), "WC header CTA stays the redemption list")
+})
+
+test("WC night manage is pink end to end — never Bizzy green", () => {
+  const src = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
+  assert.ok(src.includes("WeeklyCoverAccent"), "the WC subtree gets the access accent provider")
+  assert.ok(src.includes("isDoorAccess ? WeeklyCoverAccent : Fragment"))
+  assert.ok(src.includes('isDoorAccess ? "access" : "event"'), "tiles + share row follow the accent")
+  assert.ok(src.includes("hover:border-access/40"), "WC tile hover is pink")
+  assert.ok(
+    src.includes('isDoorAccess && badge.variant === "success" ? "access"'),
+    "a live WC night's badge is pink, not green",
+  )
+  assert.ok(
+    src.includes('isDoorAccess ? "access-secondary" : "secondary"'),
+    "the WC header CTA is in the pink family",
+  )
+  const share = read("src/components/business/v2/ShareLinkRow.tsx")
+  assert.ok(share.includes('accent === "access" ? "text-access"'), "share row can render pink")
+})
+
+test("the Schedules grid's night cards open the night's manage page", () => {
+  const src = read("src/app/business/(dashboard)/door-access/[id]/page.tsx")
+  assert.ok(
+    src.includes("`/business/events/${night.event_id}/manage`"),
+    "a stamped night's card opens /manage",
+  )
+  assert.ok(src.includes("nightHref(programId, night.occurrence_date)"), "unstamped nights keep the editor fallback")
+  assert.ok(src.includes('accent="access"'), "the program link row is pink")
 })

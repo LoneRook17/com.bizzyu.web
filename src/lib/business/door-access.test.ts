@@ -1471,7 +1471,7 @@ test("program page host copy has no em dashes", () => {
   assert.equal(PROGRAM_LINK_DESCRIPTION, "Every upcoming night")
   assert.equal(
     NIGHTS_HELPER_EDIT,
-    "Tap a night to change price, capacity, or hours for that date only. Those edits stay Custom; a later program save will not change them.",
+    "Tap a night to open its manage page. Date-only edits made there stay Custom; a later program save will not change them.",
   )
   assert.equal(EDIT_PROGRAM_LABEL, "Edit program")
   for (const line of copy) {
