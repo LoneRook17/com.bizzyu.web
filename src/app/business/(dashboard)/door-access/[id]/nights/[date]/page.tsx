@@ -28,6 +28,7 @@ import {
   resetNightHours,
   saveNightOverride,
   toTimeInput,
+  weeklyCoverNightCancelEventId,
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_SECTION_LABEL,
   validateNightDraft,
@@ -39,6 +40,8 @@ import {
 import { cn } from "@/lib/v2/utils"
 import { NightLeaveGuard } from "@/components/business/v2/door-access/NightLeaveGuard"
 import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
+import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
+import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
@@ -86,6 +89,7 @@ export default function DoorAccessNightPage({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [restampWarning, setRestampWarning] = useState<string | null>(null)
+  const [showCancel, setShowCancel] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
 
@@ -201,6 +205,11 @@ export default function DoorAccessNightPage({
   const editable = canEdit && nightIsEditable(night, program)
   const chips = nightChips(night, program.is_active)
   const dirty = !!(draft && baseline && nightDraftIsDirty(draft, baseline))
+  const cancelEventId = weeklyCoverNightCancelEventId(night)
+  const canCancelNight =
+    canEdit &&
+    cancelEventId != null &&
+    !weeklyCoverNightNeedsPendingCancel(night, program.is_active)
 
   return (
     <>
@@ -307,6 +316,31 @@ export default function DoorAccessNightPage({
           This night differs from the program defaults. Reset a field to follow the program
           again.
         </p>
+      )}
+
+      {canCancelNight && cancelEventId != null && (
+        <div className="flex justify-end">
+          <Button
+            variant="secondary"
+            className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+            onClick={() => setShowCancel(true)}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {canCancelNight && cancelEventId != null && (
+        <CancelEventModal
+          open={showCancel}
+          onOpenChange={setShowCancel}
+          eventId={cancelEventId}
+          eventName={fmtNightDate(night.occurrence_date, { withYear: true })}
+          onCancelled={() => {
+            setShowCancel(false)
+            router.push(programHref(programId))
+          }}
+        />
       )}
     </>
   )

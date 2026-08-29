@@ -3,13 +3,12 @@
 import { use, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CalendarDays, Copy, Loader2, Pencil, Plus, Zap } from "lucide-react"
+import { ArrowLeft, CalendarDays, Copy, Pencil, Plus, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
   ACCESS_ACCENT,
   ACCESS_BUTTON_VARIANT,
-  DEFAULT_NIGHT_PREVIEW_COUNT,
   ONE_OFF_SERIES_LOOKAHEAD_DAYS,
   easternToday,
   loadDoorAccessSeriesForPath,
@@ -36,14 +35,17 @@ import {
   resolveNightCardImageUrl,
   splitNights,
   usdPrice,
-  visibleUpcomingNights,
+  weeklyCoverNightCancelEventId,
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
   type DoorAccessNight,
   type DoorAccessProgram,
 } from "@/lib/business/door-access"
-import { customOccurrenceDates, hostCustomSlot, isoWeekdayOfDate, weekdayFlyerByDayFromNights } from "@/lib/business/weekly-cover-nights"
-import { isSeriesActive, weeklyCoverNightVisibleOnDash } from "@/lib/business/weekly-cover-visibility"
+import { hostCustomSlot, isoWeekdayOfDate, weekdayFlyerByDayFromNights } from "@/lib/business/weekly-cover-nights"
+import { SERIES_NIGHTS_WINDOW_DAYS, nightsForHostWeeklyCoverGrid } from "@/lib/business/series-nights-window"
+import { isSeriesActive, weeklyCoverNightNeedsPendingCancel, weeklyCoverNightVisibleOnDash } from "@/lib/business/weekly-cover-visibility"
+import { CancelWeeklyCoverProgramDialog } from "@/components/business/v2/door-access/CancelWeeklyCoverProgramDialog"
+import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { venuePageUrl } from "@/lib/business/public-links"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -66,11 +68,12 @@ import {
  * /business/door-access/:id/edit, opened from Edit program in the header.
  * Night cards stay tap-to-open. They are not a series editor.
  *
- * Nights render as a short strip of preview cards (next 4 upcoming). Far-future
- * ungenerated nights stay behind More nights. A card opens the existing
- * per-night page for price, capacity, or hours on that date only. Each card
- * shows that night's Custom flyer when GET sent one; other nights keep the
- * weekday / program flyer.
+ * Nights match the Flutter Host list: today through today+14 (US/Eastern).
+ * A host-stamped Custom date beyond +14 may still appear. Generator
+ * lookaheads with no event_id / Not generated past +14 do not. A card
+ * opens the per-night page. Each card shows that night's Custom flyer when
+ * GET sent one; other nights keep the weekday / program flyer. Cancel on
+ * a card cancels that date only (existing event request-cancellation).
  */
 export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -83,8 +86,8 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const [nights, setNights] = useState<DoorAccessNight[]>([])
   const [loading, setLoading] = useState(programId != null)
   const [error, setError] = useState<string | null>(null)
-  const [lookahead, setLookahead] = useState(ONE_OFF_SERIES_LOOKAHEAD_DAYS)
-  const [showMoreNights, setShowMoreNights] = useState(false)
+  const [cancelNight, setCancelNight] = useState<DoorAccessNight | null>(null)
+  const [cancelProgramOpen, setCancelProgramOpen] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
 
@@ -98,7 +101,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
     setError(null)
     let redirected = false
     try {
-      const loaded = await loadDoorAccessSeriesForPath(programId, lookahead)
+      const loaded = await loadDoorAccessSeriesForPath(programId, ONE_OFF_SERIES_LOOKAHEAD_DAYS)
       if (loaded.redirectTo != null) {
         redirected = true
         router.replace(programHref(loaded.redirectTo))
@@ -115,7 +118,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
     } finally {
       if (!redirected) setLoading(false)
     }
-  }, [programId, lookahead, router])
+  }, [programId, router])
 
   useEffect(() => {
     load()
@@ -127,20 +130,14 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
     () => nights.filter((night) => weeklyCoverNightVisibleOnDash(night, seriesActive)),
     [nights, seriesActive],
   )
-  const { upcoming } = useMemo(() => splitNights(dashNights, today), [dashNights, today])
-  const customDates = useMemo(
-    () => (program ? customOccurrenceDates(upcoming, program) : new Set<string>()),
-    [program, upcoming],
-  )
-  const visibleNights = useMemo(
+  const { upcoming: upcomingAll } = useMemo(() => splitNights(dashNights, today), [dashNights, today])
+  const upcoming = useMemo(
     () =>
-      visibleUpcomingNights(upcoming, showMoreNights, DEFAULT_NIGHT_PREVIEW_COUNT, (night) =>
-        customDates.has(night.occurrence_date),
+      nightsForHostWeeklyCoverGrid(upcomingAll, today, SERIES_NIGHTS_WINDOW_DAYS, (night) =>
+        hostCustomSlot(night, nights, program ?? undefined),
       ),
-    [upcoming, showMoreNights, customDates],
+    [upcomingAll, today, nights, program],
   )
-  const hiddenCount = Math.max(0, upcoming.length - visibleNights.length)
-  const showMoreControl = upcoming.length > DEFAULT_NIGHT_PREVIEW_COUNT || showMoreNights || program?.is_active
   const weekdayFlyerByDay = useMemo(
     () => (program ? weekdayFlyerByDayFromNights({ program, nights, today }) : {}),
     [program, nights, today]
@@ -210,6 +207,13 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                   <Copy className="size-4" /> Use as template
                 </Link>
               </Button>
+              <Button
+                variant="secondary"
+                className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                onClick={() => setCancelProgramOpen(true)}
+              >
+                Cancel program
+              </Button>
               <Button asChild variant={ACCESS_BUTTON_VARIANT}>
                 <Link href={programEditHref(programId)}>
                   <Pencil className="size-4" /> {EDIT_PROGRAM_LABEL}
@@ -255,16 +259,26 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {visibleNights.map((night) => {
+            {upcoming.map((night) => {
               const weekday = isoWeekdayOfDate(night.occurrence_date)
+              const pendingCancel = weeklyCoverNightNeedsPendingCancel(night, seriesActive)
+              const showCancel =
+                canEdit &&
+                seriesActive &&
+                night.status !== "cancelled" &&
+                !pendingCancel
+              const cancelWired = showCancel && weeklyCoverNightCancelEventId(night) != null
               return (
                 <NightPreviewCard
                   key={night.occurrence_date}
                   night={night}
                   programId={programId}
                   seriesActive={seriesActive}
-                  nights={upcoming}
+                  nights={upcomingAll}
                   program={program}
+                  showCancel={showCancel}
+                  cancelEnabled={cancelWired}
+                  onCancel={() => setCancelNight(night)}
                   flyerUrl={resolveNightCardImageUrl(
                     night,
                     program,
@@ -276,34 +290,6 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
             })}
           </div>
         )}
-
-        {upcoming.length > 0 && showMoreControl && (
-          <div className="flex flex-wrap items-center gap-2">
-            {loading && <Loader2 className="size-3.5 animate-spin text-neutral-400" />}
-            {!showMoreNights ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowMoreNights(true)}
-              >
-                {hiddenCount > 0 ? `More nights (${hiddenCount})` : "More nights"}
-              </Button>
-            ) : (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowMoreNights(false)
-                  }}
-                >
-                  Show fewer nights
-                </Button>
-                <LookaheadPicker value={lookahead} onChange={setLookahead} />
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       <ProgramTermsCard program={program} />
@@ -311,6 +297,34 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
       <TemplateTiersCard program={program} />
 
       <ProgramPromoCodes program={program} canManage={canEdit && program.is_active} />
+
+      {cancelNight != null && weeklyCoverNightCancelEventId(cancelNight) != null && (
+        <CancelEventModal
+          open
+          onOpenChange={(open) => {
+            if (!open) setCancelNight(null)
+          }}
+          eventId={weeklyCoverNightCancelEventId(cancelNight)!}
+          eventName={fmtNightDate(cancelNight.occurrence_date, { withYear: true })}
+          onCancelled={() => {
+            setCancelNight(null)
+            load()
+          }}
+        />
+      )}
+
+      {programId != null && (
+        <CancelWeeklyCoverProgramDialog
+          open={cancelProgramOpen}
+          programId={programId}
+          programName={program.name || WEEKLY_ACCESS_SECTION_LABEL}
+          onClose={() => setCancelProgramOpen(false)}
+          onCancelled={() => {
+            setCancelProgramOpen(false)
+            load()
+          }}
+        />
+      )}
     </>
   )
 }
@@ -388,6 +402,9 @@ function NightPreviewCard({
   seriesActive = true,
   nights = [],
   program,
+  showCancel = false,
+  cancelEnabled = false,
+  onCancel,
 }: {
   night: DoorAccessNight
   programId: number
@@ -395,6 +412,9 @@ function NightPreviewCard({
   seriesActive?: boolean
   nights?: DoorAccessNight[]
   program?: DoorAccessProgram
+  showCancel?: boolean
+  cancelEnabled?: boolean
+  onCancel?: () => void
 }) {
   const chip = nightPreviewChip(night, seriesActive, hostCustomSlot(night, nights, program))
   const href = seriesActive && nightIsEditable(night, { is_active: seriesActive })
@@ -406,44 +426,57 @@ function NightPreviewCard({
   const soldLabel = night.passes_sold === 1 ? "1 sold" : `${night.passes_sold.toLocaleString("en-US")} sold`
 
   return (
-    <Link
-      href={href}
-      className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
-    >
-      <div className="relative aspect-[3/4] bg-neutral-100 dark:bg-neutral-800">
-        {flyerUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={flyerUrl}
-            alt=""
-            className="size-full object-cover"
-          />
-        ) : (
-          <DateBlock block={dateBlock} />
-        )}
-        {chip && (
-          <Badge
-            variant={chip.variant}
+    <div className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900">
+      <Link href={href} className="flex flex-1 flex-col">
+        <div className="relative aspect-[3/4] bg-neutral-100 dark:bg-neutral-800">
+          {flyerUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={flyerUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : (
+            <DateBlock block={dateBlock} />
+          )}
+          {chip && (
+            <Badge
+              variant={chip.variant}
+              size="sm"
+              className="absolute top-2 right-2 shadow-sm"
+            >
+              {chip.label}
+            </Badge>
+          )}
+        </div>
+        <div className="flex flex-1 flex-col gap-0.5 p-3">
+          <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            {fmtNightDate(night.occurrence_date)}
+          </p>
+          <p className="truncate text-[13px] text-neutral-500 dark:text-neutral-400">
+            {fmtWindow(night.start_time, night.end_time) || "Hours not set"}
+          </p>
+          <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+            {nightPreviewPrice(night)}
+          </p>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{soldLabel}</p>
+        </div>
+      </Link>
+      {showCancel && (
+        <div className="px-3 pb-3">
+          <Button
+            type="button"
             size="sm"
-            className="absolute top-2 right-2 shadow-sm"
+            variant="ghost"
+            className="h-8 w-full text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+            disabled={!cancelEnabled}
+            onClick={onCancel}
           >
-            {chip.label}
-          </Badge>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-0.5 p-3">
-        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          {fmtNightDate(night.occurrence_date)}
-        </p>
-        <p className="truncate text-[13px] text-neutral-500 dark:text-neutral-400">
-          {fmtWindow(night.start_time, night.end_time) || "Hours not set"}
-        </p>
-        <p className="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
-          {nightPreviewPrice(night)}
-        </p>
-        <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{soldLabel}</p>
-      </div>
-    </Link>
+            Cancel
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -557,31 +590,3 @@ function TemplateTiersCard({ program }: { program: DoorAccessProgram }) {
   )
 }
 
-/** Hidden behind More nights. The default view is the next 4 cards. */
-function LookaheadPicker({
-  value,
-  onChange,
-}: {
-  value: number
-  onChange: (days: number) => void
-}) {
-  const options = [
-    { days: 28, label: "4 weeks" },
-    { days: 84, label: "12 weeks" },
-    { days: 180, label: "6 months" },
-  ]
-  return (
-    <div className="flex items-center gap-1.5">
-      {options.map((option) => (
-        <Button
-          key={option.days}
-          size="sm"
-          variant={value === option.days ? "secondary" : "ghost"}
-          onClick={() => onChange(option.days)}
-        >
-          {option.label}
-        </Button>
-      ))}
-    </div>
-  )
-}
