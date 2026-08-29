@@ -139,6 +139,21 @@ test("WC night manage is pink end to end — never Bizzy green", () => {
   assert.ok(share.includes('accent === "access" ? "text-access"'), "share row can render pink")
 })
 
+test("round 3: WC manage backs to the events LIST; the WC detail page is pink", () => {
+  const manage = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
+  assert.ok(
+    manage.includes('isDoorAccess ? "/business/events" : `/business/events/${id}`'),
+    "a WC night's manage never backs into the event detail half-page",
+  )
+  assert.ok(manage.includes('isDoorAccess ? "Back to events" : "Back to event"'))
+  const detail = read("src/app/business/(dashboard)/events/[id]/page.tsx")
+  assert.ok(detail.includes("isWcNight ? WeeklyCoverAccent : Fragment"), "WC detail gets the pink accent scope")
+  assert.ok(
+    detail.includes('isWcNight && badge.variant === "success" ? "access"'),
+    "a live WC night's detail badge is pink",
+  )
+})
+
 test("the Schedules grid's night cards open the night's manage page", () => {
   const src = read("src/app/business/(dashboard)/door-access/[id]/page.tsx")
   assert.ok(
