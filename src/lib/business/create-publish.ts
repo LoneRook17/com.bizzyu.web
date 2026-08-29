@@ -73,3 +73,18 @@ export function shouldOfferStripeConnectForError(message: string): boolean {
   if (isLeftoverPromoterPayoutPathError(message)) return false
   return /stripe connect/i.test(message)
 }
+
+/**
+ * What the event form shows if a stale services build still throws the
+ * leftover promoter-payout 400. HE-2 removed the gate server-side (escrow and
+ * in-review shops qualify), so this only renders against an old deploy — and
+ * it must never repeat the Connect demand, which is simply wrong for these
+ * shops (D4 / W10: promoters are paid from the wallet).
+ */
+export const LEFTOVER_PROMOTER_PAYOUT_FALLBACK =
+  "Couldn't save the Promoter Program with this event. Try again in a moment. Promoters don't require a connected Stripe account."
+
+/** Server error → what the form paints. Swaps the leftover Connect demand. */
+export function surfaceEventFormServerError(message: string): string {
+  return isLeftoverPromoterPayoutPathError(message) ? LEFTOVER_PROMOTER_PAYOUT_FALLBACK : message
+}

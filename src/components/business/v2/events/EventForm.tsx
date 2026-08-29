@@ -26,6 +26,7 @@ import {
   promoterExtrasVisible,
   promoterToggleDisabled,
   shouldOfferStripeConnectForError,
+  surfaceEventFormServerError,
   willDraftOnCreate,
 } from "@/lib/business/create-publish"
 import { shouldAutoPublishCreatedDraft } from "@/lib/business/live-after-approve"
@@ -500,7 +501,13 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         }
       }
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.")
+      // The leftover promoter-payout 400 must never paint its Connect demand
+      // (escrow / in-review shops don't need Connect for promoters — HE-2).
+      setServerError(
+        surfaceEventFormServerError(
+          err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
+        ),
+      )
     } finally {
       setLoading(false)
     }

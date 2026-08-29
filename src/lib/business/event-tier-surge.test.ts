@@ -13,6 +13,7 @@ import {
   seededSurgeStep,
   tierSurgeToWire,
   tierWithSurgeDrafts,
+  validateRecurringTierSurge,
   validateTierSurge,
 } from "./event-tier-surge.ts"
 import type { TicketTier } from "./types.ts"
@@ -176,9 +177,107 @@ test("EventForm hydrates drafts, validates ladders, and spreads the wire keys", 
   assert.ok(src.includes("...tierSurgeToWire(t)"), "tier payload must always carry both surge keys")
 })
 
-test("TicketTierForm gates surge to paid tiers with a price", () => {
+test("TicketTierForm always shows the surge checkbox — never gated on a price", () => {
+  // Luke, 2026-08-29: hidden-until-priced read as missing. The box is always
+  // there and clickable; save validation refuses nonsense inline instead.
   const src = read("../../components/business/v2/events/TicketTierForm.tsx")
   assert.ok(src.includes("Surge pricing"))
-  assert.ok(/ticket_type === "paid" && Number\(tier\.price_usd\) > 0/.test(src))
+  assert.ok(
+    !/ticket_type === "paid" && Number\(tier\.price_usd\) > 0/.test(src),
+    "no paid-price gate around the surge checkbox",
+  )
   assert.ok(src.includes("Add another price jump"))
+})
+
+test("surge on a free tier or with no paid price is refused at save, inline", () => {
+  assert.match(
+    validateTierSurge(
+      tier({ ticket_type: "free", price_usd: 0, surge_enabled: true, surge: [] })
+    ) ?? "",
+    /set a paid ticket price before adding surge/,
+  )
+  assert.match(
+    validateTierSurge(
+      tier({ price_usd: 0, surge_enabled: true, surge: [{ afterSoldInput: "10", priceInput: "25" }] })
+    ) ?? "",
+    /set a paid ticket price before adding surge/,
+  )
+})
+
+// ── RC (named recurring series) shares the contract ─────────────────────────
+
+test("validateRecurringTierSurge mirrors the event rules on RC rows", () => {
+  const row = (over: Record<string, unknown> = {}) => ({
+    name: "GA",
+    ticket_type: "paid" as const,
+    priceInput: "20",
+    surge_enabled: true,
+    surge: [{ afterSoldInput: "10", priceInput: "25" }],
+    ...over,
+  })
+  assert.equal(validateRecurringTierSurge(row()), null)
+  assert.match(
+    validateRecurringTierSurge(row({ ticket_type: "free", priceInput: "0" })) ?? "",
+    /set a paid ticket price/,
+  )
+  assert.match(validateRecurringTierSurge(row({ surge: [] })) ?? "", /at least one price jump/)
+  assert.match(
+    validateRecurringTierSurge(
+      row({ surge: [{ afterSoldInput: "10", priceInput: "15" }] })
+    ) ?? "",
+    /more than the starting price/,
+  )
+  assert.equal(validateRecurringTierSurge(row({ surge_enabled: false, surge: [] })), null)
+})
+
+test("RC template rows round-trip surge and send both wire keys", async () => {
+  const { templateToTierRows, tierRowsToTemplate, EMPTY_RECURRING_TIER } = await import(
+    "./recurring-tier-rows.ts"
+  )
+  const rows = templateToTierRows([
+    {
+      name: "GA",
+      price_usd: 20,
+      quantity: 0,
+      max_per_person: 0,
+      ticket_type: "paid",
+      valid_from_time: null,
+      valid_until_time: null,
+      valid_from_day_offset: 0,
+      valid_until_day_offset: 0,
+      surge_steps: [{ threshold_sold: 7, price_cents: 2550 }],
+    },
+  ])
+  assert.equal(rows[0].surge_enabled, true, "a served ladder hydrates ON")
+  assert.deepEqual(rows[0].surge, [{ afterSoldInput: "7", priceInput: "25.50" }])
+
+  const wire = tierRowsToTemplate(rows)
+  assert.equal(wire[0].surge_enabled, true)
+  assert.deepEqual(wire[0].surge_steps, [{ after_sold: 7, price_usd: 25.5 }])
+
+  // Surge off travels as an explicit clear on RC rows...
+  const off = tierRowsToTemplate([{ ...rows[0], surge_enabled: false, surge: [] }])
+  assert.equal(off[0].surge_enabled, false)
+  assert.deepEqual(off[0].surge_steps, [])
+
+  // ...but a row with NO surge state (the WC night page adapter) OMITS both
+  // keys, so a stored ladder is kept, never cleared by accident.
+  const { surge_enabled: _e, surge: _s, ...bare } = { ...EMPTY_RECURRING_TIER, name: "Cover" }
+  const omitted = tierRowsToTemplate([bare])
+  assert.ok(!("surge_enabled" in omitted[0]))
+  assert.ok(!("surge_steps" in omitted[0]))
+})
+
+test("RC surfaces opt into surge; the WC night page does not", () => {
+  const editor = read("../../components/business/v2/recurring/RecurringTierEditor.tsx")
+  assert.ok(editor.includes("showSurge = false"), "surge UI is opt-in on the shared editor")
+  assert.ok(editor.includes("Surge pricing"))
+  const wizard = read("../../components/business/v2/recurring/RecurringEventWizard.tsx")
+  assert.ok(wizard.includes("showSurge"), "green RC create offers surge")
+  assert.ok(wizard.includes("validateRecurringTierSurge"), "RC create validates ladders inline")
+  const seriesForm = read("../../components/business/v2/recurring/SeriesForm.tsx")
+  assert.ok(seriesForm.includes("showSurge"), "RC series edit offers surge")
+  assert.ok(seriesForm.includes("validateRecurringTierSurge"))
+  const nightEditor = read("../../components/business/v2/door-access/NightTicketsEditor.tsx")
+  assert.ok(!nightEditor.includes("showSurge"), "the WC night page keeps its own surge story")
 })
