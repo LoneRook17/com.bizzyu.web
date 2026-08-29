@@ -93,21 +93,33 @@ export function tierSurgeToWire(tier: TicketTier): {
 }
 
 /**
- * Client-side ladder check, one error string or null. Mirrors the WC night
- * validator and the server's validateSurgeLadder: at least one jump, strictly
- * increasing thresholds and prices, first jump above the base.
+ * The core ladder check, shared by the event tier form and the recurring
+ * (RC) tier editor. One error string or null. Mirrors the WC night validator
+ * and the server's validateSurgeLadder: surge needs a PAID price to anchor
+ * to, at least one jump, strictly increasing thresholds and prices, first
+ * jump above the base.
+ *
+ * The paid-price rule exists because the checkbox is now ALWAYS visible
+ * (Luke, 2026-08-29) — a host can check surge before typing a price, and the
+ * refusal happens here at save with inline copy, never by hiding the box.
  */
-export function validateTierSurge(tier: TicketTier): string | null {
-  if (!tier.surge_enabled) return null
-  const name = tier.name.trim() || "This tier"
-  const rungs = tier.surge ?? []
+export function validateSurgeDrafts(opts: {
+  name: string
+  enabled: boolean | undefined
+  rungs: SurgeStepDraft[]
+  /** The price surge anchors to (stored ladder base, else the price box). */
+  basePriceUsd: number
+  /** False for a free tier — surge cannot ride a free ticket. */
+  isPaid: boolean
+}): string | null {
+  if (!opts.enabled) return null
+  const name = opts.name.trim() || "This tier"
+  if (!opts.isPaid || opts.basePriceUsd <= 0) {
+    return `"${name}": set a paid ticket price before adding surge.`
+  }
+  const rungs = opts.rungs
   if (rungs.length === 0) return `"${name}": surge needs at least one price jump.`
-  // A stored ladder keeps its own base; only a first-time ladder anchors to
-  // the price box.
-  const base =
-    tier.surge_base_price_usd != null && tier.surge_base_price_usd > 0
-      ? tier.surge_base_price_usd
-      : Number(tier.price_usd) || 0
+  const base = opts.basePriceUsd
   let previousThreshold = 0
   let previousPrice = base
   for (let i = 0; i < rungs.length; i++) {
@@ -118,7 +130,7 @@ export function validateTierSurge(tier: TicketTier): string | null {
       return `"${name}": jump ${i + 1} has to come after ${previousThreshold} sold, not ${after}.`
     }
     if (price <= 0) return `"${name}": jump ${i + 1} needs a price.`
-    if (i === 0 && base > 0 && price <= base) {
+    if (i === 0 && price <= base) {
       return `"${name}": the first jump has to be more than the starting price.`
     }
     if (i > 0 && price <= previousPrice) {
@@ -128,4 +140,37 @@ export function validateTierSurge(tier: TicketTier): string | null {
     previousPrice = price
   }
   return null
+}
+
+/** The event form's tier check. A stored ladder keeps its own base; only a
+ * first-time ladder anchors to the price box. */
+export function validateTierSurge(tier: TicketTier): string | null {
+  const base =
+    tier.surge_base_price_usd != null && tier.surge_base_price_usd > 0
+      ? tier.surge_base_price_usd
+      : Number(tier.price_usd) || 0
+  return validateSurgeDrafts({
+    name: tier.name,
+    enabled: tier.surge_enabled,
+    rungs: tier.surge ?? [],
+    basePriceUsd: base,
+    isPaid: tier.ticket_type === "paid",
+  })
+}
+
+/** The RC series tier editor's check — rows hold text inputs. */
+export function validateRecurringTierSurge(row: {
+  name: string
+  ticket_type: "paid" | "free"
+  priceInput: string
+  surge_enabled?: boolean
+  surge?: SurgeStepDraft[]
+}): string | null {
+  return validateSurgeDrafts({
+    name: row.name,
+    enabled: row.surge_enabled,
+    rungs: row.surge ?? [],
+    basePriceUsd: parsePrice(row.priceInput),
+    isPaid: row.ticket_type === "paid",
+  })
 }

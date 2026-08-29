@@ -169,8 +169,10 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
             onClear={() => clearTierWindow(i)}
           />
 
-          {tier.ticket_type === "paid" && Number(tier.price_usd) > 0 && (
-            <div className="mt-3">
+          {/* Always visible and clickable (Luke, 2026-08-29) — never hidden or
+              disabled waiting for a price. Save validation refuses nonsense
+              (surge on a free tier / no paid price) with inline copy instead. */}
+          <div className="mt-3">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
@@ -234,8 +236,7 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
                   </button>
                 </div>
               )}
-            </div>
-          )}
+          </div>
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">

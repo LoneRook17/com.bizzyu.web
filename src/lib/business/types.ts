@@ -887,6 +887,12 @@ export interface RecurringTemplateTicket {
   valid_until_time: string | null
   valid_from_day_offset: number
   valid_until_day_offset: number
+  // Named-series surge, stored on the template so restamps re-apply it.
+  // Write {after_sold, price_usd}; the server echoes {threshold_sold,
+  // price_cents, price_usd}. Both keys travel together — surge off is an
+  // explicit surge_enabled:false + surge_steps:[], omission means keep.
+  surge_enabled?: boolean
+  surge_steps?: unknown[]
 }
 
 export interface RecurringSeriesListItem {

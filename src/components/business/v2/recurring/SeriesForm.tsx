@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { validateRecurringTierSurge } from "@/lib/business/event-tier-surge"
 import { useVenue } from "@/lib/business/venue-context"
 import { cn } from "@/lib/v2/utils"
 import type {
@@ -163,6 +164,13 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             errs.tickets = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
             break
           }
+        }
+        // Surge is always offered; nonsense (free tier, no paid price, bad
+        // rungs) is refused here with inline copy, never by hiding the box.
+        const surgeProblem = validateRecurringTierSurge(tier)
+        if (surgeProblem) {
+          errs.tickets = surgeProblem
+          break
         }
       }
     }
@@ -552,7 +560,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             </p>
           </CardHeader>
           <CardContent className="pt-0">
-            <RecurringTierEditor tiers={tiers} onChange={(t) => { setTiers(t); setErrors((p) => ({ ...p, tickets: "" })) }} />
+            <RecurringTierEditor tiers={tiers} onChange={(t) => { setTiers(t); setErrors((p) => ({ ...p, tickets: "" })) }} showSurge />
             {errors.tickets && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tickets}</p>}
           </CardContent>
         </Card>
