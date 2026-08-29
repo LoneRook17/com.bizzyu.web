@@ -28,7 +28,7 @@ They get a personal share link, and you can see exactly who's driving sales.
 ## How promoters get paid (the wallet)
 
 - Commissions **accrue to the promoter's in-app wallet** as their referrals buy tickets.
-- Earnings start as **Pending** and stay pending until **shortly after the event ends**
+- Earnings start as **Pending** and stay pending until **2 days after that night's event**
   (a buffer to cover potential chargebacks), then become **Available**.
 - Promoters **withdraw on demand** from the app whenever their Available balance reaches
   the **$20 minimum**. A **standard withdrawal is free**; an **instant withdrawal** costs
