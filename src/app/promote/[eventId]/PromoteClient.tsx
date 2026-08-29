@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { APP_STORE_URL } from "@/lib/constants"
+import {
+  PROMOTER_TERMS_PAYOUT_COPY,
+  PROMOTER_WITHDRAWN_LABEL,
+  WITHDRAW_IN_TRANSIT_COPY,
+} from "@/lib/business/withdraw-copy"
 
 const API_URL = getApiBaseUrl()
 const TOKEN_STORAGE_KEY = "bz_auth_token"
@@ -451,8 +456,7 @@ function Wizard(p: WizardProps) {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">Accept the promoter terms</h2>
           <p className="text-sm text-gray-700">
-            Stripe payout fees come out of your earnings. By continuing, you agree to the
-            Bizzy Promoter Terms.
+            {PROMOTER_TERMS_PAYOUT_COPY}
           </p>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -489,7 +493,7 @@ function DashboardStub({ profile }: { profile: PromoterProfile }) {
           <div className="text-2xl font-bold text-primary">${pending.toFixed(2)}</div>
         </div>
         <div className="rounded-xl border border-gray-300 bg-gray-50 p-4">
-          <div className="text-xs text-gray-600">Paid out</div>
+          <div className="text-xs text-gray-600">{PROMOTER_WITHDRAWN_LABEL}</div>
           <div className="text-2xl font-bold text-ink">${paid.toFixed(2)}</div>
         </div>
       </div>
@@ -503,8 +507,8 @@ function DashboardStub({ profile }: { profile: PromoterProfile }) {
         />
         <span>
           {profile.stripe_connect_onboarded
-            ? "Stripe Connect ready. You can receive payouts."
-            : "Stripe Connect not finished. Finish onboarding to receive payouts."}
+            ? `Stripe Connect ready. ${WITHDRAW_IN_TRANSIT_COPY}`
+            : "Stripe Connect not finished. Finish onboarding to withdraw to Stripe."}
         </span>
       </div>
 

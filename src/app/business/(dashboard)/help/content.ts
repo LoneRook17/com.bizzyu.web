@@ -9,6 +9,7 @@ import {
   ANALYTICS_HELP_REVENUE_FAQ,
 } from "@/lib/business/analytics-copy"
 import { PROMOTER_COMMISSION_AVAILABLE_AFTER_COPY } from "@/lib/business/promoter-commission-hold"
+import { PROMOTER_WITHDRAW_HELP_AFTER_HOLD } from "@/lib/business/withdraw-copy"
 
 /** A content block within a subsection. */
 export type Block =
@@ -268,7 +269,7 @@ export const HELP_SECTIONS: HelpSection[] = [
             "Each promoter gets a personalized share link",
             "Visit Manage → Promoters to see clicks, sales, and commission earned",
           ] },
-          { kind: "p", text: `Commissions accrue to the promoter's in-app wallet. They become available ${PROMOTER_COMMISSION_AVAILABLE_AFTER_COPY}. They cash out on demand. There is no weekly payout.` },
+          { kind: "p", text: `Commissions accrue to the promoter's in-app wallet. They become available ${PROMOTER_COMMISSION_AVAILABLE_AFTER_COPY}. ${PROMOTER_WITHDRAW_HELP_AFTER_HOLD}` },
         ],
       },
     ],
