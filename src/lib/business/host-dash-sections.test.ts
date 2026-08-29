@@ -9,6 +9,8 @@ import {
   HOST_DASH_TONIGHT,
   HOST_DASH_UPCOMING,
   HOST_UPCOMING_PREVIEW_COUNT,
+  fmtHostDateSeparator,
+  groupOccurrencesByDate,
   hostDashIsEmpty,
   hostDashSections,
   includeGreenOccurrence,
@@ -384,6 +386,24 @@ test("Events page uses the Host sections, not a flat night pile", () => {
   assert.ok(page.includes("shouldUseHostDashLayout"), "Past/Drafts/Recurring keep the existing list")
 })
 
+test("date separators are Sat Aug 29 / Thu Sep 3, not a comma stack", () => {
+  assert.equal(fmtHostDateSeparator("2026-08-29"), "Sat Aug 29")
+  assert.equal(fmtHostDateSeparator("2026-09-03"), "Thu Sep 3")
+  assert.equal(fmtHostDateSeparator("2026-10-15"), "Thu Oct 15")
+  const grouped = groupOccurrencesByDate([
+    { date: "2026-08-29", key: "a" },
+    { date: "2026-08-29", key: "b" },
+    { date: "2026-09-03", key: "c" },
+  ])
+  assert.deepEqual(
+    grouped.map((g) => ({ date: g.date, label: g.label, keys: g.rows.map((r) => r.key) })),
+    [
+      { date: "2026-08-29", label: "Sat Aug 29", keys: ["a", "b"] },
+      { date: "2026-09-03", label: "Thu Sep 3", keys: ["c"] },
+    ],
+  )
+})
+
 test("section titles stay the Host product names", () => {
   assert.equal(HOST_DASH_TONIGHT, "Tonight")
   assert.equal(HOST_DASH_UPCOMING, "Upcoming events & WC")
@@ -395,6 +415,12 @@ test("section titles stay the Host product names", () => {
   assert.ok(list.includes("HOST_DASH_TONIGHT"))
   assert.ok(list.includes("HOST_DASH_UPCOMING"))
   assert.ok(list.includes("HOST_DASH_SCHEDULES"))
+  assert.ok(list.includes("groupOccurrencesByDate"), "Tonight/Upcoming group cards under day headers")
+  assert.ok(list.includes("OccurrenceDateGroups"), "date separators wrap occurrence cards only")
+  assert.ok(
+    !list.includes("groupOccurrencesByDate(sections.schedules"),
+    "Schedules stay repeating setups, not day headers",
+  )
   assert.ok(list.includes("AccessProgramRow"), "WC weekday templates stay AccessProgramRow")
   assert.ok(list.includes("AccessNightCard") || list.includes("Cancel"), "WC night cards keep Cancel")
   const nightCard = readFileSync(

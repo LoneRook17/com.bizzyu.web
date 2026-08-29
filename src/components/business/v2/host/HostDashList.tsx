@@ -8,6 +8,7 @@ import {
   HOST_DASH_TONIGHT,
   HOST_DASH_UPCOMING,
   HOST_DASH_UPCOMING_HELPER,
+  groupOccurrencesByDate,
   visibleHostUpcoming,
   type HostDashOccurrence,
   type HostDashSchedule,
@@ -103,6 +104,42 @@ function ScheduleRow({ row }: { row: HostDashSchedule }) {
   )
 }
 
+function OccurrenceDateGroups({
+  rows,
+  programs,
+  wcSeriesIds,
+  inactiveWcIds,
+  onCancel,
+}: {
+  rows: readonly HostDashOccurrence[]
+  programs: readonly ListedProgramRef[]
+  wcSeriesIds: readonly number[]
+  inactiveWcIds: readonly number[]
+  onCancel: (eventId: number, name: string) => void
+}) {
+  return (
+    <div className="flex flex-col gap-5">
+      {groupOccurrencesByDate(rows).map((group) => (
+        <div key={group.date} className="flex flex-col gap-3">
+          <h3 className="text-[13px] font-semibold text-neutral-600 dark:text-neutral-400">
+            {group.label}
+          </h3>
+          {group.rows.map((row) => (
+            <OccurrenceCard
+              key={row.key}
+              row={row}
+              programs={programs}
+              wcSeriesIds={wcSeriesIds}
+              inactiveWcIds={inactiveWcIds}
+              onCancel={onCancel}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Section({
   title,
   helper,
@@ -150,35 +187,25 @@ export function HostDashList({
     <div className="flex flex-col gap-8">
       {sections.tonight.length > 0 && (
         <Section title={HOST_DASH_TONIGHT}>
-          <div className="flex flex-col gap-3">
-            {sections.tonight.map((row) => (
-              <OccurrenceCard
-                key={row.key}
-                row={row}
-                programs={programs}
-                wcSeriesIds={wcSeriesIds}
-                inactiveWcIds={inactiveWcIds}
-                onCancel={(eventId, name) => setCancel({ eventId, name })}
-              />
-            ))}
-          </div>
+          <OccurrenceDateGroups
+            rows={sections.tonight}
+            programs={programs}
+            wcSeriesIds={wcSeriesIds}
+            inactiveWcIds={inactiveWcIds}
+            onCancel={(eventId, name) => setCancel({ eventId, name })}
+          />
         </Section>
       )}
 
       {sections.upcoming.length > 0 && (
         <Section title={HOST_DASH_UPCOMING} helper={HOST_DASH_UPCOMING_HELPER}>
-          <div className="flex flex-col gap-3">
-            {upcomingRows.map((row) => (
-              <OccurrenceCard
-                key={row.key}
-                row={row}
-                programs={programs}
-                wcSeriesIds={wcSeriesIds}
-                inactiveWcIds={inactiveWcIds}
-                onCancel={(eventId, name) => setCancel({ eventId, name })}
-              />
-            ))}
-          </div>
+          <OccurrenceDateGroups
+            rows={upcomingRows}
+            programs={programs}
+            wcSeriesIds={wcSeriesIds}
+            inactiveWcIds={inactiveWcIds}
+            onCancel={(eventId, name) => setCancel({ eventId, name })}
+          />
           {sections.upcomingRestCount > 0 && (
             <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded((v) => !v)}>
               {expanded
