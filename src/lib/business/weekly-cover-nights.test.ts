@@ -36,7 +36,6 @@ import {
   copyNightToDay,
   dateEditsToWire,
   daysQuestion,
-  defaultTierDescription,
   defaultTierNameForNight,
   reviewFormatLabel,
   setTierCustomDescription,
@@ -44,9 +43,6 @@ import {
   applyIncludesCover,
   derivedWeeklyCoverName,
   reviewSkipCoverSuffix,
-  skipCoverIncludedClause,
-  syncSkipTierDescriptions,
-  withSkipCoverClause,
   weeklyCoverProgramDescription,
   weeklyCoverProgramName,
   flutterWizardStep,
@@ -187,12 +183,21 @@ test("copying a weekday onto another does not carry its artwork", () => {
   assert.equal(copied.tiers[0].description, "", "custom description stays off when the source had none")
 })
 
-test("copying a weekday with a custom description rewrites the day name", () => {
+test("copying a weekday carries a custom description verbatim and re-derives default names", () => {
   const source = night({
-    tiers: [tier({ priceInput: "20", description: "Cover at The Bar on Fridays. Grants entry." })],
+    tiers: [
+      tier({
+        priceInput: "20",
+        name: "The Bar Friday Cover",
+        custom_description: true,
+        description: "Free shot before midnight",
+      }),
+    ],
   })
   const copied = copyNightToDay(source, { venueName: "The Bar", dayName: "Saturday" })
-  assert.match(copied.tiers[0].description, /Saturdays/)
+  assert.equal(copied.tiers[0].name, "The Bar Saturday Cover")
+  assert.equal(copied.tiers[0].description, "Free shot before midnight", "O1: host text is never regenerated")
+  assert.equal(copied.tiers[0].custom_description, true)
 })
 
 // ── 2. Surge, both directions ───────────────────────────────────────────────
@@ -495,26 +500,14 @@ test("the product is read back off a saved program's tiers", () => {
   assert.equal(productsFromTiers([tier({ kind: "cover" }), tier({ kind: "skip" })]), "both")
 })
 
-test("a skip tier's blurb says whether cover is included", () => {
-  assert.equal(
-    defaultTierDescription({ kind: "skip", includesCover: true, venueName: "The Bar", dayName: "Friday" }),
-    "Skip the line at The Bar on Fridays. Cover included."
-  )
-  assert.equal(
-    defaultTierDescription({ kind: "skip", includesCover: false, venueName: "The Bar", dayName: "Friday" }),
-    "Skip the line at The Bar on Fridays. Cover NOT Included"
-  )
-  assert.equal(
-    defaultTierDescription({ kind: "cover", includesCover: false, venueName: "The Bar", dayName: "Friday" }),
-    "Cover at The Bar on Fridays. Grants entry."
-  )
-  assert.equal(skipCoverIncludedClause(true), "Cover included.")
-  assert.equal(skipCoverIncludedClause(false), "Cover NOT Included")
+test("O1: the canned blurb generators are gone; review suffix stays UI-only", () => {
+  // The suffix is operator-facing Look-it-over copy driven by the flag — it
+  // never lands in a ticket description.
   assert.equal(reviewSkipCoverSuffix(true), " · Cover included")
   assert.equal(reviewSkipCoverSuffix(false), " · Cover NOT Included")
 })
 
-test("toggling Cover included rewrites the skip ticket description when custom is on", () => {
+test("toggling Cover included flips the flag and NEVER touches the description", () => {
   const seeded = seedNightDraft({
     products: "skip",
     startTime: "21:00",
@@ -525,30 +518,25 @@ test("toggling Cover included rewrites the skip ticket description when custom i
   assert.equal(seeded.tiers[0].includes_cover, true)
   assert.equal(seeded.tiers[0].description, "", "fresh create leaves Custom description off")
 
-  const offEmpty = applyIncludesCover(seeded.tiers[0], false, { venueName: "The Bar", dayName: "Friday" })
+  const offEmpty = applyIncludesCover(seeded.tiers[0], false)
   assert.equal(offEmpty.includes_cover, false)
   assert.equal(offEmpty.description, "")
 
-  const custom = setTierCustomDescription(seeded.tiers[0], true, { venueName: "The Bar", dayName: "Friday" })
-  assert.equal(custom.description, "Skip the line at The Bar on Fridays. Cover included.")
-
-  const off = applyIncludesCover(custom, false, { venueName: "The Bar", dayName: "Friday" })
+  const custom = { ...setTierCustomDescription(seeded.tiers[0], true), description: "Front door, no wait" }
+  const off = applyIncludesCover(custom, false)
   assert.equal(off.includes_cover, false)
-  assert.equal(off.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+  assert.equal(off.description, "Front door, no wait", "host text survives the toggle")
 
-  const on = applyIncludesCover(off, true, { venueName: "The Bar", dayName: "Friday" })
+  const on = applyIncludesCover(off, true)
   assert.equal(on.includes_cover, true)
-  assert.equal(on.description, "Skip the line at The Bar on Fridays. Cover included.")
+  assert.equal(on.description, "Front door, no wait")
 
-  const cover = applyIncludesCover(tier({ kind: "cover", description: "Cover at The Bar on Fridays. Grants entry." }), true, {
-    venueName: "The Bar",
-    dayName: "Friday",
-  })
-  assert.equal(cover.includes_cover, false)
-  assert.equal(cover.description, "Cover at The Bar on Fridays. Grants entry.")
+  const cover = applyIncludesCover(tier({ kind: "cover", description: "My own line" }), true)
+  assert.equal(cover.includes_cover, false, "cover tiers never include-cover")
+  assert.equal(cover.description, "My own line")
 })
 
-test("create payload skip description follows the Cover included toggle", () => {
+test("create payload carries the host's description or null — never canned copy", () => {
   const venue = { venueName: "The Bar", dayName: "Friday" }
   const onNight = seedNightDraft({
     products: "both",
@@ -559,80 +547,61 @@ test("create payload skip description follows the Cover included toggle", () => 
   const skipOn = onNight.tiers.find((t) => t.kind === "skip")
   assert.ok(skipOn)
   skipOn.priceInput = "25"
-  Object.assign(skipOn, setTierCustomDescription(skipOn, true, venue))
+  Object.assign(skipOn, setTierCustomDescription(skipOn, true), { description: "Front door, no wait" })
   const coverOn = onNight.tiers.find((t) => t.kind === "cover")
   assert.ok(coverOn)
-  Object.assign(coverOn, setTierCustomDescription(coverOn, true, venue))
+  // Toggle on but nothing typed — persists as null, not a canned stand-in.
+  Object.assign(coverOn, setTierCustomDescription(coverOn, true))
   const onWire = weekdayTemplateToWire(onNight)
-  const onSkip = (onWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]).find(
-    (t) => t.kind === "skip"
-  )
+  const wireTiers = onWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]
+  const onSkip = wireTiers.find((t) => t.kind === "skip")
   assert.equal(onSkip?.includes_cover, true)
-  assert.equal(onSkip?.description, "Skip the line at The Bar on Fridays. Cover included.")
-
-  const offNight = syncSkipTierDescriptions(
-    {
-      ...onNight,
-      tiers: onNight.tiers.map((t) => (t.kind === "skip" ? { ...t, includes_cover: false } : t)),
-    },
-    venue
-  )
-  const offWire = weekdayTemplateToWire(offNight)
-  const offSkip = (offWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]).find(
-    (t) => t.kind === "skip"
-  )
-  assert.equal(offSkip?.includes_cover, false)
-  assert.equal(offSkip?.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+  assert.equal(onSkip?.description, "Front door, no wait")
+  const onCover = wireTiers.find((t) => t.kind === "cover")
+  assert.equal(onCover?.description, null, "empty custom text wires null")
 
   const tickets = templateTicketsFromNights({
     daysOfWeek: [5],
-    weekdayEdits: { 5: offNight },
+    weekdayEdits: { 5: onNight },
     fallbackTiers: seedTiersForProducts("both"),
   })
   const skipTicket = tickets.find((t) => t.tier_key === "skip")
-  assert.equal(skipTicket?.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
-
+  assert.equal(skipTicket?.description, "Front door, no wait")
   const coverTicket = tickets.find((t) => t.tier_key === "cover")
-  assert.equal(coverTicket?.description, "Cover at The Bar on Fridays. Grants entry.")
+  assert.equal(coverTicket?.description, null)
 })
 
-test("Custom description toggle fills the default template and clears it when off", () => {
+test("Custom description ON opens an empty box; OFF clears to no description", () => {
   const base = emptyTier("cover")
   assert.equal(tierHasCustomDescription(base), false)
-  const on = setTierCustomDescription(base, true, { venueName: "The Bar", dayName: "Wednesday" })
-  assert.equal(on.description, "Cover at The Bar on Wednesdays. Grants entry.")
-  assert.equal(tierHasCustomDescription(on), true)
-  assert.equal(setTierCustomDescription(on, false).description, "")
+  const on = setTierCustomDescription(base, true)
+  assert.equal(on.description, "", "O1: no canned template is pre-filled")
+  assert.equal(tierHasCustomDescription(on), true, "the flag, not the text, holds the toggle open")
+  const off = setTierCustomDescription({ ...on, description: "typed something" }, false)
+  assert.equal(off.description, "")
+  assert.equal(tierHasCustomDescription(off), false)
   assert.equal(reviewFormatLabel("cover"), "Weekly Cover")
   assert.equal(reviewFormatLabel("both"), "Cover & Skip the Line")
   assert.equal(reviewFormatLabel("skip"), "Skip the Line")
 })
 
-test("tierToWire rewrites a stale Cover included clause when the toggle is off", () => {
-  const staleOff = tier({
+test("tierToWire passes host text through verbatim — no clause rewriting", () => {
+  const legacy = tier({
     kind: "skip",
     includes_cover: false,
+    custom_description: true,
     description: "Skip the line at The Bar on Fridays. Cover included.",
   })
-  assert.equal(tierToWire(staleOff).description, "Skip the line at The Bar on Fridays. Cover NOT Included")
-  assert.equal(tierToWire(staleOff).includes_cover, false)
+  // A saved legacy blurb is DATA now. The flag disagreeing with the text is
+  // fine — the flag drives the checkout chip, the text is just text.
+  assert.equal(tierToWire(legacy).description, "Skip the line at The Bar on Fridays. Cover included.")
+  assert.equal(tierToWire(legacy).includes_cover, false)
 
-  const staleOn = tier({
-    kind: "skip",
-    includes_cover: true,
-    description: "Skip the line at The Bar on Fridays. Cover NOT Included",
-  })
-  assert.equal(tierToWire(staleOn).description, "Skip the line at The Bar on Fridays. Cover included.")
+  const custom = tier({ kind: "skip", custom_description: true, description: "Front door, no wait" })
+  assert.equal(tierToWire(custom).description, "Front door, no wait")
 
-  const oldOffCopy = tier({
-    kind: "skip",
-    includes_cover: false,
-    description: "Skip the line at The Bar on Fridays. Cover not included, paid separately.",
-  })
-  assert.equal(tierToWire(oldOffCopy).description, "Skip the line at The Bar on Fridays. Cover NOT Included")
-
-  assert.equal(withSkipCoverClause("", false), "")
-  assert.equal(withSkipCoverClause("Front door, no wait", false), "Front door, no wait")
+  const off = tier({ kind: "skip", custom_description: false, description: "stale text left behind" })
+  assert.equal(tierToWire(off).description, null, "custom off wires null even if text lingers")
 })
 
 // ── 5. Dates never round-trip through a timezone ────────────────────────────
