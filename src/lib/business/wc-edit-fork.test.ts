@@ -155,15 +155,18 @@ test("edit page redirects an uncustomized WC night instead of mounting EventForm
   assert.ok(!src.includes("looksLikeWeeklyCoverName"), "the name-regex signal stays dead")
 })
 
-test("Manage Tickets page never mounts the event ticket writer for an uncustomized WC night", () => {
+test("Manage Tickets page mounts the shared editor for WC nights, in pink", () => {
+  // Luke (2026-08-29): a WC night's Manage Tickets is the same page as
+  // green, tickets only, never the night editor. Safe because the
+  // services ticket-manage routes stamp the WC night Custom and persist
+  // per-date tier overrides themselves; the old client redirect guarded a
+  // hole that no longer exists.
   const src = read(TICKETS_PAGE)
-  assert.ok(src.includes("weeklyCoverNightEditHref"), "the fork must use the shared helper")
-  assert.ok(src.includes("router.replace(wcNightEdit)"), "WC nights go to the night editor")
-  assert.ok(src.includes("<ManageSalesTickets"), "named events keep the shared editor")
-  assert.ok(
-    src.indexOf("weeklyCoverNightEditHref") < src.indexOf("<ManageSalesTickets"),
-    "the guard decides before the writer renders",
-  )
+  assert.ok(src.includes("<ManageSalesTickets"), "both products share the editor")
+  assert.ok(src.includes("isWeeklyCoverProduct"), "the accent forks on product kind")
+  assert.ok(src.includes("WeeklyCoverAccent"), "WC nights render the editor pink")
+  assert.ok(!src.includes("router.replace"), "no redirect to the night editor remains")
+  assert.ok(!src.includes("weeklyCoverNightEditHref"), "the tickets page stays a tickets page")
 })
 
 test("manage hub setup tiles fork to the WC path for an uncustomized night", () => {
@@ -171,11 +174,12 @@ test("manage hub setup tiles fork to the WC path for an uncustomized night", () 
   assert.ok(src.includes("weeklyCoverNightEditHref"), "the fork must use the shared helper")
   assert.ok(src.includes('title: "Edit night"'), "WC branch edits the night override")
   // Luke (2026-08-29): the WC setup row mirrors green — Manage Tickets
-  // replaces Edit program, and it opens the night-override editor (the
-  // only WC tier writer), never the green event ticket PUTs.
+  // replaces Edit program and opens the shared tickets page (rendered
+  // pink there); the services ticket-manage routes stamp the night
+  // Custom, so those writes touch that night only.
   assert.ok(
-    src.includes('href: wcNightEdit, icon: Ticket, title: "Manage Tickets"'),
-    "WC Manage Tickets is the night-override editor",
+    src.includes('href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets"'),
+    "WC Manage Tickets is the shared tickets page",
   )
   assert.ok(!src.includes('title: "Edit program"'), "the program editor tile left the night manage")
   assert.ok(!src.includes("programEditHref("), "no hub route to the program editor remains")
