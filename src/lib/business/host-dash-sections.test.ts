@@ -443,3 +443,30 @@ test("section titles stay the Host product names", () => {
   assert.ok(nightCard.includes("/manage"), "the night card body opens the night's manage page")
   assert.ok(nightCard.includes("hostCustomChipTone"), "Custom chip stays on the Host voter")
 })
+
+test("R4: a detached WC leftover lists as exactly ONE pink card, chip off, even far out", () => {
+  // Series delete detached this Custom-edited night: services NULLed its
+  // series id and cleared the marker. It is a standalone one-off now — no
+  // series window clips it, no Custom chip, one card.
+  const leftover = ev(881, "2026-10-15 21:00:00", null, {
+    name: "The Devil Dungeon Cover",
+    product_kind: "weekly_cover",
+    access_kind: "door_access",
+    occurrence_date: "2026-10-15",
+    series_customized_at: null,
+  })
+  const out = sections({
+    programs: [],
+    events: [leftover],
+    series: [],
+    wcSeriesIds: [],
+    inactiveWcIds: [],
+    windowDays: 14,
+  })
+  const rows = [...out.tonight, ...out.upcoming]
+  assert.equal(rows.length, 1, "exactly one card — never a duplicate, never dropped")
+  const row = rows[0]
+  assert.equal(row.kind, "access-event", "the leftover stays a PINK access card")
+  assert.equal(row.kind === "access-event" ? row.event.event_id : 0, 881)
+  // Chip off is pinned in host-custom-night.test.ts (explicit-null detach).
+})

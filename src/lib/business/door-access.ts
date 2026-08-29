@@ -1794,11 +1794,14 @@ export type NightChip = {
 
 /**
  * The chips on a night row. Deliberately terse and additive — a night can be
- * closed AND customized AND unstamped at once, and a host needs to see all
- * three because each has a different fix.
+ * closed AND Custom AND unstamped at once, and a host needs to see all three
+ * because each has a different fix.
  *
- * "Customized" / "Overridden" / "Not generated yet" are additive row chips.
- * They are NOT the Flutter Custom voter (`isHostCustomNight`).
+ * Custom-chip audit (locked 2026-08-29): ONE Custom vocabulary everywhere.
+ * The old "Customized"/"Overridden" pair — derived from `is_customized` /
+ * `has_override` — painted a second chip language on the night page that no
+ * other host surface used. The pink Custom chip here is the same voter as
+ * the Host list and the program grid.
  */
 export function nightChips(night: DoorAccessNight, seriesActive = true): NightChip[] {
   const chips: NightChip[] = []
@@ -1810,8 +1813,9 @@ export function nightChips(night: DoorAccessNight, seriesActive = true): NightCh
   if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
   }
-  if (night.has_override) chips.push({ label: "Overridden", variant: "info" })
-  if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
+  if (isHostCustomWeeklyCoverNight(night)) {
+    chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "access" })
+  }
   if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
   return chips
 }

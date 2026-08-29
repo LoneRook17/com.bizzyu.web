@@ -243,6 +243,32 @@ function collectAccessOccurrences(
 
   for (const event of events) {
     const programId = listedWeeklyCoverProgramId(event, wcSeriesIds)
+    // R4: a DETACHED WC leftover (series delete kept this Custom-edited
+    // night; services nulled its series id and cleared the marker) is a
+    // standalone one-off now. Exactly ONE pink card, always listed — a
+    // standalone night has no series window to clip against — chip off.
+    if (
+      programId == null &&
+      isWeeklyCoverProduct(event) &&
+      event.recurring_series_id !== undefined &&
+      (event.recurring_series_id == null || Number(event.recurring_series_id) === 0)
+    ) {
+      if (!weeklyCoverNightVisibleOnDash(event, true)) continue
+      const date = eventOccurrenceDate(event)
+      if (!date) continue
+      const key = `access-leftover-${event.event_id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({
+        kind: "access-event",
+        key,
+        sortKey: event.start_date_time || date,
+        date,
+        event,
+        programId: 0,
+      })
+      continue
+    }
     if (programId == null) continue
     if (inactiveWcIds.has(programId)) continue
     if (!weeklyCoverNightVisibleOnDash(event, true)) continue
