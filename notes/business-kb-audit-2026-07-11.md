@@ -119,7 +119,7 @@ Ground-truth code lives in the sibling repos `com.bizzyu.services` (Node) and
 - ✅ Commission comes out of the host's share (`TicketPurchaseService.ts:531-552`).
 - ✅ No commission on the promoter's own purchases (`TicketPurchaseService.ts:68-86`, FR-18).
 - ✅ Accrues to in-app wallet; Pending → Available after event end + chargeback buffer
-  (default 7 days) (`core WalletSettlementService.php:10-21,39`).
+  (2 days after that night's event) (`core WalletSettlementService.php:10-21,39`).
 - ✅ **$20 minimum** withdrawal (`services WithdrawalService.ts:68`, 2000¢).
 - ✅ Standard withdrawal free; instant costs a fee (max $0.50 or 2.5%,
   `WithdrawalService.ts:140-141`).

@@ -59,6 +59,7 @@ test("escrow and payments host copy has no em or en dashes", () => {
     ["./payouts-computing-poll.ts", "payouts computing copy"],
     ["./payouts-reconcile.ts", "payouts reconcile copy"],
     ["./promoter-tab-copy.ts", "promoter tab copy"],
+    ["./promoter-commission-hold.ts", "promoter commission hold copy"],
   ]
   for (const [rel, label] of files) {
     assertNoTypographicDashes(rel, label)
