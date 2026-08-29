@@ -94,9 +94,10 @@ support@bizzyu.com rather than answering from this pack.
 ## Promoter payouts
 
 - If you run the Promoter Program, promoter commissions accrue to each promoter's **in-app
-  wallet** and they **withdraw on demand** — there is no weekly payout. This is separate
-  from your own revenue (commission comes out of the host's share). See the "Promoters &
-  commissions" article for the full flow.
+  wallet**, become **Available 2 days after that night's event**, and they **withdraw on
+  demand** — there is no weekly payout. This is separate from your own revenue (commission
+  comes out of the host's share). See the "Promoters & commissions" article for the full
+  flow.
 - Promoter withdrawals have a **$20 minimum**. Your own earnings do not. These are two
   different rules and it's worth being explicit if an owner is also promoting.
 
