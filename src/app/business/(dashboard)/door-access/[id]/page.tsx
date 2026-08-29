@@ -244,6 +244,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
           title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
           label={PROGRAM_LINK_LABEL}
           description={PROGRAM_LINK_DESCRIPTION}
+          accent="access"
         />
       )}
 
@@ -428,11 +429,14 @@ function NightPreviewCard({
   onCancel?: () => void
 }) {
   const chip = nightPreviewChip(night, seriesActive, hostCustomSlot(night, nights, program), isPending)
-  const href = seriesActive && nightIsEditable(night, { is_active: seriesActive })
-    ? nightHref(programId, night.occurrence_date)
-    : night.event_id != null
-      ? `/business/events/${night.event_id}`
-      : nightHref(programId, night.occurrence_date)
+  // Instance-manage round 2 (Luke, 2026-08-29): tapping a night on the
+  // Schedules grid opens that night's full MANAGE page, same as the Host list
+  // cards. The night editor stays reachable from manage's "Edit night" tile.
+  // A night core hasn't stamped yet has no event id; it falls back to the
+  // night editor page, which materialises it.
+  const href = night.event_id != null && night.event_id > 0
+    ? `/business/events/${night.event_id}/manage`
+    : nightHref(programId, night.occurrence_date)
   const dateBlock = nightDateBlock(night.occurrence_date)
   const soldLabel = night.passes_sold === 1 ? "1 sold" : `${night.passes_sold.toLocaleString("en-US")} sold`
 
