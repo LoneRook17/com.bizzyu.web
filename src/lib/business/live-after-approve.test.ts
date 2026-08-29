@@ -8,6 +8,7 @@ import {
   isPendingApprovalStatus,
   mergeUpcomingWithQueuedDrafts,
   pendingApprovalNightEventIds,
+  queuedWeeklyCoverNightEventIds,
   shouldAutoPublishCreatedDraft,
   shouldPromoteQueuedDrafts,
   shouldRunLiveAfterApprove,
@@ -55,10 +56,14 @@ test("a create that came back draft on an approved host is auto-published", () =
 
 test("approved hosts see queued drafts on Upcoming until publish lands", () => {
   const upcoming = [{ event_id: 1, status: "published" }]
-  const drafts = [{ event_id: 2, status: "draft" }, { event_id: 1, status: "draft" }]
+  const drafts = [
+    { event_id: 2, status: "draft" },
+    { event_id: 1, status: "draft" },
+    { event_id: 3, status: "pending_approval" },
+  ]
   assert.deepEqual(
     mergeUpcomingWithQueuedDrafts(upcoming, drafts, false).map((e) => e.event_id),
-    [1, 2],
+    [1, 2, 3],
   )
   assert.deepEqual(
     mergeUpcomingWithQueuedDrafts(upcoming, drafts, true).map((e) => e.event_id),
@@ -72,25 +77,25 @@ test("only draft ids are published", () => {
       { event_id: 10, status: "draft" },
       { event_id: 11, status: "published" },
       { event_id: 12 },
+      { event_id: 13, status: "pending_approval" },
     ]),
-    [10, 12],
+    [10, 12, 13],
   )
 })
 
-test("WC hold is pending_approval, never draft", () => {
+test("WC hold is draft; leftover pending_approval still queues for D3", () => {
   assert.equal(isPendingApprovalStatus("pending_approval"), true)
   assert.equal(isPendingApprovalStatus("draft"), false)
   assert.equal(isPendingApprovalStatus("published"), false)
-  assert.deepEqual(
-    pendingApprovalNightEventIds([
-      { event_id: 20, status: "pending_approval" },
-      { event_id: 21, status: "draft" },
-      { event_id: 22, status: "published" },
-      { event_id: 23, status: null },
-      { event_id: null, status: "pending_approval" },
-    ]),
-    [20],
-  )
+  const nights = [
+    { event_id: 20, status: "pending_approval" },
+    { event_id: 21, status: "draft" },
+    { event_id: 22, status: "published" },
+    { event_id: 23, status: null },
+    { event_id: null, status: "pending_approval" },
+  ]
+  assert.deepEqual(pendingApprovalNightEventIds(nights), [20])
+  assert.deepEqual(queuedWeeklyCoverNightEventIds(nights), [20, 21])
 })
 
 test("DoorAccessWizard promoter gate is paid-tier only — approved escrow is not hard-blocked", () => {
@@ -167,26 +172,25 @@ test("dashboard shell runs live-after-approve once the host is approved", () => 
   assert.ok(src.includes("LiveAfterApprove"), "approved hosts must promote queued drafts without a refresh loop")
 })
 
-test("live-after-approve promotes pending_approval Weekly Cover nights", () => {
+test("live-after-approve publishes draft Weekly Cover nights", () => {
   const src = readFileSync(
     join(process.cwd(), "src/components/business/v2/LiveAfterApprove.tsx"),
     "utf8",
   )
   assert.ok(src.includes("fetchDoorAccessProgramsSafe"), "approve must find WC programs, not only events drafts")
-  assert.ok(src.includes("promotePendingApprovalNightsForProgram"), "D3 promotes leftover pending_approval nights")
-  assert.ok(!src.includes("draftNightEventIds"), "do not promote draft WC — draft is sellable")
+  assert.ok(src.includes("publishDraftNightsForProgram"), "D3 publishes leftover draft nights")
 })
 
-test("WC create does not use a draft hold", () => {
+test("WC create uses a draft hold until the business is approved", () => {
   const wizard = readFileSync(
     join(process.cwd(), "src/components/business/v2/door-access/DoorAccessWizard.tsx"),
     "utf8",
   )
-  assert.ok(!wizard.includes("willDraftOnCreate"), "WC hold is pending_approval, not draft")
-  assert.ok(!wizard.includes("applySaveAsDraftFlag"), "do not send save_as_draft — draft WC is sellable")
-  assert.ok(!wizard.includes("publishDraftNightsForProgram"), "create must not force a second publish")
+  assert.ok(wizard.includes("willDraftOnCreate"), "WC hold is draft until business approve")
+  assert.ok(wizard.includes("applySaveAsDraftFlag"), "unapproved create sends save_as_draft")
+  assert.ok(wizard.includes("publishDraftNightsForProgram"), "approved create publishes leftover drafts")
   assert.ok(wizard.includes("shouldTreatDraftAsLive"), "pending WC must not stamp publish:true")
-  assert.ok(wizard.includes("pendingApproval"), "success copy must distinguish pending vs live")
+  assert.ok(wizard.includes("asDraft"), "success copy must distinguish draft vs live")
 })
 
 test("WC night Save omits publish while the business is pending", () => {

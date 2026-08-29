@@ -215,7 +215,8 @@ test("series-night banner does not tell hosts Custom nights pick up program edit
 
 test("program create/edit sends the full weekday template and does not restamp Custom nights", () => {
   const src = read(WIZARD)
-  assert.ok(src.includes("weekdayEditsToWire"), "weekday slots go out as weekday_edits")
+  assert.ok(src.includes("weeklyCoverCreateSalesMaps"), "weekday slots go out as weekday_edits")
+  assert.ok(src.includes("weekday_edits"), "create always sends weekday_edits")
   assert.ok(src.includes("weekdayEditsFromNights"), "edit hydrates weekdays from served nights")
   assert.ok(src.includes("dateEditsToWire"), "create can still send game-day Custom dates")
   assert.ok(

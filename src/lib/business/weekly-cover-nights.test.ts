@@ -81,8 +81,12 @@ import {
   weekdayEditsToWire,
   weekdayFlyerByDayFromNights,
   customOccurrenceDates,
+  dateEditsAreCustom,
+  hostCustomSlot,
+  isCustomWeeklyCoverNight,
   nightDiffersFromWeekdaySlot,
   nightIsOffPatternDate,
+  weeklyCoverCreateSalesMaps,
   weekdayHydrationNight,
   weekdayTemplateFlyer,
   weekdayTemplateToWire,
@@ -1055,6 +1059,111 @@ test("Flutter wizard progress is screens 2-9, with the editor and copy as 5 and 
   assert.equal(flutterWizardStep({ wizardIndex: 3 }), 7)
   assert.equal(flutterWizardStep({ wizardIndex: 4 }), 8)
   assert.equal(flutterWizardStep({ wizardIndex: 5 }), 9)
+})
+
+test("Not generated lookaheads and two fresh Fridays do not chip Custom", () => {
+  const fridayA = servedNight("2026-08-28", 10)
+  const fridayB = servedNight("2026-09-04", 10)
+  const lookahead = servedNight("2026-12-25", 10, {
+    is_stamped: false,
+    event_id: null,
+    status: null,
+    tiers: [],
+  })
+  const namedA = servedNight("2026-08-28", 10, { name: "Cover Aug 28" })
+  const namedB = servedNight("2026-09-04", 10, { name: "Cover Sep 4" })
+  const program = { days_of_week: [5], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  assert.equal(
+    nightDiffersFromWeekdaySlot(fridayA, [fridayA, lookahead], program),
+    false,
+    "one stamped Friday vs a Not generated lookahead is not Custom",
+  )
+  assert.equal(
+    nightDiffersFromWeekdaySlot(lookahead, [fridayA, fridayB, lookahead], program),
+    false,
+    "unstamped lookahead never SLOT-diverges",
+  )
+  assert.equal(
+    nightDiffersFromWeekdaySlot(namedA, [namedA, namedB], program),
+    false,
+    "two fresh Fridays with different titles are still the weekday template",
+  )
+  assert.equal(isCustomWeeklyCoverNight(fridayA, [fridayA, fridayB, lookahead], program), false)
+  assert.equal(isCustomWeeklyCoverNight(lookahead, [fridayA, fridayB, lookahead], program), false)
+})
+
+test("series 119 Sat-only empty SLOT does not chip Custom", () => {
+  // DEV recon: Boobie Trap Cover, days_of_week=[6], nights 1340-1344,
+  // series_customized_at=null, 0 weekday_templates, 0 overrides.
+  const sats = ["2026-08-29", "2026-09-05", "2026-09-12", "2026-09-19", "2026-09-26"].map(
+    (date, i) =>
+      servedNight(date, 10, {
+        event_id: 1340 + i,
+        series_customized_at: null,
+        is_customized: false,
+        name: "Boobie Trap Cover",
+      }),
+  )
+  const program = { days_of_week: [6], start_time: "", end_time: "", name: "Boobie Trap Cover" }
+  const stringDays = { ...program, days_of_week: ["6"] as unknown as number[] }
+  for (const night of sats) {
+    assert.equal(nightIsOffPatternDate(night.occurrence_date, [6]), false, night.occurrence_date)
+    assert.equal(nightIsOffPatternDate(night.occurrence_date, ["6"]), false, "string Saturday key")
+    assert.equal(nightDiffersFromWeekdaySlot(night, sats, program), false, night.occurrence_date)
+    assert.equal(isCustomWeeklyCoverNight(night, sats, program), false, night.occurrence_date)
+    assert.equal(isCustomWeeklyCoverNight(night, sats, stringDays), false, "string days_of_week")
+    const slot = hostCustomSlot(night, sats, program)
+    assert.equal(slot.offPatternDate, false)
+    assert.equal(slot.differsFromWeekdaySlot, false)
+    assert.equal(slot.slotEstablished, true)
+  }
+  const emptySlot = hostCustomSlot(sats[0], sats, { days_of_week: [], start_time: "", end_time: "", name: "" })
+  assert.equal(emptySlot.slotEstablished, false)
+  assert.equal(emptySlot.offPatternDate, false)
+  assert.equal(emptySlot.differsFromWeekdaySlot, false)
+  assert.equal(isCustomWeeklyCoverNight(sats[0], sats, { days_of_week: [], start_time: "", end_time: "", name: "" }), false)
+  assert.equal(customOccurrenceDates(sats, program).size, 0)
+})
+
+test("Saturday-only create sends weekday_edits and dateEditsAreCustom is false", () => {
+  const sat = night({ startTime: "21:00", endTime: "02:00", tiers: [tier({ priceInput: "10" })] })
+  const maps = weeklyCoverCreateSalesMaps({
+    daysOfWeek: [6],
+    weekdayEdits: { 6: sat },
+    dateEdits: {},
+    fallbackNight: sat,
+  })
+  assert.equal(dateEditsAreCustom(maps.date_edits), false)
+  assert.equal(maps.dateEditsAreCustom, false)
+  assert.deepEqual(Object.keys(maps.weekday_edits), ["6"])
+  assert.deepEqual(Object.keys(maps.date_edits), [])
+  const fallbackOnly = weeklyCoverCreateSalesMaps({
+    daysOfWeek: [6],
+    weekdayEdits: {},
+    dateEdits: {},
+    fallbackNight: sat,
+  })
+  assert.deepEqual(Object.keys(fallbackOnly.weekday_edits), ["6"], "missing Sat draft still sends weekday_edits")
+})
+
+test("fresh Mon/Wed/Fri weekday templates that differ are not Custom", () => {
+  const nights = [
+    servedNight("2026-08-31", 10),
+    servedNight("2026-09-07", 10),
+    servedNight("2026-09-14", 10),
+    servedNight("2026-09-02", 15),
+    servedNight("2026-09-09", 15),
+    servedNight("2026-09-16", 15),
+    servedNight("2026-09-04", 20),
+    servedNight("2026-09-11", 20),
+    servedNight("2026-09-18", 20),
+  ]
+  const program = { days_of_week: [1, 3, 5], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  for (const night of nights) {
+    assert.equal(isCustomWeeklyCoverNight(night, nights, program), false, night.occurrence_date)
+    assert.equal(nightDiffersFromWeekdaySlot(night, nights, program), false, night.occurrence_date)
+  }
+  assert.equal(customOccurrenceDates(nights, program).size, 0)
 })
 
 test("fresh weekday SLOTs are not Custom; one later date that diverges is", () => {

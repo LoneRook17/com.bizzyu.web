@@ -50,7 +50,8 @@ export function mergeUpcomingWithQueuedDrafts<T extends { event_id: number; stat
   const seen = new Set(upcoming.map((row) => row.event_id))
   const extra = drafts.filter((row) => {
     if (seen.has(row.event_id)) return false
-    return (row.status ?? "").toLowerCase() === "draft"
+    const status = (row.status ?? "").toLowerCase()
+    return status === "draft" || status === "pending_approval"
   })
   return [...upcoming, ...extra]
 }
@@ -60,7 +61,8 @@ export type DraftPublishTarget = { event_id: number; status?: string | null }
 export function draftIdsToPublish(drafts: DraftPublishTarget[]): number[] {
   const ids: number[] = []
   for (const row of drafts) {
-    if ((row.status ?? "draft").toLowerCase() !== "draft") continue
+    const status = (row.status ?? "draft").toLowerCase()
+    if (status !== "draft" && status !== "pending_approval") continue
     if (Number.isFinite(row.event_id) && row.event_id > 0) ids.push(row.event_id)
   }
   return ids
@@ -70,10 +72,20 @@ export function isPendingApprovalStatus(status: string | null | undefined): bool
   return (status ?? "").toLowerCase() === "pending_approval"
 }
 
+export function isDraftStatus(status: string | null | undefined): boolean {
+  return (status ?? "").toLowerCase() === "draft"
+}
+
 /**
- * WC hold is `pending_approval` (services #109 / unapproved one-offs).
- * `draft` is guest-visible and sellable — do not promote or treat it as the hold.
+ * Unapproved WC is a draft. Leftover `pending_approval` (services #109)
+ * is the same hold for D3. Do not skip drafts.
  */
+export {
+  draftNightEventIds,
+  queuedWeeklyCoverNightEventIds,
+} from "./wc-draft-hold.ts"
+
+/** @deprecated Use queuedWeeklyCoverNightEventIds. Leftover #109 stamp only. */
 export function pendingApprovalNightEventIds(
   nights: Array<{ event_id?: number | null; status?: string | null }>,
 ): number[] {

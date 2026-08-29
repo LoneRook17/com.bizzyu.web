@@ -13,7 +13,9 @@
  * must not. Do not invent a 30/60-day dump.
  */
 
-import { isHostCustomNight } from "./host-custom-night.ts"
+import { isHostCustomNight, type HostCustomSlotHint } from "./host-custom-night.ts"
+
+export type { HostCustomSlotHint } from "./host-custom-night.ts"
 
 export const SERIES_NIGHTS_WINDOW_DAYS = 14
 
@@ -101,11 +103,6 @@ export type WeeklyCoverHostNight = {
   product_kind?: string | null
   access_kind?: string | null
   recurring_series_id?: number | string | null
-}
-
-export type HostCustomSlotHint = {
-  differsFromWeekdaySlot?: boolean
-  offPatternDate?: boolean
 }
 
 /** Stamped night with a real events row — not a generator lookahead. */
