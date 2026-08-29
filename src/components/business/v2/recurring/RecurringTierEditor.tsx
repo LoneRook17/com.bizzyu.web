@@ -1,7 +1,13 @@
 "use client"
 
-import { Plus, Trash2 } from "lucide-react"
-import type { RecurringTemplateTicket } from "@/lib/business/types"
+import { Plus, Trash2, X } from "lucide-react"
+import { parsePrice, trimMoney, type SurgeStepDraft } from "@/lib/business/weekly-cover-nights"
+import {
+  EMPTY_RECURRING_TIER,
+  templateToTierRows,
+  tierRowsToTemplate,
+  type RecurringTierRow,
+} from "@/lib/business/recurring-tier-rows"
 import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { Button } from "@/components/business/v2/ui/button"
 import { TimeField } from "@/components/business/v2/ui/date-time-field"
@@ -18,69 +24,9 @@ import { cn } from "@/lib/v2/utils"
  * datetimes (core computes the real datetimes when it stamps each night).
  */
 
-export interface RecurringTierRow {
-  /** Present when editing an existing door-access template tier. */
-  tier_key?: string
-  name: string
-  description: string
-  ticket_type: "paid" | "free"
-  priceInput: string
-  quantityInput: string
-  maxPerPersonInput: string
-  valid_from_time: string // "HH:MM" or ""
-  valid_until_time: string
-  valid_from_day_offset: number
-  valid_until_day_offset: number
-}
-
-export const EMPTY_RECURRING_TIER: RecurringTierRow = {
-  name: "",
-  description: "",
-  ticket_type: "paid",
-  priceInput: "0",
-  quantityInput: "0",
-  maxPerPersonInput: "0",
-  valid_from_time: "",
-  valid_until_time: "",
-  valid_from_day_offset: 0,
-  valid_until_day_offset: 0,
-}
-
-export function templateToTierRows(template: RecurringTemplateTicket[]): RecurringTierRow[] {
-  return [...template]
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-    .map((t) => ({
-      ...(t.tier_key ? { tier_key: t.tier_key } : {}),
-      name: t.name,
-      description: t.description ?? "",
-      ticket_type: t.ticket_type,
-      priceInput: String(t.price_usd ?? 0),
-      quantityInput: String(t.quantity ?? 0),
-      maxPerPersonInput: String(t.max_per_person ?? 0),
-      valid_from_time: t.valid_from_time?.slice(0, 5) ?? "",
-      valid_until_time: t.valid_until_time?.slice(0, 5) ?? "",
-      valid_from_day_offset: t.valid_from_day_offset ?? 0,
-      valid_until_day_offset: t.valid_until_day_offset ?? 0,
-    }))
-}
-
-export function tierRowsToTemplate(rows: RecurringTierRow[]): RecurringTemplateTicket[] {
-  return rows.map((r, i) => ({
-    ...(r.tier_key ? { tier_key: r.tier_key } : {}),
-    name: r.name.trim(),
-    description: r.description.trim() || null,
-    price_usd: r.ticket_type === "free" ? 0 : parseFloat(r.priceInput) || 0,
-    quantity: parseInt(r.quantityInput) || 0,
-    max_per_person: parseInt(r.maxPerPersonInput) || 0,
-    ticket_type: r.ticket_type,
-    is_hidden: 0,
-    sort_order: i + 1,
-    valid_from_time: r.valid_from_time || null,
-    valid_until_time: r.valid_until_time || null,
-    valid_from_day_offset: r.valid_from_time ? r.valid_from_day_offset : 0,
-    valid_until_day_offset: r.valid_until_time ? r.valid_until_day_offset : 0,
-  }))
-}
+// Pure model + converters live in lib/business/recurring-tier-rows (testable
+// without JSX); re-exported here so existing imports keep working.
+export { EMPTY_RECURRING_TIER, templateToTierRows, tierRowsToTemplate, type RecurringTierRow }
 
 const OFFSET_OPTIONS = [
   { value: -1, label: "the day before" },
@@ -102,12 +48,15 @@ function OffsetSelect({ value, onChange, idPrefix }: { value: number; onChange: 
   )
 }
 
+const SURGE_INFO = "Price goes up after a set number of tickets sell."
+
 export function RecurringTierEditor({
   tiers,
   onChange,
   allowAdd = true,
   allowRemove = true,
   showIdentityFields = true,
+  showSurge = false,
 }: {
   tiers: RecurringTierRow[]
   onChange: (tiers: RecurringTierRow[]) => void
@@ -115,12 +64,57 @@ export function RecurringTierEditor({
   allowRemove?: boolean
   /** Named event series keep Name + Description. Weekly Cover does not. */
   showIdentityFields?: boolean
+  /**
+   * RC create/edit only. The WC night page reuses this editor through its own
+   * draft adapter, which has no surge state; surfacing the control there
+   * would render a dead checkbox, so it stays opt-in.
+   */
+  showSurge?: boolean
 }) {
   const update = (index: number, patch: Partial<RecurringTierRow>) => {
     const next = [...tiers]
     next[index] = { ...next[index], ...patch }
     if (patch.ticket_type === "free") next[index].priceInput = "0"
     onChange(next)
+  }
+
+  const toggleSurge = (index: number, on: boolean) => {
+    const row = tiers[index]
+    const base = parsePrice(row.priceInput)
+    update(index, {
+      surge_enabled: on,
+      surge:
+        on && (row.surge ?? []).length === 0
+          ? [{ afterSoldInput: "10", priceInput: trimMoney(base > 0 ? base + 5 : 15) }]
+          : row.surge ?? [],
+    })
+  }
+
+  const addSurgeStep = (index: number) => {
+    const row = tiers[index]
+    const rungs = row.surge ?? []
+    const last = rungs[rungs.length - 1]
+    const lastPrice = last ? parsePrice(last.priceInput) : parsePrice(row.priceInput)
+    const lastThreshold = last ? parseInt(last.afterSoldInput, 10) || 0 : 0
+    update(index, {
+      surge: [
+        ...rungs,
+        {
+          afterSoldInput: String(lastThreshold > 0 ? lastThreshold + 10 : 10),
+          priceInput: trimMoney(lastPrice > 0 ? lastPrice + 5 : 15),
+        },
+      ],
+    })
+  }
+
+  const patchSurgeStep = (index: number, stepIndex: number, patch: Partial<SurgeStepDraft>) => {
+    const rungs = [...(tiers[index].surge ?? [])]
+    rungs[stepIndex] = { ...rungs[stepIndex], ...patch }
+    update(index, { surge: rungs })
+  }
+
+  const removeSurgeStep = (index: number, stepIndex: number) => {
+    update(index, { surge: (tiers[index].surge ?? []).filter((_, s) => s !== stepIndex) })
   }
 
   const addTier = () => onChange([...tiers, { ...EMPTY_RECURRING_TIER }])
@@ -215,6 +209,77 @@ export function RecurringTierEditor({
             </div>
             <ScanWindowExamples weekly />
           </ScanWindowToggle>
+
+          {showSurge && (
+            /* Always visible and clickable (Luke, 2026-08-29); never hidden
+               or disabled waiting for a price. Save validation refuses
+               nonsense (surge on a free tier / no paid price) inline. */
+            <div className="mt-3">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!tier.surge_enabled}
+                  onChange={(e) => toggleSurge(i, e.target.checked)}
+                  className="size-4 rounded border-neutral-300 dark:border-neutral-700"
+                />
+                <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Surge pricing</span>
+                <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{SURGE_INFO}</span>
+              </label>
+
+              {tier.surge_enabled && (
+                <div className="mt-2 rounded-xl bg-neutral-100 p-3 dark:bg-neutral-800/70">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                    Price jumps
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {(tier.surge ?? []).map((step, s) => (
+                      <div key={s} className="flex items-end gap-2">
+                        <div className="min-w-0 flex-1">
+                          <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+                            {s === 0 ? "After this sells" : "Then after"}
+                          </Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={step.afterSoldInput}
+                            onChange={(e) => patchSurgeStep(i, s, { afterSoldInput: e.target.value })}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">
+                            Next price ($)
+                          </Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            inputMode="decimal"
+                            value={step.priceInput}
+                            onChange={(e) => patchSurgeStep(i, s, { priceInput: e.target.value })}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeSurgeStep(i, s)}
+                          aria-label={`Remove jump ${s + 1}`}
+                          className="mb-1.5 rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => addSurgeStep(i)}
+                    className="mt-2 text-[13px] font-semibold text-neutral-700 hover:underline dark:text-neutral-300"
+                  >
+                    Add another price jump
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { promoterExtrasVisible, promoterToggleDisabled } from "@/lib/business/create-publish"
+import { validateRecurringTierSurge } from "@/lib/business/event-tier-surge"
 import { EVENT_ACCENT } from "@/lib/business/door-access"
 import { greenRecurringCreatePayload, todayIsoDate } from "@/lib/business/recurring-event-create"
 import { resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
@@ -147,6 +148,12 @@ export function RecurringEventWizard({
     if (seed.type === "Ticketed") {
       if (tiers.length === 0) errs.tickets = "At least one ticket tier is required"
       else if (tiers.some((t) => !t.name.trim())) errs.tickets = "All ticket tiers must have a name"
+      else {
+        // Surge is always offered; nonsense (free tier, no paid price, bad
+        // rungs) is refused HERE with inline copy, never by hiding the box.
+        const surgeProblem = tiers.map(validateRecurringTierSurge).find((m) => m != null)
+        if (surgeProblem) errs.tickets = surgeProblem
+      }
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -360,7 +367,7 @@ export function RecurringEventWizard({
             </p>
           </CardHeader>
           <CardContent className="pt-0">
-            <RecurringTierEditor tiers={tiers} onChange={setTiers} />
+            <RecurringTierEditor tiers={tiers} onChange={setTiers} showSurge />
             {errors.tickets && <p className="mt-2 text-xs text-red-600">{errors.tickets}</p>}
           </CardContent>
         </Card>

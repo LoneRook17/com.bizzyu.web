@@ -1,6 +1,10 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import {
+  LEFTOVER_PROMOTER_PAYOUT_FALLBACK,
+  surfaceEventFormServerError,
   applySaveAsDraftFlag,
   isLeftoverPromoterPayoutPathError,
   isPromotionEnabled,
@@ -79,4 +83,21 @@ test("Review does not upsell Connect for the leftover promoter gate", () => {
     shouldOfferStripeConnectForError("Stripe Connect onboarding could not start."),
     true,
   )
+})
+
+test("EventForm never paints the leftover promoter-payout Connect demand", () => {
+  // HE-2 removed the gate server-side; against a stale deploy the form swaps
+  // the copy for an honest fallback that does not demand Connect.
+  const raw =
+    "Connect Stripe before enabling the Promoter Program. Your event needs a payout path before promoters can sell it."
+  assert.equal(surfaceEventFormServerError(raw), LEFTOVER_PROMOTER_PAYOUT_FALLBACK)
+  assert.ok(!LEFTOVER_PROMOTER_PAYOUT_FALLBACK.includes("Connect Stripe before"))
+  assert.ok(!shouldOfferStripeConnectForError(surfaceEventFormServerError(raw)))
+  assert.equal(surfaceEventFormServerError("Missing required event fields: name"), "Missing required event fields: name")
+
+  const form = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/events/EventForm.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(form.includes("surfaceEventFormServerError"), "the submit catch routes through the swap")
 })
