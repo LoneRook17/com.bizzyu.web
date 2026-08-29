@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_CREATION_LABEL,
   programHref,
+  publishDraftNightsForProgram,
   stampHostCreatedDates,
   updateDoorAccessProgram,
   withDoorAccessProgramKind,
@@ -39,10 +41,13 @@ import {
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import {
+  applySaveAsDraftFlag,
   isLeftoverPromoterPayoutPathError,
   isPromotionEnabled,
   promoterToggleDisabled,
+  willDraftOnCreate,
 } from "@/lib/business/create-publish"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
 import {
   readyWcPromoDrafts,
@@ -109,16 +114,20 @@ export function DoorAccessWizard({
   initialData,
   initialNights = [],
   stripeOnboarded = true,
+  isPending: isPendingProp,
 }: {
   mode?: "create" | "edit"
   programId?: number
   initialData?: DoorAccessProgram
   initialNights?: DoorAccessNight[]
   stripeOnboarded?: boolean
-  /** Kept so create/edit pages can still pass pending status. Unused: no draft CTA. */
+  /** Same pending-approval gate as EventForm. Create/save stays draft until approve. */
   isPending?: boolean
 }) {
   const router = useRouter()
+  const { isPending: authPending } = useAuth()
+  const isPending = isPendingProp ?? authPending
+  const willDraft = willDraftOnCreate(isPending)
   const isEdit = mode === "edit"
   const { venues, selectedVenue } = useVenue()
   const backHref = isEdit && programId ? programHref(programId) : "/business/create"
@@ -165,6 +174,7 @@ export function DoorAccessWizard({
     id: number
     message: string
     kind: "created" | "updated"
+    asDraft?: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -412,13 +422,16 @@ export function DoorAccessWizard({
     setSubmitting(true)
     setServerError("")
     try {
-      const body = {
-        ...detailsPayload(),
-        ...salesPayload(),
-      }
+      const body = applySaveAsDraftFlag(
+        withDoorAccessProgramKind({
+          ...detailsPayload(),
+          ...salesPayload(),
+        }),
+        willDraft,
+      )
 
       if (isEdit && programId != null) {
-        const data = await updateDoorAccessProgram(programId, withDoorAccessProgramKind(body))
+        const data = await updateDoorAccessProgram(programId, body)
         if (data.restamp_error) {
           setGenerationNotice({ id: programId, message: data.restamp_error, kind: "updated" })
           return
@@ -434,22 +447,31 @@ export function DoorAccessWizard({
 
       const data = await apiClient.post<CreateResponse>(
         "/business/door-access",
-        withDoorAccessProgramKind(body),
+        body,
       )
       const id = Number(data.program?.id)
       if (Number.isFinite(id) && id > 0) {
         try {
           await persistProgramPromoDrafts(id, promoDrafts)
         } catch {
-          // Program is live. Codes can still be added on the program page.
+          // Program saved. Codes can still be added on the program page.
         }
       }
       if (Number.isFinite(id) && id > 0) {
         const createdDates = Object.keys(dateEditsToWire(dateEdits, daysOfWeek))
         if (createdDates.length > 0) {
-          await stampHostCreatedDates(id, createdDates)
+          await stampHostCreatedDates(id, createdDates, {
+            publish: shouldTreatDraftAsLive(isPending),
+          })
         }
-        setGenerationNotice({ id, message: "", kind: "created" })
+        if (shouldTreatDraftAsLive(isPending)) {
+          try {
+            await publishDraftNightsForProgram(id)
+          } catch {
+            // LiveAfterApprove still promotes queued drafts after approve.
+          }
+        }
+        setGenerationNotice({ id, message: "", kind: "created", asDraft: willDraft })
         return
       }
       router.push(programHref(id))
@@ -487,7 +509,9 @@ export function DoorAccessWizard({
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
             {saved
               ? "The template is saved. Upcoming nights that still follow it will pick up the new defaults."
-              : `${programName} is live and selling.`}
+              : generationNotice.asDraft
+                ? "Saved as a draft. It goes live once Bizzy approves your business. You can keep editing in the meantime."
+                : `${programName} is live and selling.`}
           </p>
         </div>
         {saved && generationNotice.message ? (
@@ -646,6 +670,19 @@ export function DoorAccessWizard({
               promotionEnabled={promotionEnabled && !promoToggleDisabled}
               commissionSummary={commissionSummary}
             />
+            {!isEdit && (
+              <div
+                className={
+                  willDraft
+                    ? "mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                    : "mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300"
+                }
+              >
+                {willDraft
+                  ? "Your business is still in review, so this may save as a draft until you're approved."
+                  : "This publishes the moment you create it."}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

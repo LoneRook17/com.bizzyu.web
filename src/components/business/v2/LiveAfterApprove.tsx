@@ -5,9 +5,14 @@ import { apiClient } from "@/lib/business/api-client"
 import { useAuth } from "@/lib/business/auth-context"
 import {
   draftIdsToPublish,
+  draftNightEventIds,
   liveAfterApproveStorageKey,
   shouldRunLiveAfterApprove,
 } from "@/lib/business/live-after-approve"
+import {
+  fetchDoorAccessProgramsSafe,
+  fetchDoorAccessSeriesSafe,
+} from "@/lib/business/door-access"
 import type { EventListItem } from "@/lib/business/types"
 
 /**
@@ -48,7 +53,16 @@ export default function LiveAfterApprove() {
           "/business/events?tab=drafts&page=1&limit=50",
         )
         if (cancelled) return
-        for (const eventId of draftIdsToPublish(data.events ?? [])) {
+        const ids = new Set(draftIdsToPublish(data.events ?? []))
+        const programs = await fetchDoorAccessProgramsSafe()
+        if (cancelled) return
+        for (const program of programs) {
+          const series = await fetchDoorAccessSeriesSafe(program.id)
+          if (cancelled) return
+          if (!series) continue
+          for (const eventId of draftNightEventIds(series.nights)) ids.add(eventId)
+        }
+        for (const eventId of ids) {
           try {
             await apiClient.post(`/business/events/${eventId}/publish`)
           } catch {

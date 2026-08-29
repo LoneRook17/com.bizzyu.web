@@ -42,6 +42,7 @@ import { NightLeaveGuard } from "@/components/business/v2/door-access/NightLeave
 import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
@@ -76,7 +77,7 @@ export default function DoorAccessNightPage({
   const { id, date } = use(params)
   const programId = Number(id)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [night, setNight] = useState<DoorAccessNight | null>(null)
@@ -155,7 +156,11 @@ export default function DoorAccessNightPage({
     setNotice(null)
     setRestampWarning(null)
     try {
-      const result = await saveNightOverride(programId, date, buildNightSavePayload(draft))
+      const result = await saveNightOverride(
+        programId,
+        date,
+        buildNightSavePayload(draft, { publish: shouldTreatDraftAsLive(isPending) }),
+      )
       showSaveOutcome(result, "Saved.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save this night.")

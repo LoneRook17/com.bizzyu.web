@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   draftIdsToPublish,
+  draftNightEventIds,
   isApprovedBusinessStatus,
   mergeUpcomingWithQueuedDrafts,
   shouldAutoPublishCreatedDraft,
@@ -72,6 +73,18 @@ test("only draft ids are published", () => {
       { event_id: 12 },
     ]),
     [10, 12],
+  )
+})
+
+test("WC night promote is explicit draft only — empty status is not queued", () => {
+  assert.deepEqual(
+    draftNightEventIds([
+      { event_id: 20, status: "draft" },
+      { event_id: 21, status: "published" },
+      { event_id: 22, status: null },
+      { event_id: null, status: "draft" },
+    ]),
+    [20],
   )
 })
 
@@ -147,6 +160,40 @@ test("dashboard shell runs live-after-approve once the host is approved", () => 
     "utf8",
   )
   assert.ok(src.includes("LiveAfterApprove"), "approved hosts must promote queued drafts without a refresh loop")
+})
+
+test("live-after-approve also promotes queued Weekly Cover nights", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/components/business/v2/LiveAfterApprove.tsx"),
+    "utf8",
+  )
+  assert.ok(src.includes("fetchDoorAccessProgramsSafe"), "approve must find WC programs, not only events drafts")
+  assert.ok(src.includes("draftNightEventIds"), "only explicit draft WC nights are published")
+})
+
+test("WC create uses the event draft-until-approved gate", () => {
+  const wizard = readFileSync(
+    join(process.cwd(), "src/components/business/v2/door-access/DoorAccessWizard.tsx"),
+    "utf8",
+  )
+  assert.ok(wizard.includes("willDraftOnCreate"), "wizard must use the event pending-draft gate")
+  assert.ok(wizard.includes("applySaveAsDraftFlag"), "pending WC create must send save_as_draft")
+  assert.ok(wizard.includes("shouldTreatDraftAsLive"), "pending WC must not stamp publish:true")
+  assert.ok(wizard.includes("publishDraftNightsForProgram"), "approved create still promotes leftover drafts")
+  assert.ok(wizard.includes("asDraft"), "success copy must distinguish draft vs live")
+  assert.ok(
+    !wizard.includes("Unused: no draft CTA"),
+    "isPending is the draft-until-approved gate, not an unused leftover",
+  )
+})
+
+test("WC night Save omits publish while the business is pending", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx"),
+    "utf8",
+  )
+  assert.ok(src.includes("shouldTreatDraftAsLive"), "night save must reuse the event publish gate")
+  assert.ok(src.includes("buildNightSavePayload"), "night save still uses the shared payload builder")
 })
 
 test("event detail Publish is enabled after approve", () => {

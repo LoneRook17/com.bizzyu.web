@@ -79,7 +79,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
   const { id } = use(params)
   const programId = parseProgramPathId(id)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
   const { venues } = useVenue()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
@@ -276,6 +276,7 @@ export default function DoorAccessSeriesPage({ params }: { params: Promise<{ id:
                   seriesActive={seriesActive}
                   nights={upcomingAll}
                   program={program}
+                  isPending={isPending}
                   showCancel={showCancel}
                   cancelEnabled={cancelWired}
                   onCancel={() => setCancelNight(night)}
@@ -402,6 +403,7 @@ function NightPreviewCard({
   seriesActive = true,
   nights = [],
   program,
+  isPending = false,
   showCancel = false,
   cancelEnabled = false,
   onCancel,
@@ -412,11 +414,12 @@ function NightPreviewCard({
   seriesActive?: boolean
   nights?: DoorAccessNight[]
   program?: DoorAccessProgram
+  isPending?: boolean
   showCancel?: boolean
   cancelEnabled?: boolean
   onCancel?: () => void
 }) {
-  const chip = nightPreviewChip(night, seriesActive, hostCustomSlot(night, nights, program))
+  const chip = nightPreviewChip(night, seriesActive, hostCustomSlot(night, nights, program), isPending)
   const href = seriesActive && nightIsEditable(night, { is_active: seriesActive })
     ? nightHref(programId, night.occurrence_date)
     : night.event_id != null

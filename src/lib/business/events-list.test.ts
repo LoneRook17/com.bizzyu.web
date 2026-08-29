@@ -29,6 +29,9 @@ import {
   seriesRowStats,
   showsAccess,
   showsEvents,
+  shouldShowWeeklyCoverOnEventsTab,
+  shouldShowWeeklyCoverOneOffsOnEventsTab,
+  weeklyCoverEventsListTab,
 } from "./events-list.ts"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "./weekly-cover-label.ts"
 import type { EventListItem, RecurringSeriesListItem } from "./types.ts"
@@ -790,6 +793,20 @@ test("unstamped leftover nights of a host-ended series leave the dash", () => {
   assert.equal(rows[0].kind, "single")
   if (rows[0].kind === "single") assert.equal(rows[0].event.event_id, 775)
   assert.deepEqual(recurringSeriesIdsOnEvents(nights), [66])
+})
+
+test("pending hosts see Weekly Cover on Drafts, not Upcoming", () => {
+  assert.equal(weeklyCoverEventsListTab(true), "drafts")
+  assert.equal(weeklyCoverEventsListTab(false), "upcoming")
+  assert.equal(shouldShowWeeklyCoverOnEventsTab("upcoming", true, "all"), false)
+  assert.equal(shouldShowWeeklyCoverOnEventsTab("drafts", true, "all"), true)
+  assert.equal(shouldShowWeeklyCoverOnEventsTab("upcoming", false, "all"), true)
+  assert.equal(shouldShowWeeklyCoverOnEventsTab("drafts", false, "all"), false)
+  assert.equal(shouldShowWeeklyCoverOnEventsTab("past", true, "access"), true)
+  assert.equal(shouldShowWeeklyCoverOnEventsTab("upcoming", true, "events"), false)
+  assert.equal(shouldShowWeeklyCoverOneOffsOnEventsTab("upcoming", false, "all"), true)
+  assert.equal(shouldShowWeeklyCoverOneOffsOnEventsTab("upcoming", true, "all"), false)
+  assert.equal(shouldShowWeeklyCoverOneOffsOnEventsTab("drafts", true, "access"), true)
 })
 
 test("the missing aggregates are registered, not just commented", () => {

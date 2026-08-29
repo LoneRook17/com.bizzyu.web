@@ -65,3 +65,19 @@ export function draftIdsToPublish(drafts: DraftPublishTarget[]): number[] {
   }
   return ids
 }
+
+/**
+ * WC nights only. Empty status is treated as live by guest helpers — do not
+ * promote those. Explicit `draft` is the queued-until-approve stamp.
+ */
+export function draftNightEventIds(
+  nights: Array<{ event_id?: number | null; status?: string | null }>,
+): number[] {
+  const ids: number[] = []
+  for (const night of nights) {
+    if ((night.status ?? "").toLowerCase() !== "draft") continue
+    const id = Number(night.event_id)
+    if (Number.isFinite(id) && id > 0) ids.push(id)
+  }
+  return ids
+}

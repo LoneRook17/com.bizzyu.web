@@ -1329,13 +1329,34 @@ export interface ProgramUpdateResult {
 export async function stampHostCreatedDates(
   programId: number,
   dates: string[],
+  opts?: { publish?: boolean },
 ): Promise<void> {
+  const payload = opts?.publish === false ? {} : { publish: true }
   for (const date of dates) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
     try {
-      await saveNightOverride(programId, date, { publish: true })
+      await saveNightOverride(programId, date, payload)
     } catch {
       // Nightly generate-now still picks these up.
+    }
+  }
+}
+
+/**
+ * After an approved create, promote nights the generator left as draft.
+ * Pending hosts must not call this — same as event create.
+ */
+export async function publishDraftNightsForProgram(programId: number): Promise<void> {
+  const { nights } = await fetchDoorAccessSeries(programId)
+  const api = await client()
+  for (const night of nights) {
+    const eventId = Number(night.event_id)
+    if (!Number.isFinite(eventId) || eventId <= 0) continue
+    if ((night.status ?? "").toLowerCase() !== "draft") continue
+    try {
+      await api.post(`/business/events/${eventId}/publish`)
+    } catch {
+      // LiveAfterApprove and event detail still promote.
     }
   }
 }
@@ -1760,6 +1781,7 @@ export function nightPreviewChip(
   night: DoorAccessNight,
   seriesActive = true,
   slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean },
+  isPending = false,
 ): NightChip | null {
   if (isHostCustomWeeklyCoverNight(night, slot)) {
     return { label: HOST_CUSTOM_CHIP_LABEL, variant: "access" }
@@ -1772,10 +1794,12 @@ export function nightPreviewChip(
     return { label: "Cancellation pending", variant: "warning" }
   }
   if (!seriesActive) return null
+  if (isPending) return { label: "Draft", variant: "neutral" }
   const status = (night.status ?? "").toLowerCase()
   if (status === "published" || status === "approved" || status === "active") {
     return { label: "On sale", variant: "info" }
   }
+  if (status === "draft") return { label: "Draft", variant: "neutral" }
   return null
 }
 
@@ -2119,8 +2143,13 @@ export function buildNightOverridePayload(draft: NightDraft): NightOverridePaylo
 }
 
 /** Save night: override fields plus the restamp/publish path, not times_only. */
-export function buildNightSavePayload(draft: NightDraft): NightOverridePayload {
-  return { ...buildNightOverridePayload(draft), publish: true }
+export function buildNightSavePayload(
+  draft: NightDraft,
+  opts?: { publish?: boolean },
+): NightOverridePayload {
+  const body = buildNightOverridePayload(draft)
+  if (opts?.publish === false) return body
+  return { ...body, publish: true }
 }
 
 /** Does this draft still say anything the template doesn't? Drives "Reset". */
