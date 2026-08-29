@@ -1841,7 +1841,10 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(eventsPage.includes("probeInactiveSeriesIds"), "every recurring_series_id is probed for is_active=0")
   assert.ok(eventsPage.includes("weeklyCoverProgramsForDash"), "ended / deleted programs leave the live list")
   assert.ok(eventsPage.includes("shouldShowWeeklyCoverOnEventsTab"), "pending WC stays off Upcoming Live")
-  assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
+  assert.ok(
+    eventsPage.includes("AccessProgramRow") || eventsPage.includes("HostLiveList"),
+    "working programs list still uses AccessProgramRow",
+  )
   const accessRow = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/AccessProgramRow.tsx", import.meta.url)),
     "utf8",

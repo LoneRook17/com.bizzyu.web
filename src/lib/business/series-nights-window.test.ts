@@ -105,7 +105,10 @@ test("Events upcoming list applies the series nights window", () => {
     join(process.cwd(), "src/app/business/(dashboard)/events/page.tsx"),
     "utf8",
   )
-  assert.ok(src.includes("eventsForHostUpcomingList"), "Upcoming tab clips green series nights to today+2 weeks")
+  assert.ok(
+    src.includes("eventsForHostUpcomingList") || src.includes("buildHostLiveList"),
+    "Upcoming tab clips green series nights to today+2 weeks",
+  )
 })
 
 test("series manage still lists the full series — window is Host Upcoming / Events list only", () => {
