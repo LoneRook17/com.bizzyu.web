@@ -8,6 +8,7 @@
  *   2. Upcoming events & WC — today+14 for series WC/RC; standalone /
  *      one-off / far Custom always. Collapsed preview; expand shows the
  *      rest of that window. Not every generated night.
+ *      Tonight/Upcoming cards group under day headers (Sat Aug 29).
  *   3. Schedules — Weekly Cover weekday templates and green Recurring
  *      (RC) series. The setup, not every occurrence card.
  *
@@ -20,6 +21,7 @@ import {
   DEFAULT_NIGHT_PREVIEW_COUNT,
   isHostCustomWeeklyCoverNight,
   isWeeklyCoverProduct,
+  parseIsoDate,
   visibleUpcomingNights,
   type DoorAccessNight,
   type DoorAccessProgramSummary,
@@ -457,6 +459,49 @@ export function visibleHostUpcoming(
   expanded: boolean,
 ): HostDashOccurrence[] {
   return expanded ? sections.upcoming : sections.upcomingPreview
+}
+
+const SEPARATOR_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const
+const SEPARATOR_MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const
+
+/**
+ * "Sat Aug 29" / "Thu Sep 3" — Tonight/Upcoming day headers.
+ * Calendar string, never `new Date("YYYY-MM-DD")` (UTC day-shift).
+ */
+export function fmtHostDateSeparator(isoDate: string): string {
+  const parts = parseIsoDate(isoDate)
+  if (!parts) return isoDate
+  const weekday = SEPARATOR_DAYS[(new Date(Date.UTC(parts.y, parts.m - 1, parts.d)).getUTCDay() + 6) % 7]
+  return `${weekday} ${SEPARATOR_MONTHS[parts.m - 1]} ${parts.d}`
+}
+
+export type HostDateGroup<T extends { date: string } = HostDashOccurrence> = {
+  date: string
+  label: string
+  rows: T[]
+}
+
+/** Group already-sorted Tonight/Upcoming cards under day headers. */
+export function groupOccurrencesByDate<T extends { date: string }>(
+  rows: readonly T[],
+): HostDateGroup<T>[] {
+  const groups: HostDateGroup<T>[] = []
+  for (const row of rows) {
+    const last = groups[groups.length - 1]
+    if (last && last.date === row.date) {
+      last.rows.push(row)
+      continue
+    }
+    groups.push({
+      date: row.date,
+      label: fmtHostDateSeparator(row.date),
+      rows: [row],
+    })
+  }
+  return groups
 }
 
 export function hostDashIsEmpty(sections: HostDashSections): boolean {
