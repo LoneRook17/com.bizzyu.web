@@ -131,6 +131,7 @@ function wcNight(
     series_customized_at?: string | null
     is_customized?: boolean
     flyer_image_url_override?: string | null
+    has_override?: boolean
   } = {},
 ) {
   return {
@@ -140,6 +141,7 @@ function wcNight(
     series_customized_at: extra.series_customized_at ?? null,
     is_customized: extra.is_customized ?? false,
     flyer_image_url_override: extra.flyer_image_url_override ?? null,
+    has_override: extra.has_override ?? false,
     product_kind: "weekly_cover",
   }
 }
@@ -160,6 +162,37 @@ test("Fri create with Sat nights lists Sat Aug 29 and Sat Sep 5, not Sep 12/19",
   assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-09-05"), WC_TODAY), true)
   assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-09-12"), WC_TODAY), false)
   assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-09-19"), WC_TODAY), false)
+})
+
+test("series 120 Oct 15 lists at +48d; Thursday templates stay in the 14-day window", () => {
+  assert.equal(addIsoDays(WC_TODAY, 48), "2026-10-15")
+  const thuSlot = { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: false }
+  const octSlot = { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: true }
+  const thursdays = [
+    wcNight("2026-09-03", { is_stamped: true, event_id: 1400 }),
+    wcNight("2026-09-10", { is_stamped: true, event_id: 1401 }),
+    wcNight("2026-09-17", { is_stamped: true, event_id: 1402 }),
+    wcNight("2026-10-08", { is_stamped: true, event_id: 1403 }),
+  ]
+  const overrideOnly = wcNight("2026-10-15", { is_stamped: false, event_id: null, has_override: true })
+  const stampedCustom = wcNight("2026-10-15", {
+    is_stamped: true,
+    event_id: 2001,
+    series_customized_at: "2026-08-28 23:00:00",
+    has_override: true,
+  })
+  for (const thu of thursdays) {
+    assert.equal(hostShowsWeeklyCoverNight(thu, WC_TODAY, 14, thuSlot), thu.occurrence_date <= "2026-09-11")
+  }
+  assert.equal(hostShowsWeeklyCoverNight(overrideOnly, WC_TODAY, 14, octSlot), true, "override-only Oct 15 still lists")
+  assert.equal(hostShowsWeeklyCoverNight(stampedCustom, WC_TODAY, 14, octSlot), true, "stamped Oct Custom must not hide")
+  const grid = nightsForHostWeeklyCoverGrid([...thursdays, stampedCustom], WC_TODAY, 14, (night) =>
+    night.occurrence_date === "2026-10-15" ? octSlot : thuSlot,
+  )
+  assert.deepEqual(
+    grid.map((n) => n.occurrence_date),
+    ["2026-09-03", "2026-09-10", "2026-10-15"],
+  )
 })
 
 test("a host-stamped Custom night on Sep 19 still lists past +14", () => {
