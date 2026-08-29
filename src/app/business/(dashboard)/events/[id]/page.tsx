@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, use } from "react"
+import { Fragment, useState, useEffect, useCallback, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, CalendarOff, Copy, MapPin, Pencil, Rocket, ScanLine, Settings2, Loader2 } from "lucide-react"
@@ -22,6 +22,7 @@ import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2
 import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { isWeeklyCoverProduct, weeklyCoverNightEditHref } from "@/lib/business/door-access"
+import { WeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
@@ -158,8 +159,14 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   // green Event. Null only for named events and rows with no resolvable program.
   const wcNightEdit = weeklyCoverNightEditHref(event)
 
+  // Round 3 (Luke, 2026-08-29): a WC night's detail renders pink, never Bizzy
+  // green — the accent provider flips the primary Manage button, and the live
+  // badge swaps below.
+  const isWcNight = isWeeklyCoverProduct(event)
+  const AccentScope = isWcNight ? WeeklyCoverAccent : Fragment
+
   return (
-    <>
+    <AccentScope>
       <Link
         href="/business/events"
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
@@ -171,7 +178,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <Badge variant={badge.variant}>{badge.label}</Badge>
+            <Badge variant={isWcNight && badge.variant === "success" ? "access" : badge.variant}>{badge.label}</Badge>
             {(() => {
               const tone = hostCustomChipTone({
                 product_kind: event.product_kind,
@@ -387,7 +394,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </AccentScope>
   )
 }
 
