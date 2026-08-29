@@ -53,6 +53,7 @@
  */
 
 import type { DoorAccessNight, DoorAccessProgram, DoorAccessTemplateTier } from "./door-access"
+import { isHostCustomNight } from "./host-custom-night.ts"
 import type { RecurringTemplateTicket } from "./types"
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -1006,12 +1007,123 @@ function isTerminal(night: DoorAccessNight): boolean {
 }
 
 /**
- * A date-local Custom night. `is_customized` is the wire flag (including a
- * leftover `series_customized_at` stamp). Series/program save must not treat
- * this night as the weekday template.
+ * A date-local Custom night vs that weekday's SLOT — not `is_customized` /
+ * `has_override` alone. Series/program save must not treat this night as
+ * the weekday template.
  */
-export function isCustomWeeklyCoverNight(night: { is_customized?: unknown }): boolean {
-  return truthy(night.is_customized)
+export function isCustomWeeklyCoverNight(
+  night: {
+    series_customized_at?: string | null
+    flyer_image_url_override?: string | null
+    override_scope?: string | null
+    occurrence_date?: string | null
+    product_kind?: string | null
+    access_kind?: string | null
+    recurring_series_id?: number | string | null
+  },
+  nights?: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week">,
+): boolean {
+  return isHostCustomNight(hostCustomInputFromNight(night), hostCustomSlot(night, nights, program))
+}
+
+export function hostCustomInputFromNight(night: {
+  series_customized_at?: string | null
+  flyer_image_url_override?: string | null
+  override_scope?: string | null
+  occurrence_date?: string | null
+  product_kind?: string | null
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+}): Parameters<typeof isHostCustomNight>[0] {
+  return {
+    product_kind: night.product_kind ?? "weekly_cover",
+    access_kind: night.access_kind,
+    recurring_series_id: night.recurring_series_id,
+    series_customized_at: night.series_customized_at,
+    flyer_image_url_override: night.flyer_image_url_override,
+    override_scope: night.override_scope,
+    occurrence_date: night.occurrence_date,
+  }
+}
+
+/** Off-pattern: a date the weekday schedule does not run. */
+export function nightIsOffPatternDate(
+  occurrenceDate: string | null | undefined,
+  daysOfWeek: number[] | undefined,
+): boolean {
+  if (!occurrenceDate || !daysOfWeek || daysOfWeek.length === 0) return false
+  const weekday = isoWeekdayOfDate(occurrenceDate)
+  if (weekday == null) return false
+  return !daysOfWeek.includes(weekday)
+}
+
+/**
+ * SLOT signature: flyer, tickets, prices, doors, title. Same fields the
+ * Flutter voter compares to the weekday template.
+ */
+export function hostCustomSlotSignature(night: DoorAccessNight & Record<string, unknown>): string {
+  const title = String(night.name ?? "").trim()
+  return `${nightSignature(night)}|${title}`
+}
+
+/**
+ * Later one-date edit vs that weekday's SLOT. Fresh create weekdays share
+ * a SLOT so this is false even when Mon/Wed/Fri templates differ.
+ */
+export function nightDiffersFromWeekdaySlot(
+  night: DoorAccessNight,
+  nights: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
+): boolean {
+  const weekday = isoWeekdayOfDate(night.occurrence_date)
+  if (weekday == null) return false
+  const self = hostCustomSlotSignature(night as DoorAccessNight & Record<string, unknown>)
+  const siblings = nights.filter((row) => {
+    if (row.occurrence_date === night.occurrence_date) return false
+    if (isoWeekdayOfDate(row.occurrence_date) !== weekday) return false
+    if (isNeverChipOrStampCustom(row)) return false
+    return !isTerminal(row)
+  })
+  if (siblings.length === 0) {
+    // Alone on that weekday is the SLOT itself (fresh create / only night).
+    // Off-pattern dates chip via `nightIsOffPatternDate`, not this compare.
+    void program
+    return false
+  }
+  const mode = modeOf(siblings.map((row) => hostCustomSlotSignature(row as DoorAccessNight & Record<string, unknown>)))
+  if (mode == null) return false
+  return self !== mode
+}
+
+function isNeverChipOrStampCustom(night: DoorAccessNight): boolean {
+  return isHostCustomNight(hostCustomInputFromNight(night))
+}
+
+export function hostCustomSlot(
+  night: { occurrence_date?: string | null; override_scope?: string | null },
+  nights?: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
+): { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean } {
+  return {
+    offPatternDate: nightIsOffPatternDate(night.occurrence_date, program?.days_of_week),
+    differsFromWeekdaySlot:
+      nights != null && night.occurrence_date
+        ? nightDiffersFromWeekdaySlot(night as DoorAccessNight, nights, program)
+        : false,
+  }
+}
+
+/** Dates that chip Custom on WC program cards. */
+export function customOccurrenceDates(
+  nights: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
+): Set<string> {
+  const out = new Set<string>()
+  for (const night of nights) {
+    if (isCustomWeeklyCoverNight(night, nights, program)) out.add(night.occurrence_date)
+  }
+  return out
 }
 
 function nightFlyerKey(night: Record<string, unknown>): string {

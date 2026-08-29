@@ -83,6 +83,7 @@ import {
   programIdFromOwnedEvent,
   eventBelongsToSeries,
   doorAccessSeriesFromOwnedHydration,
+  applyOccurrenceStamps,
   isWeeklyCoverProduct,
   readProductKind,
   PROGRAM_KIND_DOOR_ACCESS,
@@ -940,9 +941,41 @@ test("normalizeNight coerces flags and sorts tiers", () => {
   assert.equal(n.is_stamped, true)
   assert.equal(n.is_closed, true)
   assert.equal(n.is_customized, false)
+  assert.equal(n.series_customized_at, null)
   assert.equal(n.event_id, 4410)
   assert.equal(n.passes_sold, 12)
   assert.deepEqual(n.tiers.map((t) => t.tier_key), ["cover", "skip"])
+})
+
+test("applyOccurrenceStamps overlays event_id so a host-created far date is stamped", () => {
+  const unstamped = night({
+    occurrence_date: "2026-12-31",
+    is_stamped: false,
+    event_id: null,
+    status: null,
+  })
+  const merged = applyOccurrenceStamps([unstamped], [
+    {
+      event_id: 1592,
+      occurrence_date: "2026-12-31",
+      series_customized_at: "2026-08-20 10:00:00",
+    },
+  ])
+  assert.equal(merged[0].event_id, 1592)
+  assert.equal(merged[0].is_stamped, true)
+  assert.equal(merged[0].series_customized_at, "2026-08-20 10:00:00")
+  assert.deepEqual(nightPreviewChip(merged[0]), { label: "Custom", variant: "access" })
+})
+
+test("normalizeNight treats series_customized_at as Custom", () => {
+  const stamped = normalizeNight({
+    occurrence_date: "2026-12-31",
+    is_stamped: 0,
+    event_id: null,
+    series_customized_at: "2026-08-20 10:00:00",
+  })
+  assert.equal(stamped.is_customized, true)
+  assert.equal(stamped.series_customized_at, "2026-08-20 10:00:00")
 })
 
 test("normalizeNight defaults a missing tiers array rather than throwing", () => {
@@ -1045,12 +1078,32 @@ test("nightChips are additive — a night can be several things at once", () => 
   )
 })
 
-test("nightPreviewChip only names on sale or not generated", () => {
+test("nightPreviewChip names Custom like the app after a one-date stamp, never from is_customized alone", () => {
   assert.deepEqual(nightPreviewChip(night()), { label: "On sale", variant: "info" })
   assert.deepEqual(nightPreviewChip(night({ is_stamped: false, event_id: null, status: null })), {
     label: "Not generated",
     variant: "neutral",
   })
+  assert.deepEqual(
+    nightPreviewChip(night({ is_stamped: false, event_id: null, status: null, is_customized: true })),
+    { label: "Not generated", variant: "neutral" },
+    "is_customized alone is the additive chip, not Flutter Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        is_stamped: true,
+        event_id: 1592,
+        series_customized_at: "2026-08-20 10:00:00",
+      }),
+    ),
+    { label: "Custom", variant: "access" },
+  )
+  assert.deepEqual(
+    nightPreviewChip(night({ is_stamped: false, event_id: null }), true, { differsFromWeekdaySlot: true }),
+    { label: "Custom", variant: "access" },
+    "host-created far date that diverges from the weekday SLOT chips Custom",
+  )
   assert.equal(nightPreviewChip(night({ status: "draft" })), null)
   assert.equal(nightPreviewChip(night({ is_closed: true })), null)
   assert.equal(nightPreviewChip(night({ status: "cancelled" })), null)
@@ -1059,7 +1112,6 @@ test("nightPreviewChip only names on sale or not generated", () => {
     { label: "Cancellation pending", variant: "warning" },
   )
   assert.equal(nightPreviewChip(night({ passes_sold: 0, paid_orders: 0 }), false), null)
-  // Overridden / Customized stay off the card. Those belong on the night page.
   assert.deepEqual(nightPreviewChip(night({ has_override: true, is_customized: true })), {
     label: "On sale",
     variant: "info",
@@ -1093,7 +1145,10 @@ test("visibleUpcomingNights defaults to the next 4, then expands", () => {
 test("visibleUpcomingNights keeps a far customized one-off in the preview", () => {
   const dates = ["2026-08-28", "2026-08-29", "2026-09-04", "2026-09-05", "2026-09-11", "2026-12-31"]
   const rows = dates.map((occurrence_date) =>
-    night({ occurrence_date, is_customized: occurrence_date === "2026-12-31" }),
+    night({
+      occurrence_date,
+      series_customized_at: occurrence_date === "2026-12-31" ? "2026-08-20 10:00:00" : null,
+    }),
   )
   assert.deepEqual(
     visibleUpcomingNights(rows, false, 4, isPinnedUpcomingNight).map((n) => n.occurrence_date),
@@ -1323,7 +1378,8 @@ test("the program page is look-and-open, with Edit program as a dedicated route"
   assert.ok(src.includes("resolveNightCardImageUrl"), "each night card resolves its own flyer")
   assert.ok(src.includes("weekdayFlyerByDayFromNights"), "nights without Custom art keep the weekday flyer")
   assert.ok(src.includes("ONE_OFF_SERIES_LOOKAHEAD_DAYS"), "series fetch must reach far one-off nights")
-  assert.ok(src.includes("isPinnedUpcomingNight"), "custom nights stay in the 4-card preview")
+  assert.ok(src.includes("customOccurrenceDates"), "custom nights stay in the 4-card preview")
+  assert.ok(src.includes("nightPreviewChip"), "cards use the shared Custom / On sale chip")
 })
 
 test("Weekly Access has a dedicated program editor, same fields as create", () => {
@@ -1911,6 +1967,12 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(wizard.includes('isEdit && initialProducts ? STEP_DAYS : STEP_SELL'), "edit skips Sell when products exist")
   assert.ok(wizard.includes("persistProgramPromoDrafts"), "Publish posts program-scoped promo drafts after create")
   assert.ok(wizard.includes("wcPromoCreatePath"), "promo drafts hit the existing door-access promo API")
+  assert.ok(!wizard.includes("Tonight's nights aren't on the schedule yet"), "create success must not leak schedule empty-state")
+  assert.ok(!wizard.includes("No editable program fields provided"), "create success must not leak empty PATCH copy")
+  assert.ok(!wizard.includes("withDoorAccessProgramKind({})"), "create must not empty-PATCH the new program")
+  assert.ok(wizard.includes('kind: "created"'), "successful create still shows Program created + Open the program")
+  assert.ok(wizard.includes("stampHostCreatedDates"), "create date_edits must stamp those nights")
+  assert.ok(wizard.includes("saved && generationNotice.message"), "amber leftover is save-only, never after a successful create")
 
   const door = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/WcDoorStep.tsx", import.meta.url)),

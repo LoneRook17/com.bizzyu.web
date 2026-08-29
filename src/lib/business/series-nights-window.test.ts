@@ -49,6 +49,17 @@ test("an uncustomized series night past today+2 weeks is hidden", () => {
   )
 })
 
+test("after green RC series-end a leftover night is not Custom", () => {
+  assert.equal(
+    isCustomizedSeriesNight({
+      recurring_series_id: null,
+      series_customized_at: "2026-08-20 10:00:00",
+      is_customized: true,
+    }),
+    false,
+  )
+})
+
 test("a Custom series night always shows, even far out", () => {
   assert.equal(
     isCustomizedSeriesNight({ series_customized_at: "2026-08-20 10:00:00" }),

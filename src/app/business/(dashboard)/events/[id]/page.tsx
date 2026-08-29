@@ -22,6 +22,7 @@ import { eventStatusBadge, fmtLongDate, fmtTime } from "@/components/business/v2
 import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
 import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
+import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
 
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -167,6 +168,20 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
           <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <Badge variant={badge.variant}>{badge.label}</Badge>
+            {(() => {
+              const tone = hostCustomChipTone({
+                product_kind: event.product_kind,
+                access_kind: event.access_kind,
+                recurring_series_id: event.recurring_series_id,
+                series_customized_at: event.series_customized_at,
+                is_customized: event.is_customized,
+                override_scope: (event as { override_scope?: string | null }).override_scope,
+              })
+              if (!tone) return null
+              return (
+                <Badge variant={tone === "wc" ? "access" : "custom"}>{HOST_CUSTOM_CHIP_LABEL}</Badge>
+              )
+            })()}
             <span className="text-[13px] text-neutral-500 dark:text-neutral-400">{event.type}</span>
             {event.is_21_plus && <Badge variant="outline">21+</Badge>}
           </div>

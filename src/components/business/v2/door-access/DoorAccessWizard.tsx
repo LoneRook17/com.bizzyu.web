@@ -10,6 +10,7 @@ import {
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_CREATION_LABEL,
   programHref,
+  stampHostCreatedDates,
   updateDoorAccessProgram,
   withDoorAccessProgramKind,
   type DoorAccessNight,
@@ -443,29 +444,12 @@ export function DoorAccessWizard({
           // Program is live. Codes can still be added on the program page.
         }
       }
-      let restamped = false
       if (Number.isFinite(id) && id > 0) {
-        try {
-          const restamp = await updateDoorAccessProgram(id, withDoorAccessProgramKind({}))
-          if (restamp.restamp_error) {
-            setGenerationNotice({ id, message: restamp.restamp_error, kind: "created" })
-            return
-          }
-          restamped = true
-        } catch (err) {
-          setGenerationNotice({
-            id,
-            message:
-              err instanceof ApiError
-                ? err.message
-                : "The program saved, but scheduling tonight's nights did not finish. The nightly job will pick them up.",
-            kind: "created",
-          })
-          return
+        const createdDates = Object.keys(dateEditsToWire(dateEdits, daysOfWeek))
+        if (createdDates.length > 0) {
+          await stampHostCreatedDates(id, createdDates)
         }
-      }
-      if (data.generation_error && !restamped) {
-        setGenerationNotice({ id, message: data.generation_error, kind: "created" })
+        setGenerationNotice({ id, message: "", kind: "created" })
         return
       }
       router.push(programHref(id))
@@ -506,12 +490,12 @@ export function DoorAccessWizard({
               : `${programName} is live and selling.`}
           </p>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
-          <p className="font-semibold">
-            {saved ? "Upcoming nights could not be restamped just now" : "Tonight's nights aren't on the schedule yet"}
-          </p>
-          <p className="mt-0.5">{generationNotice.message}</p>
-        </div>
+        {saved && generationNotice.message ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
+            <p className="font-semibold">Upcoming nights could not be restamped just now</p>
+            <p className="mt-0.5">{generationNotice.message}</p>
+          </div>
+        ) : null}
         <div>
           <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={() => router.push(programHref(generationNotice.id))}>
             Open the program
