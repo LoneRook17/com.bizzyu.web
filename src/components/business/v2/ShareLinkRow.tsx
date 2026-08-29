@@ -61,6 +61,7 @@ export default function ShareLinkRow({
   label = "Event link",
   description,
   variant = "card",
+  accent = "event",
   className,
 }: {
   /** The public URL. Build it with lib/business/public-links — never inline. */
@@ -71,9 +72,16 @@ export default function ShareLinkRow({
   /** Optional second line under the label (e.g. "Every upcoming night"). */
   description?: string
   variant?: ShareLinkVariant
+  /** Weekly Cover surfaces pass "access" so the affordance is pink, not green. */
+  accent?: "event" | "access"
   className?: string
 }) {
   const { copied, canShare, copy, share } = useShareLink(url, title)
+  const accentText = accent === "access" ? "text-access" : "text-[#05EB54]"
+  const accentHover =
+    accent === "access"
+      ? "hover:border-access/50 hover:text-access dark:hover:text-access"
+      : "hover:border-[#05EB54]/50 hover:text-[#05EB54] dark:hover:text-[#05EB54]"
 
   if (variant === "inline") {
     return (
@@ -87,7 +95,7 @@ export default function ShareLinkRow({
         <button
           onClick={copy}
           aria-label={`Copy link for ${title}`}
-          className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:border-[#05EB54]/50 hover:text-[#05EB54] dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-[#05EB54]"
+          className={cn("inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs font-semibold text-neutral-600 transition-colors dark:border-neutral-700 dark:text-neutral-300", accentHover)}
         >
           {copied ? <><Check className="size-3.5" /> Copied</> : <><Copy className="size-3.5" /> Copy link</>}
         </button>
@@ -95,7 +103,7 @@ export default function ShareLinkRow({
           <button
             onClick={share}
             aria-label={`Share link for ${title}`}
-            className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs font-semibold text-neutral-600 transition-colors hover:border-[#05EB54]/50 hover:text-[#05EB54] dark:border-neutral-700 dark:text-neutral-300 dark:hover:text-[#05EB54]"
+            className={cn("inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-lg border border-neutral-200 px-2 py-1 text-xs font-semibold text-neutral-600 transition-colors dark:border-neutral-700 dark:text-neutral-300", accentHover)}
           >
             <Share2 className="size-3.5" /> Share
           </button>
@@ -118,14 +126,14 @@ export default function ShareLinkRow({
       </div>
       <button
         onClick={copy}
-        className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-[#05EB54] hover:underline"
+        className={cn("inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold hover:underline", accentText)}
       >
         {copied ? <><Check className="size-3.5" /> Copied</> : <><Copy className="size-3.5" /> Copy</>}
       </button>
       {canShare && (
         <button
           onClick={share}
-          className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold text-[#05EB54] hover:underline"
+          className={cn("inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs font-semibold hover:underline", accentText)}
         >
           <Share2 className="size-3.5" /> Share
         </button>

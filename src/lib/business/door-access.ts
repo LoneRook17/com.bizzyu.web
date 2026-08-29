@@ -550,7 +550,7 @@ export const PROGRAM_LINK_LABEL = "Program link"
 export const PROGRAM_LINK_DESCRIPTION = "Every upcoming night"
 
 export const NIGHTS_HELPER_EDIT =
-  "Tap a night to change price, capacity, or hours for that date only. Those edits stay Custom; a later program save will not change them."
+  "Tap a night to open its manage page. Date-only edits made there stay Custom; a later program save will not change them."
 export const NIGHTS_HELPER_VIEW = "Tap a night to see what it sells."
 
 /** Night-page helper: this date is Custom. Series/program save leaves it alone. */
