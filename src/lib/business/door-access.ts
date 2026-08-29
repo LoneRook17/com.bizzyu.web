@@ -1091,7 +1091,7 @@ export function normalizeNight(raw: Record<string, unknown>): DoorAccessNight {
     recurring_series_id:
       raw.recurring_series_id == null || raw.recurring_series_id === ""
         ? undefined
-        : raw.recurring_series_id,
+        : str(raw.recurring_series_id),
     is_closed: bool(raw.is_closed),
     has_override: bool(raw.has_override),
     start_time: str(raw.start_time),
