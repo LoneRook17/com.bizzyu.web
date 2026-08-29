@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
-import { ACCESS, EVENT_FILL } from "@/lib/checkout/surfaces"
+import { ACCESS, EVENT_CTA, EVENT_FILL, GLASS } from "@/lib/checkout/surfaces"
 import {
   eventCalendarDate,
   eventFromPrice,
@@ -108,6 +108,16 @@ function rowPriceLabel(event: VenueEvent): string {
   return eventFromPrice(event).replace(/^From /, "")
 }
 
+/** Gradient-bar section heading — the checkout pages' section language. */
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-3 flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-white">
+      <span className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: EVENT_CTA }} aria-hidden />
+      {children}
+    </h3>
+  )
+}
+
 export default function VenuePageClient({
   venueId,
   initialData,
@@ -169,13 +179,22 @@ export default function VenuePageClient({
     <div className="relative min-h-screen bg-[#0a0a0f] font-[family-name:var(--font-fira)] text-gray-100">
       <style>{`
         .bg-blur-flyer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-        .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(80px) saturate(1.5); opacity: 0.15; transform: scale(1.2); }
+        .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(64px) saturate(1.4); opacity: 0.45; transform: scale(1.55); }
+        .bg-blur-flyer .scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,10,15,0.55), rgba(10,10,15,0.8) 45%, #0a0a0f); }
         .flyer-glow { box-shadow: 0 0 60px rgba(5, 235, 84, 0.2), 0 0 120px rgba(5, 235, 84, 0.1); }
+        @keyframes vRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes vHeroZoom { from { transform: scale(1); } to { transform: scale(1.06); } }
+        .v-rise { animation: vRise 0.55s ease-out both; }
+        .v-hero-zoom { animation: vHeroZoom 14s ease-in-out infinite alternate; }
+        @media (prefers-reduced-motion: reduce) {
+          .v-rise, .v-hero-zoom { animation: none; }
+        }
       `}</style>
 
       {heroImage && (
         <div className="bg-blur-flyer" aria-hidden>
           <img src={heroImage} alt="" />
+          <div className="scrim" />
         </div>
       )}
 
@@ -213,11 +232,19 @@ export default function VenuePageClient({
         <main className="mx-auto max-w-6xl px-4 py-6 lg:py-10">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-12">
             <div className="lg:col-span-2">
-              <div className="lg:sticky lg:top-24">
+              <div className="v-rise lg:sticky lg:top-24">
                 {heroImage ? (
-                  <img src={heroImage} alt={venue.name} className="flyer-glow w-full rounded-2xl object-cover" />
+                  <div className="flyer-glow relative overflow-hidden rounded-[18px] border border-white/10">
+                    {/* Capped on phones so the name and tonight's nights stay above the fold. */}
+                    <img src={heroImage} alt={venue.name} className="v-hero-zoom max-h-[340px] w-full object-cover lg:max-h-none" />
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3"
+                      style={{ background: "linear-gradient(to top, rgba(10,10,15,0.85), transparent)" }}
+                      aria-hidden
+                    />
+                  </div>
                 ) : (
-                  <div className="flex aspect-[3/4] items-center justify-center rounded-2xl border border-[#1e1e2e] bg-[#141420]">
+                  <div className={`flex aspect-[3/4] items-center justify-center ${GLASS}`}>
                     <svg className="h-16 w-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
@@ -226,13 +253,15 @@ export default function VenuePageClient({
               </div>
             </div>
 
-            <div className="space-y-6 lg:col-span-3">
-              <div>
-                <h2 className="mb-4 text-3xl font-extrabold leading-tight text-white lg:text-4xl">{venue.name}</h2>
+            <div className="space-y-7 lg:col-span-3">
+              <div className="v-rise" style={{ animationDelay: "0.08s" }}>
+                <h2 className="mb-4 text-4xl font-extrabold leading-tight tracking-tight text-white lg:text-5xl">
+                  {venue.name}
+                </h2>
                 <div className="space-y-3">
                   {(venue.address || mapsUrl) && (
                     <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#1e1e2e] bg-[#141420]">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur-xl">
                         <svg className="h-5 w-5 text-[#05EB54]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -257,7 +286,7 @@ export default function VenuePageClient({
                           href={hrefAbs(website)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-full border border-[#1e1e2e] bg-[#141420] px-3 py-1.5 text-sm font-medium text-gray-300 hover:border-[#05EB54]/50 hover:text-white"
+                          className="rounded-full border border-white/15 bg-white/[0.06] px-3 py-1.5 text-sm font-medium text-gray-300 backdrop-blur-xl transition hover:border-[#05EB54]/50 hover:text-white"
                         >
                           Website
                         </a>
@@ -267,7 +296,7 @@ export default function VenuePageClient({
                           href={`https://instagram.com/${instagram}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-full border border-[#1e1e2e] bg-[#141420] px-3 py-1.5 text-sm font-medium text-gray-300 hover:border-[#05EB54]/50 hover:text-white"
+                          className="rounded-full border border-white/15 bg-white/[0.06] px-3 py-1.5 text-sm font-medium text-gray-300 backdrop-blur-xl transition hover:border-[#05EB54]/50 hover:text-white"
                         >
                           Instagram
                         </a>
@@ -278,17 +307,15 @@ export default function VenuePageClient({
               </div>
 
               {about && (
-                <div className="rounded-2xl border border-[#1e1e2e] bg-[#141420]/50 p-5">
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">About</h3>
+                <div className={`v-rise p-5 ${GLASS}`} style={{ animationDelay: "0.14s" }}>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-400">About</h3>
                   <p className="whitespace-pre-line text-sm leading-relaxed text-gray-300">{about}</p>
                 </div>
               )}
 
-              {days.map(([key, rows]) => (
-                <section key={key}>
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
-                    {formatDayHeader(key, todayKey)}
-                  </h3>
+              {days.map(([key, rows], sectionIndex) => (
+                <section key={key} className="v-rise" style={{ animationDelay: `${0.18 + sectionIndex * 0.06}s` }}>
+                  <SectionHeading>{formatDayHeader(key, todayKey)}</SectionHeading>
                   <div className="space-y-3">
                     {rows.map((event) => (
                       <UpcomingRow
@@ -303,8 +330,8 @@ export default function VenuePageClient({
               ))}
 
               {later.length > 0 && (
-                <section>
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">Later</h3>
+                <section className="v-rise" style={{ animationDelay: `${0.18 + days.length * 0.06}s` }}>
+                  <SectionHeading>Later</SectionHeading>
                   <div className="space-y-3">
                     {later.map((event) => (
                       <UpcomingRow
@@ -319,20 +346,20 @@ export default function VenuePageClient({
               )}
 
               {days.length === 0 && later.length === 0 && (
-                <p className="text-sm text-gray-500">Nothing on the calendar yet. Open the Bizzy app to follow {venue.name}.</p>
+                <div className={`v-rise p-5 text-sm text-gray-400 ${GLASS}`} style={{ animationDelay: "0.18s" }}>
+                  Nothing on the calendar yet. Open the Bizzy app to follow {venue.name}.
+                </div>
               )}
 
               {deals.length > 0 && (
-                <section>
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
-                    Deals at {venue.name}
-                  </h3>
+                <section className="v-rise" style={{ animationDelay: `${0.24 + days.length * 0.06}s` }}>
+                  <SectionHeading>Deals at {venue.name}</SectionHeading>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {deals.map((deal) => (
                       <Link
                         key={deal.id}
                         href={`/deal/${deal.id}`}
-                        className="overflow-hidden rounded-2xl border border-[#1e1e2e] bg-[#141420] transition hover:border-[#05EB54]/50"
+                        className={`overflow-hidden transition hover:-translate-y-0.5 hover:border-[#05EB54]/50 ${GLASS}`}
                       >
                         {deal.deal_image_path && (
                           <img src={deal.deal_image_path} alt={deal.deal_title} className="h-36 w-full object-cover" />
@@ -368,11 +395,11 @@ function nightRowTheme(cover: boolean) {
   return {
     fill: cover ? ACCESS : EVENT_FILL,
     card: cover
-      ? "border-access/40 hover:border-access/50 hover:shadow-[0_0_20px_rgba(255,62,209,0.15)]"
-      : "border-[#1e1e2e] hover:border-[#05EB54]/50 hover:shadow-[0_0_20px_rgba(5,235,84,0.15)]",
+      ? "border-access/40 hover:border-access/60 hover:shadow-[0_0_24px_rgba(255,62,209,0.18)]"
+      : "border-white/20 hover:border-[#05EB54]/50 hover:shadow-[0_0_24px_rgba(5,235,84,0.18)]",
     chip: cover
-      ? "border-access/40 hover:border-access/50"
-      : "border-[#1e1e2e] hover:border-[#05EB54]/50",
+      ? "border-access/40 hover:border-access/60"
+      : "border-white/15 hover:border-[#05EB54]/50",
     price: cover ? "text-access" : "text-[#33f77c]",
     icon: cover ? "text-access/40" : "text-[#05EB54]/40",
   }
@@ -398,10 +425,10 @@ function UpcomingRow({
 
   return (
     <div
-      className={`rounded-2xl border bg-[#141420] p-5 transition-[border-color,box-shadow] duration-200 ${theme.card}`}
+      className={`rounded-2xl border bg-white/[0.07] p-5 backdrop-blur-xl transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 ${theme.card}`}
     >
       <a href={href} className="flex items-center gap-4">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#1e1e2e] bg-[#0a0a0f]">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0f]">
           {image ? (
             <img src={image} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -423,7 +450,7 @@ function UpcomingRow({
         </div>
         <div className="shrink-0 text-right">
           {price && (
-            <p className={`text-xl font-bold ${price === "Free" ? theme.price : "text-white"}`}>
+            <p className={`text-xl font-extrabold ${price === "Free" ? theme.price : "text-white"}`}>
               {price}
             </p>
           )}
@@ -441,7 +468,7 @@ function UpcomingRow({
               <a
                 key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
                 href={venueNightCheckoutHref(checkoutBaseUrl, event.event_id, tier.ticket_id)}
-                className={`rounded-full border bg-[#0a0a0f] px-3 py-1.5 text-sm font-semibold text-white ${theme.chip}`}
+                className={`rounded-full border bg-white/[0.05] px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl transition hover:bg-white/[0.1] ${theme.chip}`}
               >
                 {label}
               </a>

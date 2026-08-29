@@ -40,6 +40,7 @@ import { splitDateTimeLocal } from "@/lib/business/datetime-value"
 import { artworkTemplateForSave, resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
 import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
+import { tierSurgeToWire, tierWithSurgeDrafts, validateTierSurge } from "@/lib/business/event-tier-surge"
 
 interface EventFormProps {
   initialData?: Partial<EventFormData>
@@ -135,7 +136,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     is_recurring: initialData?.is_recurring || false,
     recurring_event: initialData?.recurring_event || undefined,
     flyer_image_url: initialData?.flyer_image_url || "",
-    tickets: initialData?.tickets || [{ ...EMPTY_TICKET }],
+    // Served rows carry surge_steps in the read shape — normalize to draft
+    // rungs so the tier form can edit them.
+    tickets: (initialData?.tickets || [{ ...EMPTY_TICKET }]).map(tierWithSurgeDrafts),
     promotion_enabled: isPromotionEnabled(initialData?.promotion_enabled),
     promotion_commission_type: initialData?.promotion_commission_type || "percent",
     promotion_commission_value: initialData?.promotion_commission_value ?? null,
@@ -293,6 +296,11 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           errs.tickets = `"${tier.name}": the scan window must end after it starts`
           break
         }
+        const surgeError = validateTierSurge(tier)
+        if (surgeError) {
+          errs.tickets = surgeError
+          break
+        }
       }
     }
     if (form.promotion_enabled) {
@@ -411,6 +419,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           ticket_type: t.ticket_type,
           valid_from: t.valid_from || null,
           valid_until: t.valid_until || null,
+          // Both keys always — surge off must travel as an explicit clear;
+          // omission would leave a stored ladder in place.
+          ...tierSurgeToWire(t),
         }))
       }
 
