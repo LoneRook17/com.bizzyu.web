@@ -269,6 +269,29 @@ export function eventListHref(
   return programHref(working)
 }
 
+/** Statuses whose primary surface is still the detail page (publish / review flow). */
+const DETAIL_FIRST_STATUSES = new Set(["draft", "pending_approval", "pending_review"])
+
+/**
+ * Where a green list card's BODY click goes: straight to /manage (2026-08
+ * instance-manage pass — click = manage, the detail page is never a required
+ * hop). Two carve-outs keep old behavior:
+ *  - WC-stamped rows keep opening their program (same as `eventListHref`);
+ *    a WC night's manage entry is its Host-list night card.
+ *  - Draft / in-review events keep the detail page, which owns publish.
+ */
+export function eventCardBodyHref(
+  event: EventListItem,
+  programs: readonly ListedProgramRef[] = [],
+  wcSeriesIds: readonly number[] = [],
+  inactiveWcSeriesIds: readonly number[] = [],
+): string {
+  const listHref = eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
+  if (!listHref.startsWith("/business/events/")) return listHref
+  if (DETAIL_FIRST_STATUSES.has((event.status ?? "").toLowerCase())) return listHref
+  return `/business/events/${event.event_id}/manage`
+}
+
 /**
  * A leaked door-access series still opens the program page, never
  * /business/recurring/:id (that page is for named recurring events).

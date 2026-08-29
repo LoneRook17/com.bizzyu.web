@@ -422,12 +422,24 @@ test("section titles stay the Host product names", () => {
     "Schedules stay repeating setups, not day headers",
   )
   assert.ok(list.includes("AccessProgramRow"), "WC weekday templates stay AccessProgramRow")
-  assert.ok(list.includes("AccessNightCard") || list.includes("Cancel"), "WC night cards keep Cancel")
+  assert.ok(list.includes("AccessNightCard"), "WC nights render the night card")
+  // Instance-manage pass (2026-08, supersedes #100's card Cancel): the list
+  // card matches EventCard's anatomy — View + Manage, no Cancel, no Scan.
+  // Cancel is unchanged as a flow; it lives inside manage / night / program.
+  assert.ok(
+    !list.includes("CancelEventModal"),
+    "the list has no card-level cancel modal — cancel lives inside manage",
+  )
   const nightCard = readFileSync(
     join(process.cwd(), "src/components/business/v2/host/AccessNightCard.tsx"),
     "utf8",
   )
   assert.ok(nightCard.includes('kind="access"'), "D12: WC night cards stay pink Weekly Cover")
-  assert.ok(nightCard.includes("Cancel"), "Keep Cancel on WC night cards (#100)")
+  assert.ok(!nightCard.includes(">Cancel<"), "no Cancel button on WC/RC night cards")
+  assert.ok(!nightCard.includes("weeklyCoverNightCancelEventId"), "card no longer wires the cancel path")
+  assert.ok(nightCard.includes(">View<") || nightCard.includes("View\n"), "night cards offer View")
+  assert.ok(nightCard.includes(">Manage<"), "night cards offer Manage")
+  assert.ok(!nightCard.includes("ScanLine"), "no Scan on WC night cards — scan lives inside manage")
+  assert.ok(nightCard.includes("/manage"), "the night card body opens the night's manage page")
   assert.ok(nightCard.includes("hostCustomChipTone"), "Custom chip stays on the Host voter")
 })

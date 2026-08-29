@@ -428,7 +428,6 @@ export default function V2EventsPage() {
           programs={venuePrograms}
           wcSeriesIds={wcSeriesIds}
           inactiveWcIds={inactiveWcIds}
-          onNightCancelled={fetchEvents}
         />
       ) : (
         <div className="flex flex-col gap-3">

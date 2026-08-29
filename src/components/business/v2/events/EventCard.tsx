@@ -5,11 +5,13 @@ import { CalendarDays, ScanLine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
 import {
+  eventCardBodyHref,
   eventListHref,
   eventRowStats,
   listedWeeklyCoverProgramId,
   type ListedProgramRef,
 } from "@/lib/business/events-list"
+import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-links"
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { Button } from "@/components/business/v2/ui/button"
@@ -86,11 +88,21 @@ export function EventCard({
     .join(" · ")
 
   const href = eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
+  // Click = manage (2026-08 instance-manage pass): the card body opens the full
+  // manage page directly; View keeps the detail page reachable.
+  const bodyHref = eventCardBodyHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
+  const isWcRow = programId != null || isWeeklyCoverProduct(event)
+  // A green recurring occurrence (RC night). Its card carries View + Manage
+  // only — Scan lives inside manage — and View is the GUEST page for that
+  // night, not a second dash half-page.
+  const isSeriesNight = !isWcRow && Number(event.recurring_series_id ?? 0) > 0
+  const guestViewUrl =
+    isSeriesNight && isPubliclyLinkable(event.status) ? eventCheckoutUrl(event.event_id) : null
 
   return (
     <HostListCard
       kind="event"
-      href={href}
+      href={bodyHref}
       title={event.name}
       meta={meta}
       secondary={event.type === "Free" ? "Free entry" : "Presale + door tickets"}
@@ -112,12 +124,16 @@ export function EventCard({
       actions={
         <>
           <Button variant="ghost" size="sm" asChild>
-            <Link href={href}>View</Link>
+            {guestViewUrl ? (
+              <a href={guestViewUrl} target="_blank" rel="noopener noreferrer">View</a>
+            ) : (
+              <Link href={href}>View</Link>
+            )}
           </Button>
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>
           </Button>
-          {canScan && (
+          {canScan && !isSeriesNight && !isWcRow && (
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/business/events/${event.event_id}/manage/scanner`}>
                 <ScanLine /> Scan

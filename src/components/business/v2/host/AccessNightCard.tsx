@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
@@ -10,11 +11,11 @@ import {
 import {
   fmtNightDate,
   nightHref,
-  weeklyCoverNightCancelEventId,
   WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessNight,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
+import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-links"
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
@@ -28,9 +29,16 @@ import {
 /**
  * One Weekly Cover night on Host Tonight / Upcoming.
  *
- * Pink WEEKLY COVER chip (D12). Cancel stays when the night has an event id
- * (#100). Custom only when the Host voter says so — weekday templates do not
- * chip.
+ * Pink WEEKLY COVER chip (D12). Custom only when the Host voter says so —
+ * weekday templates do not chip.
+ *
+ * 2026-08 instance-manage pass: the card matches the green EventCard's anatomy
+ * — body click opens the night's full /manage page, and the footer is View
+ * (the guest checkout page for THAT night) + Manage. No Scan (scan lives
+ * inside manage and behind the door code) and no Cancel (cancel lives inside
+ * manage's danger zone — the flow itself is unchanged, only the list-card
+ * shortcut is gone). A night core has not stamped yet has no event id, so its
+ * body falls back to the night editor page, which materialises it.
  */
 export function AccessNightCard({
   program,
@@ -41,7 +49,6 @@ export function AccessNightCard({
   wcSeriesIds = [],
   inactiveWcIds = [],
   seriesActive = true,
-  onCancel,
 }: {
   program?: DoorAccessProgramSummary | null
   night?: DoorAccessNight | null
@@ -51,22 +58,33 @@ export function AccessNightCard({
   wcSeriesIds?: readonly number[]
   inactiveWcIds?: readonly number[]
   seriesActive?: boolean
-  onCancel?: (eventId: number, name: string) => void
 }) {
-  const { user, isPending } = useAuth()
-  const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
+  const { isPending } = useAuth()
   const resolvedProgramId = program?.id ?? programId ?? 0
   const date = night?.occurrence_date ?? (event?.start_date_time ?? "").slice(0, 10)
   const status = night?.status ?? event?.status ?? null
   const title = program?.name || event?.name || WEEKLY_ACCESS_SECTION_LABEL
   const venue = program?.venue_name || event?.venue_name
   const flyer = night?.flyer_image_url || event?.flyer_image_url || program?.flyer_image_url
+
+  const manageEventId =
+    night?.event_id != null && night.event_id > 0
+      ? night.event_id
+      : event && event.event_id > 0
+        ? event.event_id
+        : null
   const href =
-    resolvedProgramId > 0 && date
-      ? nightHref(resolvedProgramId, date)
-      : event
-        ? eventListHref(event, programs, wcSeriesIds, inactiveWcIds)
-        : "/business/events"
+    manageEventId != null
+      ? `/business/events/${manageEventId}/manage`
+      : resolvedProgramId > 0 && date
+        ? nightHref(resolvedProgramId, date)
+        : event
+          ? eventListHref(event, programs, wcSeriesIds, inactiveWcIds)
+          : "/business/events"
+  // View = the guest-facing page for this night. Withheld while the night
+  // isn't publicly linkable — a dead checkout link helps no one.
+  const viewUrl =
+    manageEventId != null && isPubliclyLinkable(status) ? eventCheckoutUrl(manageEventId) : null
 
   const chips: HostCardChip[] = []
   if (isPending || isWeeklyCoverHoldStatus(status)) {
@@ -103,20 +121,6 @@ export function AccessNightCard({
     chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "custom" })
   }
 
-  const cancelEventId = night
-    ? weeklyCoverNightCancelEventId(night)
-    : event && event.event_id > 0 && status !== "cancelled"
-      ? event.event_id
-      : null
-  const showCancel =
-    canEdit &&
-    seriesActive &&
-    status !== "cancelled" &&
-    !pendingCancel &&
-    onCancel != null
-  const cancelEnabled = showCancel && cancelEventId != null
-  const cancelName = date ? fmtNightDate(date, { withYear: true }) : title
-
   return (
     <HostListCard
       kind="access"
@@ -129,19 +133,19 @@ export function AccessNightCard({
         <HostCardThumbnail kind="access" src={flyer} alt={title} icon={Zap} />
       }
       actions={
-        showCancel ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
-            disabled={!cancelEnabled}
-            onClick={() => {
-              if (cancelEventId != null) onCancel(cancelEventId, cancelName)
-            }}
-          >
-            Cancel
-          </Button>
+        manageEventId != null ? (
+          <>
+            {viewUrl && (
+              <Button variant="ghost" size="sm" asChild>
+                <a href={viewUrl} target="_blank" rel="noopener noreferrer">
+                  View
+                </a>
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/business/events/${manageEventId}/manage`}>Manage</Link>
+            </Button>
+          </>
         ) : undefined
       }
     />
