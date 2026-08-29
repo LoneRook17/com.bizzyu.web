@@ -940,9 +940,21 @@ test("normalizeNight coerces flags and sorts tiers", () => {
   assert.equal(n.is_stamped, true)
   assert.equal(n.is_closed, true)
   assert.equal(n.is_customized, false)
+  assert.equal(n.series_customized_at, null)
   assert.equal(n.event_id, 4410)
   assert.equal(n.passes_sold, 12)
   assert.deepEqual(n.tiers.map((t) => t.tier_key), ["cover", "skip"])
+})
+
+test("normalizeNight treats series_customized_at as Custom", () => {
+  const stamped = normalizeNight({
+    occurrence_date: "2026-12-31",
+    is_stamped: 0,
+    event_id: null,
+    series_customized_at: "2026-08-20 10:00:00",
+  })
+  assert.equal(stamped.is_customized, true)
+  assert.equal(stamped.series_customized_at, "2026-08-20 10:00:00")
 })
 
 test("normalizeNight defaults a missing tiers array rather than throwing", () => {
@@ -1037,20 +1049,28 @@ test("nightChips are additive — a night can be several things at once", () => 
 
   const labels = (n: DoorAccessNight) => nightChips(n).map((c) => c.label)
   assert.deepEqual(labels(night({ is_closed: true })), ["Closed"])
-  assert.deepEqual(labels(night({ has_override: true })), ["Overridden"])
+  assert.deepEqual(labels(night({ has_override: true })), ["Custom"])
   assert.deepEqual(labels(night({ is_stamped: false })), ["Not generated yet"])
   assert.deepEqual(
     labels(night({ is_closed: true, has_override: true, is_customized: true, is_stamped: false })),
-    ["Closed", "Overridden", "Customized", "Not generated yet"]
+    ["Closed", "Custom"]
   )
 })
 
-test("nightPreviewChip only names on sale or not generated", () => {
+test("nightPreviewChip names Custom like the app, never Not generated for a host night", () => {
   assert.deepEqual(nightPreviewChip(night()), { label: "On sale", variant: "info" })
   assert.deepEqual(nightPreviewChip(night({ is_stamped: false, event_id: null, status: null })), {
     label: "Not generated",
     variant: "neutral",
   })
+  assert.deepEqual(
+    nightPreviewChip(night({ is_stamped: false, event_id: null, status: null, is_customized: true })),
+    { label: "Custom", variant: "access" },
+  )
+  assert.deepEqual(
+    nightPreviewChip(night({ is_stamped: false, event_id: null, series_customized_at: "2026-08-20 10:00:00" })),
+    { label: "Custom", variant: "access" },
+  )
   assert.equal(nightPreviewChip(night({ status: "draft" })), null)
   assert.equal(nightPreviewChip(night({ is_closed: true })), null)
   assert.equal(nightPreviewChip(night({ status: "cancelled" })), null)
@@ -1059,10 +1079,9 @@ test("nightPreviewChip only names on sale or not generated", () => {
     { label: "Cancellation pending", variant: "warning" },
   )
   assert.equal(nightPreviewChip(night({ passes_sold: 0, paid_orders: 0 }), false), null)
-  // Overridden / Customized stay off the card. Those belong on the night page.
   assert.deepEqual(nightPreviewChip(night({ has_override: true, is_customized: true })), {
-    label: "On sale",
-    variant: "info",
+    label: "Custom",
+    variant: "access",
   })
 })
 
@@ -1324,6 +1343,7 @@ test("the program page is look-and-open, with Edit program as a dedicated route"
   assert.ok(src.includes("weekdayFlyerByDayFromNights"), "nights without Custom art keep the weekday flyer")
   assert.ok(src.includes("ONE_OFF_SERIES_LOOKAHEAD_DAYS"), "series fetch must reach far one-off nights")
   assert.ok(src.includes("isPinnedUpcomingNight"), "custom nights stay in the 4-card preview")
+  assert.ok(src.includes("nightPreviewChip"), "cards use the shared Custom / On sale chip")
 })
 
 test("Weekly Access has a dedicated program editor, same fields as create", () => {
@@ -1911,6 +1931,10 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(wizard.includes('isEdit && initialProducts ? STEP_DAYS : STEP_SELL'), "edit skips Sell when products exist")
   assert.ok(wizard.includes("persistProgramPromoDrafts"), "Publish posts program-scoped promo drafts after create")
   assert.ok(wizard.includes("wcPromoCreatePath"), "promo drafts hit the existing door-access promo API")
+  assert.ok(!wizard.includes("Tonight's nights aren't on the schedule yet"), "create success must not leak schedule empty-state")
+  assert.ok(!wizard.includes("No editable program fields provided"), "create success must not leak empty PATCH copy")
+  assert.ok(!wizard.includes("withDoorAccessProgramKind({})"), "create must not empty-PATCH the new program")
+  assert.ok(wizard.includes('kind: "created"'), "successful create still shows Program created + Open the program")
 
   const door = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/WcDoorStep.tsx", import.meta.url)),

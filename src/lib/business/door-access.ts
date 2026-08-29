@@ -29,6 +29,11 @@ import {
   isSeriesActive,
   weeklyCoverNightNeedsPendingCancel,
 } from "./weekly-cover-visibility.ts"
+import {
+  HOST_CUSTOM_CHIP_LABEL,
+  isHostCustomNight,
+  type HostCustomNightInput,
+} from "./host-custom-night.ts"
 
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
@@ -175,6 +180,7 @@ export type OwnedSeriesOccurrence = {
   ticket_sales_count?: number
   paid_orders?: number
   is_customized?: boolean | number | string
+  series_customized_at?: string | null
   flyer_image_url?: string
 }
 
@@ -257,6 +263,7 @@ export function doorAccessSeriesFromOwnedHydration(input: {
             passes_sold: occ.tickets_sold ?? occ.ticket_sales_count ?? match?.ticket_sales_count,
             paid_orders: occ.paid_orders,
             is_customized: occ.is_customized,
+            series_customized_at: occ.series_customized_at,
             start_time: startTime,
             end_time: endTime,
             tiers: templateTiers,
@@ -574,8 +581,16 @@ export const DEFAULT_SERIES_LOOKAHEAD_DAYS = 28
 /** Far-future one-off / Custom nights must still load on Upcoming. */
 export const ONE_OFF_SERIES_LOOKAHEAD_DAYS = 180
 
-export function isPinnedUpcomingNight(night: { is_customized?: boolean }): boolean {
-  return !!night.is_customized
+export function isPinnedUpcomingNight(night: HostCustomNightInput): boolean {
+  return isHostCustomWeeklyCoverNight(night)
+}
+
+/** WC program nights are in a series; omit recurring_series_id so leftovers stay Custom. */
+export function isHostCustomWeeklyCoverNight(night: HostCustomNightInput): boolean {
+  return isHostCustomNight({
+    ...night,
+    product_kind: night.product_kind ?? "weekly_cover",
+  })
 }
 
 // ── Wire shapes (services/src/services/DoorAccessProgramService.ts) ─────────
@@ -737,6 +752,8 @@ export interface DoorAccessNight {
   passes_sold: number
   paid_orders: number
   is_customized: boolean
+  /** events.series_customized_at when services echoes it (door-access #104). */
+  series_customized_at?: string | null
   is_closed: boolean
   has_override: boolean
   start_time: string
@@ -1049,7 +1066,10 @@ export function normalizeNight(raw: Record<string, unknown>): DoorAccessNight {
     end_date_time: raw.end_date_time == null ? null : str(raw.end_date_time),
     passes_sold: num(raw.passes_sold),
     paid_orders: num(raw.paid_orders),
-    is_customized: bool(raw.is_customized),
+    is_customized:
+      bool(raw.is_customized) || (typeof raw.series_customized_at === "string" && raw.series_customized_at.trim() !== ""),
+    series_customized_at:
+      raw.series_customized_at == null || raw.series_customized_at === "" ? null : str(raw.series_customized_at),
     is_closed: bool(raw.is_closed),
     has_override: bool(raw.has_override),
     start_time: str(raw.start_time),
@@ -1579,37 +1599,41 @@ export function accessRowStats(
 
 // ── Night presentation ──────────────────────────────────────────────────────
 
-export type NightChip = { label: string; variant: "neutral" | "warning" | "danger" | "info" }
+export type NightChip = {
+  label: string
+  variant: "neutral" | "warning" | "danger" | "info" | "access" | "custom"
+}
 
 /**
  * The chips on a night row. Deliberately terse and additive — a night can be
- * closed AND customized AND unstamped at once, and a host needs to see all
+ * closed AND Custom AND cancelled at once, and a host needs to see all
  * three because each has a different fix.
  */
 export function nightChips(night: DoorAccessNight, seriesActive = true): NightChip[] {
   const chips: NightChip[] = []
+  const custom = isHostCustomWeeklyCoverNight(night)
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
   if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
   }
-  if (night.has_override) chips.push({ label: "Overridden", variant: "info" })
-  // "Customized" means this date is Custom — a leftover generic-event stamp
-  // or a one-date edit. It stays a warning chip. The night editor still
-  // edits it (never a green Event). Series/program save leaves it alone.
-  if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
-  if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
+  if (custom) chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "access" })
+  // Never "Not generated" for a night the host already created/edited.
+  if (!night.is_stamped && !custom) chips.push({ label: "Not generated yet", variant: "neutral" })
   return chips
 }
 
 /**
  * The ONE chip on a program-page preview card.
  *
- * A ledger of Closed / Overridden / Customized / Not on sale yet is what made
- * the list unreadable. Cards only say something when it changes what a host
- * does next: buyable now, or not generated yet.
+ * Custom (pink) matches the Flutter app. A host-created far date is Custom,
+ * never "Not generated" from a missing occurrence row. Regular unstamped
+ * weekday slots can still say Not generated.
  */
 export function nightPreviewChip(night: DoorAccessNight, seriesActive = true): NightChip | null {
+  if (isHostCustomWeeklyCoverNight(night)) {
+    return { label: HOST_CUSTOM_CHIP_LABEL, variant: "access" }
+  }
   if (!night.is_stamped || night.event_id == null) {
     return { label: "Not generated", variant: "neutral" }
   }

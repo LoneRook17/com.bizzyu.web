@@ -53,6 +53,7 @@
  */
 
 import type { DoorAccessNight, DoorAccessProgram, DoorAccessTemplateTier } from "./door-access"
+import { isHostCustomNight } from "./host-custom-night.ts"
 import type { RecurringTemplateTicket } from "./types"
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -1010,8 +1011,19 @@ function isTerminal(night: DoorAccessNight): boolean {
  * leftover `series_customized_at` stamp). Series/program save must not treat
  * this night as the weekday template.
  */
-export function isCustomWeeklyCoverNight(night: { is_customized?: unknown }): boolean {
-  return truthy(night.is_customized)
+export function isCustomWeeklyCoverNight(night: {
+  is_customized?: unknown
+  series_customized_at?: string | null
+  has_override?: unknown
+  flyer_image_url_override?: string | null
+}): boolean {
+  return isHostCustomNight({
+    product_kind: "weekly_cover",
+    is_customized: night.is_customized as boolean | number | string | null | undefined,
+    series_customized_at: night.series_customized_at,
+    has_override: night.has_override as boolean | number | string | null | undefined,
+    flyer_image_url_override: night.flyer_image_url_override,
+  })
 }
 
 function nightFlyerKey(night: Record<string, unknown>): string {

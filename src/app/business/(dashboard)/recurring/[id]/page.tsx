@@ -15,6 +15,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { HOST_CUSTOM_CHIP_LABEL, isHostCustomNight } from "@/lib/business/host-custom-night"
 import { eventStatusBadge, fmtTime } from "@/components/business/v2/events/eventStatus"
 import { WeekdayChips } from "@/components/business/v2/recurring/WeekdayChips"
 import {
@@ -205,7 +206,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
             </p>
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {upcoming.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} />)}
+              {upcoming.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} seriesId={series.id} />)}
             </div>
           )}
         </CardContent>
@@ -217,7 +218,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
           <CardHeader><CardTitle>Past nights</CardTitle></CardHeader>
           <CardContent className="pt-0">
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {past.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} past />)}
+              {past.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} seriesId={series.id} past />)}
             </div>
           </CardContent>
         </Card>
@@ -235,8 +236,21 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
   )
 }
 
-function OccurrenceRow({ occurrence: o, past = false }: { occurrence: RecurringOccurrence; past?: boolean }) {
+function OccurrenceRow({
+  occurrence: o,
+  seriesId,
+  past = false,
+}: {
+  occurrence: RecurringOccurrence
+  seriesId: number
+  past?: boolean
+}) {
   const status = eventStatusBadge(o.status)
+  const custom = isHostCustomNight({
+    product_kind: "event",
+    recurring_series_id: seriesId,
+    is_customized: o.is_customized,
+  })
   return (
     <Link
       href={`/business/events/${o.event_id}`}
@@ -249,13 +263,13 @@ function OccurrenceRow({ occurrence: o, past = false }: { occurrence: RecurringO
             {fmtDateOnlyLong(o.occurrence_date)}
           </span>
           <Badge variant={status.variant} size="sm">{status.label}</Badge>
-          {o.is_customized && (
+          {custom && (
             <Badge
-              variant="info"
+              variant="custom"
               size="sm"
               title="You edited this night directly. Series edits leave it alone"
             >
-              Customized
+              {HOST_CUSTOM_CHIP_LABEL}
             </Badge>
           )}
         </div>

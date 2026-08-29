@@ -3,17 +3,22 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import {
+  CLOCK_HOURS_12,
+  CLOCK_MINUTES_15,
   clock12hSlots,
   formatClock12h,
   formatDateUs,
   isIsoDateString,
   isIsoTimeString,
+  joinClock12hParts,
   joinDateTimeLocal,
   monthCells,
   parseClock12h,
   parseDateTimeLocal,
   parseDateUs,
   shiftMonth,
+  snapMinute15,
+  splitClock12hParts,
   splitDateTimeLocal,
 } from "./datetime-value.ts"
 
@@ -90,6 +95,20 @@ test("clock 12-hour format and parse do not show 24-hour blobs", () => {
   assert.equal(clock12hSlots()[78], "19:30")
 })
 
+test("clock wheels are hour + 15-minute + AM/PM, not a 96-slot list", () => {
+  assert.deepEqual(splitClock12hParts("19:00"), { hour12: 7, minute: 0, period: "PM" })
+  assert.deepEqual(splitClock12hParts("00:15"), { hour12: 12, minute: 15, period: "AM" })
+  assert.deepEqual(splitClock12hParts("12:45"), { hour12: 12, minute: 45, period: "PM" })
+  assert.equal(joinClock12hParts(7, 0, "PM"), "19:00")
+  assert.equal(joinClock12hParts(12, 15, "AM"), "00:15")
+  assert.equal(joinClock12hParts(12, 0, "PM"), "12:00")
+  assert.equal(snapMinute15(7), 0)
+  assert.equal(snapMinute15(8), 15)
+  assert.equal(snapMinute15(52), 45)
+  assert.equal(CLOCK_HOURS_12.length, 12)
+  assert.deepEqual([...CLOCK_MINUTES_15], [0, 15, 30, 45])
+})
+
 test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blob", () => {
   const widget = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/ui/date-time-field.tsx", import.meta.url)),
@@ -109,7 +128,7 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   )
 
   const datetimeFn = widget.slice(widget.indexOf("export function DateTimeField"))
-  const dateFn = widget.slice(widget.indexOf("export function DateField"), widget.indexOf("function TimeList"))
+  const dateFn = widget.slice(widget.indexOf("export function DateField"), widget.indexOf("function TimeWheels"))
   const timeFn = widget.slice(widget.indexOf("export function TimeField"))
   assert.ok(datetimeFn.includes("<DateField"), "combined control is the existing date widget")
   assert.ok(datetimeFn.includes("<TimeField"), "combined control is the existing time widget")
@@ -119,9 +138,14 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   assert.ok(dateFn.includes("8/27/2026"), "date field is American month-day-year")
   assert.ok(dateFn.includes("formatDateUs"), "date field displays M/D/YYYY")
   assert.ok(dateFn.includes("parseDateUs"), "date field accepts American typed dates")
-  assert.ok(!timeFn.includes('type="time"'), "time picker is not a native 12-hour wheel")
+  assert.ok(!timeFn.includes('type="time"'), "time picker is not a native 12-hour input")
   assert.ok(timeFn.includes("7:00 PM"), "time field is 12-hour")
   assert.ok(!timeFn.includes("HH:MM"), "time field does not show a 24-hour placeholder")
+  assert.ok(widget.includes("TimeWheels"), "clock button opens hour + minute + AM/PM wheels")
+  assert.ok(widget.includes("CLOCK_HOURS_12"), "hour wheel is 1-12")
+  assert.ok(widget.includes("CLOCK_MINUTES_15"), "minute wheel snaps to 15 minutes")
+  assert.ok(!widget.includes("clock12hSlots"), "picker is not a 96-row 15-minute dump")
+  assert.ok(timeFn.includes("placeholder=\"7:00 PM\""), "typed 12-hour input stays")
 
   assert.ok(eventForm.includes("DateTimeField"), "green event create/edit still uses the shared control")
   assert.ok(!eventForm.includes("YYYY-MM-DDTHH:MM"), "event form does not show an ISO T string")

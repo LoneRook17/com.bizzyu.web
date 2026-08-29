@@ -197,3 +197,42 @@ export function clock12hSlots(): string[] {
     return `${hh}:${mm}`
   })
 }
+
+export const CLOCK_HOURS_12 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
+export const CLOCK_MINUTES_15 = [0, 15, 30, 45] as const
+export type ClockPeriod = "AM" | "PM"
+
+export type Clock12hParts = {
+  hour12: number
+  minute: number
+  period: ClockPeriod
+}
+
+export function snapMinute15(minute: number): number {
+  if (!Number.isFinite(minute)) return 0
+  const clamped = Math.min(59, Math.max(0, Math.round(minute)))
+  return (Math.round(clamped / 15) * 15) % 60
+}
+
+/** Split `HH:MM` into hour / minute / AM·PM for the wheel picker. */
+export function splitClock12hParts(value: string): Clock12hParts | null {
+  const raw = String(value ?? "").trim()
+  const t = raw.length >= 5 && isIsoTimeString(raw.slice(0, 5)) ? raw.slice(0, 5) : ""
+  if (!t) return null
+  const hh = Number(t.slice(0, 2))
+  const minute = Number(t.slice(3, 5))
+  if (!Number.isFinite(hh) || !Number.isFinite(minute)) return null
+  const period: ClockPeriod = hh < 12 ? "AM" : "PM"
+  const hour12 = hh % 12 === 0 ? 12 : hh % 12
+  return { hour12, minute, period }
+}
+
+export function joinClock12hParts(hour12: number, minute: number, period: ClockPeriod): string {
+  let h = hour12
+  if (period === "AM") {
+    if (h === 12) h = 0
+  } else if (h !== 12) {
+    h += 12
+  }
+  return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+}

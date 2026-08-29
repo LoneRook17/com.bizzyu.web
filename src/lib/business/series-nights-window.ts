@@ -8,6 +8,8 @@
  * Series manage (`/business/recurring/:id`) still lists the full series.
  */
 
+import { isHostCustomNight } from "./host-custom-night.ts"
+
 export const SERIES_NIGHTS_WINDOW_DAYS = 14
 
 export function addIsoDays(isoDate: string, days: number): string {
@@ -31,10 +33,17 @@ export function eventOccurrenceDate(event: {
 export function isCustomizedSeriesNight(event: {
   series_customized_at?: string | null
   is_customized?: boolean | number | string | null
+  recurring_series_id?: number | string | null
+  product_kind?: string | null
+  access_kind?: string | null
 }): boolean {
-  if (event.series_customized_at) return true
-  const flag = event.is_customized
-  return flag === true || flag === 1 || flag === "1"
+  return isHostCustomNight({
+    product_kind: event.product_kind ?? "event",
+    access_kind: event.access_kind,
+    recurring_series_id: event.recurring_series_id,
+    series_customized_at: event.series_customized_at,
+    is_customized: event.is_customized,
+  })
 }
 
 export function isStandaloneOneOff(event: { recurring_series_id?: number | null }): boolean {

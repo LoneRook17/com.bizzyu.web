@@ -56,7 +56,7 @@ function night(over: Partial<DoorAccessNight> = {}): DoorAccessNight {
 
 test("a far-future customized night is an upcoming one-off", () => {
   assert.equal(isCustomUpcomingNight(night(), "2026-08-27"), true)
-  assert.equal(isCustomUpcomingNight(night({ is_customized: false }), "2026-08-27"), false)
+  assert.equal(isCustomUpcomingNight(night({ is_customized: false, has_override: false }), "2026-08-27"), false)
   assert.equal(isCustomUpcomingNight(night({ occurrence_date: "2026-08-20" }), "2026-08-27"), false)
 })
 
@@ -65,7 +65,7 @@ test("home one-offs come from customized upcoming nights only", () => {
     {
       program: program(),
       nights: [
-        night({ occurrence_date: "2026-08-28", is_customized: false }),
+        night({ occurrence_date: "2026-08-28", is_customized: false, has_override: false }),
         night({ occurrence_date: "2026-12-31", is_customized: true }),
       ],
     },
