@@ -5,7 +5,9 @@ import { join } from "node:path"
 import {
   draftIdsToPublish,
   isApprovedBusinessStatus,
+  isPendingApprovalStatus,
   mergeUpcomingWithQueuedDrafts,
+  pendingApprovalNightEventIds,
   shouldAutoPublishCreatedDraft,
   shouldPromoteQueuedDrafts,
   shouldRunLiveAfterApprove,
@@ -72,6 +74,22 @@ test("only draft ids are published", () => {
       { event_id: 12 },
     ]),
     [10, 12],
+  )
+})
+
+test("WC hold is pending_approval, never draft", () => {
+  assert.equal(isPendingApprovalStatus("pending_approval"), true)
+  assert.equal(isPendingApprovalStatus("draft"), false)
+  assert.equal(isPendingApprovalStatus("published"), false)
+  assert.deepEqual(
+    pendingApprovalNightEventIds([
+      { event_id: 20, status: "pending_approval" },
+      { event_id: 21, status: "draft" },
+      { event_id: 22, status: "published" },
+      { event_id: 23, status: null },
+      { event_id: null, status: "pending_approval" },
+    ]),
+    [20],
   )
 })
 
@@ -147,6 +165,37 @@ test("dashboard shell runs live-after-approve once the host is approved", () => 
     "utf8",
   )
   assert.ok(src.includes("LiveAfterApprove"), "approved hosts must promote queued drafts without a refresh loop")
+})
+
+test("live-after-approve promotes pending_approval Weekly Cover nights", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/components/business/v2/LiveAfterApprove.tsx"),
+    "utf8",
+  )
+  assert.ok(src.includes("fetchDoorAccessProgramsSafe"), "approve must find WC programs, not only events drafts")
+  assert.ok(src.includes("promotePendingApprovalNightsForProgram"), "D3 promotes leftover pending_approval nights")
+  assert.ok(!src.includes("draftNightEventIds"), "do not promote draft WC — draft is sellable")
+})
+
+test("WC create does not use a draft hold", () => {
+  const wizard = readFileSync(
+    join(process.cwd(), "src/components/business/v2/door-access/DoorAccessWizard.tsx"),
+    "utf8",
+  )
+  assert.ok(!wizard.includes("willDraftOnCreate"), "WC hold is pending_approval, not draft")
+  assert.ok(!wizard.includes("applySaveAsDraftFlag"), "do not send save_as_draft — draft WC is sellable")
+  assert.ok(!wizard.includes("publishDraftNightsForProgram"), "create must not force a second publish")
+  assert.ok(wizard.includes("shouldTreatDraftAsLive"), "pending WC must not stamp publish:true")
+  assert.ok(wizard.includes("pendingApproval"), "success copy must distinguish pending vs live")
+})
+
+test("WC night Save omits publish while the business is pending", () => {
+  const src = readFileSync(
+    join(process.cwd(), "src/app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx"),
+    "utf8",
+  )
+  assert.ok(src.includes("shouldTreatDraftAsLive"), "night save must reuse the event publish gate")
+  assert.ok(src.includes("buildNightSavePayload"), "night save still uses the shared payload builder")
 })
 
 test("event detail Publish is enabled after approve", () => {

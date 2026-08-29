@@ -53,6 +53,31 @@ export function showsAccess(filter: EventTypeFilter): boolean {
   return filter !== "events"
 }
 
+/** Pending hosts keep WC off Upcoming Live. Approved hosts see Upcoming. */
+export function weeklyCoverEventsListTab(isPending: boolean): "upcoming" | "drafts" {
+  return isPending ? "drafts" : "upcoming"
+}
+
+export function shouldShowWeeklyCoverOnEventsTab(
+  tab: string,
+  isPending: boolean,
+  typeFilter: EventTypeFilter,
+): boolean {
+  if (!showsAccess(typeFilter)) return false
+  if (typeFilter === "access") return true
+  return tab === weeklyCoverEventsListTab(isPending)
+}
+
+/** Custom dates stay on the live tab when approved, Drafts when pending. */
+export function shouldShowWeeklyCoverOneOffsOnEventsTab(
+  tab: string,
+  isPending: boolean,
+  typeFilter: EventTypeFilter,
+): boolean {
+  if (!showsAccess(typeFilter)) return false
+  return tab === weeklyCoverEventsListTab(isPending)
+}
+
 /**
  * One rendered row. A `series` row owns >= 1 dated nights; a `single` row is a
  * one-off event (or a series TEMPLATE, which has no generated night to hide

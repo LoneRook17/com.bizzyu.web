@@ -8,11 +8,16 @@ import {
   liveAfterApproveStorageKey,
   shouldRunLiveAfterApprove,
 } from "@/lib/business/live-after-approve"
+import {
+  fetchDoorAccessProgramsSafe,
+  promotePendingApprovalNightsForProgram,
+} from "@/lib/business/door-access"
 import type { EventListItem } from "@/lib/business/types"
 
 /**
- * After admin approve, drafts created during review go live. Money stays in
- * escrow until Stripe — this only publishes queued posts.
+ * After admin approve the BUSINESS, queued posts go live (D3). One-off
+ * leftovers may still be draft. Weekly Cover leftovers are pending_approval
+ * (services #109) — draft WC is sellable, so it is not the hold.
  */
 export default function LiveAfterApprove() {
   const { isPending, business, refreshProfile } = useAuth()
@@ -48,11 +53,23 @@ export default function LiveAfterApprove() {
           "/business/events?tab=drafts&page=1&limit=50",
         )
         if (cancelled) return
-        for (const eventId of draftIdsToPublish(data.events ?? [])) {
+        const ids = draftIdsToPublish(data.events ?? [])
+        if (cancelled) return
+        for (const eventId of ids) {
           try {
             await apiClient.post(`/business/events/${eventId}/publish`)
           } catch {
-            // Detail page and create flow still promote individually.
+            // Event detail still promotes one-off leftovers.
+          }
+        }
+        const programs = await fetchDoorAccessProgramsSafe()
+        if (cancelled) return
+        for (const program of programs) {
+          if (cancelled) return
+          try {
+            await promotePendingApprovalNightsForProgram(program.id)
+          } catch {
+            // Night status is pending_approval until the next approve pass.
           }
         }
       } catch {
