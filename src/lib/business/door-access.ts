@@ -1374,6 +1374,37 @@ export function nightHref(programId: number, date: string): string {
   return `/business/door-access/${programId}/nights/${date}`
 }
 
+/**
+ * WC night cancel — same admin request as a one-off. Do not invent a
+ * second money path or hard-delete ticket rows.
+ */
+export function weeklyCoverNightCancelPath(eventId: number): string {
+  return `/business/events/${eventId}/request-cancellation`
+}
+
+/** WC program / series-end. Core suspendSeries: is_active=0, unsold nights leave. */
+export function weeklyCoverProgramCancelPath(programId: number): string {
+  return `/business/recurring-series/${programId}/suspend`
+}
+
+export function weeklyCoverNightCancelEventId(
+  night: Pick<DoorAccessNight, "event_id" | "status">,
+): number | null {
+  if (night.status === "cancelled") return null
+  const id = Number(night.event_id)
+  return Number.isFinite(id) && id > 0 ? id : null
+}
+
+export async function cancelWeeklyCoverProgram(programId: number): Promise<{
+  message?: string
+  cancelled: number[]
+  skipped_customized: number[]
+  skipped_with_sales: number[]
+}> {
+  const api = await client()
+  return api.post(weeklyCoverProgramCancelPath(programId))
+}
+
 /** The night's date for nightHref: occurrence_date, else start_date_time's day. */
 function nightDateFromEvent(event: {
   occurrence_date?: string | null
