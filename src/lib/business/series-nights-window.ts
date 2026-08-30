@@ -61,7 +61,11 @@ export function isStandaloneOneOff(event: { recurring_series_id?: number | null 
 
 /**
  * Whether a green Event row belongs on Host Upcoming / the Events upcoming list.
- * Custom series nights and standalone one-offs are never clipped by the window.
+ * Custom series nights and standalone one-offs are never clipped by the window
+ * — but "never clipped" is about the UPPER bound only. A night whose calendar
+ * date is already past (US/Eastern) is never upcoming, one-off or not: before
+ * this lower bound, a leftover finished one-off / detached Custom night stayed
+ * on Home's Upcoming forever.
  */
 export function hostUpcomingShowsGreenNight(
   event: {
@@ -74,12 +78,13 @@ export function hostUpcomingShowsGreenNight(
   today: string,
   windowDays: number = SERIES_NIGHTS_WINDOW_DAYS,
 ): boolean {
+  const date = eventOccurrenceDate(event)
+  if (date && date < today) return false
   if (isStandaloneOneOff(event)) return true
   if (isCustomizedSeriesNight(event)) return true
-  const date = eventOccurrenceDate(event)
   if (!date) return true
   const horizon = addIsoDays(today, windowDays)
-  return date >= today && date <= horizon
+  return date <= horizon
 }
 
 export function eventsForHostUpcomingList<T extends {

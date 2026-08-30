@@ -1582,6 +1582,22 @@ export function parseIsoDate(iso: string): { y: number; m: number; d: number } |
 }
 
 /**
+ * "Aug 30" — Home's compact date, safe for BOTH shapes a date arrives in.
+ *
+ * Bare "YYYY-MM-DD" night dates are calendar strings: `new Date("2026-08-30")`
+ * is UTC midnight, and toLocaleDateString renders it as "Aug 29" for every US
+ * viewer. Those route through the calendar (same rule as fmtNightDate). Full
+ * datetimes ("YYYY-MM-DD HH:MM:SS" / ISO event starts) keep the local-parse
+ * path Home always used for them.
+ */
+export function fmtShortDate(s?: string | null): string {
+  if (!s) return "-"
+  const parts = /^\d{4}-\d{2}-\d{2}$/.test(s.trim()) ? parseIsoDate(s.trim()) : null
+  if (parts) return `${MONTH_NAMES[parts.m - 1]} ${parts.d}`
+  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+}
+
+/**
  * Image for a weekly-access list row (the program, not one night).
  *
  * flyer_image_url wins, including when services already coalesced an empty
@@ -1713,14 +1729,36 @@ export function programMetaLine(program: DoorAccessProgramSummary): string {
 }
 
 /**
+ * program.next_night_date, but only while that night is still today or later
+ * (US/Eastern). The stamp goes stale the morning after a night runs — and a
+ * cached/older API payload can serve one already past — and a stale stamp
+ * must read as "no next night", never paint yesterday as "Next". This is the
+ * ONE lower-bound guard for every surface that sorts or labels by a program's
+ * next night (Home tile, attention row, Upcoming list, schedule rows).
+ */
+export function upcomingNextNightDate(
+  program: Pick<DoorAccessProgramSummary, "next_night_date">,
+  today: string,
+): string | null {
+  const date = program.next_night_date
+  if (!date) return null
+  return date >= today ? date : null
+}
+
+/**
  * The desktop row's second line — the schedule facts that only exist on a
  * program. Ends at the next night, which is the thing a host actually looks
- * for; the full list is one click away on the series page.
+ * for; the full list is one click away on the series page. A stale (already
+ * ran) next_night_date drops the "Next:" segment entirely.
  */
-export function programScheduleLine(program: DoorAccessProgramSummary): string {
+export function programScheduleLine(
+  program: DoorAccessProgramSummary,
+  today: string = easternToday(),
+): string {
   const parts: string[] = [fmtWindow(program.start_time, program.end_time)]
-  if (program.next_night_date) {
-    parts.push(`Next: ${fmtNightDate(program.next_night_date)}`)
+  const nextDate = upcomingNextNightDate(program, today)
+  if (nextDate) {
+    parts.push(`Next: ${fmtNightDate(nextDate)}`)
   }
   parts.push(
     program.upcoming_night_count === 1

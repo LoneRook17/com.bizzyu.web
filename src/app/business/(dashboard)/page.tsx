@@ -22,6 +22,7 @@ import {
   WEEKLY_ACCESS_TYPE_LABEL,
   easternToday,
   fetchDoorAccessProgramsSafe,
+  fmtShortDate,
   isWeeklyCoverProduct,
   loadProgramsUpcomingNights,
   programHref,
@@ -47,10 +48,10 @@ import TrialHome from "@/components/business/v2/TrialHome"
 import EscrowPanel from "@/components/business/v2/EscrowPanel"
 import HomeStripeConnectPrompt from "@/components/business/v2/HomeStripeConnectPrompt"
 
-function fmtDate(s?: string | null) {
-  if (!s) return "-"
-  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-}
+// Date formatting is fmtShortDate (door-access.ts): bare "YYYY-MM-DD" night
+// dates format on the calendar — `new Date("2026-08-30")` is UTC midnight and
+// used to render "Aug 29" here for every US viewer — while event datetimes
+// keep the local parse this page always had.
 function fmtRelative(s: string) {
   const d = new Date(s).getTime()
   const mins = Math.round((Date.now() - d) / 60000)
@@ -194,8 +195,12 @@ export default function V2HomePage() {
     ...new Set([...inactiveWeeklyCoverSeriesIds(programs, [], events), ...probedInactiveIds]),
   ]
   const showAccessSection = activePrograms.length > 0
+  // One "today" (US/Eastern) for every lower bound on this page: a stale/past
+  // next_night_date from the API must never surface as Next / Upcoming /
+  // Needs-attention.
+  const today = easternToday()
   const nextNights = activePrograms
-    .map(nextAccessNight)
+    .map((p) => nextAccessNight(p, today))
     .filter((n): n is NonNullable<ReturnType<typeof nextAccessNight>> => n !== null)
     .sort((a, b) => a.date.localeCompare(b.date))
   const soonestNight = nextNights[0] ?? null
@@ -207,7 +212,7 @@ export default function V2HomePage() {
     4,
     inactiveWcIds,
     oneOffNights,
-    easternToday(),
+    today,
   )
   const showUpcomingCard = showEventsSection || showAccessSection
 
@@ -232,7 +237,7 @@ export default function V2HomePage() {
         if (inactiveWcIds.includes(seriesId) && !weeklyCoverNightNeedsPendingCancel(event, false)) {
           return false
         }
-        if (!hostUpcomingShowsGreenNight(event, easternToday())) return false
+        if (!hostUpcomingShowsGreenNight(event, today)) return false
         return true
       })
     : undefined
@@ -240,14 +245,14 @@ export default function V2HomePage() {
     attention.push({
       icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
       title: `${nextEvent.name} is coming up`,
-      sub: `${fmtDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
+      sub: `${fmtShortDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
       href: `/business/events/${nextEvent.event_id}/manage`, cta: "Manage",
     })
   }
   if (soonestNight) {
     attention.push({
       icon: Zap, tint: "bg-pink-50 dark:bg-pink-950/40 text-[#FF3ED1]",
-      title: `${soonestNight.program.name} runs ${fmtDate(soonestNight.date)}`,
+      title: `${soonestNight.program.name} runs ${fmtShortDate(soonestNight.date)}`,
       sub: `${soonestNight.program.upcoming_night_count} nights scheduled · ${soonestNight.program.tier_count} tiers`,
       href: programHref(soonestNight.program.id), cta: "Manage",
     })
@@ -319,7 +324,7 @@ export default function V2HomePage() {
                 <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
               )}
               {showEventsSection && (
-                <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
+                <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtShortDate(stats.next_event_date)}` : "None scheduled"} />
               )}
             </>
           )}
@@ -360,7 +365,7 @@ export default function V2HomePage() {
             )}
             <MetricTile
               label="Next night"
-              value={nextAccessDate ? fmtDate(nextAccessDate) : "-"}
+              value={nextAccessDate ? fmtShortDate(nextAccessDate) : "-"}
               sub={nextAccessDate ? undefined : "None scheduled"}
             />
           </div>
@@ -438,7 +443,7 @@ export default function V2HomePage() {
                         <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full" style={{ backgroundColor: ACCESS_ACCENT }} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{p.name}</span>
-                          <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(entry.date)} · {p.venue_name}</span>
+                          <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(entry.date)} · {p.venue_name}</span>
                         </span>
                         <span
                           className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.06em]"
@@ -457,7 +462,7 @@ export default function V2HomePage() {
                       {showAccessSection && <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full bg-[#05EB54]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
-                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
                       </span>
                       <Badge variant={b.variant}>{b.label}</Badge>
                       <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
@@ -485,7 +490,7 @@ export default function V2HomePage() {
                   <Link key={d.id} href={`/business/deals/${d.id}`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{d.deal_title}</span>
-                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtDate(d.expired_date)}</span>
+                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtShortDate(d.expired_date)}</span>
                     </span>
                     <Badge variant="success">Live</Badge>
                     <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />

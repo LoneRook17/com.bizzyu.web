@@ -22,6 +22,7 @@ import {
   isHostCustomWeeklyCoverNight,
   isWeeklyCoverProduct,
   parseIsoDate,
+  upcomingNextNightDate,
   visibleUpcomingNights,
   type DoorAccessNight,
   type DoorAccessProgramSummary,
@@ -316,6 +317,7 @@ function collectSchedules(
   inactiveWcIds: ReadonlySet<number>,
   showEvents: boolean,
   showAccessSchedules: boolean,
+  today: string,
 ): HostDashSchedule[] {
   const out: HostDashSchedule[] = []
   const listedProgramIds = new Set<number>()
@@ -328,7 +330,9 @@ function collectSchedules(
       out.push({
         kind: "access",
         key: `schedule-access-${program.id}`,
-        sortKey: program.next_night_date ?? "",
+        // A stale (already ran) next_night_date sorts like an unstamped
+        // program, never as if yesterday were its next night.
+        sortKey: upcomingNextNightDate(program, today) ?? "",
         program,
       })
     }
@@ -476,6 +480,7 @@ export function hostDashSections(input: HostDashSectionsInput): HostDashSections
       inactive,
       showEvents,
       showAccessSchedules,
+      today,
     ),
   }
 }
