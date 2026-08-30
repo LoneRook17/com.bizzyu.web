@@ -155,13 +155,14 @@ test("green RC and WC create hide promoter extras unless the toggle is on", () =
   assert.ok(wc.includes("promoterExtrasVisible"), "WC extras must follow the Promoter toggle")
 })
 
-test("checkout Get paid is gated on the real promoter flag", () => {
-  const src = readFileSync(
-    join(process.cwd(), "src/app/checkout/[id]/EventCheckoutClient.tsx"),
-    "utf8",
-  )
-  assert.ok(src.includes("isPromotionEnabled(event.promotion_enabled)"), "Get paid must not use !!promotion_enabled")
-  assert.ok(!src.includes("{!!event.promotion_enabled &&"), "Get paid must not render on a leftover truthy flag")
+test("Next renders no checkout Get-paid CTA — the gate lives on Laravel", () => {
+  // HOST LOCK (2026-08-30): /checkout/:id 302s to Laravel, whose blade
+  // gates the promote chip on promotion_enabled (core CheckoutChipsTest).
+  // Nothing on this host may grow a second, differently-gated CTA.
+  const src = readFileSync(join(process.cwd(), "src/app/checkout/[id]/page.tsx"), "utf8")
+  assert.ok(src.includes("laravelCheckoutBaseUrl"), "checkout path is a Laravel redirect")
+  assert.ok(!src.includes("Get paid"), "no promote CTA on the redirect page")
+  assert.ok(!src.includes("promotion_enabled"), "no promotion logic on this host's checkout path")
 })
 
 test("dashboard shell runs live-after-approve once the host is approved", () => {
