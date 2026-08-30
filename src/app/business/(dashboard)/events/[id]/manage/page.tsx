@@ -253,7 +253,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       ? [
           { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Door hours, or close this night only", show: canEdit && seriesActive },
           { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit && seriesActive },
-          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
+          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account for this night", show: true },
         ]
       : [
           { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
