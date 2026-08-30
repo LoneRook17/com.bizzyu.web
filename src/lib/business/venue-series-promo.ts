@@ -37,12 +37,20 @@ export function seriesPromoListPath(venueId: number): string {
 
 /**
  * Per-series REST root. Same shape as Universal
- * (`GET|POST {basePath}`, `GET {basePath}/{id}/breakdown`). Door Access
- * already serves WC series this way; named RC uses the same contract so
- * the panel does not fall back onto the venue-wide path.
+ * (`GET|POST {basePath}`, `GET {basePath}/{id}/breakdown`), but the HOST
+ * differs by kind: Weekly Cover series live under /business/door-access,
+ * named RC series under /business/recurring-series (services
+ * businessRecurringSeries.ts). Door-access resolution REJECTS non-door_access
+ * kinds, so routing an RC group at it silently empty-lists and 404s CRUD —
+ * the kind is a required argument precisely so no caller can forget it.
  */
-export function seriesPromoBasePath(seriesId: number): string {
-  return `/business/door-access/${seriesId}/promo-codes`
+export function seriesPromoBasePath(
+  productKind: VenueSeriesPromoGroup["product_kind"],
+  seriesId: number,
+): string {
+  return productKind === "weekly_cover"
+    ? `/business/door-access/${seriesId}/promo-codes`
+    : `/business/recurring-series/${seriesId}/promo-codes`
 }
 
 export function seriesPromoManageHref(productKind: VenueSeriesPromoGroup["product_kind"], seriesId: number): string {

@@ -648,6 +648,16 @@ export interface PromoEventBreakdownRow {
   event_id: number
   event_name: string | null
   event_date: string | null
+  /**
+   * The program (recurring_event_series) this event belongs to, or null for a
+   * one-off. Additive (Aug 2026): lets the breakdown fold a program's nights
+   * into ONE line instead of a wall of rows. Absent on older API responses.
+   */
+  recurring_series_id?: number | null
+  /** recurring_event_series.name for the event's program; null for one-offs. */
+  series_name?: string | null
+  /** recurring_event_series.program_kind ('door_access', 'event', …); null for one-offs. */
+  program_kind?: string | null
   redemptions: number
   revenue_generated: number
 }
