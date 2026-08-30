@@ -169,7 +169,7 @@ test("Tonight is only today's night; a later series night is Upcoming", () => {
           night("2026-08-29", { event_id: 501 }),
           night("2026-09-04", { event_id: 502 }),
           night("2026-09-11", { event_id: 503 }),
-          night("2026-09-18", { event_id: 504 }),
+          night("2026-10-09", { event_id: 504 }),
         ],
       },
     ],
@@ -191,8 +191,8 @@ test("Tonight is only today's night; a later series night is Upcoming", () => {
     "in-window RC night is Upcoming",
   )
   assert.ok(
-    !out.upcoming.some((row) => row.kind === "access" && row.date === "2026-09-18"),
-    "series WC past today+14 is not dumped",
+    !out.upcoming.some((row) => row.kind === "access" && row.date === "2026-10-09"),
+    "series WC past today+30 is not dumped",
   )
 })
 
@@ -233,16 +233,16 @@ test("a far October Custom one-off stays listed and is pinned when collapsed", (
   )
 })
 
-test("fresh weekday template nights are not Custom and clip at today+14", () => {
+test("fresh weekday template nights are not Custom and clip at today+30", () => {
   const wc = program(23)
-  const template = night("2026-09-18", { event_id: 8820, is_customized: true })
+  const template = night("2026-10-09", { event_id: 8820, is_customized: true })
   const out = sections({
     events: [],
     programs: [wc],
     programNights: [{ program: wc, nights: [night("2026-09-04", { event_id: 502 }), template] }],
     wcSeriesIds: [23],
   })
-  assert.ok(!out.upcoming.some((row) => row.date === "2026-09-18"))
+  assert.ok(!out.upcoming.some((row) => row.date === "2026-10-09"))
   assert.equal(occurrenceIsPinned({
     kind: "access",
     key: "x",
