@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -18,9 +19,13 @@ function buildQueryString(sp: Record<string, string | string[] | undefined>): st
   return params.toString()
 }
 
-/** Old WC buy path. Send buyers to the same event checkout as named events. */
+/**
+ * Old WC buy path. HOST LOCK (2026-08-30): ticket checkout lives on
+ * Laravel — send buyers straight there, not to the same-origin /checkout
+ * twin (which is itself only a redirect now).
+ */
 export default async function CoverRedirect({ params, searchParams }: PageProps) {
   const { id } = await params
   const qs = buildQueryString(await searchParams)
-  redirect(`/checkout/${id}${qs ? `?${qs}` : ""}`)
+  redirect(`${laravelCheckoutBaseUrl()}/checkout/${id}${qs ? `?${qs}` : ""}`)
 }

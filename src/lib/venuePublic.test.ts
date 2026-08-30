@@ -949,22 +949,16 @@ test("venue upcoming rows use ticket cards, not line-skip glass", () => {
   assert.ok(row.includes("text-access"), "WC type label and free price use access pink")
 })
 
-test("event checkout paints Weekly Cover magenta", () => {
-  const src = readFileSync(
-    join(process.cwd(), "src/app/checkout/[id]/EventCheckoutClient.tsx"),
-    "utf8",
-  )
-  assert.ok(src.includes("isWeeklyCoverProduct"), "product_kind (access_kind fallback) is magenta")
-  assert.ok(src.includes("product_kind"), "checkout consumes services' product stamp")
-  assert.ok(
-    !src.includes("looksLikeWeeklyCoverName"),
-    "the event's name is not a product signal on checkout",
-  )
-  assert.ok(src.includes("const fill = cover ? ACCESS : EVENT_FILL"), "Weekly Cover uses ACCESS, named events stay green")
-  assert.ok(src.includes("ticketIdFromSearch"), "venue ?ticket_id= must auto-select that ticket")
-  assert.ok(src.includes("saleClosed"), "host-ended WC must not start checkout")
-  assert.ok(src.includes("weeklyCoverSaleOpenForPayloads"), "direct /checkout/:id fail-closes from public payloads")
-  assert.ok(src.includes("This night is no longer on sale"), "ended series shows a closed sale, not tiers")
+test("HOST LOCK: /checkout/:id is a redirect to Laravel, not a checkout", () => {
+  // Ticket checkout ALWAYS lives on Laravel (Luke 2026-08-30). This Next
+  // path only 302s wrong-twin traffic there with the query string intact —
+  // sale gating, ended nights, and promotion gating are Laravel's job.
+  const src = readFileSync(join(process.cwd(), "src/app/checkout/[id]/page.tsx"), "utf8")
+  assert.ok(src.includes("laravelCheckoutBaseUrl"), "redirect origin must come from env, never hardcoded")
+  assert.ok(src.includes("redirect(`${laravelCheckoutBaseUrl()}/checkout/${id}"), "302 to Laravel /checkout/:id")
+  assert.ok(src.includes("buildQueryString"), "ref / success / session_id must survive the bounce")
+  assert.ok(!src.includes('from "./EventCheckoutClient"'), "the Next checkout UI must not come back")
+  assert.ok(!src.includes("fetch("), "a redirect page fetches nothing")
 })
 
 test("direct /event/:id fail-closes ended WC instead of a Laravel bounce", () => {
@@ -974,20 +968,28 @@ test("direct /event/:id fail-closes ended WC instead of a Laravel bounce", () =>
   assert.ok(page.includes("weeklyCoverSaleOpenForPayloads"), "/event/:id must inspect series activity")
   assert.ok(page.includes("This night is no longer on sale"))
   assert.ok(!/source:\s*"\/event\/:id/.test(config), "next.config must not 307 /event/:id to Laravel")
-  assert.ok(checkout.includes("saleClosed"), "/checkout/:id computes saleClosed on the server")
+  // HOST LOCK: /checkout/:id no longer computes anything — it bounces to
+  // Laravel, which owns the sale gate.
+  assert.ok(checkout.includes("laravelCheckoutBaseUrl"), "/checkout/:id is a Laravel redirect")
 })
 
-test("event checkout landing sends every night to /checkout/:id, not /cover", () => {
+test("event checkout landing sends every night to Laravel /checkout/:id, not /cover", () => {
   const src = readFileSync(join(process.cwd(), "src/app/event/[id]/checkout/page.tsx"), "utf8")
-  assert.ok(src.includes("`/checkout/${id}"), "named events and Weekly Cover share /checkout/:id")
+  assert.ok(
+    src.includes("${laravelCheckoutBaseUrl()}/checkout/${id}"),
+    "named events and Weekly Cover share LARAVEL /checkout/:id (HOST LOCK)",
+  )
   assert.ok(!src.includes("weeklyCoverCheckoutPath"), "door nights must not open /cover")
   assert.ok(!src.includes("/cover/"), "landing must not send Weekly Cover to /cover")
 })
 
-test("legacy /cover/:id redirects to event checkout", () => {
+test("legacy /cover/:id redirects to Laravel event checkout", () => {
   const page = readFileSync(join(process.cwd(), "src/app/cover/[id]/page.tsx"), "utf8")
   assert.ok(page.includes("redirect"), "old /cover links must not stay on a separate WC checkout")
-  assert.ok(page.includes("`/checkout/${id}"), "cover redirects to the event checkout")
+  assert.ok(
+    page.includes("${laravelCheckoutBaseUrl()}/checkout/${id}"),
+    "cover redirects to LARAVEL checkout (HOST LOCK)",
+  )
   assert.ok(!page.includes("WeeklyCoverCheckoutClient"), "cover is not a second checkout product")
 })
 
