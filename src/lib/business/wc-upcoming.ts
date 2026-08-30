@@ -7,6 +7,7 @@ import type { DoorAccessNight, DoorAccessProgramSummary } from "./door-access.ts
 import type { OneOffUpcomingNight } from "./home-upcoming.ts"
 import { isHostCustomNight } from "./host-custom-night.ts"
 import type { MarketingNightInput } from "./marketing-events.ts"
+import { hostShowsWeeklyCoverNight } from "./series-nights-window.ts"
 import { isApprovedCanceledStatus } from "./weekly-cover-visibility.ts"
 
 export function isUpcomingNightDate(date: string, today: string): boolean {
@@ -67,7 +68,14 @@ export function customUpcomingNightsFromSeries(
   return out
 }
 
-/** Every upcoming WC night — series and one-off — for Marketing → Events. */
+/**
+ * Upcoming WC nights for Marketing → Events. The nights arrive on a far
+ * fetch (180d so one-offs are not clipped), but the LIST paints only the
+ * shared month window for generated series nights — Custom / one-off /
+ * override dates still list no matter how far (hostShowsWeeklyCoverNight,
+ * the same rule as the Host grid). Before this, Marketing dumped every
+ * fetched template night — a five-month pile.
+ */
 export function marketingNightsFromSeries(
   loaded: Array<{ program: DoorAccessProgramSummary; nights: DoorAccessNight[] }>,
   today: string,
@@ -77,6 +85,7 @@ export function marketingNightsFromSeries(
     if (!program.is_active) continue
     for (const night of nights) {
       if (!isUpcomingNightDate(night.occurrence_date, today)) continue
+      if (!hostShowsWeeklyCoverNight(night, today)) continue
       if (isApprovedCanceledStatus(night.status)) continue
       out.push({
         programId: program.id,

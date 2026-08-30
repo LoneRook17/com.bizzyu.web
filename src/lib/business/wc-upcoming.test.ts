@@ -97,3 +97,34 @@ test("marketing lists every upcoming WC night, not only one-offs", () => {
   )
   assert.equal(rows[1].eventId, 1592)
 })
+
+test("marketing clips GENERATED template nights to the month window (Luke 2026-08-30)", () => {
+  // Fetch is far (180d) so one-offs arrive; the LIST must not become a
+  // five-month template pile. Generated nights past today+30 drop; a
+  // stamped far Custom stays; an unstamped far lookahead never lists.
+  const today = "2026-08-27" // +30 = 2026-09-26
+  const loaded = [
+    {
+      program: program(),
+      nights: [
+        night({ occurrence_date: "2026-09-04", series_customized_at: null, event_id: 700 }),
+        night({ occurrence_date: "2026-09-25", series_customized_at: null, event_id: 701 }),
+        night({ occurrence_date: "2026-10-02", series_customized_at: null, event_id: 702 }),
+        night({ occurrence_date: "2026-11-06", series_customized_at: null, event_id: 703 }),
+        night({ occurrence_date: "2026-10-31", series_customized_at: "2026-08-20 10:00:00", event_id: 704 }),
+        night({
+          occurrence_date: "2026-10-09",
+          series_customized_at: null,
+          event_id: null,
+          is_stamped: false,
+          is_customized: true,
+        }),
+      ],
+    },
+  ]
+  const rows = marketingNightsFromSeries(loaded, today)
+  assert.deepEqual(
+    rows.map((row) => row.date).sort(),
+    ["2026-09-04", "2026-09-25", "2026-10-31"],
+  )
+})

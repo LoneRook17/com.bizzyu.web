@@ -27,9 +27,9 @@ function night(
   return { start_date_time: start, ...extra }
 }
 
-test("the series window is today plus two weeks", () => {
-  assert.equal(SERIES_NIGHTS_WINDOW_DAYS, 14)
-  assert.equal(addIsoDays(TODAY, 14), "2026-09-10")
+test("the series window is one month (Luke 2026-08-30)", () => {
+  assert.equal(SERIES_NIGHTS_WINDOW_DAYS, 30)
+  assert.equal(addIsoDays(TODAY, 30), "2026-09-26")
 })
 
 test("a standalone one-off always shows, even far out", () => {
@@ -45,9 +45,9 @@ test("an uncustomized series night inside the window shows", () => {
   )
 })
 
-test("an uncustomized series night past today+2 weeks is hidden", () => {
+test("an uncustomized series night past today+30 is hidden", () => {
   assert.equal(
-    hostUpcomingShowsGreenNight(night("2026-09-11 21:00:00", { recurring_series_id: 7 }), TODAY),
+    hostUpcomingShowsGreenNight(night("2026-09-27 21:00:00", { recurring_series_id: 7 }), TODAY),
     false,
   )
 })
@@ -125,8 +125,8 @@ test("Events upcoming list applies the series nights window", () => {
     join(process.cwd(), "src/lib/business/host-dash-sections.ts"),
     "utf8",
   )
-  assert.ok(src.includes("hostUpcomingShowsGreenNight"), "Host Upcoming clips green series nights to today+2 weeks")
-  assert.ok(src.includes("nightsForHostWeeklyCoverGrid"), "Host Upcoming clips WC series nights to today+14")
+  assert.ok(src.includes("hostUpcomingShowsGreenNight"), "Host Upcoming clips green series nights to the month window")
+  assert.ok(src.includes("nightsForHostWeeklyCoverGrid"), "Host Upcoming clips WC series nights to the month window")
 })
 
 test("series manage still lists the full series — window is Host Upcoming / Events list only", () => {
@@ -136,11 +136,11 @@ test("series manage still lists the full series — window is Host Upcoming / Ev
   )
   assert.ok(
     !page.includes("hostUpcomingShowsGreenNight") && !page.includes("eventsForHostUpcomingList"),
-    "the series page must not clip nights to today+2 weeks",
+    "the series page must not clip nights to the month window",
   )
 })
 
-// ── Weekly Cover program Nights grid (Flutter Host today+14) ────────────────
+// ── Weekly Cover program Nights grid (today+30, Luke 2026-08-30) ────────────
 
 const WC_TODAY = "2026-08-28"
 
@@ -167,25 +167,27 @@ function wcNight(
   }
 }
 
-test("Fri create with Sat nights lists Sat Aug 29 and Sat Sep 5, not Sep 12/19", () => {
-  assert.equal(addIsoDays(WC_TODAY, 14), "2026-09-11")
+test("Fri create with Sat nights lists a month of Saturdays, not Oct 3/10", () => {
+  assert.equal(addIsoDays(WC_TODAY, 30), "2026-09-27")
   const saturdays = [
     wcNight("2026-08-29"),
     wcNight("2026-09-05"),
     wcNight("2026-09-12"),
     wcNight("2026-09-19"),
+    wcNight("2026-09-26"),
+    wcNight("2026-10-03"),
+    wcNight("2026-10-10"),
   ]
   assert.deepEqual(
     nightsForHostWeeklyCoverGrid(saturdays, WC_TODAY).map((n) => n.occurrence_date),
-    ["2026-08-29", "2026-09-05"],
+    ["2026-08-29", "2026-09-05", "2026-09-12", "2026-09-19", "2026-09-26"],
   )
-  assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-08-29"), WC_TODAY), true)
-  assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-09-05"), WC_TODAY), true)
-  assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-09-12"), WC_TODAY), false)
-  assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-09-19"), WC_TODAY), false)
+  assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-09-26"), WC_TODAY), true)
+  assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-10-03"), WC_TODAY), false)
+  assert.equal(hostShowsWeeklyCoverNight(wcNight("2026-10-10"), WC_TODAY), false)
 })
 
-test("series 120 Oct 15 lists at +48d; Thursday templates stay in the 14-day window", () => {
+test("series 120 Oct 15 lists at +48d; Thursday templates stay in a passed 14-day window", () => {
   assert.equal(addIsoDays(WC_TODAY, 48), "2026-10-15")
   const thuSlot = { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: false }
   const octSlot = { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: true }
@@ -216,8 +218,8 @@ test("series 120 Oct 15 lists at +48d; Thursday templates stay in the 14-day win
   )
 })
 
-test("a host-stamped Custom night on Sep 19 still lists past +14", () => {
-  const custom = wcNight("2026-09-19", {
+test("a host-stamped Custom night on Oct 17 still lists past +30", () => {
+  const custom = wcNight("2026-10-17", {
     is_stamped: true,
     event_id: 8819,
     series_customized_at: "2026-08-20 10:00:00",
@@ -225,17 +227,17 @@ test("a host-stamped Custom night on Sep 19 still lists past +14", () => {
   assert.equal(isHostStampedCustomWeeklyCoverNight(custom), true)
   assert.equal(hostShowsWeeklyCoverNight(custom, WC_TODAY), true)
   const grid = nightsForHostWeeklyCoverGrid(
-    [wcNight("2026-08-29"), wcNight("2026-09-05"), wcNight("2026-09-12"), custom],
+    [wcNight("2026-08-29"), wcNight("2026-09-05"), wcNight("2026-10-03"), custom],
     WC_TODAY,
   )
   assert.deepEqual(
     grid.map((n) => n.occurrence_date),
-    ["2026-08-29", "2026-09-05", "2026-09-19"],
+    ["2026-08-29", "2026-09-05", "2026-10-17"],
   )
 })
 
-test("Not generated / no event_id beyond +14 never lists, even with is_customized", () => {
-  const lookahead = wcNight("2026-09-19", {
+test("Not generated / no event_id beyond +30 never lists, even with is_customized", () => {
+  const lookahead = wcNight("2026-10-17", {
     is_stamped: false,
     event_id: null,
     is_customized: true,
@@ -244,8 +246,8 @@ test("Not generated / no event_id beyond +14 never lists, even with is_customize
   assert.equal(hostShowsWeeklyCoverNight(lookahead, WC_TODAY), false)
 })
 
-test("is_customized alone does not pin a stamped template Saturday past +14", () => {
-  const template = wcNight("2026-09-19", {
+test("is_customized alone does not pin a stamped template Saturday past +30", () => {
+  const template = wcNight("2026-10-17", {
     is_stamped: true,
     event_id: 8820,
     is_customized: true,
@@ -261,10 +263,35 @@ test("Weekly Cover program page clips the Nights grid to the Host window", () =>
   )
   assert.ok(
     page.includes("nightsForHostWeeklyCoverGrid"),
-    "program Nights grid must use the Flutter Host today+14 window",
+    "program Nights grid must use the shared month window",
   )
   assert.ok(!page.includes("LookaheadPicker"), "do not dump 4/12/24 weeks of Not generated lookaheads")
   assert.ok(!page.includes("4 weeks"), "no 4-week lookahead pager")
   assert.ok(!page.includes("12 weeks"), "no 12-week lookahead pager")
   assert.ok(!page.includes("6 months"), "no 6-month lookahead pager")
+})
+
+test("one month, one constant: no second display window on a dash list (Luke 2026-08-30)", () => {
+  const src = join(process.cwd(), "src")
+  // The create-dates preview paints the shared window, not a 120-day dump.
+  const datesStep = readFileSync(
+    join(src, "components/business/v2/door-access/WcDatesStep.tsx"),
+    "utf8",
+  )
+  assert.ok(datesStep.includes("SERIES_NIGHTS_WINDOW_DAYS"), "WcDatesStep paints the shared window")
+  assert.ok(!datesStep.includes("WC_LOOKAHEAD_DAYS"), "the 120-day dump is gone")
+  const wcNights = readFileSync(join(src, "lib/business/weekly-cover-nights.ts"), "utf8")
+  assert.ok(!wcNights.includes("WC_LOOKAHEAD_DAYS = 120"), "no 120-day constant to drift back")
+  // Marketing clips generated nights with the same rule as the Host grid.
+  const wcUpcoming = readFileSync(join(src, "lib/business/wc-upcoming.ts"), "utf8")
+  assert.ok(
+    wcUpcoming.includes("hostShowsWeeklyCoverNight"),
+    "Marketing nights ride the shared window filter",
+  )
+  // Fetch lookaheads may stay far; displays must not hardcode one.
+  const analytics = readFileSync(
+    join(src, "app/business/(dashboard)/analytics/page.tsx"),
+    "utf8",
+  )
+  assert.ok(!/fetchDoorAccessSeries\(program\.id, 180\)/.test(analytics), "no bare 180 literal")
 })

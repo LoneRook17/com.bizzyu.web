@@ -54,7 +54,7 @@
 
 import type { DoorAccessNight, DoorAccessProgram, DoorAccessTemplateTier } from "./door-access"
 import { isHostCustomNight } from "./host-custom-night.ts"
-import { weeklyCoverNightIsHostStamped } from "./series-nights-window.ts"
+import { SERIES_NIGHTS_WINDOW_DAYS, weeklyCoverNightIsHostStamped } from "./series-nights-window.ts"
 import type { RecurringTemplateTicket } from "./types"
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -1324,8 +1324,9 @@ export function isoDateOf(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-/** How far ahead the game-day calendar looks. Matches the app's lookahead. */
-export const WC_LOOKAHEAD_DAYS = 120
+// The old 120-day WC_LOOKAHEAD_DAYS is gone (Luke 2026-08-30): the
+// game-day calendar paints generated weekday marks for the shared month
+// window only. Callers wanting a different bound pass lookaheadDays.
 
 /**
  * The dates this program will actually run, as plain Y-m-d strings.
@@ -1347,7 +1348,7 @@ export function scheduledDates(opts: {
   if (Number.isNaN(start.getTime())) return []
 
   const horizon = new Date(start)
-  horizon.setDate(horizon.getDate() + (opts.lookaheadDays ?? WC_LOOKAHEAD_DAYS))
+  horizon.setDate(horizon.getDate() + (opts.lookaheadDays ?? SERIES_NIGHTS_WINDOW_DAYS))
   const limit = opts.rangeEnd && opts.rangeEnd !== "" ? opts.rangeEnd : null
 
   const out: string[] = []

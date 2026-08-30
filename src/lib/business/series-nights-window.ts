@@ -1,23 +1,28 @@
 /**
- * Host Upcoming / Events-list window for green recurring nights, and the
- * Weekly Cover program Nights grid (Flutter Host today+14, US/Eastern).
+ * THE dash display window for generated repeating nights (US/Eastern):
+ * Host Upcoming, Events list, the Weekly Cover program Nights grid,
+ * Marketing → Events, and the create-dates preview all clip generated
+ * series nights to today through today+30 (Luke 2026-08-30 — one month,
+ * one shared constant; a 14/28/120/180 display window on any dash list is
+ * a bug).
  *
  * Green: standalone one-offs always show. A generated series night only
- * shows for today plus two weeks, unless it is Custom (a later one-date
- * edit). Green series manage (`/business/recurring/:id`) still lists the
- * full series.
+ * shows inside the month, unless it is Custom (a later one-date edit).
+ * Green series manage (`/business/recurring/:id`) still lists the full
+ * series.
  *
- * Weekly Cover program grid: default = today through today+14 (W9, series
- * nights only). D6: a one-off / Custom date always appears, even far out.
- * Generator lookaheads with no event_id / Not generated past +14 must not.
- * Do not invent a 30/60-day dump.
+ * Weekly Cover program grid: default = today through today+30 (series
+ * nights only). D6 still holds: a one-off / Custom date always appears,
+ * even far out. Generator lookaheads with no event_id / Not generated
+ * past +30 must not. Fetch lookaheads may stay far (180) so far Customs
+ * arrive — the DISPLAY window is this constant.
  */
 
 import { isHostCustomNight, type HostCustomSlotHint } from "./host-custom-night.ts"
 
 export type { HostCustomSlotHint } from "./host-custom-night.ts"
 
-export const SERIES_NIGHTS_WINDOW_DAYS = 14
+export const SERIES_NIGHTS_WINDOW_DAYS = 30
 
 export function addIsoDays(isoDate: string, days: number): string {
   const [year, month, day] = isoDate.split("-").map(Number)
@@ -146,10 +151,10 @@ export function isHostStampedCustomWeeklyCoverNight(
 }
 
 /**
- * Flutter Host list for a Weekly Cover program: today through today+14
- * for series / weekday-template nights (W9). D6: a one-off / Custom night
+ * Flutter Host list for a Weekly Cover program: today through today+30
+ * for series / weekday-template nights. D6: a one-off / Custom night
  * always shows, even far out (+48d). Unstamped generator lookaheads on a
- * series weekday beyond +14 must not. Override-only dates (create
+ * series weekday beyond the window must not. Override-only dates (create
  * date_edit, maybe no events row yet) still surface so a healed stamp is
  * not hidden.
  */

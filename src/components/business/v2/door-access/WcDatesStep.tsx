@@ -12,10 +12,10 @@ import {
   nightPriceSummary,
   scheduledDates,
   seedNightDraft,
-  WC_LOOKAHEAD_DAYS,
   type NightDraft,
   type WcProducts,
 } from "@/lib/business/weekly-cover-nights"
+import { SERIES_NIGHTS_WINDOW_DAYS } from "@/lib/business/series-nights-window"
 import { isoDayFull } from "@/components/business/v2/recurring/schedule"
 import { NightEditorDialog } from "@/components/business/v2/door-access/NightEditorDialog"
 
@@ -62,6 +62,10 @@ export function WcDatesStep({
   const [editing, setEditing] = useState<string | null>(null)
   const [monthOffset, setMonthOffset] = useState(0)
 
+  // Scheduled-weekday marks paint only the shared month window (Luke
+  // 2026-08-30 — no 4-month template dump). Every future cell stays
+  // clickable either way: a far date renders as the dashed one-off cell
+  // and a host can still give October 31st its own night.
   const runs = useMemo(
     () =>
       new Set(
@@ -69,7 +73,7 @@ export function WcDatesStep({
           daysOfWeek,
           rangeStart,
           rangeEnd,
-          lookaheadDays: WC_LOOKAHEAD_DAYS,
+          lookaheadDays: SERIES_NIGHTS_WINDOW_DAYS,
         })
       ),
     [daysOfWeek, rangeStart, rangeEnd]

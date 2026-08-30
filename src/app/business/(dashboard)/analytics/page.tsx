@@ -37,6 +37,7 @@ import {
 import {
   fetchDoorAccessProgramsSafe,
   fetchDoorAccessSeries,
+  ONE_OFF_SERIES_LOOKAHEAD_DAYS,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -211,7 +212,10 @@ function OwnerManagerView() {
             await Promise.all(
               programs.map(async (program) => {
                 try {
-                  const series = await fetchDoorAccessSeries(program.id, 180)
+                  // Classifier fetch, not a list: far lookahead so every WC
+                  // night's event id lands in the weekly bucket. Nothing here
+                  // paints nights, so the month display window does not apply.
+                  const series = await fetchDoorAccessSeries(program.id, ONE_OFF_SERIES_LOOKAHEAD_DAYS)
                   return weeklyEventIdsFromNights(series.nights)
                 } catch {
                   return []
