@@ -15,7 +15,12 @@
 // isDoorAccessKind is a pure helper in door-access.ts (api-client stays behind
 // a lazy import), so `node --test` can load this module without a browser.
 import type { EventListItem } from "./types"
-import { easternToday, isWeeklyCoverProduct, type DoorAccessProgramSummary } from "./door-access.ts"
+import {
+  easternToday,
+  isWeeklyCoverProduct,
+  upcomingNextNightDate,
+  type DoorAccessProgramSummary,
+} from "./door-access.ts"
 import {
   isApprovedCanceledStatus,
   weeklyCoverNightNeedsPendingCancel,
@@ -26,13 +31,21 @@ export type UpcomingEntry =
   | { kind: "event"; key: string; sortKey: string; event: EventListItem }
   | { kind: "access"; key: string; sortKey: string; program: DoorAccessProgramSummary; date: string }
 
-/** The next night of a program, or null when nothing is stamped ahead. */
+/**
+ * The next night of a program, or null when nothing is stamped ahead — or when
+ * the stamp is STALE. The API's next_night_date can lag a day (last night's
+ * date served the morning after), and Home's rule is that Next / Upcoming /
+ * Needs-attention never show a past night: a date before today (US/Eastern)
+ * reads as "no next night".
+ */
 export function nextAccessNight(
   program: DoorAccessProgramSummary,
+  today: string = easternToday(),
 ): { program: DoorAccessProgramSummary; date: string } | null {
   if (!program.is_active) return null
-  if (!program.next_night_date) return null
-  return { program, date: program.next_night_date }
+  const date = upcomingNextNightDate(program, today)
+  if (!date) return null
+  return { program, date }
 }
 
 /**
@@ -81,7 +94,7 @@ export function homeUpcoming(
     }))
 
   for (const program of programs) {
-    const next = nextAccessNight(program)
+    const next = nextAccessNight(program, today)
     if (!next) continue
     entries.push({
       kind: "access",
@@ -94,6 +107,9 @@ export function homeUpcoming(
 
   for (const night of oneOffNights) {
     if (!night.date || !night.program.is_active) continue
+    // Pinned one-offs are exempt from the UPPER window only — a leftover night
+    // that already ran (< today ET) must expire off Home like everything else.
+    if (night.date < today) continue
     const already = entries.some(
       (entry) =>
         entry.kind === "access" &&

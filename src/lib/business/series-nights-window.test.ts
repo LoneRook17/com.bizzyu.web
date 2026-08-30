@@ -84,6 +84,26 @@ test("a Custom series night always shows, even far out", () => {
   )
 })
 
+test("a past night never shows — the lower bound clips EVERY arm (2026-08-30 bug)", () => {
+  // One-off and Custom skip the UPPER window only. Pre-fix their arms
+  // returned true before any date check, so a finished Aug 29 one-off /
+  // detached Custom night stayed on Home's Upcoming forever.
+  assert.equal(hostUpcomingShowsGreenNight(night("2026-08-20 21:00:00"), TODAY), false)
+  assert.equal(
+    hostUpcomingShowsGreenNight(
+      night("2026-08-20 21:00:00", { recurring_series_id: 7, series_customized_at: "2026-08-01 10:00:00" }),
+      TODAY,
+    ),
+    false,
+  )
+  assert.equal(
+    hostUpcomingShowsGreenNight(night("2026-08-20 21:00:00", { recurring_series_id: 7 }), TODAY),
+    false,
+  )
+  // Tonight is not past — the night is still running on its calendar date.
+  assert.equal(hostUpcomingShowsGreenNight(night(`${TODAY} 21:00:00`), TODAY), true)
+})
+
 test("eventsForHostUpcomingList keeps one-offs and Custom, clips template nights", () => {
   const rows = eventsForHostUpcomingList(
     [

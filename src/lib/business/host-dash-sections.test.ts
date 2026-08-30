@@ -379,6 +379,17 @@ test("Events-only hides WC; Weekly Cover-only hides green RC schedules", () => {
   assert.ok(accessOnly.schedules.every((row) => row.kind !== "series"))
 })
 
+test("a stale next_night_date sorts the schedule row like an unstamped one", () => {
+  // Same series-137 pattern as Home: the API's next_night_date stamp can be
+  // yesterday. The schedule row must not sort (or read) as if that past date
+  // were still its next night.
+  const stale = program(23, { next_night_date: "2026-08-20" })
+  const out = sections({ events: [], programs: [stale], wcSeriesIds: [23] })
+  const row = out.schedules.find((r) => r.kind === "access")
+  assert.ok(row, "the program still lists as a schedule")
+  assert.equal(row!.sortKey, "", "a past next_night_date is not a sort stamp")
+})
+
 test("Events page uses the Host sections, not a flat night pile", () => {
   const page = readFileSync(join(process.cwd(), "src/app/business/(dashboard)/events/page.tsx"), "utf8")
   assert.ok(page.includes("hostDashSections"), "live list groups through hostDashSections")

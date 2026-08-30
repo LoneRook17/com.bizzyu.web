@@ -8,6 +8,10 @@ import { homeUpcoming, nextAccessNight } from "./home-upcoming.ts"
 import type { EventListItem } from "./types.ts"
 import type { DoorAccessProgramSummary } from "./door-access.ts"
 
+// Fixture dates live in early Sept 2026 — every call pins `today` so the
+// past-night lower bounds never turn these into calendar-dependent tests.
+const TODAY = "2026-08-27"
+
 function ev(event_id: number, start: string): EventListItem {
   return {
     event_id,
@@ -69,6 +73,10 @@ test("events and nights interleave in real chronological order", () => {
   const out = homeUpcoming(
     [ev(1, "2026-09-02 21:00:00"), ev(2, "2026-09-05 21:00:00")],
     [program(9, "2026-09-03")],
+    4,
+    [],
+    [],
+    TODAY,
   )
   assert.deepEqual(out.map((e) => e.key), ["event-1", "access-9", "event-2"])
 })
@@ -76,13 +84,54 @@ test("events and nights interleave in real chronological order", () => {
 test("a date-only night sorts to the START of its day, ahead of that night's show", () => {
   // The door opens before the ticketed set — and this is also the honest
   // rendering of "we only know the date", never a guessed clock time.
-  const out = homeUpcoming([ev(1, "2026-09-03 21:00:00")], [program(9, "2026-09-03")])
+  const out = homeUpcoming([ev(1, "2026-09-03 21:00:00")], [program(9, "2026-09-03")], 4, [], [], TODAY)
   assert.deepEqual(out.map((e) => e.key), ["access-9", "event-1"])
 })
 
 test("a program contributes exactly ONE entry, not every night it runs", () => {
-  const out = homeUpcoming([], [program(9, "2026-09-03", { upcoming_night_count: 40 })])
+  const out = homeUpcoming([], [program(9, "2026-09-03", { upcoming_night_count: 40 })], 4, [], [], TODAY)
   assert.equal(out.length, 1)
+})
+
+// ── Past nights never show (2026-08-30: "Next night Aug 29" on Aug 30) ──────
+
+test("a stale next_night_date (yesterday ET) reads as no next night at all", () => {
+  // Pre-fix, nextAccessNight returned the stamp untouched — Home's tile said
+  // "Next night: Aug 29" ON Aug 30, and the attention row agreed with it.
+  assert.equal(nextAccessNight(program(1, "2026-08-29"), "2026-08-30"), null)
+  // Tonight is not past — a bare date means the whole night, door still open.
+  assert.deepEqual(nextAccessNight(program(1, "2026-08-30"), "2026-08-30")?.date, "2026-08-30")
+})
+
+test("a program whose next_night_date already ran contributes no Upcoming row", () => {
+  const out = homeUpcoming([], [program(9, "2026-08-29")], 4, [], [], "2026-08-30")
+  assert.equal(out.length, 0)
+})
+
+test("a leftover past one-off night expires off Home, pinned or not", () => {
+  const prog = program(9, null)
+  const out = homeUpcoming([], [prog], 4, [], [{ program: prog, date: "2026-08-25" }], "2026-08-30")
+  assert.equal(out.length, 0)
+})
+
+test("a finished standalone one-off event leaves Home Upcoming", () => {
+  const out = homeUpcoming(
+    [ev(1, "2026-08-28 21:00:00"), ev(2, "2026-09-01 21:00:00")],
+    [],
+    4,
+    [],
+    [],
+    "2026-08-30",
+  )
+  assert.deepEqual(out.map((e) => e.key), ["event-2"])
+})
+
+test("a past Custom series night leaves Home Upcoming too", () => {
+  const custom = ev(8, "2026-08-25 21:00:00")
+  custom.recurring_series_id = 12
+  custom.series_customized_at = "2026-08-20 10:00:00"
+  const out = homeUpcoming([custom], [], 4, [], [], "2026-08-30")
+  assert.equal(out.length, 0)
 })
 
 test("a far-future one-off WC night always stays on Upcoming", () => {
@@ -93,6 +142,7 @@ test("a far-future one-off WC night always stays on Upcoming", () => {
     4,
     [],
     [{ program: prog, date: "2026-12-31" }],
+    TODAY,
   )
   assert.ok(out.some((e) => e.key === "access-oneoff-9-2026-12-31"))
   assert.equal(out[out.length - 1].sortKey, "2026-12-31")
@@ -103,6 +153,9 @@ test("the card's row budget is respected across both types", () => {
     [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-04 21:00:00"), ev(3, "2026-09-06 21:00:00")],
     [program(9, "2026-09-02"), program(10, "2026-09-03")],
     4,
+    [],
+    [],
+    TODAY,
   )
   assert.equal(out.length, 4)
   assert.deepEqual(out.map((e) => e.key), ["event-1", "access-9", "access-10", "event-2"])
@@ -112,7 +165,7 @@ test("door_access nights are not green event rows on Home", () => {
   const cover = ev(24, "2026-09-02 21:00:00")
   cover.access_kind = "door_access"
   cover.recurring_series_id = 9
-  const out = homeUpcoming([cover, ev(1, "2026-09-05 21:00:00")], [program(9, "2026-09-02")])
+  const out = homeUpcoming([cover, ev(1, "2026-09-05 21:00:00")], [program(9, "2026-09-02")], 4, [], [], TODAY)
   assert.deepEqual(out.map((e) => e.key), ["access-9", "event-1"])
   assert.ok(out.every((e) => e.kind !== "event" || e.event.event_id !== 24))
 })
@@ -122,7 +175,7 @@ test("product_kind weekly_cover nights with stale access_kind stay off Home even
   cover.access_kind = "event"
   cover.product_kind = "weekly_cover"
   cover.recurring_series_id = 66
-  const out = homeUpcoming([cover, ev(1, "2026-09-05 21:00:00")], [])
+  const out = homeUpcoming([cover, ev(1, "2026-09-05 21:00:00")], [], 4, [], [], TODAY)
   assert.deepEqual(out.map((e) => e.key), ["event-1"])
 })
 
@@ -136,7 +189,7 @@ test("sold night of a host-deleted WC series stays on Home as a pending-cancel o
   unsold.access_kind = "door_access"
   unsold.product_kind = "weekly_cover"
   unsold.recurring_series_id = 66
-  const out = homeUpcoming([sold, unsold, ev(1, "2026-09-05 21:00:00")], [], 4, [66])
+  const out = homeUpcoming([sold, unsold, ev(1, "2026-09-05 21:00:00")], [], 4, [66], [], TODAY)
   assert.deepEqual(out.map((e) => e.key), ["event-775", "event-1"])
 })
 
@@ -144,14 +197,14 @@ test("unstamped leftover nights of a host-ended series leave Home", () => {
   const leftover = ev(774, "2026-08-25 21:00:00")
   leftover.access_kind = "event"
   leftover.recurring_series_id = 66
-  const out = homeUpcoming([leftover, ev(1, "2026-09-05 21:00:00")], [], 4, [66])
+  const out = homeUpcoming([leftover, ev(1, "2026-09-05 21:00:00")], [], 4, [66], [], TODAY)
   assert.deepEqual(out.map((e) => e.key), ["event-1"])
 })
 
 test("cancelled nights do not appear on Home", () => {
   const dead = ev(2, "2026-09-03 21:00:00")
   dead.status = "cancelled"
-  const out = homeUpcoming([dead, ev(1, "2026-09-05 21:00:00")], [])
+  const out = homeUpcoming([dead, ev(1, "2026-09-05 21:00:00")], [], 4, [], [], TODAY)
   assert.deepEqual(out.map((e) => e.key), ["event-1"])
 })
 
@@ -173,7 +226,7 @@ test("a Custom green series night stays on Host Upcoming even far out", () => {
 
 test("no programs at all ⇒ byte-identical to the events-only list it replaced", () => {
   const events = [ev(1, "2026-09-01 21:00:00"), ev(2, "2026-09-02 21:00:00")]
-  const out = homeUpcoming(events, [])
+  const out = homeUpcoming(events, [], 4, [], [], TODAY)
   assert.deepEqual(out.map((e) => e.kind), ["event", "event"])
   assert.deepEqual(
     out.map((e) => (e.kind === "event" ? e.event.event_id : null)),
