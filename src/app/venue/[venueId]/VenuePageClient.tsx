@@ -1,23 +1,36 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
-import { ACCESS, EVENT_CTA, EVENT_FILL, GLASS } from "@/lib/checkout/surfaces"
+import { ACCESS, EVENT_FILL } from "@/lib/checkout/surfaces"
 import {
   eventCalendarDate,
   eventFromPrice,
   fetchVenuePublicData,
-  formatAccessTierLabel,
   isVenueWeeklyCoverNight,
   mergeVenueEvents,
-  resolveNightTiers,
   resolveVenueEventImageUrl,
   venueNightCheckoutHref,
   type VenueData,
   type VenueEvent,
 } from "@/lib/venuePublic"
+
+// BLADE PORT (Luke 2026-08-30). This page is the pixel-close port of core's
+// deleted resources/views/public/venue.blade.php (core d8f4e3b3, removed by
+// the HOST LOCK in #69 — Laravel GET /venue/{id} 302s HERE now, so this is
+// the one venue page and it wears the blade's look):
+//   - #0a0a0f, SF/Inter, antialiased
+//   - fixed full-bleed blurred wash (venue photo, else first night image)
+//   - square 1:1 hero, 12px radius, name overlaid bottom-left (italic
+//     uppercase extra-bold, text-shadow); initials fallback
+//   - Directions / Website / Instagram glass action buttons
+//   - nights grouped per calendar date; tonight's group headed
+//     "Happening Tonight" in green with a green row glow
+//   - WC rows pink (chip + price via the shared ACCESS token), named events
+//     green — never a business logo, never a door-scan note
+// HOST LOCK stays: every night row links to LARAVEL checkout via
+// venueNightCheckoutHref(checkoutBaseUrl, …), never same-origin /checkout.
 
 const POLL_INTERVAL_MS = 25000
 
@@ -40,17 +53,28 @@ function parseCalendarDay(iso: string): Date | null {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
 }
 
-function formatDayHeader(key: string, todayKey: string | null): string {
-  if (todayKey && key === todayKey) return "Happening Tonight"
+/** Blade: Carbon `l, M j` — "Saturday, Aug 30". */
+function formatDayHeader(key: string): string {
   const d = parseCalendarDay(key)
   if (!d) return key
-  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
 }
 
-function formatEventTime(dateStr: string) {
+/** Blade: strtolower(g:ia) — "9:00pm", joined " - " with the end time. */
+function formatClockLower(dateStr: string): string {
   const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return "Time TBD"
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  if (Number.isNaN(d.getTime())) return ""
+  return d
+    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    .replace(/\s/g, "")
+    .toLowerCase()
+}
+
+function nightTimeLine(event: VenueEvent): string {
+  const start = formatClockLower(event.start_date_time)
+  if (!start) return ""
+  const end = formatClockLower(event.end_date_time)
+  return end ? `${start} - ${end}` : start
 }
 
 function hrefAbs(raw: string): string {
@@ -72,50 +96,49 @@ function instagramHandle(raw: string | null | undefined): string | null {
   return s.slice(0, 30)
 }
 
-function groupUpcoming(events: VenueEvent[], todayKey: string | null) {
-  const today = todayKey
-    ? parseCalendarDay(todayKey)
-    : new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())
-  const weekEnd = today ? new Date(today) : null
-  if (weekEnd) weekEnd.setDate(weekEnd.getDate() + 7)
+/** Blade: first letters of the first two words; "V" when nothing survives. */
+function venueInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2)
+  const initials = parts.map((p) => p[0]?.toUpperCase() ?? "").join("")
+  return initials || "V"
+}
 
+/** Blade: every calendar date is its own section, in order. */
+function groupByDay(events: VenueEvent[], todayKey: string | null) {
+  const today = todayKey ? parseCalendarDay(todayKey) : null
   const byDay = new Map<string, VenueEvent[]>()
-  const later: VenueEvent[] = []
-
   for (const event of events) {
     const key = eventCalendarDate(event.start_date_time)
     const day = parseCalendarDay(event.start_date_time)
-    if (!key || !day || !today) continue
-    if (day < today) continue
-    if (weekEnd && day < weekEnd) {
-      const list = byDay.get(key) ?? []
-      list.push(event)
-      byDay.set(key, list)
-    } else {
-      later.push(event)
-    }
+    if (!key || !day) continue
+    if (today && day < today) continue
+    const list = byDay.get(key) ?? []
+    list.push(event)
+    byDay.set(key, list)
   }
-
   const days = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))
   for (const [, rows] of days) {
     rows.sort((a, b) => a.start_date_time.localeCompare(b.start_date_time))
   }
-  later.sort((a, b) => a.start_date_time.localeCompare(b.start_date_time))
-  return { days, later }
+  return days
 }
 
+/**
+ * Blade price: "Free" or "$5", coloured by the night's accent. No "Sold out":
+ * the blade derived it from availability, which the public payload
+ * deliberately does not carry (count-disclosure guard) — a night with no
+ * priceable tier just shows no price.
+ */
 function rowPriceLabel(event: VenueEvent): string {
   return eventFromPrice(event).replace(/^From /, "")
 }
 
-/** Gradient-bar section heading — the checkout pages' section language. */
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="mb-3 flex items-center gap-2.5 text-2xl font-extrabold tracking-tight text-white">
-      <span className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: EVENT_CTA }} aria-hidden />
-      {children}
-    </h3>
-  )
+/** WC pink vs event green — the two shared accent tokens, nothing else. */
+function nightRowTheme(cover: boolean) {
+  return {
+    fill: cover ? ACCESS : EVENT_FILL,
+    price: cover ? "text-access" : "text-[#05EB54]",
+  }
 }
 
 export default function VenuePageClient({
@@ -153,7 +176,7 @@ export default function VenuePageClient({
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] font-[family-name:var(--font-fira)] text-gray-100">
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-gray-100 antialiased">
         <div className="text-center">
           <h1 className="mb-2 text-2xl font-bold">Venue Not Found</h1>
           <p className="text-white/50">This venue doesn&apos;t exist or is no longer available.</p>
@@ -165,36 +188,61 @@ export default function VenuePageClient({
     )
   }
 
-  const { venue, business, events, deals } = data
-  const heroImage = venue.venuePhotoUrl
+  const { venue, business, events } = data
+  const logo = venue.venuePhotoUrl?.trim() || null
+  const wash =
+    logo ?? (events[0] ? resolveVenueEventImageUrl(events[0], venue) : null)
   const instagram = instagramHandle(venue.instagram || business.instagram)
+  // Blade: an Instagram chip ALWAYS renders — profile when known, else a
+  // name search on Instagram itself.
+  const instagramUrl = instagram
+    ? `https://instagram.com/${instagram}`
+    : `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(venue.name.trim())}`
   const website = (venue.website || business.website)?.trim() || null
-  const mapsUrl = venue.address
-    ? `https://maps.google.com/?q=${encodeURIComponent(`${venue.name}, ${venue.address}`)}`
+  const mapQuery = [venue.name?.trim(), venue.address?.trim()].filter(Boolean).join(", ")
+  const mapsUrl = mapQuery
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`
     : null
-  const { days, later } = groupUpcoming(events, todayKey)
-  const about = venue.description?.trim() ?? ""
+  const days = groupByDay(events, todayKey)
 
   return (
-    <div className="relative min-h-screen bg-[#0a0a0f] font-[family-name:var(--font-fira)] text-gray-100">
+    <div
+      className="relative min-h-screen bg-[#0a0a0f] text-gray-100 antialiased"
+      style={{
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, ui-sans-serif, sans-serif',
+      }}
+    >
       <style>{`
-        .bg-blur-flyer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-        .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(64px) saturate(1.4); opacity: 0.45; transform: scale(1.55); }
-        .bg-blur-flyer .scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(10,10,15,0.55), rgba(10,10,15,0.8) 45%, #0a0a0f); }
-        .flyer-glow { box-shadow: 0 0 60px rgba(5, 235, 84, 0.2), 0 0 120px rgba(5, 235, 84, 0.1); }
-        @keyframes vRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes vHeroZoom { from { transform: scale(1); } to { transform: scale(1.06); } }
-        .v-rise { animation: vRise 0.55s ease-out both; }
-        .v-hero-zoom { animation: vHeroZoom 14s ease-in-out infinite alternate; }
-        @media (prefers-reduced-motion: reduce) {
-          .v-rise, .v-hero-zoom { animation: none; }
+        .landing-title { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, ui-sans-serif, sans-serif; }
+        .bg-blur-flyer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #0a0a0f; }
+        .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(64px); opacity: 0.45; transform: scale(1.55); }
+        .bg-blur-flyer-veil { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.18), rgba(10,10,15,0.82)); }
+        .venue-hero { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: #111; }
+        .venue-hero img { width: 100%; height: 100%; object-fit: cover; }
+        .venue-hero-fade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 45%, rgba(0,0,0,0.4) 72%, rgba(0,0,0,0.8) 100%); }
+        .venue-hero-name { position: absolute; left: 14px; right: 14px; bottom: 14px; margin: 0; color: #fff; font-size: 26px; font-weight: 800; font-style: italic; line-height: 1.1; letter-spacing: -0.03em; text-transform: uppercase; text-shadow: 0 1px 10px rgba(0,0,0,0.6); }
+        .venue-hero-initials { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 800; color: rgba(255,255,255,0.35); }
+        .action-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.14); color: #fff; font-size: 13px; font-weight: 800; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .action-btn:hover { background: rgba(255,255,255,0.2); }
+        .night-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; border: 1px solid #2A2A33; background: #18181F; }
+        .night-row.tonight { border-color: rgba(5, 235, 84, 0.55); box-shadow: 0 0 22px rgba(5, 235, 84, 0.45), 0 0 40px rgba(5, 235, 84, 0.18); }
+        .night-thumb { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: #111; flex-shrink: 0; }
+        .night-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .day-tonight { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: #05EB54; line-height: 1.1; }
+        @media (min-width: 1024px) {
+          .venue-shell { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); align-items: start; gap: 3.5rem; max-width: 72rem; }
+          .venue-identity { position: sticky; top: 6rem; }
+          .venue-hero-name { font-size: 36px; }
+          .venue-nights { margin-top: 0; }
+          .day-tonight { font-size: 26px; }
         }
       `}</style>
 
-      {heroImage && (
+      {wash && (
         <div className="bg-blur-flyer" aria-hidden>
-          <img src={heroImage} alt="" />
-          <div className="scrim" />
+          <img src={wash} alt="" />
+          <div className="bg-blur-flyer-veil" />
         </div>
       )}
 
@@ -206,9 +254,8 @@ export default function VenuePageClient({
                 <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-10 w-auto" />
               </a>
               {/* Luke (2026-08-30): two chips only — logo left, open-in-app
-                  right (justify-between above does the sides). Three chips
-                  crowded the phone; "Get the App" is gone, the deep link's
-                  App Store fallback covers uninstalled phones. */}
+                  right. The deep link's App Store fallback covers phones
+                  without the app. */}
               <a
                 href={`bizzy://venue/${venue.id}`}
                 className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition hover:opacity-90"
@@ -223,253 +270,117 @@ export default function VenuePageClient({
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-6 lg:py-10">
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-12">
-            <div className="lg:col-span-2">
-              <div className="v-rise lg:sticky lg:top-24">
-                {heroImage ? (
-                  <div className="flyer-glow relative overflow-hidden rounded-[18px] border border-white/10">
-                    {/* Capped on phones so the name and tonight's nights stay above the fold. */}
-                    <img src={heroImage} alt={venue.name} className="v-hero-zoom max-h-[340px] w-full object-cover lg:max-h-none" />
-                    <div
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3"
-                      style={{ background: "linear-gradient(to top, rgba(10,10,15,0.85), transparent)" }}
-                      aria-hidden
-                    />
-                  </div>
-                ) : (
-                  <div className={`flex aspect-[3/4] items-center justify-center ${GLASS}`}>
-                    <svg className="h-16 w-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                )}
-              </div>
+        <main className="venue-shell mx-auto w-full max-w-[430px] px-4 pb-16 pt-6 lg:max-w-6xl lg:px-8 lg:pt-10">
+          <div className="venue-identity">
+            <div className="venue-hero">
+              {logo ? (
+                <img src={logo} alt={venue.name} />
+              ) : (
+                <div className="venue-hero-initials">{venueInitials(venue.name)}</div>
+              )}
+              <div className="venue-hero-fade" />
+              <h1 className="landing-title venue-hero-name">{venue.name}</h1>
             </div>
 
-            <div className="space-y-7 lg:col-span-3">
-              <div className="v-rise" style={{ animationDelay: "0.08s" }}>
-                <h2 className="mb-4 text-4xl font-extrabold leading-tight tracking-tight text-white lg:text-5xl">
-                  {venue.name}
-                </h2>
-                <div className="space-y-3">
-                  {(venue.address || mapsUrl) && (
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur-xl">
-                        <svg className="h-5 w-5 text-[#05EB54]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-white">{venue.name}</p>
-                        {mapsUrl ? (
-                          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-400 hover:text-[#33f77c]">
-                            {venue.address || "Directions"}
-                          </a>
-                        ) : (
-                          <p className="text-sm text-gray-400">{venue.address}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {(website || instagram) && (
-                    <div className="flex flex-wrap gap-2">
-                      {website && (
-                        <a
-                          href={hrefAbs(website)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-full border border-white/15 bg-white/[0.06] px-3 py-1.5 text-sm font-medium text-gray-300 backdrop-blur-xl transition hover:border-[#05EB54]/50 hover:text-white"
-                        >
-                          Website
-                        </a>
-                      )}
-                      {instagram && (
-                        <a
-                          href={`https://instagram.com/${instagram}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-full border border-white/15 bg-white/[0.06] px-3 py-1.5 text-sm font-medium text-gray-300 backdrop-blur-xl transition hover:border-[#05EB54]/50 hover:text-white"
-                        >
-                          Instagram
-                        </a>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {about && (
-                <div className={`v-rise p-5 ${GLASS}`} style={{ animationDelay: "0.14s" }}>
-                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-400">About</h3>
-                  <p className="whitespace-pre-line text-sm leading-relaxed text-gray-300">{about}</p>
-                </div>
+            <div className="mt-3 flex gap-2.5">
+              {mapsUrl && (
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="action-btn">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Directions
+                </a>
               )}
+              {website && (
+                <a href={hrefAbs(website)} target="_blank" rel="noopener noreferrer" className="action-btn">
+                  Website
+                </a>
+              )}
+              <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="action-btn">
+                Instagram
+              </a>
+            </div>
+          </div>
 
-              {days.map(([key, rows], sectionIndex) => (
-                <section key={key} className="v-rise" style={{ animationDelay: `${0.18 + sectionIndex * 0.06}s` }}>
-                  <SectionHeading>{formatDayHeader(key, todayKey)}</SectionHeading>
-                  <div className="space-y-3">
+          <div className="venue-nights mt-8 space-y-6">
+            {days.map(([key, rows]) => {
+              const isTonight = todayKey !== null && key === todayKey
+              return (
+                <section key={key}>
+                  <p
+                    className={
+                      isTonight
+                        ? "day-tonight mb-2.5"
+                        : "mb-2.5 text-[14px] font-bold uppercase tracking-[1.2px] text-white/50"
+                    }
+                  >
+                    {isTonight ? "Happening Tonight" : formatDayHeader(key)}
+                  </p>
+                  <div className="space-y-2">
                     {rows.map((event) => (
                       <UpcomingRow
                         key={event.event_id}
                         event={event}
                         venue={venue}
                         checkoutBaseUrl={checkoutBaseUrl}
+                        tonight={isTonight}
                       />
                     ))}
                   </div>
                 </section>
-              ))}
+              )
+            })}
 
-              {later.length > 0 && (
-                <section className="v-rise" style={{ animationDelay: `${0.18 + days.length * 0.06}s` }}>
-                  <SectionHeading>Later</SectionHeading>
-                  <div className="space-y-3">
-                    {later.map((event) => (
-                      <UpcomingRow
-                        key={event.event_id}
-                        event={event}
-                        venue={venue}
-                        checkoutBaseUrl={checkoutBaseUrl}
-                      />
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {days.length === 0 && later.length === 0 && (
-                <div className={`v-rise p-5 text-sm text-gray-400 ${GLASS}`} style={{ animationDelay: "0.18s" }}>
-                  Nothing on the calendar yet. Open the Bizzy app to follow {venue.name}.
-                </div>
-              )}
-
-              {deals.length > 0 && (
-                <section className="v-rise" style={{ animationDelay: `${0.24 + days.length * 0.06}s` }}>
-                  <SectionHeading>Deals at {venue.name}</SectionHeading>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {deals.map((deal) => (
-                      <Link
-                        key={deal.id}
-                        href={`/deal/${deal.id}`}
-                        className={`overflow-hidden transition hover:-translate-y-0.5 hover:border-[#05EB54]/50 ${GLASS}`}
-                      >
-                        {deal.deal_image_path && (
-                          <img src={deal.deal_image_path} alt={deal.deal_title} className="h-36 w-full object-cover" />
-                        )}
-                        <div className="p-4">
-                          <p className="font-bold text-white">{deal.deal_title}</p>
-                          {deal.deal_type && (
-                            <p className="mt-1 text-sm font-semibold text-[#33f77c]">{deal.deal_type}</p>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
+            {days.length === 0 && (
+              <p className="text-[13px] text-white/50">Nothing upcoming at this venue right now.</p>
+            )}
           </div>
         </main>
-
-        <footer className="mt-12 border-t border-white/5">
-          <div className="mx-auto max-w-6xl px-4 py-6 text-center">
-            <p className="text-sm text-gray-600">
-              Powered by <span className="font-semibold text-gray-400">Bizzy</span>
-            </p>
-          </div>
-        </footer>
       </div>
     </div>
   )
-}
-
-function nightRowTheme(cover: boolean) {
-  return {
-    fill: cover ? ACCESS : EVENT_FILL,
-    card: cover
-      ? "border-access/40 hover:border-access/60 hover:shadow-[0_0_24px_rgba(255,62,209,0.18)]"
-      : "border-white/20 hover:border-[#05EB54]/50 hover:shadow-[0_0_24px_rgba(5,235,84,0.18)]",
-    chip: cover
-      ? "border-access/40 hover:border-access/60"
-      : "border-white/15 hover:border-[#05EB54]/50",
-    price: cover ? "text-access" : "text-[#33f77c]",
-    icon: cover ? "text-access/40" : "text-[#05EB54]/40",
-  }
 }
 
 function UpcomingRow({
   event,
   venue,
   checkoutBaseUrl,
+  tonight,
 }: {
   event: VenueEvent
   venue: VenueData["venue"]
   checkoutBaseUrl: string
+  tonight: boolean
 }) {
   const cover = isVenueWeeklyCoverNight(event)
   const theme = nightRowTheme(cover)
   const image = resolveVenueEventImageUrl(event, venue)
   const price = rowPriceLabel(event)
+  const timeLine = nightTimeLine(event)
   // Laravel GET /checkout/{eventId} — WC and named events share it. Relative
-  // /checkout on this Next app would stay on Vercel.
+  // /checkout on this Next app would stay on Vercel (and now only 302s anyway).
   const href = venueNightCheckoutHref(checkoutBaseUrl, event.event_id)
-  const tiers = resolveNightTiers(event)
 
   return (
-    <div
-      className={`rounded-2xl border bg-white/[0.07] p-5 backdrop-blur-xl transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 ${theme.card}`}
-    >
-      <a href={href} className="flex items-center gap-4">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0f]">
-          {image ? (
-            <img src={image} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className={`flex h-full w-full items-center justify-center ${theme.icon}`}>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-              </svg>
-            </div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          {cover && (
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-access">
-              {WEEKLY_ACCESS_TYPE_LABEL}
-            </p>
-          )}
-          <h4 className="truncate text-lg font-bold text-white">{event.name}</h4>
-          <p className="mt-0.5 text-sm text-gray-400">{formatEventTime(event.start_date_time)}</p>
-        </div>
-        <div className="shrink-0 text-right">
-          {price && (
-            <p className={`text-xl font-extrabold ${price === "Free" ? theme.price : "text-white"}`}>
-              {price}
-            </p>
-          )}
-          <p className="mt-1 text-xs font-semibold" style={{ color: theme.fill }}>
-            Get Tickets
+    <a href={href} className={`night-row${tonight ? " tonight" : ""}`}>
+      <div className="night-thumb">
+        {image && <img src={image} alt="" className="object-cover" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        {cover && (
+          <p
+            className="mb-1 inline-block rounded-lg px-2 py-[3px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-access"
+            style={{ background: "rgba(255, 62, 209, 0.16)" }}
+          >
+            {WEEKLY_ACCESS_TYPE_LABEL}
           </p>
-        </div>
-      </a>
-      {tiers.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {tiers.map((tier) => {
-            const label = formatAccessTierLabel(tier)
-            if (!label) return null
-            return (
-              <a
-                key={`${tier.ticket_id ?? tier.name}-${tier.price_usd}`}
-                href={venueNightCheckoutHref(checkoutBaseUrl, event.event_id, tier.ticket_id)}
-                className={`rounded-full border bg-white/[0.05] px-3 py-1.5 text-sm font-semibold text-white backdrop-blur-xl transition hover:bg-white/[0.1] ${theme.chip}`}
-              >
-                {label}
-              </a>
-            )
-          })}
-        </div>
+        )}
+        <p className="truncate text-[15px] font-bold leading-[1.2] text-white">{event.name}</p>
+        {timeLine && <p className="mt-0.5 truncate text-[12px] text-white/55">{timeLine}</p>}
+      </div>
+      {price && (
+        <p className={`shrink-0 text-[16px] font-extrabold ${theme.price}`}>{price}</p>
       )}
-    </div>
+    </a>
   )
 }
