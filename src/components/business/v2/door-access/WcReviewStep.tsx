@@ -5,6 +5,7 @@ import { Image as ImageIcon } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ACCESS_ACCENT, ACCESS_INK, fmtTime, usdPrice } from "@/lib/business/door-access"
 import {
+  derivedNight21Plus,
   nightPriceSummary,
   reviewFlyerUrlForDay,
   reviewFormatLabel,
@@ -120,7 +121,9 @@ export function WcReviewStep({
 
             <ReviewMetaRow label="FORMAT">
               <p className="font-semibold text-neutral-900 dark:text-neutral-100">{reviewFormatLabel(products)}</p>
-              {draft && (draft.is21Plus || draft.tiers.some((t) => t.is_21_plus)) ? (
+              {/* Per-ticket 21+: show what will actually chip — services derives
+                  from the visible tiers (ALL rule), stored flag only tier-less. */}
+              {draft && derivedNight21Plus(draft) ? (
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">21+</p>
               ) : null}
             </ReviewMetaRow>

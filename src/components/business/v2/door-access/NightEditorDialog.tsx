@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Plus, Trash2, X } from "lucide-react"
 import { ACCESS_ACCENT, ACCESS_INK } from "@/lib/business/door-access"
 import {
+  allEnabledTiers21Plus,
   applyIncludesCover,
   cloneNightDraft,
   defaultTierName,
@@ -202,7 +203,9 @@ export function NightEditorDialog({
     }
     // O1: descriptions are the host's text as typed — nothing is re-derived
     // or injected on save.
-    const is21 = draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus)
+    // Per-ticket 21+: the night flag follows the ALL rule (every enabled tier
+    // 21+), never the old ANY rollup. An explicit night-level 21+ still wins.
+    const is21 = draft.is21Plus || allEnabledTiers21Plus(draft.tiers)
     onSave({ ...cloneNightDraft(draft), is21Plus: is21 })
     onOpenChange(false)
   }
