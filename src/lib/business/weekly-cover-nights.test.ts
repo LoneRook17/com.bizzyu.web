@@ -30,8 +30,11 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
+  allEnabledTiers21Plus,
+  allProgramTiers21Plus,
   canonicalTierKey,
   cheapestPaidPrice,
+  derivedNight21Plus,
   collapseTiers,
   copyNightToDay,
   dateEditsToWire,
@@ -441,8 +444,45 @@ test("a night write always states is_closed and is_21_plus", () => {
   assert.equal(wire.is_21_plus, false)
 })
 
-test("any live 21+ price lights the night's badge", () => {
-  const wire = nightToWire(night({ tiers: [tier({ priceInput: "10", is_21_plus: true })] }))
+// ── Per-ticket 21+ (ALL rule) ───────────────────────────────────────────────
+// REVERT CHECK: the original bug was the ANY rollup — one 21+ VIP table
+// stamped the whole night 21+ at save time. The night flag is now true only
+// when EVERY enabled tier is 21+. If any of these flip back to `.some(`,
+// the bug is back.
+
+test("one 21+ tier next to an all-ages tier does NOT paint the night", () => {
+  const wire = nightToWire(
+    night({
+      tiers: [
+        tier({ priceInput: "10", is_21_plus: true }),
+        tier({ kind: "skip", priceInput: "20" }),
+      ],
+    })
+  )
+  assert.equal(wire.is_21_plus, false)
+})
+
+test("every enabled tier 21+ lights the night's badge", () => {
+  const wire = nightToWire(
+    night({
+      tiers: [
+        tier({ priceInput: "10", is_21_plus: true }),
+        tier({ kind: "skip", priceInput: "20", is_21_plus: true }),
+      ],
+    })
+  )
+  assert.equal(wire.is_21_plus, true)
+})
+
+test("a disabled all-ages tier does not veto an otherwise 21+ night", () => {
+  const wire = nightToWire(
+    night({
+      tiers: [
+        tier({ priceInput: "10", is_21_plus: true }),
+        tier({ kind: "skip", priceInput: "20", is_disabled: true }),
+      ],
+    })
+  )
   assert.equal(wire.is_21_plus, true)
 })
 
@@ -451,6 +491,83 @@ test("a disabled 21+ tier does not light the night", () => {
     night({ tiers: [tier({ priceInput: "10" }), tier({ kind: "skip", is_21_plus: true, is_disabled: true })] })
   )
   assert.equal(wire.is_21_plus, false)
+})
+
+test("zero enabled tiers falls back to the night's own flag only", () => {
+  const allDisabled = [tier({ priceInput: "10", is_21_plus: true, is_disabled: true })]
+  assert.equal(nightToWire(night({ tiers: allDisabled })).is_21_plus, false)
+  assert.equal(nightToWire(night({ tiers: allDisabled, is21Plus: true })).is_21_plus, true)
+  assert.equal(nightToWire(night({ tiers: [], is21Plus: true })).is_21_plus, true)
+})
+
+test("an explicit night-level 21+ still wins over mixed tiers", () => {
+  const wire = nightToWire(
+    night({
+      is21Plus: true,
+      tiers: [tier({ priceInput: "10", is_21_plus: true }), tier({ kind: "skip", priceInput: "20" })],
+    })
+  )
+  assert.equal(wire.is_21_plus, true)
+})
+
+test("the weekday template applies the same ALL rule", () => {
+  const mixed = night({
+    tiers: [tier({ priceInput: "10", is_21_plus: true }), tier({ kind: "skip", priceInput: "20" })],
+  })
+  assert.equal(weekdayTemplateToWire(mixed).is_21_plus, false)
+  const all21 = night({
+    tiers: [
+      tier({ priceInput: "10", is_21_plus: true }),
+      tier({ kind: "skip", priceInput: "20", is_21_plus: true }),
+    ],
+  })
+  assert.equal(weekdayTemplateToWire(all21).is_21_plus, true)
+})
+
+test("tierToWire states is_21_plus as 0/1 and it round-trips", () => {
+  // Web drafts always hold a boolean, so every save states the flag — an
+  // omitted value is how OTHER clients say "unstated → inherit at stamp time".
+  assert.equal(tierToWire(tier({ is_21_plus: true })).is_21_plus, 1)
+  assert.equal(tierToWire(tier()).is_21_plus, 0)
+  const back = tierFromWire(tierToWire(tier({ priceInput: "10", is_21_plus: true })) as unknown as Record<string, unknown>)
+  assert.equal(back.is_21_plus, true)
+  const backOff = tierFromWire(tierToWire(tier({ priceInput: "10" })) as unknown as Record<string, unknown>)
+  assert.equal(backOff.is_21_plus, false)
+})
+
+test("allEnabledTiers21Plus is the ALL rule, not the ANY rollup", () => {
+  assert.equal(allEnabledTiers21Plus([]), false)
+  assert.equal(allEnabledTiers21Plus([tier({ is_21_plus: true }), tier({ kind: "skip" })]), false)
+  assert.equal(
+    allEnabledTiers21Plus([tier({ is_21_plus: true }), tier({ kind: "skip", is_21_plus: true })]),
+    true
+  )
+})
+
+test("the review step shows what will actually chip", () => {
+  // With visible tiers, services derives from THEM — a stale stamped night
+  // flag no longer shows a 21+ line the checkout will not have.
+  const stale = night({
+    is21Plus: true,
+    tiers: [tier({ priceInput: "10", is_21_plus: true }), tier({ kind: "skip", priceInput: "20" })],
+  })
+  assert.equal(derivedNight21Plus(stale), false)
+  assert.equal(derivedNight21Plus(night({ tiers: [tier({ is_21_plus: true })] })), true)
+  // Tier-less nights fall back to the stored flag, same as the API.
+  assert.equal(derivedNight21Plus(night({ tiers: [], is21Plus: true })), true)
+  assert.equal(derivedNight21Plus(night({ tiers: [] })), false)
+})
+
+test("the program Age flag needs every enabled tier on every open night 21+", () => {
+  const all21 = night({ tiers: [tier({ is_21_plus: true })] })
+  const mixed = night({ tiers: [tier({ is_21_plus: true }), tier({ kind: "skip" })] })
+  const closedAllAges = night({ isClosed: true, tiers: [tier()] })
+  assert.equal(allProgramTiers21Plus([all21, mixed]), false)
+  assert.equal(allProgramTiers21Plus([all21, all21]), true)
+  // A closed night sells nothing — its all-ages tier does not veto.
+  assert.equal(allProgramTiers21Plus([all21, closedAllAges]), true)
+  assert.equal(allProgramTiers21Plus([]), false)
+  assert.equal(allProgramTiers21Plus([closedAllAges]), false)
 })
 
 // ── Tier identity ───────────────────────────────────────────────────────────

@@ -295,7 +295,12 @@ export interface NightTierDraft {
   custom_description: boolean
   /** Skip tiers only: buying it also gets them in. */
   includes_cover: boolean
-  /** Per-tier 21+. Any 21+ tier lights the night's badge, matching the app. */
+  /**
+   * Per-tier 21+ — the per-ticket truth (`tickets.is_21_plus`), round-tripped
+   * to the wire. The night's badge derives from it with the ALL rule: 21+ only
+   * when every enabled tier is (see `allEnabledTiers21Plus`). One 21+ VIP
+   * table no longer paints an all-ages door.
+   */
   is_21_plus: boolean
   surge_enabled: boolean
   surge: SurgeStepDraft[]
@@ -494,6 +499,7 @@ export interface NightTierWire {
   is_disabled: boolean
   kind: NightTierKind
   includes_cover: boolean
+  is_21_plus: 0 | 1
   ticket_type: "paid" | "free"
   surge_enabled: boolean
   surge_steps: SurgeStepWire[]
@@ -520,6 +526,11 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
     is_disabled: tier.is_disabled,
     kind: tier.kind,
     includes_cover: tier.kind === "skip" && tier.includes_cover,
+    // Always stated: web drafts hold a real boolean per tier (the editor shows
+    // the checkbox), so every save stamps it. Services treats an OMITTED value
+    // as "unstated → inherit the night/program flag at stamp time" — only
+    // clients that never rendered the toggle get to omit it.
+    is_21_plus: tier.is_21_plus ? 1 : 0,
     ticket_type: price > 0 ? "paid" : "free",
     // Surge off must travel as an explicit empty list, not an omission: that is
     // how `parseSurgeIntent` is told to clear a stored ladder rather than leave
@@ -533,6 +544,48 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
   }
 }
 
+// ── Per-ticket 21+ (Aug 2026) ───────────────────────────────────────────────
+//
+// 21+ is per-TICKET now (`tickets.is_21_plus`); the night/event flag is derived.
+// The old ANY rollup here — one 21+ tier lights the whole night — is exactly
+// what painted an all-ages door 21+ over a single VIP table. The tier-derived
+// value follows the ALL rule, matching how services derives the checkout chip.
+
+/**
+ * ALL rule over one night's tiers: true only when there is at least one
+ * enabled (`!is_disabled`) tier AND every enabled tier is 21+. Disabled tiers
+ * do not vote. Zero enabled tiers is "no opinion" — callers fall back to the
+ * night's own flag.
+ */
+export function allEnabledTiers21Plus(tiers: NightTierDraft[]): boolean {
+  const enabled = tiers.filter((t) => !t.is_disabled)
+  return enabled.length > 0 && enabled.every((t) => t.is_21_plus)
+}
+
+/**
+ * What this night will actually chip: services derives from the visible tiers
+ * first (ALL rule) and reads the stored night flag only when there are none.
+ * Review/display surfaces use this so they show what checkout will show.
+ */
+export function derivedNight21Plus(draft: NightDraft): boolean {
+  const enabled = draft.tiers.filter((t) => !t.is_disabled)
+  return enabled.length > 0 ? enabled.every((t) => t.is_21_plus) : draft.is21Plus
+}
+
+/**
+ * Program-level "Age" line: 21+ only when every enabled tier on every OPEN
+ * night is 21+, and there is at least one such tier. Closed nights sell
+ * nothing, so they do not vote. The flag is mostly cosmetic now (program page
+ * Age line) plus the inherit-default for unstated tiers — the ALL rule is the
+ * honest value, not the old ANY sweep.
+ */
+export function allProgramTiers21Plus(nights: NightDraft[]): boolean {
+  const enabled = nights
+    .filter((n) => !n.isClosed)
+    .flatMap((n) => n.tiers.filter((t) => !t.is_disabled))
+  return enabled.length > 0 && enabled.every((t) => t.is_21_plus)
+}
+
 /**
  * One night write — the value of a `date_edits[date]` entry, and the body of
  * `PUT …/nights/:date`. Weekday templates use `weekdayTemplateToWire` instead.
@@ -544,7 +597,8 @@ export function nightToWire(draft: NightDraft): Record<string, unknown> {
   const own = draft.flyerImageUrl.trim()
   const body: Record<string, unknown> = {
     is_closed: draft.isClosed,
-    is_21_plus: draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus),
+    // ALL rule (see above) — an explicit night-level 21+ still wins.
+    is_21_plus: draft.is21Plus || allEnabledTiers21Plus(draft.tiers),
   }
   if (draft.startTime !== "") body.start_time = draft.startTime
   if (draft.endTime !== "") body.end_time = draft.endTime
@@ -567,7 +621,8 @@ export function weekdayTemplateToWire(draft: NightDraft): Record<string, unknown
   const own = draft.flyerImageUrl.trim()
   const body: Record<string, unknown> = {
     is_closed: draft.isClosed,
-    is_21_plus: draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus),
+    // ALL rule (see above) — an explicit night-level 21+ still wins.
+    is_21_plus: draft.is21Plus || allEnabledTiers21Plus(draft.tiers),
     start_time: draft.startTime,
     end_time: draft.endTime,
     tiers: draft.tiers.map(tierToWire),

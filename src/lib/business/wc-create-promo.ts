@@ -34,7 +34,8 @@ export function emptyWcPromoDraft(localId: string): WcPromoDraft {
 }
 
 export function wcPromoCreatePath(programId: number): string {
-  return seriesPromoBasePath(programId)
+  // WC create is always a door-access program — never a named RC series.
+  return seriesPromoBasePath("weekly_cover", programId)
 }
 
 /** After a series exists, POST ready drafts to the existing series promo API. */

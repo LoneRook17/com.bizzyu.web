@@ -1,9 +1,14 @@
 "use client"
 
 import { Fragment, useState, useEffect, useCallback } from "react"
-import { Plus, Ticket, ChevronRight, Info } from "lucide-react"
+import { Plus, Ticket, ChevronDown, ChevronRight, Info } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
-import type { PromoCode, PromoEventBreakdown } from "@/lib/business/types"
+import type { PromoCode, PromoEventBreakdown, PromoEventBreakdownRow } from "@/lib/business/types"
+import {
+  groupPromoBreakdownRows,
+  promoBreakdownKindLabel,
+  type PromoBreakdownGroup,
+} from "@/lib/business/promo-breakdown-groups"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -84,6 +89,19 @@ export interface PromoScopeCopy {
   breakdownTotalLabel: string
   /** "Max per user" help text — how the per-unit reset works at this scope. */
   perUserHelp: string
+  /**
+   * Scope column cell: how far EVERY code in this panel reaches — "Every event
+   * at {venue}" for the universal panel, the program's name for series panels.
+   * One value per panel because scope is per-panel, never per-row.
+   */
+  scopeLabel: string
+  /**
+   * Venue scope only: fold the breakdown's rows into one line per PROGRAM
+   * (Weekly Cover / named recurring series) with a "Show nights" disclosure,
+   * instead of one row per night. Program/series panels leave this off — their
+   * whole breakdown IS one program, so per-night rows are already the point.
+   */
+  groupBreakdownByProgram?: boolean
 }
 
 export const VENUE_PROMO_COPY = (venueName: string): PromoScopeCopy => ({
@@ -96,6 +114,8 @@ export const VENUE_PROMO_COPY = (venueName: string): PromoScopeCopy => ({
   breakdownTotalLabel: "All events",
   perUserHelp:
     "Counted per event. A customer can use this code once per event, so if it applies to several of your events, they can redeem it at each one. Your total usage limit still applies across all events combined.",
+  scopeLabel: `Every event at ${venueName}`,
+  groupBreakdownByProgram: true,
 })
 
 export const PROGRAM_PROMO_COPY = (programName: string): PromoScopeCopy => ({
@@ -109,6 +129,7 @@ export const PROGRAM_PROMO_COPY = (programName: string): PromoScopeCopy => ({
   breakdownTotalLabel: "All nights",
   perUserHelp:
     "Counted per night. A customer can use this code once per night, so they can redeem it again the following week. Your total usage limit still applies across all nights combined.",
+  scopeLabel: programName,
 })
 
 export const SERIES_PROMO_COPY = (seriesName: string): PromoScopeCopy => ({
@@ -121,6 +142,7 @@ export const SERIES_PROMO_COPY = (seriesName: string): PromoScopeCopy => ({
   breakdownTotalLabel: "All nights",
   perUserHelp:
     "Counted per night. A customer can use this code once per night, so they can redeem it again the following week. Your total usage limit still applies across all nights of this series combined.",
+  scopeLabel: seriesName,
 })
 
 export function PromoCodesPanel({
@@ -327,10 +349,11 @@ export function PromoCodesPanel({
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 text-xs text-neutral-500 dark:text-neutral-400">
                   <th className="px-5 py-3 text-left font-medium">Code</th>
+                  <th className="px-5 py-3 text-left font-medium">Scope</th>
                   <th className="px-5 py-3 text-left font-medium">Discount</th>
                   <th className="px-5 py-3 text-right font-medium">Uses</th>
                   <th className="px-5 py-3 text-left font-medium">Status</th>
@@ -363,6 +386,9 @@ export function PromoCodesPanel({
                           ) : (
                             code.code
                           )}
+                        </td>
+                        <td className="px-5 py-3 text-xs text-neutral-500 dark:text-neutral-400">
+                          {copy.scopeLabel}
                         </td>
                         <td className="px-5 py-3 text-neutral-600 dark:text-neutral-400">
                           {code.discount_type === "percentage" ? `${code.discount_value}%` : `$${code.discount_value}`}
@@ -411,7 +437,7 @@ export function PromoCodesPanel({
                       </tr>
                       {isExpanded && (
                         <tr className="border-b border-neutral-50 dark:border-neutral-800/60">
-                          <td colSpan={6} className="bg-neutral-50/60 dark:bg-neutral-800/20 px-5 py-4">
+                          <td colSpan={7} className="bg-neutral-50/60 dark:bg-neutral-800/20 px-5 py-4">
                             <PromoBreakdown state={breakdowns[code.promo_code_id]} copy={copy} />
                           </td>
                         </tr>
@@ -607,13 +633,15 @@ export function PromoCodesPanel({
 }
 
 /**
- * A multi-event code's usage, one row per event it applied to — INCLUDING
- * zero-usage ones — with the code-wide total below, so a host can see the rows
- * add up. Numbers are coerced (SUM() fields may be strings).
+ * A multi-event code's usage — INCLUDING zero-usage entries — with the
+ * code-wide total below, so a host can see the rows add up. Numbers are
+ * coerced (SUM() fields may be strings).
  *
- * The server scopes the row set off the code's OWN scope column, so this is
- * nights for a program code and events for a venue code with no branch here —
- * only the column wording changes.
+ * The server scopes the row set off the code's OWN scope column: nights for a
+ * program code, events for a venue code. On the venue scope
+ * (copy.groupBreakdownByProgram) a program's nights fold into ONE line with a
+ * "Show nights" disclosure — the wall-of-nights fix — while one-off events
+ * stay single lines. Program/series scopes keep the flat per-night table.
  */
 function PromoBreakdown({ state, copy }: { state: BreakdownState | undefined; copy: PromoScopeCopy }) {
   if (!state || state.loading) {
@@ -635,7 +663,8 @@ function PromoBreakdown({ state, copy }: { state: BreakdownState | undefined; co
   const aggUses = Number(data.aggregate?.redemptions ?? 0)
   const aggRev = Number(data.aggregate?.revenue_generated ?? 0)
   // Sum the rows ourselves and compare to the API's total, so the "it adds up"
-  // claim is shown, not asserted. Compare revenue in cents.
+  // claim is shown, not asserted. Compare revenue in cents. Grouping folds rows
+  // without dropping any, so these sums are scope-independent.
   const sumUses = rows.reduce((s, r) => s + Number(r.redemptions ?? 0), 0)
   const sumRev = rows.reduce((s, r) => s + Number(r.revenue_generated ?? 0), 0)
   const reconciles = sumUses === aggUses && Math.round(sumRev * 100) === Math.round(aggRev * 100)
@@ -643,6 +672,12 @@ function PromoBreakdown({ state, copy }: { state: BreakdownState | undefined; co
   if (rows.length === 0) {
     return <p className="text-sm text-neutral-500 dark:text-neutral-400">This code doesn’t apply to any {unit}s yet.</p>
   }
+
+  // Venue scope: one line per PROGRAM (all its nights folded, "Show nights"
+  // disclosure), one-offs stay single lines. Program/series scopes keep the
+  // flat per-night table — their whole breakdown is one program already.
+  const groups = copy.groupBreakdownByProgram ? groupPromoBreakdownRows(rows) : null
+  const lineCount = groups ? groups.length : rows.length
 
   return (
     <div>
@@ -660,22 +695,15 @@ function PromoBreakdown({ state, copy }: { state: BreakdownState | undefined; co
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
-              const uses = Number(r.redemptions ?? 0)
-              const rev = Number(r.revenue_generated ?? 0)
-              const isZero = uses === 0 && rev === 0
-              return (
-                <tr
-                  key={r.event_id}
-                  className={`border-b border-neutral-50 dark:border-neutral-800/60 last:border-0 ${isZero ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
-                >
-                  <td className="px-4 py-2">{r.event_name ?? `#${r.event_id}`}</td>
-                  <td className="px-4 py-2 text-xs">{r.event_date ? formatDate(r.event_date) : "-"}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{uses}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{money(rev)}</td>
-                </tr>
-              )
-            })}
+            {groups
+              ? groups.map((g) =>
+                  g.seriesId === null ? (
+                    <BreakdownEventRow key={`event-${g.nights[0].event_id}`} row={g.nights[0]} />
+                  ) : (
+                    <BreakdownProgramGroup key={`series-${g.seriesId}`} group={g} />
+                  ),
+                )
+              : rows.map((r) => <BreakdownEventRow key={r.event_id} row={r} />)}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-neutral-200 dark:border-neutral-700 font-semibold text-neutral-900 dark:text-neutral-100">
@@ -688,9 +716,84 @@ function PromoBreakdown({ state, copy }: { state: BreakdownState | undefined; co
       </div>
       <p className={`mt-2 text-[11px] ${reconciles ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 dark:text-amber-400"}`}>
         {reconciles
-          ? `The ${rows.length} row${rows.length === 1 ? "" : "s"} above add up to ${aggUses} ${aggUses === 1 ? "use" : "uses"} · ${money(aggRev)}.`
+          ? `The ${lineCount} row${lineCount === 1 ? "" : "s"} above add up to ${aggUses} ${aggUses === 1 ? "use" : "uses"} · ${money(aggRev)}.`
           : `Rows sum to ${sumUses} · ${money(sumRev)} but the total is ${aggUses} · ${money(aggRev)}. These don’t reconcile.`}
       </p>
     </div>
+  )
+}
+
+/** One event/night line of the breakdown — the pre-grouping row, unchanged. */
+function BreakdownEventRow({ row }: { row: PromoEventBreakdownRow }) {
+  const uses = Number(row.redemptions ?? 0)
+  const rev = Number(row.revenue_generated ?? 0)
+  const isZero = uses === 0 && rev === 0
+  return (
+    <tr
+      className={`border-b border-neutral-50 dark:border-neutral-800/60 last:border-0 ${isZero ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+    >
+      <td className="px-4 py-2">{row.event_name ?? `#${row.event_id}`}</td>
+      <td className="px-4 py-2 text-xs">{row.event_date ? formatDate(row.event_date) : "-"}</td>
+      <td className="px-4 py-2 text-right tabular-nums">{uses}</td>
+      <td className="px-4 py-2 text-right tabular-nums">{money(rev)}</td>
+    </tr>
+  )
+}
+
+/**
+ * ONE line for a whole program ("Thirsty Thursdays · Weekly Cover · 14 nights
+ * · 62 uses · $…") with its nights behind a disclosure — the SeriesGroupRow
+ * idiom (useState + aria-expanded + rotating ChevronDown, expanded children
+ * under border-l-2 pl-4 so they read as this row's contents, not new rows).
+ */
+function BreakdownProgramGroup({ group }: { group: PromoBreakdownGroup }) {
+  const [open, setOpen] = useState(false)
+  const kindLabel = promoBreakdownKindLabel(group.kind)
+  const isZero = group.uses === 0 && group.revenue === 0
+  const nightCount = group.nights.length
+  return (
+    <Fragment>
+      <tr
+        className={`border-b border-neutral-50 dark:border-neutral-800/60 last:border-0 ${isZero ? "text-neutral-400 dark:text-neutral-500" : "text-neutral-700 dark:text-neutral-300"}`}
+      >
+        <td className="px-4 py-2">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            title={open ? "Hide nights" : "Show nights"}
+            className="group inline-flex items-center gap-1.5 -ml-1 rounded px-1 py-0.5 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          >
+            <ChevronDown
+              className={`size-3.5 shrink-0 text-neutral-400 transition-transform ${open ? "rotate-180" : ""}`}
+            />
+            <span className="font-medium">{group.label}</span>
+            {kindLabel && (
+              <span className="text-[11px] text-neutral-400 dark:text-neutral-500">· {kindLabel}</span>
+            )}
+          </button>
+        </td>
+        <td className="px-4 py-2 text-xs">
+          {nightCount} {nightCount === 1 ? "night" : "nights"}
+        </td>
+        <td className="px-4 py-2 text-right tabular-nums">{group.uses}</td>
+        <td className="px-4 py-2 text-right tabular-nums">{money(group.revenue)}</td>
+      </tr>
+      {open && (
+        <tr className="border-b border-neutral-50 dark:border-neutral-800/60 last:border-0">
+          <td colSpan={4} className="px-4 py-2">
+            <div className="border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
+              <table className="w-full text-sm">
+                <tbody>
+                  {group.nights.map((r) => (
+                    <BreakdownEventRow key={r.event_id} row={r} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      )}
+    </Fragment>
   )
 }

@@ -163,3 +163,64 @@ test("the Schedules grid's night cards open the night's manage page", () => {
   assert.ok(src.includes("nightHref(programId, night.occurrence_date)"), "unstamped nights keep the editor fallback")
   assert.ok(src.includes('accent="access"'), "the program link row is pink")
 })
+
+// ── Team page: WC path is pink and night-scoped ─────────────────────────────
+
+test("team page: a WC night renders pink via the #119 read-then-accent pattern", () => {
+  const src = read("src/app/business/(dashboard)/events/[id]/manage/team/page.tsx")
+  assert.ok(src.includes("isWeeklyCoverProduct"), "the accent decision reads the product kind, never the name")
+  assert.ok(src.includes("apiClient\n      .get<EventDetail>(`/business/events/${id}`)"), "one event read decides the accent")
+  assert.ok(src.includes("pink ? WeeklyCoverAccent : Fragment"), "WC gets the access accent provider")
+  assert.ok(src.includes("loading || !ready"), "skeleton holds until the accent is known")
+})
+
+test("team page: the door-code banner cannot render on the WC path", () => {
+  const src = read("src/app/business/(dashboard)/events/[id]/manage/team/page.tsx")
+  // The banner slot is a pink ternary; the door-code reframe lives in the
+  // NOT-pink branch. WC nights have no door codes — their manage page hides
+  // DoorCodeCard — so the old banner sent WC hosts to a dead end.
+  const cond = src.indexOf("{pink ? (")
+  const elseAt = src.indexOf(") : (", cond)
+  assert.ok(cond >= 0 && elseAt > cond, "the banner slot is a pink ternary")
+  const banner = src.indexOf("Just need someone scanning tickets tonight?")
+  assert.ok(banner > elseAt, "the door-code banner lives behind the not-pink branch")
+  const doorCopy = src.indexOf("door code")
+  assert.ok(doorCopy > elseAt, "no door-code copy before the not-pink branch")
+  // Bizzy-green hex literals appear ONLY inside the not-pink banner branch.
+  assert.ok(src.indexOf("#05EB54") > elseAt, "no unguarded green hex on the pink path")
+  const bannerEnd = src.indexOf("</Link>", elseAt)
+  assert.ok(bannerEnd > elseAt)
+  assert.ok(src.lastIndexOf("#05EB54") < bannerEnd, "green hex is confined to the banner")
+  // The WC replacement note explains night-scoped access in the pink family.
+  const note = src.indexOf("Teammates you add here get access to this night only.")
+  assert.ok(note > cond && note < elseAt, "the WC note renders on the pink branch")
+  assert.ok(src.includes("border-access/40"), "the WC note uses access tokens")
+})
+
+test("team page: WC copy is night-scoped; green copy is untouched", () => {
+  const src = read("src/app/business/(dashboard)/events/[id]/manage/team/page.tsx")
+  // subtitle
+  assert.ok(src.includes("dashboard access to this night (co-hosts and crew)"), "WC subtitle is night-scoped")
+  assert.ok(src.includes("dashboard access (co-hosts and crew)"), "green subtitle unchanged")
+  // empty state — the WC description never mentions the door code
+  assert.ok(src.includes("No managers or co-hosts on this night yet"))
+  assert.ok(src.includes("Add a teammate who needs a Bizzy account and dashboard access to this night."))
+  assert.ok(src.includes("For door staff who just scan tickets, use the door code instead."), "green empty state unchanged")
+  // add dialog
+  assert.ok(src.includes("Add a manager or co-host for this night"))
+  assert.ok(src.includes("Access covers this night only"))
+  assert.ok(src.includes("(Door staff who only scan tickets don’t need this. Use the door code.)"), "green dialog unchanged")
+  // remove confirm
+  assert.ok(src.includes('pink ? "will lose access to this night." : "will lose access to this event."'))
+  // no green success badge on the WC path: crew (and owner, green's brand
+  // twin) go pink; the green map is untouched
+  assert.ok(src.includes("pink ? WC_ROLE_VARIANT : ROLE_VARIANT"))
+  const wcMap = src.indexOf("WC_ROLE_VARIANT: Record")
+  const wcMapSlice = src.slice(wcMap, wcMap + 200)
+  assert.ok(/owner: "access", cohost: "info", crew: "access", promoter: "warning"/.test(wcMapSlice))
+  assert.ok(src.includes('owner: "brand", cohost: "info", crew: "success", promoter: "warning"'), "green role map unchanged")
+  // the WC manage tile matches: night-scoped subtitle on the WC branch only
+  const manage = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
+  assert.ok(manage.includes("Add a teammate with a Bizzy account for this night"))
+  assert.ok(manage.includes('subtitle: "Add a teammate with a Bizzy account", show: true'), "green tile unchanged")
+})

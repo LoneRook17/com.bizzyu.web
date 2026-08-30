@@ -22,6 +22,7 @@ import {
   cheapestPaidPrice,
   dateEditsToWire,
   weeklyCoverCreateSalesMaps,
+  allProgramTiers21Plus,
   weeklyCoverProgramDescription,
   weeklyCoverProgramName,
   firstConfiguredNight,
@@ -269,9 +270,14 @@ export function DoorAccessWizard({
   const detailsPayload = (): Record<string, unknown> => {
     const start = firstNight?.startTime || "21:00"
     const end = firstNight?.endTime || "02:00"
-    const any21 =
-      Object.values(weekdayEdits).some((n) => n.is21Plus || n.tiers.some((t) => t.is_21_plus)) ||
-      Object.values(dateEdits).some((n) => n.is21Plus || n.tiers.some((t) => t.is_21_plus))
+    // Per-ticket 21+: the program flag is 21+ only when EVERY enabled tier
+    // across the program is (ALL rule), never the old ANY sweep that let one
+    // 21+ table paint the whole program. Mostly cosmetic (Age line) plus the
+    // inherit-default for tiers saved without a stated flag.
+    const all21 = allProgramTiers21Plus([
+      ...Object.values(weekdayEdits),
+      ...Object.values(dateEdits),
+    ])
     return {
       name: programName,
       description: programDescription,
@@ -283,7 +289,7 @@ export function DoorAccessWizard({
       date_range_end: isEdit ? (initialData?.date_range_end ?? null) : null,
       start_time: start,
       end_time: end,
-      is_21_plus: any21,
+      is_21_plus: all21,
     }
   }
 

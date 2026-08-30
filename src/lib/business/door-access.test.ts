@@ -29,7 +29,9 @@ import {
   normalizeNightTier,
   formatDays,
   fmtNightDate,
+  fmtShortDate,
   parseIsoDate,
+  upcomingNextNightDate,
   nightDateBlock,
   fmtTime,
   fmtWindow,
@@ -231,6 +233,18 @@ test("fmtNightDate tolerates a datetime and refuses garbage without throwing", (
   assert.equal(fmtNightDate("2026-08-28 22:00:00"), "Fri, Aug 28")
   assert.equal(fmtNightDate("not-a-date"), "not-a-date")
   assert.equal(fmtNightDate(""), "")
+})
+
+test("fmtShortDate renders a bare night date's calendar day, never the UTC-shifted one", () => {
+  // Home's tiles/rows used `new Date("2026-08-30").toLocaleDateString(...)`,
+  // which is UTC midnight — "Aug 29" for every US viewer. If either of these
+  // prints the previous day, that bug is back.
+  assert.equal(fmtShortDate("2026-08-30"), "Aug 30")
+  assert.equal(fmtShortDate("2026-01-01"), "Jan 1")
+  // Datetimes keep the local-parse path (event starts are ET wall-clock).
+  assert.equal(fmtShortDate("2026-08-30 21:00:00"), "Aug 30")
+  assert.equal(fmtShortDate(null), "-")
+  assert.equal(fmtShortDate(""), "-")
 })
 
 test("parseIsoDate rejects out-of-range months and days", () => {
@@ -1064,13 +1078,23 @@ test("programMetaLine drops empty segments instead of rendering blanks", () => {
 
 test("programScheduleLine leads with the window and singularizes one night", () => {
   assert.equal(
-    programScheduleLine(program()),
+    programScheduleLine(program(), "2026-08-27"),
     "10:00 PM - 2:00 AM · Next: Fri, Aug 28 · 8 nights scheduled"
   )
   assert.equal(
-    programScheduleLine(program({ next_night_date: null, upcoming_night_count: 1 })),
+    programScheduleLine(program({ next_night_date: null, upcoming_night_count: 1 }), "2026-08-27"),
     "10:00 PM - 2:00 AM · 1 night scheduled"
   )
+})
+
+test("a stale next_night_date is not painted as Next: — it already ran", () => {
+  assert.equal(
+    programScheduleLine(program(), "2026-08-30"),
+    "10:00 PM - 2:00 AM · 8 nights scheduled"
+  )
+  assert.equal(upcomingNextNightDate(program(), "2026-08-28"), "2026-08-28")
+  assert.equal(upcomingNextNightDate(program(), "2026-08-29"), null)
+  assert.equal(upcomingNextNightDate(program({ next_night_date: null }), "2026-08-27"), null)
 })
 
 test("nightChips are additive — and speak ONE Custom vocabulary (the voter)", () => {
