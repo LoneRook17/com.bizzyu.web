@@ -10,6 +10,7 @@ import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { isVenueScopeNotFound } from "@/lib/business/venue-selection"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { apiClient } from "@/lib/business/api-client"
+import { nextUpcomingGreenEvent } from "@/lib/business/next-event-tile"
 import type {
   DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem,
 } from "@/lib/business/types"
@@ -219,8 +220,13 @@ export default function V2HomePage() {
 
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
+  // WC-SMEAR follow-up (2026-08-29): "next event" must be the next start
+  // >= now ET, never a past occurrence. hostUpcomingShowsGreenNight alone
+  // let a finished standalone one-off (Aug 28 at 9pm, viewed Saturday the
+  // 29th) stay "coming up" forever — its one-off/Custom arms skip the date
+  // window on purpose for the LIST; the tile needs the future filter too.
   const nextEvent = showEventsSection
-    ? events.find((event) => {
+    ? nextUpcomingGreenEvent(events, (event) => {
         if (isApprovedCanceledStatus(event.status) || isWeeklyCoverProduct(event)) return false
         const seriesId = Number(event.recurring_series_id)
         if (inactiveWcIds.includes(seriesId) && !weeklyCoverNightNeedsPendingCancel(event, false)) {
