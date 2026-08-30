@@ -581,10 +581,18 @@ export function parseProgramPathId(raw: string | null | undefined): number | nul
 /** Default strip: the next N upcoming nights, not a 4-week ledger. */
 export const DEFAULT_NIGHT_PREVIEW_COUNT = 4
 
-/** Days fetched before the host opens More nights. Server clamps at 180. */
+/**
+ * FETCH lookahead for the program-edit load (weekday-template
+ * reconstruction), not a display window. Server clamps at 180. The dash
+ * DISPLAY window for generated nights is SERIES_NIGHTS_WINDOW_DAYS (30).
+ */
 export const DEFAULT_SERIES_LOOKAHEAD_DAYS = 28
 
-/** Far-future one-off / Custom nights must still load on Upcoming. */
+/**
+ * FETCH lookahead so far-future one-off / Custom nights still arrive.
+ * Display filters (hostShowsWeeklyCoverNight & co) then clip GENERATED
+ * series nights to the shared month window while Customs stay.
+ */
 export const ONE_OFF_SERIES_LOOKAHEAD_DAYS = 180
 
 export function isPinnedUpcomingNight(night: HostCustomNightInput): boolean {
