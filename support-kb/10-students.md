@@ -44,6 +44,10 @@ Grounded in a code-behavior trace (2026-07-03). Re-verify when flows change.
   claim unrestricted, then **2 claims per week**, and can't claim premium-only or
   one-time/limited-time deals. **Bizzy Premium** removes all of those limits.
 - "Deal recently claimed" = the deal is in cooldown for this user.
+- Everything above is about **local campus deals**. **National deals** (the
+  National toggle on the Deals tab) work completely differently: opened on the
+  brand's website, no QR, no cooldowns, free for everyone, and they never use
+  a weekly free claim or move the leaderboard. See "National deals".
 
 ## Bizzy Premium
 
@@ -76,11 +80,16 @@ Grounded in a code-behavior trace (2026-07-03). Re-verify when flows change.
   immediately** to support@bizzyu.com with the email on the account, event name,
   and purchase time.
 
-## Line skips
+## Line skips (legacy product)
 
-- Skip-the-line passes for bars/nightlife, **21+**, sold for specific upcoming
-  nights. The price **includes cover** — you don't pay again at the door, and entry
-  is guaranteed while the night's window is open.
+- Line skips are an **older Bizzy product** that most venues have replaced
+  with **Weekly Cover** (where faster entry is a "Skip the Line" option on a
+  night). A few venues still sell them, and anything already purchased keeps
+  working exactly as bought — don't tell a student their pass is invalid
+  because the product is legacy.
+- What they are: skip-the-line passes for bars/nightlife, **21+**, sold for
+  specific upcoming nights. The price **includes cover** — you don't pay again
+  at the door, and entry is guaranteed while the night's window is open.
 - After purchase you get a QR (in the app Wallet and by email). Show it at the
   door; staff scan it with their phone camera.
 - One-time use; valid only for the specific night/time window purchased.
@@ -100,7 +109,17 @@ Happening Tonight. Camera check-in, not the in-app scanner. Full article:
 "Weekly Cover". Don't call it door access. Don't treat a title ending in
 Cover as proof it is Weekly Cover.
 
+## Hosting your own event
+
+Any student can host: tap **"+ Host an event"** on the Events tab (or "Host an
+event" in Profile). New hosts' events are reviewed by Bizzy before going live
+(you get a text when approved), paid tickets can be sold before Stripe is set
+up (Bizzy holds the earnings until you connect Stripe in the app), and a Host
+tab appears once you host. Full article: "Hosting events".
+
 ## Profile & leaderboard
 
 - Profile shows lifetime money saved and deals claimed.
 - The **leaderboard** ranks students per school, monthly, by amount saved.
+- Savings and the leaderboard count **local campus deals only** — national
+  deals and ticket purchases don't move them.

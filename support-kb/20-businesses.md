@@ -16,7 +16,7 @@ apply to business/venue users.
 ## Getting paid (Stripe)
 
 - Businesses must connect **Stripe** (Settings → Stripe Connect) before creating paid
-  events, Weekly Cover, or line skips. Stripe's wizard asks for business details,
+  events or Weekly Cover. Stripe's wizard asks for business details,
   bank account, and photo ID.
 - Sales pay out to the business's bank account on Stripe's schedule for their account
   (not a Bizzy timeline). The first payout usually takes about 7 to 14 days while Stripe
@@ -67,8 +67,9 @@ apply to business/venue users.
 
 ## Door tools
 
-- **Scanning tickets** (named events): Scanner in the dashboard sidebar or the
-  Bizzy app. Green = valid, let them in; red = already used or invalid.
+- **Scanning tickets** (named events): open the event → Manage → Scanner in the
+  dashboard, or scan in the Bizzy app. There is no Scanner item in the 5.0
+  sidebar. Green = valid, let them in; red = already used or invalid.
 - **Door codes** (named events only): every **named event** has a 6-digit door
   code. A doorperson opens the app, taps "Scan Tickets" on the login screen,
   types the code, and can scan and take door sales with NO account or invite.
@@ -84,12 +85,16 @@ apply to business/venue users.
   (Stripe must be connected; no extra hardware). Preset ticket types or custom
   amounts on the numpad; both are recorded in analytics.
 
-## Line skips
+## Line skips (legacy)
 
-- Created as a rolling schedule (days of week, doors open/close, price, quantity per
-  night). The system generates upcoming nights 2 weeks ahead automatically.
-- Each night can be individually edited (price/quantity/times) or cancelled.
-- Line skips include cover and are guaranteed entry.
+- Line skips are a **legacy product**. New line-skip schedules can no longer be
+  created from the dashboard; the modern way to sell nightlife entry is a
+  **Weekly Cover** series, with "Skip the Line" as an option on a night.
+- Venues that still have an existing line-skip schedule can keep managing it
+  (edit a night's price/quantity/times, cancel a night, or turn the schedule
+  off) through the legacy link inside the Events page's Weekly Cover view.
+- Existing schedules keep generating nights and selling until the venue turns
+  them off. Sold passes always keep working (camera scan, includes cover).
 
 ## Deals
 

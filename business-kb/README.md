@@ -22,12 +22,12 @@ Files:
 - `15-recurring-events.md` — named weekly series (Trivia Tuesdays); each night is a green Event.
 - `16-weekly-cover.md` — Weekly Cover (`product_kind` weekly_cover): series of nights, custom still WC, camera check-in.
 - `20-tickets.md` — ticket types, drag-reorder, mark sold out, hide, scan window.
-- `30-promo-codes.md` — per-event promo codes.
+- `30-promo-codes.md` — per-event promo codes + universal (venue-wide) codes.
 - `40-promoters.md` — Promoter Program, commissions, in-app wallet + on-demand payouts.
 - `50-scanners-door-counters.md` — ticket/line-skip scanning + door counters.
 - `60-team.md` — business team vs event co-hosts, roles, invites.
 - `70-stripe-payouts.md` — connecting Stripe, payout timing, refunds.
-- `80-line-skips-deals.md` — line-skip schedules + deals.
+- `80-line-skips-deals.md` — LEGACY line skips (no new creation; manage/turn off only) + deals + national-deals boundary.
 - `90-analytics-marketing.md` — analytics, Tap-to-Pay, marketing/blasts.
 
 ## Editing
