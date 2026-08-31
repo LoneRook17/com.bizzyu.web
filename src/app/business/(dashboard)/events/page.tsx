@@ -74,13 +74,14 @@ import {
  * Two filters stack here and they are NOT the same question:
  *   • the TYPE segment (All / Events / Weekly Cover) — which KIND of thing;
  *   • the status tabs (Upcoming / Past / Drafts / Recurring) — which STATE,
- *     except Recurring, which is a kind filter (RC nights + Schedules).
+ *     except Recurring, which is a kind filter (RC + WC nights + Schedules).
  *     Status tabs hide in the Weekly Cover-only view.
  *
  * Live Upcoming and Recurring match Flutter Host: Tonight, expandable
  * Upcoming events & WC (today+30 for series; one-off / Custom always), then
- * Schedules. Recurring keeps RC series nights plus both RC and WC schedule
- * rows. Weekly Cover keeps WC nights plus WC schedules. Past / Drafts keep
+ * Schedules. Recurring keeps RC and WC night cards on those dates plus both
+ * RC and WC schedule rows. Standalone named one-offs stay on All / Events.
+ * Weekly Cover keeps WC nights plus WC schedules. Past / Drafts keep
  * the older flat list.
  *
  * Everything this page replaced still opens its own existing page: a series row
@@ -263,8 +264,8 @@ export default function V2EventsPage() {
   // those series stay as pending-cancel EventCards (same as a one-off).
   const activePrograms = weeklyCoverProgramsForDash(venuePrograms)
 
-  // Upcoming pins WC programs as Schedules. Recurring does too — that chip
-  // is RC nights + both RC and WC schedule rows. Past / Drafts stay dated
+  // Upcoming pins WC programs as Schedules. Recurring does too, and also
+  // keeps WC night cards on Tonight/Upcoming dates. Past / Drafts stay dated
   // events only. The Weekly Cover segment used to keep Ended rows; a host
   // series delete with 0 sales must leave the dash entirely.
   const visiblePrograms = shouldShowWeeklyCoverOnEventsTab(tab, isPending, effectiveType)
