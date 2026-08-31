@@ -2,9 +2,16 @@
 
 import { useState, useEffect, useRef, type ReactNode } from "react"
 import { Reorder, useDragControls } from "framer-motion"
-import { Eye, EyeOff, Loader2, Plus } from "lucide-react"
+import { Eye, EyeOff, Loader2, Plus, X } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { persistMaxPerPerson } from "@/lib/business/ticket-limits"
+import {
+  nextSurgeStep,
+  seededSurgeStep,
+  tierSurgeToWire,
+  tierWithSurgeDrafts,
+  validateTierSurge,
+} from "@/lib/business/event-tier-surge"
 import type { EventDetail, TicketTier } from "@/lib/business/types"
 import { cn, usd } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
@@ -28,6 +35,17 @@ export type TicketFormState = {
   max_per_person: string
   valid_from: string
   valid_until: string
+  /**
+   * Per-tier 21+ — undefined means the form never stated one, so the save
+   * omits the key (server: update keeps the stored flag, create inherits
+   * the event's own toggle).
+   */
+  is_21_plus?: boolean
+  /** Surge drafts, same shapes the event-create tier card uses. */
+  surge_enabled: boolean
+  surge: { afterSoldInput: string; priceInput: string }[]
+  /** Stored ladder base, for validation against a part-way-fired ladder. */
+  surge_base_price_usd?: number | null
 }
 
 export const EMPTY_TICKET_FORM: TicketFormState = {
@@ -39,6 +57,8 @@ export const EMPTY_TICKET_FORM: TicketFormState = {
   max_per_person: "",
   valid_from: "",
   valid_until: "",
+  surge_enabled: false,
+  surge: [],
 }
 
 export type TicketFormFieldMode = boolean | "readonly"
@@ -51,6 +71,8 @@ export type TicketFormVisibility = {
   quantity?: TicketFormFieldMode
   max_per_person?: TicketFormFieldMode
   scan_window?: boolean
+  surge?: boolean
+  is_21_plus?: boolean
 }
 
 export const EVENT_TICKET_FORM_FIELDS: TicketFormVisibility = {
@@ -61,6 +83,8 @@ export const EVENT_TICKET_FORM_FIELDS: TicketFormVisibility = {
   quantity: true,
   max_per_person: true,
   scan_window: true,
+  surge: true,
+  is_21_plus: true,
 }
 
 export type TicketRowActions = {
@@ -93,6 +117,7 @@ function toLocalInput(v?: string | null): string {
 }
 
 export function ticketToForm(t: TicketTier): TicketFormState {
+  const withSurge = tierWithSurgeDrafts(t)
   return {
     ticket_id: t.ticket_id,
     name: t.name,
@@ -103,6 +128,10 @@ export function ticketToForm(t: TicketTier): TicketFormState {
     max_per_person: t.max_per_person == null ? "" : String(t.max_per_person),
     valid_from: toLocalInput(t.valid_from),
     valid_until: toLocalInput(t.valid_until),
+    ...(t.is_21_plus === undefined ? {} : { is_21_plus: !!t.is_21_plus }),
+    surge_enabled: !!withSurge.surge_enabled,
+    surge: withSurge.surge ?? [],
+    surge_base_price_usd: t.surge_base_price_usd ?? null,
   }
 }
 
@@ -135,6 +164,19 @@ export function eventStockAlertsAdapter(eventId: string): StockAlertsAdapter {
   }
 }
 
+/** The form state as the surge helpers' TicketTier-ish shape. */
+function formAsTier(editing: TicketFormState): TicketTier {
+  return {
+    name: editing.name,
+    price_usd: editing.ticket_type === "paid" ? parseFloat(editing.price_usd) || 0 : 0,
+    quantity: parseInt(editing.quantity) || 0,
+    ticket_type: editing.ticket_type === "guest" ? "paid" : editing.ticket_type,
+    surge_enabled: editing.surge_enabled,
+    surge: editing.surge,
+    surge_base_price_usd: editing.surge_base_price_usd ?? null,
+  }
+}
+
 function ticketSaveBody(editing: TicketFormState) {
   return {
     name: editing.name.trim(),
@@ -145,6 +187,12 @@ function ticketSaveBody(editing: TicketFormState) {
     max_per_person: persistMaxPerPerson(editing.max_per_person),
     valid_from: editing.valid_from || null,
     valid_until: editing.valid_until || null,
+    // Only when stated — omission keeps the stored flag (update) or inherits
+    // the event's own toggle (create).
+    ...(editing.is_21_plus === undefined ? {} : { is_21_plus: !!editing.is_21_plus }),
+    // Both surge keys always — surge off must travel as an explicit clear,
+    // same contract as the event-create tier card.
+    ...tierSurgeToWire(formAsTier(editing)),
   }
 }
 
@@ -296,6 +344,11 @@ export function ManageSalesTickets({
     }
     if (editing.valid_from && editing.valid_until && editing.valid_from >= editing.valid_until) {
       setSaveError('"From" must be before "Until"')
+      return
+    }
+    const surgeError = validateTierSurge(formAsTier(editing))
+    if (surgeError) {
+      setSaveError(surgeError)
       return
     }
     setSaving(true)
@@ -564,6 +617,104 @@ export function TicketEditForm({
                   onUpdate={(field, value) => onChange({ ...editing, [field]: value })}
                   onClear={() => onChange({ ...editing, valid_from: "", valid_until: "" })}
                 />
+              </div>
+            )}
+            {fields.is_21_plus && (
+              <div className="sm:col-span-2">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!editing.is_21_plus}
+                    onChange={(e) => onChange({ ...editing, is_21_plus: e.target.checked })}
+                    className="size-4 rounded border-neutral-300 dark:border-neutral-700"
+                  />
+                  <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">21+ only</span>
+                  <span className="text-[11px] text-neutral-400 dark:text-neutral-500">Buyers see a 21+ badge on this ticket.</span>
+                </label>
+              </div>
+            )}
+            {fields.surge && (
+              <div className="sm:col-span-2">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!editing.surge_enabled}
+                    onChange={(e) =>
+                      onChange({
+                        ...editing,
+                        surge_enabled: e.target.checked,
+                        // Seed the first rung so the toggle never lands on an
+                        // empty ladder — same as the event-create tier card.
+                        surge:
+                          e.target.checked && editing.surge.length === 0
+                            ? [seededSurgeStep(formAsTier(editing))]
+                            : editing.surge,
+                      })
+                    }
+                    className="size-4 rounded border-neutral-300 dark:border-neutral-700"
+                  />
+                  <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Surge pricing</span>
+                  <span className="text-[11px] text-neutral-400 dark:text-neutral-500">Price goes up after a set number of tickets sell.</span>
+                </label>
+
+                {editing.surge_enabled && (
+                  <div className="mt-2 rounded-xl bg-neutral-100 p-3 dark:bg-neutral-800/70">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                      Price jumps
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {editing.surge.map((step, s) => (
+                        <div key={s} className="flex items-end gap-2">
+                          <div className="min-w-0 flex-1">
+                            <Label className="mb-1 block text-xs">{s === 0 ? "After this sells" : "Then after"}</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={step.afterSoldInput}
+                              onChange={(e) => {
+                                const surge = [...editing.surge]
+                                surge[s] = { ...surge[s], afterSoldInput: e.target.value }
+                                onChange({ ...editing, surge })
+                              }}
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <Label className="mb-1 block text-xs">Next price ($)</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              inputMode="decimal"
+                              value={step.priceInput}
+                              onChange={(e) => {
+                                const surge = [...editing.surge]
+                                surge[s] = { ...surge[s], priceInput: e.target.value }
+                                onChange({ ...editing, surge })
+                              }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onChange({ ...editing, surge: editing.surge.filter((_, i) => i !== s) })}
+                            aria-label={`Remove jump ${s + 1}`}
+                            className="mb-1.5 rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onChange({ ...editing, surge: [...editing.surge, nextSurgeStep(formAsTier(editing))] })
+                      }
+                      className="mt-2 text-[13px] font-semibold text-neutral-700 hover:underline dark:text-neutral-300"
+                    >
+                      Add another price jump
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
