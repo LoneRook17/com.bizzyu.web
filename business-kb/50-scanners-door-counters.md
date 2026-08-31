@@ -2,7 +2,8 @@
 
 ## Scanning tickets (named events)
 
-1. Go to **Scanner** in the dashboard sidebar (or use the Bizzy phone app).
+1. Open the event → **Manage → Scanner** in the dashboard (or use the Bizzy
+   phone app). There is no Scanner item in the sidebar.
 2. Point the camera at the customer's QR-code ticket.
 3. **Green = valid ticket**, let them in. **Red = already used or invalid**, don't let
    them in.

@@ -1,51 +1,57 @@
-# Line skips & deals
+# Line skips (legacy) & deals
 
-## Line skips
+## Line skips are a legacy product
 
-Line skips are Bizzy's door product. Customers pay in advance for a specific night, show
-a QR code at the door, and walk to the front with **guaranteed entry**.
+Line skips were Bizzy's original door product: customers paid in advance for a
+specific night, showed a QR at the door, and walked to the front with
+guaranteed entry, cover included.
 
-- **Includes cover:** the line-skip price includes the cover charge. The customer pays
-  once and doesn't pay again at the door. All Bizzy line skips include cover.
-- **One night, one use:** a pass is valid only for the night and time window it was bought
-  for. It scans once.
-- **21+:** line skips are nightlife products and are sold as 21+.
+That product has been **retired for new setups**. There is no Line skips item
+in the sidebar and **no way to create a new line-skip schedule** from the
+dashboard. The modern way to sell nightlife entry is a **Weekly Cover**
+series: Cover as the base tier, with **"Skip the Line"** as a faster-entry
+option on a night (see "Weekly Cover"). If an owner asks how to set up line
+skips, point them to Weekly Cover, not to a create flow that no longer exists.
 
-### Creating a line skip schedule
+### Venues that still have a legacy schedule
 
-1. Go to **Line skips** in the sidebar and click **"Create line skip"**.
-2. Set the name, description, days of the week, and start date.
-3. Set doors open/close times, price, and quantity per night.
+Existing line-skip schedules **keep working** until the venue turns them off:
+nights keep generating on the rolling schedule (about 2 weeks ahead) and keep
+selling.
 
-- Line skips run on a **rolling schedule** — the system creates upcoming nights **2
-  weeks ahead automatically**. You don't create each night by hand.
-
-### Managing nights
-
-- Open a line-skip schedule to see all upcoming and past nights. For each night you can
-  edit the price, quantity, or times, or cancel the night.
-- Cancelling a night refunds every buyer for that night automatically. See "Stripe &
-  payouts" for what a refund does to your balance.
-- **Scanning:** line skips are scanned with the phone's **regular camera app**, not the
-  in-app scanner (see the "Scanning & door counters" article).
+- **Where to find it**: inside **Events**, in the Weekly Cover view, through
+  the muted legacy line-skips link. Opening a night from there still works.
+- **Managing nights**: each upcoming night can be edited (price, quantity,
+  times) or cancelled. Cancelling a night automatically refunds every buyer
+  for that night (see "Stripe & payouts" for what a refund does).
+- **Turning the schedule off**: the legacy Line skips page has a "Turn off
+  line skip" action (owner or manager). It is **blocked while a future night
+  still has paid passes** — the dialog says how many passes across how many
+  nights. Cancel those nights first (which refunds those buyers), then turn
+  it off.
+- **Sold passes always keep working** exactly as bought: one night, one use,
+  camera scan, cover included. Never tell a customer or an owner that a sold
+  pass stopped being valid because the product is legacy.
+- **Scanning**: line skips are scanned with the phone's **regular camera app**,
+  not the in-app scanner (see "Scanning & door counters").
 
 ### A naming collision worth knowing about
 
-"Skip the line" is an ordinary English phrase, and owners use it loosely. When someone
-says it, they might mean:
+"Skip the line" is an ordinary English phrase, and owners use it loosely. When
+someone says it, they might mean:
 
-- **A Bizzy line skip**, the standalone product described above (legacy Line skips
-  schedules). Camera scan, includes cover.
-- **A ticket tier they named "Skip the Line"** on a **named event**. That is just a
-  ticket: in-app scanner, cover only if they said so.
-- **A Weekly Cover tier named "Skip the Line"**. Still Weekly Cover for that night
-  (`product_kind` weekly_cover). Camera Check In, not this line-skip schedule.
-  See "Weekly Cover".
+- **A Weekly Cover tier named "Skip the Line"** — the current product. Still
+  Weekly Cover for that night (`product_kind` weekly_cover). Camera Check In.
+  See "Weekly Cover". This is the most likely meaning going forward.
+- **A ticket tier they named "Skip the Line"** on a **named event**. That is
+  just a ticket: in-app scanner, cover only if they said so.
+- **A legacy Bizzy line skip**, the retired standalone product above. Camera
+  scan, includes cover.
 
-If it isn't clear which one an owner means, ask one short question before answering,
-because the scanning method and the setup screens are different. Don't assume a
-ticket named "Skip the Line" is a line skip, and don't send a Weekly Cover owner
-to the old Line skips screen to fix Cover.
+If it isn't clear which one an owner means, ask one short question before
+answering, because the scanning method and the management screens are
+different. Don't assume a ticket named "Skip the Line" is a line skip, and
+don't send a Weekly Cover owner to the legacy line-skips screen to fix Cover.
 
 ## Deals
 
@@ -68,3 +74,13 @@ foot traffic — **no fees, ever**.
 - Update deals regularly and use limited-time offers to create urgency.
 - Customers claim in the app and show the claim to your staff; the app enforces the
   frequency you set.
+
+### National deals are a different thing
+
+The app also shows **national deals**: student discounts from national brands,
+curated by the Bizzy team, the same across every campus, redeemed on the
+brand's own website. They are **not** created from this dashboard, and a
+venue's local deals never compete with them in the local feed. If an owner
+asks how to get their offer into the national catalog, that's a conversation
+with the Bizzy team — collect the details and point them to
+support@bizzyu.com.

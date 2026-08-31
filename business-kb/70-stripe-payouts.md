@@ -5,8 +5,8 @@ line skip, Stripe collects payment and sends your share to your bank account.
 
 ## Connecting Stripe
 
-You must connect Stripe **before you can create any paid events, Weekly Cover,
-or line skips**.
+You must connect Stripe **before you can create any paid events or Weekly
+Cover**.
 
 1. Go to **Settings** in the sidebar.
 2. Find the **Stripe Connect** section and click **"Set up business Stripe"**.
@@ -16,8 +16,8 @@ or line skips**.
 
 - You can also complete Stripe setup from the Bizzy phone app.
 - In **Settings → Stripe Connect** you can view your connection status and **reconnect**
-  if Stripe needs more information. Stay connected while you have active paid events or
-  line skips.
+  if Stripe needs more information. Stay connected while you have anything
+  actively selling (events, Weekly Cover, or a legacy line-skip schedule).
 
 ## Multiple venues: per-venue payout accounts
 

@@ -1,25 +1,36 @@
 # Dashboard overview
 
 Bizzy helps bars, clubs, restaurants, and venues sell tickets, run Weekly Cover,
-offer deals, and manage line skips to college students. The business dashboard
+and offer deals to college students. The business dashboard
 (bizzyu.com/business) is the operator's home base. The Bizzy phone app is the
 companion tool used at the door for scanning and Tap-to-Pay door sales.
 
-## What you can do from the dashboard
+## The sidebar (5.0) and what you can do
 
-- **Events** — create named events, sell tickets, and track who shows up.
-- **Weekly Cover** — sell Cover for a venue's regular nights (pink rows on
-  Events / Home; create from Events → Create → Weekly Cover). Not a named
-  event. See "Weekly Cover".
-- **Line skips** — let customers pay to skip the line on busy nights (standalone
-  product, separate from a Weekly Cover Skip the Line tier).
+The sidebar has exactly three groups. Don't send owners to sidebar items that
+no longer exist (Scanner, Line skips, Recurring, Weekly Cover, and per-event
+Promo codes are not sidebar items).
+
+- **Home** — overview of what's live.
+- **Events** — everything you sell lives here: create named events (green),
+  create Weekly Cover (pink; Events → Create → the Weekly Cover tile), open
+  recurring series from the grouped rows in the list, and reach any legacy
+  line-skip schedule through the muted legacy link in the Weekly Cover view.
 - **Deals** — post free special offers that drive foot traffic.
-- **Analytics** — see tickets sold, revenue, and top-performing deals.
-- **Team** — invite staff, managers, and promoters.
-- **Marketing** — view your attendees and send announcements / SMS blasts.
-- **Settings** — manage venues, connect Stripe, update your business info.
-- **Scanner** — scan QR-code **named-event** tickets at the door. Weekly Cover
-  uses any phone camera (see "Weekly Cover"). Line skips use the phone camera.
+- Grow group:
+  - **Marketing** — view your attendees and send announcements / SMS blasts.
+  - **Analytics** — tickets sold, revenue, and top-performing deals.
+  - **Universal promo codes** — venue-wide codes that apply to every event at
+    one venue (see "Promo codes").
+  - **Payouts** — visible to the owner and members the owner has granted
+    payout access.
+- Workspace group:
+  - **Team** — invite staff, managers, and promoters.
+  - **Settings** — manage venues, connect Stripe, update your business info.
+
+Scanning happens per event (open the event → Manage → Scanner), in the Bizzy
+phone app, or with the event's 6-digit door code — not from a sidebar item.
+Weekly Cover and line skips use any phone camera (see "Weekly Cover").
 
 ## Accounts & approval
 
