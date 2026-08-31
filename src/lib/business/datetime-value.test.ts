@@ -145,7 +145,9 @@ test("dash create/edit Starts and Ends are DateField + TimeField, not an ISO blo
   assert.ok(widget.includes("CLOCK_HOURS_12"), "hour wheel is 1-12")
   assert.ok(widget.includes("CLOCK_MINUTES_15"), "minute wheel snaps to 15 minutes")
   assert.ok(!widget.includes("clock12hSlots"), "picker is not a 96-row 15-minute dump")
-  assert.ok(timeFn.includes("placeholder=\"7:00 PM\""), "typed 12-hour input stays")
+  // The default prop keeps 7:00 PM as the standing hint; callers may swap in
+  // another 12-hour example ("2:00 AM" on event Ends) without losing it.
+  assert.ok(timeFn.includes("placeholder = \"7:00 PM\""), "typed 12-hour input stays")
 
   assert.ok(eventForm.includes("DateTimeField"), "green event create/edit still uses the shared control")
   assert.ok(!eventForm.includes("YYYY-MM-DDTHH:MM"), "event form does not show an ISO T string")

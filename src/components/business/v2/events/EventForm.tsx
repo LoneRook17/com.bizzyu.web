@@ -420,6 +420,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           ticket_type: t.ticket_type,
           valid_from: t.valid_from || null,
           valid_until: t.valid_until || null,
+          // Only when the tier states one — omission keeps the API stamping
+          // the event's own 21+ flag onto the tier.
+          ...(t.is_21_plus !== undefined ? { is_21_plus: !!t.is_21_plus } : {}),
           // Both keys always — surge off must travel as an explicit clear;
           // omission would leave a stored ladder in place.
           ...tierSurgeToWire(t),
@@ -683,6 +686,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             <DateTimeField
               id="start_date_time"
               name="start_date_time"
+              datePlaceholder="Day of"
               value={form.start_date_time}
               onChange={(next) => {
                 setForm((prev) => ({ ...prev, start_date_time: next }))
@@ -696,6 +700,8 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             <DateTimeField
               id="end_date_time"
               name="end_date_time"
+              datePlaceholder="Next day"
+              timePlaceholder="2:00 AM"
               value={form.end_date_time}
               onChange={(next) => {
                 setForm((prev) => ({ ...prev, end_date_time: next }))
@@ -831,7 +837,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <Card>
           <CardHeader><CardTitle>Tickets</CardTitle></CardHeader>
           <CardContent className="pt-0">
-            <TicketTierForm tiers={form.tickets} onChange={(tiers) => setForm((prev) => ({ ...prev, tickets: tiers }))} />
+            <TicketTierForm tiers={form.tickets} onChange={(tiers) => setForm((prev) => ({ ...prev, tickets: tiers }))} eventIs21Plus={form.is_21_plus} />
             {errors.tickets && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tickets}</p>}
           </CardContent>
         </Card>

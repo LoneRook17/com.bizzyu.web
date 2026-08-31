@@ -118,6 +118,7 @@ function draftTierToRow(draftTier: NightTierDraft): RecurringTierRow {
     valid_until_time: toTimeInput(draftTier.valid_until_time),
     valid_from_day_offset: draftTier.valid_from_day_offset,
     valid_until_day_offset: draftTier.valid_until_day_offset,
+    ...(draftTier.is_21_plus === undefined ? {} : { is_21_plus: draftTier.is_21_plus }),
   }
 }
 
@@ -226,6 +227,9 @@ function NightOverrideTickets({
         valid_until_time: template?.valid_until_time ?? source?.valid_until_time,
         valid_from_day_offset: template?.valid_from_day_offset ?? source?.valid_from_day_offset,
         valid_until_day_offset: template?.valid_until_day_offset ?? source?.valid_until_day_offset,
+        // Baseline the 21+ pin against what the night would inherit anyway:
+        // the template tier's flag, else the program's.
+        is_21_plus: template?.is_21_plus ?? program.is_21_plus,
       })
     )
     setSaveError("")
@@ -321,6 +325,7 @@ function NightOverrideTickets({
             allowAdd={false}
             allowRemove={false}
             showIdentityFields={false}
+            show21Plus
           />
           {saveError && <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>}
           <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{NIGHT_TICKET_DRAFT_HINT}</p>
