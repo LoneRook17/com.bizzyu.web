@@ -3,21 +3,27 @@
 Bizzy is a two-sided, per-campus marketplace app for college students.
 
 - **Students** (iOS app): discover and claim local **deals** (food, drinks,
-  things-to-do), buy **event tickets**, buy **Weekly Cover / Cover** for a
-  venue's regular nights, and buy **line skips** for nightlife.
-  Pitch: real students, real savings, no fees.
+  things-to-do), browse **national deals** from big brands, buy **event
+  tickets**, buy **Weekly Cover / Cover** for a venue's regular nights, and
+  **host their own events**. Pitch: real students, real savings, no fees.
 - **Businesses & venues** (web dashboard at bizzyu.com/business + the app's business
-  tools): list deals, sell tickets, run Weekly Cover, sell line skips, scan at
-  the door, run promoters and marketing, get paid via Stripe.
+  tools): list deals, sell tickets, run Weekly Cover, scan at the door, run
+  promoters and marketing, get paid via Stripe.
 
-Everything is scoped to a **specific university** (FGCU, USF, UGA, ASU, and more).
-A student only sees deals and events for their own campus. Students pick their
-school at signup; if their school isn't on Bizzy yet they can request it.
+Local deals and events are scoped to a **specific university** (FGCU, USF, UGA,
+ASU, and more). A student only sees local deals and events for their own campus.
+Students pick their school at signup; if their school isn't on Bizzy yet they
+can request it. **National deals** are the exception: the same brand catalog is
+available to every student regardless of campus (see "National deals").
 
 ## Key concepts (shared vocabulary)
 
 - **Deal** — a special offer at a local business (discount, freebie, BOGO). Students
   claim it in the app and show it in-store. Free for businesses to create.
+- **National deal** — a student discount from a national brand, the same for
+  every campus. Opened on the brand's website (no QR, nothing shown in-store),
+  never uses a weekly free claim, never moves the leaderboard. See "National
+  deals".
 - **Deal cooldown / frequency** — each deal is claimable daily, weekly, monthly, or
   anytime, set by the business. After claiming, the deal locks with a countdown until
   it's available again.
@@ -34,10 +40,14 @@ school at signup; if their school isn't on Bizzy yet they can request it.
   and the Events tab. Not a named event and not a subscription. Guest copy
   says Cover or Weekly Cover, never "door access". Don't guess from a title
   that ends in Cover. See "Weekly Cover".
-- **Line skip** — a skip-the-line pass for bars/nightlife (21+), sold for specific
-  nights over the coming week. Includes cover — the customer doesn't pay again at
-  the door. Guaranteed entry. Separate from a Weekly Cover tier also named
-  "Skip the Line".
+- **Line skip** — a LEGACY skip-the-line pass for bars/nightlife (21+), sold for
+  specific nights. Includes cover — the customer doesn't pay again at the door.
+  A few venues still sell them and purchased passes keep working, but venues
+  are moving to Weekly Cover, where faster entry is a "Skip the Line" option
+  on a night. Separate from a Weekly Cover tier also named "Skip the Line".
+- **Hosting** — any student can create and host their own event ("+ Host an
+  event" on the Events tab). New hosts' events are reviewed by Bizzy before
+  going live. See "Hosting events".
 - **Wallet (student)** — the app tab holding purchased tickets, Weekly Cover,
   and line skips (Upcoming / Past / All) with their QR codes.
 - **Promoter** — a user who promotes an event with a personal tracking link and
@@ -48,11 +58,16 @@ school at signup; if their school isn't on Bizzy yet they can request it.
 - **Service fee** — added on top of ticket/line-skip prices and paid by the buyer.
   Businesses receive the full price they set.
 
-## The four student tabs
+## The student tabs
 
-**Deals · Events · Wallet · Profile.** Profile shows lifetime savings, deals claimed,
-the per-school monthly leaderboard (ranked by amount saved), favorites, deal history,
-and settings.
+**Deals · Events · Wallet · Profile** — four tabs for most students. A fifth
+**Host** tab appears (in the middle) once someone hosts an event or works a
+door/team role; not having it is normal. Profile shows lifetime savings, deals
+claimed, the per-school monthly leaderboard (ranked by amount saved),
+favorites, deal history, and settings.
+
+The **Deals** tab has a Local / National toggle at the top: Local is the
+student's campus, National is the brand catalog (see "National deals").
 
 On **Events**, named events are green and Weekly Cover nights are pink. **Events
 → Venues** lists venues that have upcoming events or Weekly Cover, not places
