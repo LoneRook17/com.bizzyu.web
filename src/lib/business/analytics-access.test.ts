@@ -15,6 +15,7 @@ import assert from "node:assert/strict"
 import {
   canCreateDeal,
   canViewEventAnalytics,
+  canViewRevenue,
   eventAnalyticsOutcomeFromError,
   scopedAnalyticsFetchOutcome,
   EVENT_ANALYTICS_ACCESS_COPY,
@@ -110,4 +111,15 @@ test("events access copy names the roles without any error language", () => {
   assert.equal(EVENT_ANALYTICS_ACCESS_COPY.title, "Not available for your role")
   assert.doesNotMatch(EVENT_ANALYTICS_ACCESS_COPY.title, /error|fail|forbidden|denied/i)
   assert.match(EVENT_ANALYTICS_ACCESS_COPY.description, /owners and managers/i)
+})
+
+// ── REVENUE IS OWNER-ONLY (the matrix's "View revenue & payouts: manager no") ─
+
+test("canViewRevenue admits only the owner — managers keep analytics, not the money headline", () => {
+  assert.equal(canViewRevenue("owner"), true)
+  assert.equal(canViewRevenue("manager"), false)
+  assert.equal(canViewRevenue("staff"), false)
+  assert.equal(canViewRevenue("promoter"), false)
+  assert.equal(canViewRevenue(null), false)
+  assert.equal(canViewRevenue(undefined), false)
 })
