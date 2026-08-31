@@ -184,7 +184,7 @@ export default function LineSkipsPage() {
                 <StatTile label="Avg per night" value={`${analytics.avg_tickets_per_night} tickets`} sub={`${money(analytics.avg_revenue_per_night_cents)} rev`} />
                 <StatTile
                   label="Busiest day"
-                  value={analytics.busiest_day ? DAY_LABELS[analytics.busiest_day.day_of_week] : "—"}
+                  value={analytics.busiest_day ? DAY_LABELS[analytics.busiest_day.day_of_week] : "-"}
                   sub={analytics.busiest_day ? `${analytics.busiest_day.avg_tickets} avg tickets` : undefined}
                 />
               </div>

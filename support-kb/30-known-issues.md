@@ -38,5 +38,8 @@ email support@bizzyu.com with the new school name and the team will switch it.
 
 ## My school isn't on Bizzy
 
-Students can request their school during signup ("request my school"). Bizzy
-launches campuses over time — requesting boosts the campus's priority.
+Students and hosts can request a school on the website at /request-school
+(also linked from signup campus pickers and unpublished campus pages). That
+form emails the team. Adding the college to the live list is a Laravel
+university-list / catalog change, not something the website publishes itself.
+Requesting boosts the campus's priority.

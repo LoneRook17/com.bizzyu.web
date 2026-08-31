@@ -11,9 +11,9 @@ type SortKey =
 type SortDir = "asc" | "desc"
 
 function fmtTime(iso: string | null) {
-  if (!iso) return "—"
+  if (!iso) return "-"
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return "—"
+  if (isNaN(d.getTime())) return "-"
   return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
 }
 
@@ -106,7 +106,7 @@ export function DoorPerformanceCard({ rows, error }: { rows: PerScannerRow[]; er
               {sorted.map((r, idx) => (
                 <tr key={`${r.staff_user_id ?? "null"}-${r.scanner_label ?? "null"}-${idx}`} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
                   <td className="py-2 text-neutral-900 dark:text-neutral-100">{staffLabel(r)}</td>
-                  <td className="py-2 text-neutral-600 dark:text-neutral-400">{r.scanner_label ?? "—"}</td>
+                  <td className="py-2 text-neutral-600 dark:text-neutral-400">{r.scanner_label ?? "-"}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.valid_scans}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.rejected_scans}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{r.sold_count ?? 0}</td>

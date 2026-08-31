@@ -41,7 +41,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Environment: CHECKOUT_REDIRECT_BASE_URL
 
-The `CHECKOUT_REDIRECT_BASE_URL` env var controls where `/event/:id` deep links redirect for ticket checkout. It must be set in the Vercel dashboard for both projects:
+The `CHECKOUT_REDIRECT_BASE_URL` env var is the Laravel ticket checkout origin (`GET /checkout/{eventId}`). Venue Event / Weekly Cover cards and `/event/:id` redirects use it. Do not point it at this Next/Vercel app.
 
-- **Dev** project (`com-bizzyu-web-l2gp`): `http://3.80.143.224`
+Vercel dashboard:
+
+- **Dev** project (`com-bizzyu-web-l2gp`): `https://dev.bizzy-deals.com` (code fallback is this value if unset)
 - **Prod** project (`com-bizzyu-web`): `https://bizzy-deals.com`

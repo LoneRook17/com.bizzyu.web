@@ -1,5 +1,6 @@
 import type { InviteDelivery } from '@/lib/team-invite/types'
 import type { PayoutsAccess } from './payouts-scope'
+import type { ArtworkTemplate, RedemptionMode } from './constants'
 
 export interface BusinessUser {
   id: number
@@ -92,6 +93,20 @@ export interface QuickStats {
   claims_this_week: number
   upcoming_events_count: number
   next_event_date: string | null
+  // LSK-19 line-skip aggregate. Optional because an older server (a rollback to
+  // :150 or below) answers this endpoint without them — the Home page must read
+  // "no line skips" from their absence, never crash on it.
+  /** Has this business EVER scheduled a night? Presence, not revenue — a venue
+   *  with nights and no sales is still a line-skip venue and sees a real $0. */
+  has_line_skip_nights?: boolean
+  /** Host's take in CENTS, all-time, Bizzy's fee excluded. Omitted for staff
+   *  (owner/manager only), exactly like DashboardSummary.total_revenue. */
+  line_skip_revenue_cents?: number
+  line_skip_passes_sold?: number
+  /** Start of the next night that has not ended yet, on the VENUE's clock.
+   *  'YYYY-MM-DD HH:MM:SS' so `new Date()` reads it as local, like
+   *  next_event_date — a bare date would render as the previous day. */
+  next_line_skip_date?: string | null
 }
 
 export interface ActivityFeedItem {
@@ -140,6 +155,12 @@ export interface EventListItem {
   event_id: number
   name: string
   description: string
+  /**
+   * Present on `SELECT e.*` list rows. Optional so an older payload still
+   * renders; the Events page uses it to hide another venue's Weekly Cover
+   * when the switcher is on a single venue.
+   */
+  venue_id?: number | null
   venue_name: string
   venue_address: string
   start_date_time: string
@@ -148,7 +169,34 @@ export interface EventListItem {
   status: string
   flyer_image_url?: string
   is_21_plus: boolean
+  /** True on the SERIES TEMPLATE row only. Generated nights carry false. */
   is_recurring: boolean
+  /**
+   * D2-2. The series FK, present on every AUTO-GENERATED night and null on a
+   * one-off. `SELECT e.*` has always returned it; the list only started needing
+   * it when the Events page began grouping a series' nights under one row.
+   * Optional because a build that predates the column would otherwise be a
+   * type error rather than an ungrouped list, which is the safer degrade.
+   */
+  recurring_series_id?: number | null
+  /**
+   * V5 F14 — the pink flag. `'door_access'` marks one night of a Weekly Access
+   * program; `'event'` is everything else and is the column default.
+   *
+   * V5 REDEMPTION reads it to pick the DOOR SURFACE (scanner vs redemption list)
+   * on the manage page, because redemption is derived from kind rather than
+   * chosen. `SELECT e.*` has returned it since the F14 migration; optional so a
+   * response that predates the column degrades to 'event' rather than a type
+   * error — which is also the correct reading of a missing value.
+   */
+  access_kind?: 'event' | 'door_access' | null
+  /**
+   * Services' explicit product stamp on event payloads: `'weekly_cover'` is
+   * one night of a Weekly Cover program, `'event'` is everything else.
+   * Authoritative when present. Optional so an older payload degrades to the
+   * access_kind reading above rather than a type error.
+   */
+  product_kind?: 'weekly_cover' | 'event' | null
   total_attendees: number
   total_revenue: number
   ticket_sales_count: number
@@ -207,6 +255,9 @@ export interface EventDetail extends EventListItem {
   recurring_series_id?: number | null
   series_customized_at?: string | null
   occurrence_date?: string | null
+  // D10 artwork. Optional so an older GET /business/events/:id still hydrates.
+  artwork_template?: ArtworkTemplate | null
+  artwork_accent?: string | null
 }
 
 export interface RecurringNight {
@@ -247,6 +298,11 @@ export interface EventFormData {
   lowstock_threshold_type?: 'percent' | 'count'
   lowstock_threshold_value?: number | null
   lowstock_notify_business_team?: boolean
+  // 5.0 creation fields (D11 scanner mode, D10/D-F4.1 template artwork).
+  // Sent on create/edit; see EventForm for the persistence caveat.
+  redemption_mode?: RedemptionMode
+  artwork_template?: ArtworkTemplate | null
+  artwork_accent?: string | null
 }
 
 // Deal types
@@ -349,13 +405,25 @@ export interface EventAnalytics {
   tierBreakdown: { ticket_id: number; tier_name: string; sold: number; revenue: number }[]
   trackingLinks: {
     tracking_link_id: number
+    // Legacy column. New rows persist "" on purpose; Name must fall back
+    // through other identity fields (see promoterDisplayName). A slug
+    // copied from `code` is treated as missing — never shown as Name.
     promoter_name: string
+    // Tracking / promo code. Never bound as the Name cell label.
     code: string
     sales_count: number
     clicks: number
     // Combined pending+paid commission cents for this promoter on this event.
     // Excludes clawed_back. New 2026-05-12 (May 2026 promoter rework).
     commission_cents: number
+    // Optional extras the insights payload may already send. Absent or ""
+    // is treated as missing by promoterDisplayName.
+    display_name?: string | null
+    full_name?: string | null
+    first_name?: string | null
+    last_name?: string | null
+    email?: string | null
+    promo_code?: string | null
   }[]
   revenue: {
     // The "Revenue" tile reads this - now matches the Stripe payout (net of
@@ -456,6 +524,18 @@ export interface EventOverviewItem {
   revenue: number
   checkin_rate: number
   door_sales_count: number
+  /**
+   * Same pink flag as EventListItem. Weekly Cover nights are real events
+   * rows with `'door_access'`; one-off events are `'event'` (or omitted on
+   * older overview payloads). Analytics buckets on product_kind first,
+   * then this, then event id.
+   */
+  access_kind?: "event" | "door_access" | null
+  /**
+   * Services' explicit product stamp. Authoritative when present; an older
+   * overview payload omits it and identification falls back to access_kind.
+   */
+  product_kind?: "weekly_cover" | "event" | null
 }
 
 export interface EventsOverview {
@@ -488,12 +568,27 @@ export interface EventTeamMember {
   created_at: string
 }
 
+/**
+ * A promo code is scoped by exactly one non-null column, narrowest first:
+ *
+ *   event_id            → one event (for a Door Access program, one night)
+ *   recurring_series_id → one program, every night of it
+ *   venue_id            → every event at the venue
+ *
+ * Checkout resolves all three with that precedence (narrowest wins).
+ */
 export interface PromoCode {
   promo_code_id: number
-  /** Event-scoped code. null for universal (venue) codes. */
+  /** Event-scoped code. null for series- and venue-scoped codes. */
   event_id: number | null
-  /** Venue-scoped (universal) code. null for event-scoped codes. */
+  /** Venue-scoped (universal) code. null for event- and series-scoped codes. */
   venue_id: number | null
+  /**
+   * Series-scoped code: every night of ONE Door Access program and nothing
+   * else at the venue. Written with venue_id null, so a series code never
+   * appears in a venue-wide list.
+   */
+  recurring_series_id?: number | null
   code: string
   discount_type: 'percentage' | 'flat'
   discount_value: number
@@ -549,6 +644,17 @@ export interface PromoEventBreakdown {
   code: string
   aggregate: { redemptions: number; revenue_generated: number }
   events: PromoEventBreakdownRow[]
+}
+
+/**
+ * One series on GET /business/venues/:venueId/promo-codes/series.
+ * Sibling of the Universal list. Never mixed into venue-wide rows.
+ */
+export interface VenueSeriesPromoGroup {
+  id: number
+  name: string
+  product_kind: 'weekly_cover' | 'event'
+  promo_codes: PromoCode[]
 }
 
 export interface CheckinEntry {
@@ -737,6 +843,9 @@ export interface BusinessProfile {
   stripe_connect_onboarded: boolean
   /** True when a stored Stripe account is no longer valid (deauthorized/deleted) and must be reconnected. */
   stripe_reconnect_required?: boolean
+  /** Live Connect flags when the profile read includes them. Absent on older deploys. */
+  charges_enabled?: boolean
+  payouts_enabled?: boolean
   created_at: string
 }
 
@@ -744,6 +853,8 @@ export interface BusinessProfile {
 // A series is the schedule + occurrence template; every occurrence is a normal
 // Event row stamped by core's generator and managed from the events surface.
 export interface RecurringTemplateTicket {
+  /** Stable identity on door-access templates. Omit on create; send back on edit. */
+  tier_key?: string
   name: string
   description?: string | null
   price_usd: number
@@ -768,6 +879,13 @@ export interface RecurringSeriesListItem {
   date_range_end: string | null // null = runs until suspended
   is_active: number | boolean
   type: 'Ticketed' | 'Free' | 'RSVP'
+  /** 'door_access' marks a Weekly Cover series. Omitted on older payloads. */
+  program_kind?: string | null
+  /**
+   * Services' explicit product stamp. The signal for a Weekly Cover series
+   * that still says program_kind='event' (the old name-regex is gone).
+   */
+  product_kind?: 'weekly_cover' | 'event' | null
   venue_id: number | null
   venue_name: string
   start_time: string // "HH:MM:SS"

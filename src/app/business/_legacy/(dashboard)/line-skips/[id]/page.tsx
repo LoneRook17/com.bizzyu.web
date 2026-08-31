@@ -229,7 +229,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <p className="text-xs text-gray-500">Busiest Day</p>
               <p className="text-lg font-semibold text-ink">
-                {analytics.busiest_day ? DAY_LABELS[analytics.busiest_day.day_of_week] : "—"}
+                {analytics.busiest_day ? DAY_LABELS[analytics.busiest_day.day_of_week] : "-"}
               </p>
               {analytics.busiest_day && (
                 <p className="text-xs text-gray-400">{analytics.busiest_day.avg_tickets} avg tickets</p>

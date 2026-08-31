@@ -56,7 +56,7 @@ export function VenuePayoutPausedBanner({
             {venuePayoutBlockCopy(reason)}
           </p>
           <p className="mt-1.5 text-[13px] text-red-700/90 dark:text-red-400/90">
-            Finish that account&apos;s Stripe onboarding — or un-match it to instantly restore your
+            Finish that account&apos;s Stripe onboarding, or un-match it to instantly restore your
             default payout routing.
           </p>
           <Link

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CampusPageView from "@/components/campus/CampusPageView";
+import ComingSoonCampus from "@/components/campus/ComingSoonCampus";
 import VenueSeoPage from "@/components/venue/VenueSeoPage";
 import { fetchCampus } from "@/lib/campus";
+import { fetchUniversityBySlug } from "@/lib/universities";
 import { fetchVenuePage } from "@/lib/venuePages";
+import { comingSoonTitle, COMING_SOON_BLURB } from "@/lib/request-school";
 import { og } from "@/lib/og";
 
 /**
@@ -97,7 +100,20 @@ export async function generateMetadata({
   }
 
   const venue = await fetchVenuePage(slug);
-  if (!venue) return {};
+  if (!venue) {
+    const unpublished = await fetchUniversityBySlug(slug);
+    if (unpublished) {
+      const title = comingSoonTitle(unpublished.fullName);
+      const description = COMING_SOON_BLURB;
+      return {
+        title,
+        description,
+        robots: { index: false, follow: true },
+        ...og({ title: `${title} | Bizzy`, description }),
+      };
+    }
+    return {};
+  }
 
   // Written for the query, not for the brand. Nobody searches "Bizzy Kollege
   // Klub"; they search "kollege klub cover" and "kollege klub tickets tonight",
@@ -154,6 +170,9 @@ export default async function SlugPage({
 
   const venue = await fetchVenuePage(slug);
   if (venue) return <VenueSeoPage page={venue} />;
+
+  const unpublished = await fetchUniversityBySlug(slug);
+  if (unpublished) return <ComingSoonCampus university={unpublished} />;
 
   notFound();
 }

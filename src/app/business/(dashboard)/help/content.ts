@@ -1,8 +1,13 @@
 import type { LucideIcon } from "lucide-react"
 import {
   Rocket, MapPin, CalendarDays, CreditCard, Zap, Tag, BarChart3, Users,
-  Settings, RotateCcw, Smartphone, HelpCircle, Mail,
+  Settings, RotateCcw, Smartphone, HelpCircle, Mail, DoorOpen,
 } from "lucide-react"
+import {
+  ANALYTICS_HELP_INTRO,
+  ANALYTICS_HELP_TABS,
+  ANALYTICS_HELP_REVENUE_FAQ,
+} from "@/lib/business/analytics-copy"
 
 /** A content block within a subsection. */
 export type Block =
@@ -56,16 +61,17 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "welcome",
         title: "Welcome to Bizzy for business",
         blocks: [
-          { kind: "p", text: "Bizzy helps bars, clubs, restaurants, and venues sell tickets, offer deals, and manage line skips to college students. It's your all-in-one tool for reaching students on campus." },
+          { kind: "p", text: "Bizzy helps bars, clubs, restaurants, and venues sell tickets, run Weekly Cover, offer deals, and manage line skips to college students. It's your all-in-one tool for reaching students on campus." },
           { kind: "p", text: "From this dashboard you can:" },
           { kind: "ul", items: [
-            "Events: create events, sell tickets, and track who shows up",
-            "Line skips: let customers pay to skip the line on busy nights",
+            "Events: create named events, sell tickets, and track who shows up",
+            "Weekly Cover: sell Cover for your regular nights (pink on Events)",
+            "Line skips: the standalone skip-the-line product (not a Weekly Cover tier)",
             "Deals: post special offers that drive foot traffic",
-            "Analytics: see tickets sold, revenue, and top-performing deals",
+            "Analytics: see tickets sold, Weekly Cover nights, revenue, and top-performing deals",
             "Team: invite staff, managers, and promoters",
             "Settings: manage venues, connect Stripe, update your info",
-            "Scanner: scan QR-code tickets and line skips at the door",
+            "Scanner: scan named-event QR tickets at the door. Weekly Cover uses any phone camera.",
           ] },
         ],
       },
@@ -86,7 +92,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "ol", items: [
             "You sign up and fill in your business details",
             "The Bizzy team reviews your information",
-            "Once approved, you get full access to create events, deals, and line skips",
+            "Once approved, you get full access to create events, Weekly Cover, deals, and line skips",
           ] },
           { kind: "p", text: "Approval usually takes 1-2 business days. While you wait you can still log in, explore the dashboard, and set up your venue." },
         ],
@@ -96,7 +102,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "Connecting Stripe (getting paid)",
         blocks: [
           { kind: "p", text: "Stripe is the payment service that handles the money. When a customer buys a ticket or line skip, Stripe collects payment and sends your share to your bank account." },
-          { kind: "p", text: "You must connect Stripe before you can create any paid events or line skips. To connect:" },
+          { kind: "p", text: "You must connect Stripe before you can create any paid events, Weekly Cover, or line skips. To connect:" },
           { kind: "ol", items: [
             "Go to Settings in the sidebar",
             "Find the Stripe Connect section and click \"Set up business Stripe\"",
@@ -133,7 +139,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "p", text: "A venue is a physical location: your bar, club, restaurant, or any place you host events or offer deals." },
           { kind: "ul", items: [
             "Your business can have multiple venues",
-            "Every event, deal, and line skip is attached to a specific venue",
+            "Every event, Weekly Cover series, deal, and line skip is attached to a specific venue",
             "Each venue has its own page in the app",
           ] },
           { kind: "p", text: "Use the venue switcher at the top of the sidebar to move between venues. Selecting a venue filters the whole dashboard to that location; \"All venues\" shows everything." },
@@ -167,18 +173,19 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: "events",
     title: "Events",
     icon: CalendarDays,
-    intro: "Create events, sell tickets, and manage everything on event day.",
+    intro: "Create named events, sell tickets, and manage everything on event day. Weekly Cover is a different product (pink). Don't guess from a title that ends in Cover.",
     subsections: [
       {
         id: "what-are-events",
         title: "What are events?",
         blocks: [
-          { kind: "p", text: "Events are one-time happenings at your venue: concerts, DJ nights, watch parties, themed nights." },
+          { kind: "p", text: "Events are named one-time happenings at your venue: concerts, DJ nights, watch parties, themed nights. In the app they show as green. A night titled something Cover can still be an event." },
           { kind: "ul", items: [
-            "Sell tickets for paid events or allow free RSVPs",
+            "Sell tickets for paid events, or run a free event. Guests still get a real, scannable ticket",
             "Customers buy tickets right from their phone in the Bizzy app",
-            "You get a QR-code scanner to check people in at the door",
+            "Staff check people in with the in-app scanner or a 6-digit door code",
           ] },
+          { kind: "note", text: "Regular weekly Cover nights are Weekly Cover, not events. Create those from Events → Create → the pink Weekly Cover tile. See Weekly Cover." },
         ],
       },
       {
@@ -186,7 +193,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "Creating an event",
         blocks: [
           { kind: "ol", items: [
-            "Go to Events in the sidebar and click \"Create event\"",
+            "Go to Events (or Home) and click Create, then pick the green Event tile",
             "Add a catchy name and a clear description",
             "Set the date, time, and location (pre-filled from your venue)",
             "Upload an eye-catching flyer image",
@@ -260,9 +267,54 @@ export const HELP_SECTIONS: HelpSection[] = [
             "Each promoter gets a personalized share link",
             "Visit Manage → Promoters to see clicks, sales, and commission earned",
           ] },
-          { kind: "p", text: "Commissions accrue automatically and are paid out weekly via Stripe Connect." },
+          { kind: "p", text: "Commissions accrue to the promoter's in-app wallet. They cash out on demand. There is no weekly payout." },
         ],
       },
+    ],
+  },
+  {
+    id: "weekly-cover",
+    title: "Weekly Cover",
+    icon: DoorOpen,
+    intro: "Weekly Cover is a series of regular nights, not a named event. Guests buy Cover for one date. Pink in the app. Don't call it door access.",
+    subsections: [
+      {
+        id: "what-is-weekly-cover",
+        title: "What Weekly Cover is",
+        blocks: [
+          { kind: "p", text: "You set up one series: which weekdays it runs, door times, and Cover and/or Skip the Line prices. Bizzy generates each upcoming night. Customers buy that night only." },
+          { kind: "ul", items: [
+            "It is not a named Event, a subscription, or a membership",
+            "A custom night (a date you edited) is still Weekly Cover. Editing the program still updates that night. Custom is not a forever fork and not a green event",
+            "Don't guess from a title that ends in Cover. A show named Weekly Cover Launch Party can be a normal event",
+          ] },
+        ],
+      },
+      {
+        id: "creating-weekly-cover",
+        title: "Creating Weekly Cover",
+        blocks: [
+          { kind: "ol", items: [
+            "Go to Events or Home and click Create",
+            "Pick the pink Weekly Cover tile (not An event)",
+            "Choose Weekly Cover, Skip the Line, or both",
+            "Pick the nights of the week, then set doors and prices",
+          ] },
+          { kind: "note", text: "Stripe must be connected before paid nights can sell. There is no Weekly Cover item in the sidebar. Open a series from the Events list (Weekly Cover filter) or Home. Pink rows open the program." },
+        ],
+      },
+      {
+        id: "weekly-cover-door",
+        title: "At the door",
+        blocks: [
+          { kind: "p", text: "Guests scan Cover with any phone camera and tap Check In. No staff login. Use the redemption list to check names off." },
+          { kind: "note", text: "The in-app scanner and 6-digit door codes stay for named events. Don't send Weekly Cover there, and don't tell anyone door codes went away for events." },
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Is a custom night its own event now?", a: "No. A custom night is still Weekly Cover. Editing the program still restamps that night. If you want a one-off named show, create a separate Event from the green tile." },
+      { q: "A student bought Skip the Line. Is that a line skip?", a: "Not always. It might be a Weekly Cover option for that night, a named-event ticket tier, or the standalone line-skip product. Check what they have in Wallet before you answer." },
     ],
   },
   {
@@ -302,7 +354,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "what-are-line-skips",
         title: "What are line skips?",
         blocks: [
-          { kind: "p", text: "Customers buy a line skip in advance, show a QR code at the door, and go straight to the front of the line." },
+          { kind: "p", text: "Customers buy a line skip in advance, show a QR code at the door, and go straight to the front of the line. This is the standalone line-skip product, not a Weekly Cover tier also named Skip the Line." },
           { kind: "note", text: "A line skip is guaranteed entry, and the price includes cover. The customer doesn't pay again at the door. All Bizzy line skips include cover." },
         ],
       },
@@ -388,13 +440,13 @@ export const HELP_SECTIONS: HelpSection[] = [
     id: "analytics",
     title: "Analytics",
     icon: BarChart3,
-    intro: "Track your performance across events, deals, and line skips.",
+    intro: ANALYTICS_HELP_INTRO,
     subsections: [
       {
         id: "understanding-analytics",
         title: "Understanding your analytics",
         blocks: [
-          { kind: "p", text: "The Analytics page shows how your business is performing, split into Events, Deals, and Line skips tabs." },
+          { kind: "p", text: ANALYTICS_HELP_TABS },
         ],
       },
       {
@@ -522,7 +574,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "ul", items: [
             "All sales are final, customers can't request individual refunds",
-            "Refunds only happen when you cancel an event or line skip night",
+            "Refunds only happen when you cancel an event, a Weekly Cover night, or a line skip night",
             "If you cancel, every buyer gets a full refund automatically",
           ] },
         ],
@@ -578,9 +630,10 @@ export const HELP_SECTIONS: HelpSection[] = [
         title: "How customers find you",
         blocks: [
           { kind: "ul", items: [
-            "Your events appear in the Events tab, sorted by date",
+            "Your named events appear in the Events tab as green rows, sorted by date",
+            "Your Weekly Cover nights appear in the Events tab and Happening Tonight as pink Weekly Cover, not as green events",
             "Your deals appear in the Deals tab",
-            "Your venue appears if you have upcoming events or active line skips",
+            "Events → Venues lists venues that have upcoming named events or Weekly Cover, not places that only have deals",
           ] },
           { kind: "p", text: "Customers browse by campus, so your content is shown to students at the nearest university." },
         ],
@@ -604,11 +657,12 @@ export const HELP_SECTIONS: HelpSection[] = [
     faqs: [
       { q: "When do I get paid?", a: "Money from ticket sales and line skips is transferred to your bank account through Stripe, typically within 2-3 business days after the transaction." },
       { q: "What fees does Bizzy charge?", a: "A small service fee is added on top of your price and paid by the customer. You receive the full amount you set. The fee comes out of the customer's total, not your pocket." },
-      { q: "How do I see how much money I've made?", a: "Go to Analytics in the sidebar. Your revenue is shown for events, line skips, and overall." },
+      { q: "How do I see how much money I've made?", a: ANALYTICS_HELP_REVENUE_FAQ },
       { q: "Can I change the ticket price after people have bought tickets?", a: "Yes, you can change the price for future purchases. Existing ticket holders keep their original price." },
       { q: "What if my event sells out?", a: "A \"Sold out\" badge appears and no more tickets can be purchased. To sell more, increase the ticket quantity." },
       { q: "Do deals cost me anything?", a: "No. Creating and running deals on Bizzy is completely free. Deals drive foot traffic to your venue at no cost." },
-      { q: "What does \"includes cover\" mean?", a: "The line skip price includes the cover charge. The customer pays once and doesn't pay again at the door. All Bizzy line skips include cover." },
+      { q: "What does \"includes cover\" mean?", a: "On a standalone line skip, the price includes the cover charge. The customer pays once and doesn't pay again at the door. All Bizzy line skips include cover. Weekly Cover is a different product: guests buy Cover (or a Skip the Line option on that night)." },
+      { q: "What's the difference between Weekly Cover and an event?", a: "Weekly Cover is a series of regular nights. Guests buy Cover for one date. It shows pink. A named event is a titled show or night (green) with in-app scanning and a 6-digit door code. Don't guess from a title that ends in Cover." },
       { q: "I can't log in. What do I do?", a: "Click \"Forgot password\" on the login page to reset it. If that doesn't work, email support@bizzyu.com." },
       { q: "The dashboard looks broken or won't load.", a: "Refresh the page first. If that doesn't help, clear your browser cache or try a different browser. Still stuck? Email support@bizzyu.com." },
       { q: "I need help with something not covered here.", a: "Email support@bizzyu.com or reach out to your Bizzy campus representative." },

@@ -7,6 +7,7 @@ import {
   ArrowLeft, CalendarDays, Camera, CheckCircle2, ChevronRight, ScanLine, XCircle,
 } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
+import { ACCESS_ACCENT, ACCESS_ACCENT_DEEP, isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { cn } from "@/lib/v2/utils"
 import type { EventListItem } from "@/lib/business/types"
@@ -226,15 +227,27 @@ export default function ScannerClient() {
     }
   }, [stopScanner])
 
+  const selectedEvent = events.find((e) => e.event_id === selectedEventId)
+  // product_kind when services sends it, access_kind on older payloads.
+  // Never the event's name.
+  const weeklyCoverScan = !!selectedEvent && isWeeklyCoverProduct(selectedEvent)
   const isLineSkip = result?.type === "line_skip"
 
   const getResultClasses = () => {
     if (!result) return ""
     if (result.status === "redeemed_now") {
+      if (weeklyCoverScan) return ""
       return isLineSkip ? "from-[#c2410c] to-[#ea580c]" : "from-[#0d7a3e] to-[#05EB54]"
     }
     return "from-[#8B1A2B] to-[#c41e3a]"
   }
+
+  const weeklyCoverResultStyle =
+    result?.status === "redeemed_now" && weeklyCoverScan
+      ? {
+          backgroundImage: `linear-gradient(to bottom right, ${ACCESS_ACCENT_DEEP}, ${ACCESS_ACCENT})`,
+        }
+      : undefined
 
   const getResultLabel = () => {
     if (!result) return ""
@@ -293,13 +306,14 @@ export default function ScannerClient() {
     return <EmptyState icon={CalendarDays} title="Couldn't load events" description={error} />
   }
 
-  const selectedEvent = events.find((e) => e.event_id === selectedEventId)
-
   return (
     <>
       {/* Full-screen result overlay (intentional bold treatment for door staff) */}
       {result && (
-        <div className={cn("fixed inset-0 z-[60] flex flex-col items-center justify-center bg-gradient-to-br p-8", getResultClasses())}>
+        <div
+          className={cn("fixed inset-0 z-[60] flex flex-col items-center justify-center bg-gradient-to-br p-8", getResultClasses())}
+          style={weeklyCoverResultStyle}
+        >
           <div className="text-center">
             {result.status === "redeemed_now" ? (
               <CheckCircle2 className="mx-auto mb-4 size-24 text-white" strokeWidth={1.75} />

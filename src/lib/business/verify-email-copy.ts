@@ -52,7 +52,7 @@ export function verifyEmailSuccessCopy(kind: VerifyEmailKind): VerifyEmailSucces
       subtitle: "Your login email has been changed.",
       alertTone: "success",
       alertHeading: null,
-      alertBody: "Your email has been updated — use it next time you sign in.",
+      alertBody: "Your email has been updated. Use it next time you sign in.",
       ctaLabel: "Go to Login",
     }
   }

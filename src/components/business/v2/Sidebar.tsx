@@ -5,9 +5,9 @@ import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
-  Home, CalendarDays, Tag, Zap, Megaphone, BarChart3, Users, Settings,
+  Home, CalendarDays, Tag, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X, Repeat, Banknote,
+  Sun, Moon, TicketPercent, Menu, X, Banknote,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -15,6 +15,7 @@ import { canAccessPayouts } from "@/lib/business/payouts-access"
 import { useTheme } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
+import { useCommandPalette } from "./CommandPalette"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -22,6 +23,9 @@ import {
 } from "./ui/dropdown-menu"
 
 type Feature = "showDeals" | "showEvents" | "showLineSkips" | "showRecurring"
+// showLineSkips / showRecurring stay in the union on purpose: the mode config
+// still carries them and the Events page still gates its Weekly Access segment
+// on showLineSkips. They are simply no longer NAV features (D2-6).
 type BusinessRole = "owner" | "manager" | "staff" | "promoter"
 
 type NavContext = { role?: BusinessRole; canViewPayouts?: boolean }
@@ -40,18 +44,32 @@ type Item = {
   show?: (ctx: NavContext) => boolean
 }
 
+/**
+ * The 5.0 rail (D2-6). Exactly three groups, and deliberately short.
+ *
+ * What left, and where each capability went — the rail is the ONLY thing that
+ * changed, no route was deleted:
+ *   • Recurring      → recurring events are ordinary events (D2-2). Series are
+ *                      reached from the Events list's grouped series rows,
+ *                      which link to /business/recurring/:id as before.
+ *   • Door Access    → not a nav item (D2-6): it is a TYPE inside Events/Home,
+ *                      the pink Weekly Access rows. /business/door-access/:id
+ *                      is still the series page those rows open.
+ *   • Line skips     → D2-3. Legacy schedules stay reachable through a muted
+ *                      link inside the Events page's Weekly Access view until
+ *                      F15 converts them. NOT nav — that is the whole point.
+ *   • Promo codes    → moved down into GROW, unchanged otherwise.
+ */
 const GROUPS: { label?: string; items: Item[] }[] = [
   { items: [
     { label: "Home", href: "/business", icon: Home },
     { label: "Events", href: "/business/events", icon: CalendarDays, feature: "showEvents" },
-    { label: "Recurring", href: "/business/recurring", icon: Repeat, feature: "showRecurring" },
-    { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
     { label: "Deals", href: "/business/deals", icon: Tag, feature: "showDeals" },
-    { label: "Line skips", href: "/business/line-skips", icon: Zap, feature: "showLineSkips" },
   ] },
   { label: "Grow", items: [
     { label: "Marketing", href: "/business/marketing", icon: Megaphone, lockWhenPending: true },
     { label: "Analytics", href: "/business/analytics", icon: BarChart3, lockWhenPending: true },
+    { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
     // PAYOUTS-PER-PERSON-ACCESS: owner OR a member the owner has granted
     // (/me → can_view_payouts). Same predicate the /business/payouts route guard
     // uses, so the tab and the screen can never disagree.
@@ -79,6 +97,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { venues, selectedVenue, selectedVenueId, isAllVenues, setSelectedVenue } = useVenue()
   const { resolvedTheme, setTheme } = useTheme()
   const { config } = useDashboardMode()
+  const { openSearch } = useCommandPalette()
 
   const venueName = isAllVenues ? "All venues" : selectedVenue?.name ?? business?.name ?? "Select venue"
 
@@ -149,8 +168,18 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* search */}
-      <button className="mt-2.5 flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-left shadow-sm outline-none transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800/60">
+      {/* search / command palette trigger */}
+      <button
+        type="button"
+        onClick={() => {
+          openSearch()
+          onNavigate?.()
+        }}
+        aria-label="Search"
+        aria-haspopup="dialog"
+        aria-keyshortcuts="Meta+K Control+K"
+        className="mt-2.5 flex items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-left shadow-sm outline-none transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800/60"
+      >
         <Search className="size-4 text-neutral-400 dark:text-neutral-500" />
         <span className="flex-1 text-sm text-neutral-500 dark:text-neutral-400">Search</span>
         <kbd className="rounded-md bg-neutral-100 px-1.5 py-0.5 text-xs font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">⌘K</kbd>
@@ -209,7 +238,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <AvatarFallback className="bg-[#E8EDFF] text-[#3A5BD9] dark:bg-[#1e2747] dark:text-[#8da6f5]">{initials(user?.full_name)}</AvatarFallback>
           </Avatar>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{user?.full_name ?? "—"}</span>
+            <span className="block truncate text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{user?.full_name ?? "-"}</span>
             <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">{user?.email}</span>
           </span>
         </Link>

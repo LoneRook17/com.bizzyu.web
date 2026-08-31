@@ -2,11 +2,14 @@
 
 ## Line skips
 
-Line skips let customers pay in advance to skip the line and get **guaranteed entry**.
-They show a QR code at the door and go straight to the front.
+Line skips are Bizzy's door product. Customers pay in advance for a specific night, show
+a QR code at the door, and walk to the front with **guaranteed entry**.
 
 - **Includes cover:** the line-skip price includes the cover charge. The customer pays
   once and doesn't pay again at the door. All Bizzy line skips include cover.
+- **One night, one use:** a pass is valid only for the night and time window it was bought
+  for. It scans once.
+- **21+:** line skips are nightlife products and are sold as 21+.
 
 ### Creating a line skip schedule
 
@@ -21,8 +24,28 @@ They show a QR code at the door and go straight to the front.
 
 - Open a line-skip schedule to see all upcoming and past nights. For each night you can
   edit the price, quantity, or times, or cancel the night.
+- Cancelling a night refunds every buyer for that night automatically. See "Stripe &
+  payouts" for what a refund does to your balance.
 - **Scanning:** line skips are scanned with the phone's **regular camera app**, not the
   in-app scanner (see the "Scanning & door counters" article).
+
+### A naming collision worth knowing about
+
+"Skip the line" is an ordinary English phrase, and owners use it loosely. When someone
+says it, they might mean:
+
+- **A Bizzy line skip**, the standalone product described above (legacy Line skips
+  schedules). Camera scan, includes cover.
+- **A ticket tier they named "Skip the Line"** on a **named event**. That is just a
+  ticket: in-app scanner, cover only if they said so.
+- **A Weekly Cover tier named "Skip the Line"**. Still Weekly Cover for that night
+  (`product_kind` weekly_cover). Camera Check In, not this line-skip schedule.
+  See "Weekly Cover".
+
+If it isn't clear which one an owner means, ask one short question before answering,
+because the scanning method and the setup screens are different. Don't assume a
+ticket named "Skip the Line" is a line skip, and don't send a Weekly Cover owner
+to the old Line skips screen to fix Cover.
 
 ## Deals
 

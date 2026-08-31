@@ -3,6 +3,12 @@
 import Link from "next/link"
 import { Zap } from "lucide-react"
 import type { LineSkipAnalyticsOverview, LineSkipOverviewInstance } from "@/lib/business/types"
+import {
+  ANALYTICS_ACCESS_EMPTY_TITLE,
+  ANALYTICS_ACCESS_EMPTY_DESCRIPTION,
+  ANALYTICS_ACCESS_ACTIVE_SECTION,
+  ANALYTICS_ACCESS_PAST_SECTION,
+} from "@/lib/business/analytics-copy"
 import { money } from "@/lib/v2/utils"
 import { Card } from "@/components/business/v2/ui/card"
 import { Badge } from "@/components/business/v2/ui/badge"
@@ -139,17 +145,17 @@ export default function LineSkipsOverviewView({
 
       {data.instances.length === 0 ? (
         <div className="mt-6">
-          <EmptyState icon={Zap} title="No line skip instances yet" description="Create a line skip schedule to see analytics here." />
+          <EmptyState icon={Zap} title={ANALYTICS_ACCESS_EMPTY_TITLE} description={ANALYTICS_ACCESS_EMPTY_DESCRIPTION} />
         </div>
       ) : (
         <>
           {activeInstances.length > 0 && (
-            <Section title="Active line skips" count={activeInstances.length} defaultOpen>
+            <Section title={ANALYTICS_ACCESS_ACTIVE_SECTION} count={activeInstances.length} defaultOpen>
               <InstanceList instances={activeInstances} isAllVenues={isAllVenues} />
             </Section>
           )}
           {pastInstances.length > 0 && (
-            <Section title="Past line skips" count={pastInstances.length} defaultOpen={false}>
+            <Section title={ANALYTICS_ACCESS_PAST_SECTION} count={pastInstances.length} defaultOpen={false}>
               <InstanceList instances={pastInstances} isAllVenues={isAllVenues} />
             </Section>
           )}
