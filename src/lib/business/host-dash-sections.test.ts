@@ -350,12 +350,13 @@ test("unstamped leftover nights of a host-ended series stay off the Host list", 
   assert.equal(hostDashIsEmpty(out), true)
 })
 
-test("Recurring chip is not a no-op: RC nights only, plus RC and WC schedules", () => {
+test("Recurring chip lists RC + WC nights on dates, both schedules, no standalone one-off", () => {
   const wc = program(23)
   const trivia = series(7, "Trivia Fridays")
   const input = {
     events: [
       ev(80, "2026-09-04 21:00:00", null, { name: "Halloween one-off" }),
+      ev(9, "2026-08-29 21:00:00", 7, { name: "Trivia tonight" }),
       ev(10, "2026-09-04 21:00:00", 7, { name: "Trivia" }),
       ev(11, "2026-09-11 21:00:00", 7, { name: "Trivia" }),
       ev(621, "2026-09-04 21:00:00", 23, {
@@ -365,7 +366,20 @@ test("Recurring chip is not a no-op: RC nights only, plus RC and WC schedules", 
       }),
     ],
     programs: [wc],
-    programNights: [{ program: wc, nights: [night("2026-09-04", { event_id: 621 })] }],
+    programNights: [
+      {
+        program: wc,
+        nights: [
+          night("2026-08-29", { event_id: 620 }),
+          night("2026-09-04", { event_id: 621 }),
+          night("2026-10-15", {
+            event_id: 900,
+            series_customized_at: "2026-08-28 23:00:00",
+            has_override: true,
+          }),
+        ],
+      },
+    ],
     series: [trivia],
     wcSeriesIds: [23],
   }
@@ -384,21 +398,44 @@ test("Recurring chip is not a no-op: RC nights only, plus RC and WC schedules", 
     "All/Upcoming still lists WC nights",
   )
 
+  // Same flags the Events page passes for Recurring: Host layout + WC nights
+  // on + recurringNightsOnly so green standalone one-offs stay off.
   const recurring = hostDashSections({
     ...input,
     today: TODAY,
     showEvents: true,
-    showAccessNights: false,
+    showAccessNights: true,
     showAccessSchedules: true,
     recurringNightsOnly: true,
   })
-  const nightIds = [...recurring.tonight, ...recurring.upcoming]
+  const nights = [...recurring.tonight, ...recurring.upcoming]
+  const rcIds = nights
     .filter((row) => row.kind === "event")
     .map((row) => (row.kind === "event" ? row.event.event_id : 0))
-  assert.deepEqual(nightIds, [10, 11], "Recurring lists RC series nights, not standalones")
+  assert.deepEqual(rcIds, [9, 10, 11], "Recurring lists RC series nights, not standalones")
   assert.ok(
-    recurring.tonight.concat(recurring.upcoming).every((row) => row.kind === "event"),
-    "Recurring does not dump WC nights into Tonight/Upcoming",
+    recurring.tonight.some((row) => row.kind === "event" && row.event.event_id === 9),
+    "Recurring Tonight includes an RC night",
+  )
+  assert.ok(
+    recurring.tonight.some((row) => row.kind === "access" || row.kind === "access-event"),
+    "Recurring Tonight includes a WC night",
+  )
+  assert.ok(
+    recurring.upcoming.some((row) => row.kind === "event" && row.event.event_id === 10),
+    "Recurring Upcoming includes an RC night",
+  )
+  assert.ok(
+    recurring.upcoming.some((row) => row.kind === "access" || row.kind === "access-event"),
+    "Recurring Upcoming includes a WC night",
+  )
+  assert.ok(
+    nights.some((row) => row.date === "2026-10-15"),
+    "far Custom WC never clips on Recurring",
+  )
+  assert.ok(
+    nights.every((row) => row.kind !== "event" || row.event.event_id !== 80),
+    "standalone named one-off stays off Recurring",
   )
   assert.ok(
     recurring.schedules.some((row) => row.kind === "series" && row.seriesId === 7),
@@ -408,9 +445,9 @@ test("Recurring chip is not a no-op: RC nights only, plus RC and WC schedules", 
     recurring.schedules.some((row) => row.kind === "access" && row.program.id === 23),
     "Recurring Schedules includes the pink WC program",
   )
-  assert.notEqual(
-    all.upcoming.length,
-    recurring.upcoming.length + recurring.tonight.length,
+  assert.ok(
+    all.upcoming.some((row) => row.kind === "event" && row.event.event_id === 80) &&
+      nights.every((row) => row.kind !== "event" || row.event.event_id !== 80),
     "Recurring is a real filter — it is not the unfiltered Host list",
   )
 })

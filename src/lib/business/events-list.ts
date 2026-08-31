@@ -11,7 +11,8 @@
 // Grouping is the reason the "Recurring" nav item could die (D2-2): a series
 // is not a parallel world any more, it is a row on this list that opens the
 // existing /business/recurring/:id page. The Recurring status chip still
-// exists — it filters to RC nights plus the Schedules section (RC + WC).
+// exists — it keeps Host layout and lists RC + WC nights on dates, plus
+// Schedules (RC series and WC programs). Standalone named one-offs stay off.
 
 import type { EventListItem, RecurringSeriesListItem } from "./types"
 import {
@@ -73,7 +74,7 @@ export function shouldShowWeeklyCoverOnEventsTab(
   isPending: boolean,
   typeFilter: EventTypeFilter,
 ): boolean {
-  // Recurring = RC nights + Schedules (RC series AND WC programs).
+  // Recurring = RC + WC nights on dates + Schedules (RC series AND WC programs).
   if (tab === "recurring") return true
   if (!showsAccess(typeFilter)) return false
   if (typeFilter === "access") return true
@@ -90,8 +91,10 @@ export function shouldShowWeeklyCoverOneOffsOnEventsTab(
   // Weekly Cover chip: nights + WC schedules, even if a leftover status tab
   // (Recurring / Past / Drafts) is still in state while the status row is hidden.
   if (typeFilter === "access") return true
-  // Recurring lists WC as schedule rows, not as Tonight/Upcoming night cards.
-  if (tab === "recurring") return false
+  // Recurring keeps Host layout: WC night cards on Tonight/Upcoming dates
+  // (repeating + Custom/one-off; far Custom never clips). Green standalone
+  // named one-offs stay off via recurringNightsOnly.
+  if (tab === "recurring") return true
   return tab === weeklyCoverEventsListTab(isPending)
 }
 
