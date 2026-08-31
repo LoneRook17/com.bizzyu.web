@@ -823,8 +823,18 @@ test("pending hosts keep Weekly Cover off Upcoming Live", () => {
   )
   assert.equal(
     shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", false, "all"),
+    true,
+    "Recurring lists WC night cards on Tonight/Upcoming dates",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", true, "all"),
+    true,
+    "Recurring is a kind filter — pending hosts still see WC nights",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", false, "events"),
     false,
-    "Recurring does not list WC as Tonight/Upcoming night cards",
+    "Events type chip still hides WC nights on Recurring",
   )
   assert.equal(
     shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", false, "access"),

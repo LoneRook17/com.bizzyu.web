@@ -124,7 +124,7 @@ export type HostDashSectionsInput = {
   showEvents: boolean
   showAccessNights: boolean
   showAccessSchedules: boolean
-  /** Recurring chip: green RC series nights only — drop standalone one-offs. */
+  /** Recurring chip: keep RC series nights; drop standalone named one-offs. WC nights come through showAccessNights. */
   recurringNightsOnly?: boolean
   windowDays?: number
 }
@@ -190,7 +190,8 @@ export function includeGreenOccurrence(
 
 /**
  * Green named-event series night (RC). Not a standalone one-off. Not WC.
- * Recurring chip uses this so the filter is not "everything" and not empty.
+ * Recurring uses this on the green-event loop only — WC nights are collected
+ * separately when showAccessNights is on, so Recurring is not empty of pink cards.
  */
 export function isRecurringNamedEventNight(
   event: EventListItem,
