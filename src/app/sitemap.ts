@@ -87,13 +87,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${baseUrl}/privacy`,
-      lastModified: new Date("2026-03-15"),
+      lastModified: new Date("2026-08-24"),
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${baseUrl}/terms`,
-      lastModified: new Date("2026-03-15"),
+      lastModified: new Date("2026-08-24"),
       changeFrequency: "yearly",
       priority: 0.3,
     },

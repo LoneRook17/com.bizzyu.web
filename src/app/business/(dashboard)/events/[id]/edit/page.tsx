@@ -2,20 +2,24 @@
 
 import { useState, useEffect, use } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { isPromotionEnabled } from "@/lib/business/create-publish"
+import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
 import type { EventDetail, EventFormData } from "@/lib/business/types"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { Button } from "@/components/business/v2/ui/button"
 import { EventForm } from "@/components/business/v2/events/EventForm"
 import { toDatetimeLocal } from "@/components/business/v2/events/eventStatus"
-import { SeriesNightBanner } from "@/components/business/v2/recurring/SeriesNightBanner"
+import { SeriesNightBanner, type SeriesNightBannerEvent } from "@/components/business/v2/recurring/SeriesNightBanner"
 import { CalendarOff } from "lucide-react"
 
 export default function V2EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
   const [initialData, setInitialData] = useState<Partial<EventFormData> | null>(null)
-  const [seriesInfo, setSeriesInfo] = useState<Pick<EventDetail, "recurring_series_id" | "series_customized_at"> | null>(null)
+  const [seriesInfo, setSeriesInfo] = useState<SeriesNightBannerEvent | null>(null)
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -24,9 +28,21 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
     async function load() {
       try {
         const event = await apiClient.get<EventDetail>(`/business/events/${id}`)
+        // WC FLAW 3 — never mount EventForm for a Weekly Cover night.
+        // Saving here PUTs /business/events/:id. The night-override editor is
+        // the edit surface (Custom for this date). BINDING: a night already
+        // stamped customized redirects too — never a green Event. Series save
+        // leaves that Custom night alone.
+        const wcNightEdit = weeklyCoverNightEditHref(event)
+        if (wcNightEdit != null) {
+          router.replace(wcNightEdit)
+          return // keep the skeleton up while the redirect lands
+        }
         setSeriesInfo({
           recurring_series_id: event.recurring_series_id ?? null,
           series_customized_at: event.series_customized_at ?? null,
+          product_kind: event.product_kind ?? null,
+          access_kind: event.access_kind ?? null,
         })
         setInitialData({
           name: event.name,
@@ -40,26 +56,30 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
           is_21_plus: event.is_21_plus,
           flyer_image_url: event.flyer_image_url || "",
           tickets: event.tickets || [],
-          promotion_enabled: !!event.promotion_enabled,
+          promotion_enabled: isPromotionEnabled(event.promotion_enabled),
           promotion_commission_type: event.promotion_commission_type ?? undefined,
           promotion_commission_value: event.promotion_commission_value ?? null,
           lowstock_alerts_enabled: !!event.lowstock_alerts_enabled,
           lowstock_threshold_type: event.lowstock_threshold_type ?? undefined,
           lowstock_threshold_value: event.lowstock_threshold_value ?? null,
           lowstock_notify_business_team: !!event.lowstock_notify_business_team,
+          artwork_template: event.artwork_template ?? null,
+          artwork_accent: event.artwork_accent ?? null,
         })
+        setLoading(false)
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to load event")
-      } finally {
         setLoading(false)
       }
+      // No `finally`: the redirect path above returns with loading still true,
+      // so the skeleton (not "Event not found") shows until navigation lands.
     }
     load()
     apiClient
       .get<{ stripe_connect_onboarded: boolean }>("/business/profile")
       .then((p) => setStripeOnboarded(p.stripe_connect_onboarded))
       .catch(() => {})
-  }, [id])
+  }, [id, router])
 
   if (loading) {
     return (

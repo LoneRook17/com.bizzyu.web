@@ -36,6 +36,7 @@ import {
   untilIsPast,
   hasBreakdown,
   buildBreakdownTable,
+  displayAllocateUnallocated,
   showBreakdownTable,
   signedMoneyStr,
   UNALLOCATED_ROW_LABEL,
@@ -254,7 +255,7 @@ test("showCommissionColumn: hidden unless a row carries a commission", () => {
     orders: [DETAIL_ROW, { ...DETAIL_ROW, order_id: 9002, promoter_commission_cents: 250 }],
   })
   assert.equal(showCommissionColumn(withComm.orders!), true) // one commission-bearing row → shown
-  // and the non-commission row keeps a null (renders "—"), not a fabricated 0
+  // and the non-commission row keeps a null (renders "-"), not a fabricated 0
   assert.equal(withComm.orders![0].promoter_commission_cents, null)
   assert.equal(withComm.orders![1].promoter_commission_cents, 250)
 })
@@ -566,12 +567,12 @@ test("render state: dedicated venue → ✓ badge + reassurance naming the selec
   assert.equal(DEDICATED_BADGE_LABEL, "✓ Dedicated Stripe account")
   assert.equal(
     dedicatedReassurance("Lukes Castle"),
-    "These deposits are for Lukes Castle only — not shared with any other venue.",
+    "These deposits are for Lukes Castle only (not shared with any other venue).",
   )
   // Name still missing (venue list not resolved yet) → generic, never blank.
   assert.equal(
     dedicatedReassurance(undefined),
-    "These deposits are for this venue only — not shared with any other venue.",
+    "These deposits are for this venue only (not shared with any other venue).",
   )
 })
 
@@ -733,7 +734,7 @@ test("negative-unallocated-rendered", () => {
   // …and the note that explains it is pinned copy the component shows.
   assert.equal(
     NEGATIVE_UNALLOCATED_NOTE,
-    "A negative unallocated amount reflects a fee-recovery adjustment on the account — it's part of what makes the column add up to the total.",
+    "A negative unallocated amount reflects a fee-recovery adjustment on the account. It's part of what makes the column add up to the total.",
   )
   // Footing still exact WITH the negative in the sum.
   assert.equal(t.foots, true)
@@ -856,4 +857,27 @@ test("all-venues-unchanged", () => {
     sharedAccountCaveat(preBreakdown.shared_with_venues),
     "Also includes deposits for: Little Saint James, Mar a Lago, Lukes Castle",
   )
+})
+
+test("after connect, a leftover Unallocated slice display-attaches to the only venue", () => {
+  const s = normalizeSummary({
+    deposited_cents: 0,
+    in_transit_cents: 8000,
+    refunded_cents: 0,
+    venue_scoped: true,
+    breakdown: [
+      { venue_id: 1, name: "Bizzy Just Wins", deposited_cents: 0, in_transit_cents: 0, refunded_cents: 0 },
+    ],
+    unallocated_deposited_cents: 0,
+    unallocated_in_transit_cents: 8000,
+    unallocated_refunded_cents: 0,
+  } as never)
+  const raw = buildBreakdownTable(s, 1)
+  const allocated = displayAllocateUnallocated(raw, [{ id: 1, name: "Bizzy Just Wins" }])
+  assert.ok(allocated)
+  const venue = allocated.rows.find((r) => r.kind === "venue")
+  const leftover = allocated.rows.find((r) => r.kind === "unallocated")
+  assert.equal(venue?.in_transit_cents, 8000)
+  assert.equal(leftover?.in_transit_cents, 0)
+  assert.equal(allocated.foots, true)
 })

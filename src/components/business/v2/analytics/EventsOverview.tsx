@@ -1,8 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, CalendarDays } from "lucide-react"
+import Link from "next/link"
+import { ChevronDown, CalendarDays, Maximize2 } from "lucide-react"
+import { ACCESS_ACCENT, EVENT_ACCENT, isWeeklyCoverProduct } from "@/lib/business/door-access"
+import { sortAnalyticsEvents } from "@/lib/business/analytics-list"
 import type { EventsOverview, EventOverviewItem, EventAnalytics } from "@/lib/business/types"
+import { promoterDisplayName } from "@/lib/business/promoter-display-name"
 import { apiClient } from "@/lib/business/api-client"
 import { usd } from "@/lib/v2/utils"
 import { cn } from "@/lib/v2/utils"
@@ -158,7 +162,7 @@ function EventDetail({ data }: { data: EventAnalytics }) {
             <tbody>
               {data.trackingLinks.map((link) => (
                 <tr key={link.tracking_link_id} className="border-b border-neutral-50 dark:border-neutral-800 last:border-0">
-                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{link.promoter_name}</td>
+                  <td className="py-2 text-neutral-900 dark:text-neutral-100">{promoterDisplayName(link)}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.clicks}</td>
                   <td className="py-2 text-right text-neutral-600 dark:text-neutral-400">{link.sales_count}</td>
                   <td className="py-2 text-right font-medium text-neutral-900 dark:text-neutral-100">{usd((link.commission_cents ?? 0) / 100)}</td>
@@ -176,10 +180,12 @@ function EventCard({
   event,
   isExpanded,
   onToggle,
+  accent,
 }: {
   event: EventOverviewItem
   isExpanded: boolean
   onToggle: () => void
+  accent: "event" | "weekly_cover"
 }) {
   const [detail, setDetail] = useState<EventAnalytics | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -198,16 +204,19 @@ function EventCard({
 
   const dateLabel = new Date(event.start_date_time).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   const b = eventBadge(event)
+  const tone = accent === "weekly_cover" || isWeeklyCoverProduct(event) ? "weekly_cover" : "event"
+  const ring = tone === "weekly_cover" ? ACCESS_ACCENT : EVENT_ACCENT
+  const revenueClass = tone === "weekly_cover" ? "text-access" : "text-green-600 dark:text-green-400"
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden" style={{ borderColor: `${ring}55` }}>
       <button type="button" onClick={handleToggle} className="w-full p-4 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
         <div className="flex items-center gap-4">
           {event.flyer_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={event.flyer_image_url} alt="" className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800 object-cover" />
           ) : (
-            <div className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800" />
+            <div className="size-12 flex-shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800" style={{ boxShadow: `inset 0 0 0 2px ${ring}` }} />
           )}
 
           <div className="min-w-0 flex-1">
@@ -223,7 +232,7 @@ function EventCard({
 
           <div className="hidden flex-shrink-0 items-center gap-6 sm:flex">
             <RowStat label="Tickets" value={`${event.tickets_sold}${event.tickets_total > 0 ? ` / ${event.tickets_total}` : ""}`} />
-            <RowStat label="Revenue" value={usd(event.revenue)} />
+            <RowStat label="Revenue" value={<span className={revenueClass}>{usd(event.revenue)}</span>} />
             <RowStat label="Check-in" value={`${event.checkin_rate}%`} />
             {event.door_sales_count > 0 && <RowStat label="Door" value={event.door_sales_count} />}
           </div>
@@ -231,6 +240,14 @@ function EventCard({
             <RowStat label="Tickets" value={event.tickets_sold} />
           </div>
 
+          <Link
+            href={`/business/events/${event.event_id}/manage/analytics`}
+            onClick={(e) => e.stopPropagation()}
+            className="hidden shrink-0 items-center gap-1 text-xs font-semibold sm:inline-flex"
+            style={{ color: ring }}
+          >
+            <Maximize2 className="size-3.5" /> Full page
+          </Link>
           <ChevronDown className={cn("size-4 flex-shrink-0 text-neutral-400 dark:text-neutral-500 transition-transform", isExpanded && "rotate-180")} />
         </div>
       </button>
@@ -268,11 +285,13 @@ function EventList({
   isAllVenues,
   expandedId,
   onToggle,
+  accent,
 }: {
   events: EventOverviewItem[]
   isAllVenues: boolean
   expandedId: number | null
   onToggle: (id: number) => void
+  accent: "event" | "weekly_cover"
 }) {
   if (events.length === 0) return null
 
@@ -284,7 +303,7 @@ function EventList({
             <VenueGroupLabel venue={g.venue} count={g.items.length} />
             <div className="ml-5 space-y-2">
               {g.items.map((event) => (
-                <EventCard key={event.event_id} event={event} isExpanded={expandedId === event.event_id} onToggle={() => onToggle(event.event_id)} />
+                <EventCard key={event.event_id} event={event} isExpanded={expandedId === event.event_id} onToggle={() => onToggle(event.event_id)} accent={accent} />
               ))}
             </div>
           </div>
@@ -296,35 +315,63 @@ function EventList({
   return (
     <div className="space-y-3">
       {events.map((event) => (
-        <EventCard key={event.event_id} event={event} isExpanded={expandedId === event.event_id} onToggle={() => onToggle(event.event_id)} />
+        <EventCard key={event.event_id} event={event} isExpanded={expandedId === event.event_id} onToggle={() => onToggle(event.event_id)} accent={accent} />
       ))}
     </div>
   )
 }
 
+export type EventsOverviewCopy = {
+  totalLabel: string
+  upcomingTitle: string
+  pastTitle: string
+  emptyTitle: string
+  emptyDescription: string
+}
+
+const EVENTS_COPY: EventsOverviewCopy = {
+  totalLabel: "Total events",
+  upcomingTitle: "Upcoming events",
+  pastTitle: "Past events",
+  emptyTitle: "No events yet",
+  emptyDescription: "Create an event to see analytics here.",
+}
+
 export default function EventsOverviewView({
   data,
   isAllVenues = false,
+  copy = EVENTS_COPY,
+  fullPage = false,
+  accent = "event",
 }: {
   data: EventsOverview
   isAllVenues?: boolean
+  copy?: EventsOverviewCopy
+  fullPage?: boolean
+  accent?: "event" | "weekly_cover"
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const now = new Date()
-  const upcoming = data.events.filter((e) => {
-    const endDate = e.end_date_time ? new Date(e.end_date_time) : new Date(e.start_date_time)
-    return endDate > now
-  })
-  const past = data.events.filter((e) => {
-    const endDate = e.end_date_time ? new Date(e.end_date_time) : new Date(e.start_date_time)
-    return endDate <= now
-  })
+  const upcoming = sortAnalyticsEvents(
+    data.events.filter((e) => {
+      const endDate = e.end_date_time ? new Date(e.end_date_time) : new Date(e.start_date_time)
+      return endDate > now
+    }),
+    "upcoming",
+  )
+  const past = sortAnalyticsEvents(
+    data.events.filter((e) => {
+      const endDate = e.end_date_time ? new Date(e.end_date_time) : new Date(e.start_date_time)
+      return endDate <= now
+    }),
+    "past",
+  )
   const toggleExpand = (id: number) => setExpandedId(expandedId === id ? null : id)
 
   return (
     <div>
       <StatGrid cols={5}>
-        <StatTile label="Total events" value={data.total_events} />
+        <StatTile label={copy.totalLabel} value={data.total_events} />
         <StatTile label="Tickets sold" value={data.total_tickets_sold.toLocaleString()} />
         <StatTile label="Revenue" value={usd(data.total_revenue)} />
         <StatTile label="Checked in" value={data.total_checked_in.toLocaleString()} />
@@ -333,18 +380,18 @@ export default function EventsOverviewView({
 
       {data.events.length === 0 ? (
         <div className="mt-6">
-          <EmptyState icon={CalendarDays} title="No events yet" description="Create an event to see analytics here." />
+          <EmptyState icon={CalendarDays} title={copy.emptyTitle} description={copy.emptyDescription} />
         </div>
       ) : (
         <>
           {upcoming.length > 0 && (
-            <Section title="Upcoming events" count={upcoming.length} defaultOpen>
-              <EventList events={upcoming} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} />
+            <Section title={copy.upcomingTitle} count={upcoming.length} defaultOpen fullPage={fullPage} accent={accent}>
+              <EventList events={upcoming} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} accent={accent} />
             </Section>
           )}
           {past.length > 0 && (
-            <Section title="Past events" count={past.length} defaultOpen={false}>
-              <EventList events={past} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} />
+            <Section title={copy.pastTitle} count={past.length} defaultOpen={false} fullPage={fullPage} accent={accent}>
+              <EventList events={past} isAllVenues={isAllVenues} expandedId={expandedId} onToggle={toggleExpand} accent={accent} />
             </Section>
           )}
         </>

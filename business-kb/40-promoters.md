@@ -28,11 +28,17 @@ They get a personal share link, and you can see exactly who's driving sales.
 ## How promoters get paid (the wallet)
 
 - Commissions **accrue to the promoter's in-app wallet** as their referrals buy tickets.
-- Earnings start as **Pending** and stay pending until **shortly after the event ends**
+- Earnings start as **Pending** and stay pending until **2 days after that night's event**
   (a buffer to cover potential chargebacks), then become **Available**.
 - Promoters **withdraw on demand** from the app whenever their Available balance reaches
-  the **$20 minimum**. A **standard withdrawal is free**; an **instant withdrawal** costs
-  a small fee.
+  the **$20 minimum**. A withdrawal sends money to their Stripe account. Stripe then
+  deposits it to their bank on its daily schedule. A withdrawal is not a bank deposit
+  yet. There is no instant option.
+- The **$20 minimum applies to promoter commission only**. It is not a general rule about
+  every balance on Bizzy. A host cashing out their own event earnings has no minimum (see
+  the "Stripe & payouts" article). If someone has both promoter commission and their own
+  host earnings, the host earnings are what removes the minimum, and the whole available
+  balance goes out together.
 - A promoter connects **Stripe at their first withdrawal** — not at signup.
 - There is **no weekly payout** — promoters choose when to cash out.
 

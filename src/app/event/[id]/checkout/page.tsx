@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { after } from "next/server"
 import { headers } from "next/headers"
+import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -24,17 +25,12 @@ const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 // 1. iMessage / link preview scrapers fetch this URL - they need OG tags to
 //    show an event image + title. generateMetadata renders those tags from
 //    the event's flyer.
-// 2. The page body redirects to the Laravel ticket checkout client-side so
-//    the scraper has time to extract metadata before the redirect happens.
-//    ?ref is preserved so Laravel's PublicController::checkout can stash it
-//    in the session for promoter attribution.
-// CHECKOUT_REDIRECT_BASE_URL is the documented convention (see .env.example);
-// LARAVEL_CHECKOUT_BASE_URL is accepted as a fallback for compatibility.
-// Dev: http://3.80.143.224  |  Prod: https://bizzy-deals.com
-const LARAVEL_CHECKOUT_BASE_URL =
-  process.env.CHECKOUT_REDIRECT_BASE_URL ||
-  process.env.LARAVEL_CHECKOUT_BASE_URL ||
-  "https://bizzy-deals.com"
+// 2. The page body redirects to LARAVEL /checkout/:id (HOST LOCK 2026-08-30:
+//    ticket checkout for named events and Weekly Cover always lives on
+//    Laravel; this Next app renders no checkout). ?ref and ?ticket_id= are
+//    preserved. The origin is laravelCheckoutBaseUrl()
+//    (CHECKOUT_REDIRECT_BASE_URL / LARAVEL_CHECKOUT_BASE_URL) — never /cover
+//    and not a second WC page.
 
 // Promoter click tracking. This landing is where every non-app visitor lands
 // (Android / desktop / iOS-without-app / Universal-Link fallback) — the in-app
@@ -138,7 +134,7 @@ export default async function EventCheckoutRedirect({ params, searchParams }: Pa
   }
 
   const qs = buildQueryString(sp)
-  const target = `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${id}${qs ? `?${qs}` : ""}`
+  const target = `${laravelCheckoutBaseUrl()}/checkout/${id}${qs ? `?${qs}` : ""}`
   return (
     <>
       <meta httpEquiv="refresh" content={`0;url=${target}`} />

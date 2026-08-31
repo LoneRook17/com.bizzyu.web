@@ -79,7 +79,7 @@ export default function EventsTab({ venueId }: Props) {
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-ink">{e.name}</p>
               <p className="mt-0.5 text-xs text-gray-500">
-                {formatDate(e.start_date_time)} · {e.venue_name || "—"}
+                {formatDate(e.start_date_time)} · {e.venue_name || "-"}
               </p>
               <p className="mt-1 text-xs text-gray-500">
                 {e.ticket_sales_count} tickets sold
@@ -107,7 +107,7 @@ export default function EventsTab({ venueId }: Props) {
 }
 
 function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—"
+  if (!iso) return "-"
   try {
     return new Date(iso).toLocaleString(undefined, {
       weekday: "short",

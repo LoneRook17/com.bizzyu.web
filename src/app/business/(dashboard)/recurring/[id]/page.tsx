@@ -15,6 +15,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
+import { HOST_CUSTOM_CHIP_LABEL, isHostCustomNight } from "@/lib/business/host-custom-night"
 import { eventStatusBadge, fmtTime } from "@/components/business/v2/events/eventStatus"
 import { WeekdayChips } from "@/components/business/v2/recurring/WeekdayChips"
 import {
@@ -124,7 +125,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
           <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/40">
             <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <p className="text-sm text-amber-800 dark:text-amber-300">
-              <span className="font-semibold">Series created — nights are on the way.</span> The first nights
+              <span className="font-semibold">Series created. Nights are on the way.</span> The first nights
               couldn&apos;t be scheduled just now; they&apos;ll be created automatically soon and show up below.
             </p>
           </div>
@@ -134,7 +135,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
             <p className="text-sm text-green-800 dark:text-green-300">
               <span className="font-semibold">Series created.</span>{" "}
               {creationBanner.generation.stamped.length > 0
-                ? `${creationBanner.generation.stamped.length} night${creationBanner.generation.stamped.length === 1 ? "" : "s"} scheduled — each one is a normal event you can open below.`
+                ? `${creationBanner.generation.stamped.length} night${creationBanner.generation.stamped.length === 1 ? "" : "s"} scheduled. Each one is a normal event you can open below.`
                 : "Upcoming nights will appear below as they're scheduled."}
             </p>
           </div>
@@ -150,7 +151,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-600 dark:text-neutral-400">
             <span className="inline-flex items-center gap-1.5">
               <Repeat className="size-3.5" />
-              {scheduleSentence(series.days_of_week)} · {fmtTimeOfDay(series.start_time)}–{fmtTimeOfDay(series.end_time)}
+              {scheduleSentence(series.days_of_week)} · {fmtTimeOfDay(series.start_time)} - {fmtTimeOfDay(series.end_time)}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="size-3.5" /> {series.venue_name}
@@ -177,7 +178,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
 
       {!active && (
         <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-400">
-          This series is suspended — no new nights are being scheduled. Nights that stayed live below can still be
+          This series is suspended. No new nights are being scheduled. Nights that stayed live below can still be
           managed from their event pages.
         </div>
       )}
@@ -186,9 +187,9 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
       <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3 text-sm text-blue-700 dark:text-blue-400">
         <p className="font-semibold">Every night below is its own event.</p>
         <p className="mt-1">
-          <strong>Want to change one night?</strong> Open it — you&apos;ll edit it like any normal event, and your
+          <strong>Want to change one night?</strong> Open it. You&apos;ll edit it like any normal event, and your
           changes never touch the series. <strong>Want to change every future night?</strong> Use{" "}
-          <em>Edit the series</em> — it updates future nights that haven&apos;t been customized, and nights
+          <em>Edit the series</em>. It updates future nights that haven&apos;t been customized, and nights
           you&apos;ve edited individually keep their changes.
         </p>
       </div>
@@ -200,12 +201,12 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
           {upcoming.length === 0 ? (
             <p className="py-4 text-sm text-neutral-500 dark:text-neutral-400">
               {active
-                ? "No upcoming nights yet — they're created automatically a few weeks ahead."
-                : "No upcoming nights — the series is suspended."}
+                ? "No upcoming nights yet. They're created automatically a few weeks ahead."
+                : "No upcoming nights. The series is suspended."}
             </p>
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {upcoming.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} />)}
+              {upcoming.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} seriesId={series.id} />)}
             </div>
           )}
         </CardContent>
@@ -217,7 +218,7 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
           <CardHeader><CardTitle>Past nights</CardTitle></CardHeader>
           <CardContent className="pt-0">
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {past.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} past />)}
+              {past.map((o) => <OccurrenceRow key={o.event_id} occurrence={o} seriesId={series.id} past />)}
             </div>
           </CardContent>
         </Card>
@@ -235,13 +236,28 @@ export default function RecurringSeriesDetailPage({ params }: { params: Promise<
   )
 }
 
-function OccurrenceRow({ occurrence: o, past = false }: { occurrence: RecurringOccurrence; past?: boolean }) {
+function OccurrenceRow({
+  occurrence: o,
+  seriesId,
+  past = false,
+}: {
+  occurrence: RecurringOccurrence
+  seriesId: number
+  past?: boolean
+}) {
   const status = eventStatusBadge(o.status)
+  const custom = isHostCustomNight({
+    product_kind: "event",
+    recurring_series_id: seriesId,
+    is_customized: o.is_customized,
+    series_customized_at: (o as { series_customized_at?: string | null }).series_customized_at,
+    override_scope: (o as { override_scope?: string | null }).override_scope,
+  })
   return (
     <Link
       href={`/business/events/${o.event_id}`}
       className={cnRow(past)}
-      title="Open this night — edits there apply to this night only and never touch the series"
+      title="Open this night. Edits there apply to this night only and never touch the series"
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -249,13 +265,13 @@ function OccurrenceRow({ occurrence: o, past = false }: { occurrence: RecurringO
             {fmtDateOnlyLong(o.occurrence_date)}
           </span>
           <Badge variant={status.variant} size="sm">{status.label}</Badge>
-          {o.is_customized && (
+          {custom && (
             <Badge
-              variant="info"
+              variant="custom"
               size="sm"
-              title="You edited this night directly — series edits leave it alone"
+              title="You edited this night directly. Series edits leave it alone"
             >
-              Customized
+              {HOST_CUSTOM_CHIP_LABEL}
             </Badge>
           )}
         </div>

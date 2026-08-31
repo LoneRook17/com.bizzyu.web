@@ -29,9 +29,11 @@ export default function CreateRecurringSeriesPage() {
     )
   }
 
+  const isPending = profile?.status === "pending" || profile?.status === "pending_approval" || profile?.status === "pending_verification"
+
   return (
     <RequireVenue>
-      <SeriesForm mode="create" stripeOnboarded={profile?.stripe_connect_onboarded ?? true} />
+      <SeriesForm mode="create" stripeOnboarded={profile?.stripe_connect_onboarded ?? true} isPending={isPending} />
     </RequireVenue>
   )
 }

@@ -1,60 +1,21 @@
-import { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 
-const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
-
-// REDIRECT-ONLY (2026-07-10 triage, Luke's call): this Next.js buyer checkout
-// has never worked end-to-end — the verify-code step never returns the token
-// the client needs to authenticate the purchase — and the route gets no organic
-// traffic. Until the post-release canonical-checkout project decides which
-// checkout surface wins, /checkout/:id forwards to the Laravel checkout the
-// same way /event/:id/checkout does (meta refresh + location.replace, so link
-// scrapers still get the OG tags below before the redirect fires).
+// HOST LOCK (Luke 2026-08-30): ticket checkout — named events AND Weekly
+// Cover — ALWAYS lives on Laravel ({checkoutOrigin}/checkout/{id}). This
+// Next path is NOT a checkout: it exists only so links that land on the
+// wrong twin get a 302 with their query string (ref, success, session_id,
+// ticket_id, …) intact. It renders nothing, fetches nothing, and decides
+// nothing — sale gating, ended-night handling, and promotion gating are
+// Laravel's job on the page that actually sells.
 //
-// EventCheckoutClient.tsx and its wired features (sold-out, scheduled tickets,
-// pause notice) are intentionally KEPT — they're the starting point for the
-// canonical-checkout work. Do not delete them.
-//
-// /lineskip/:slug is a separate, working flow and is not affected.
-//
-// CHECKOUT_REDIRECT_BASE_URL is the documented convention (see .env.example);
-// LARAVEL_CHECKOUT_BASE_URL is accepted as a fallback for compatibility.
-// Dev: http://3.80.143.224  |  Prod: https://bizzy-deals.com
-const LARAVEL_CHECKOUT_BASE_URL =
-  process.env.CHECKOUT_REDIRECT_BASE_URL ||
-  process.env.LARAVEL_CHECKOUT_BASE_URL ||
-  "https://bizzy-deals.com"
+// Origin comes from laravelCheckoutBaseUrl() (CHECKOUT_REDIRECT_BASE_URL /
+// LARAVEL_CHECKOUT_BASE_URL, DEV fallback dev.bizzy-deals.com — never
+// prod). Do not resurrect EventCheckoutClient here.
 
 interface PageProps {
   params: Promise<{ id: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
-}
-
-async function getEventData(eventId: string) {
-  try {
-    const res = await fetch(`${API_URL}/checkout/event/${eventId}`, {
-      cache: "no-store",
-    })
-    if (!res.ok) return null
-    return res.json()
-  } catch {
-    return null
-  }
-}
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params
-  const data = await getEventData(id)
-  const eventName = data?.event?.name || "Event"
-
-  return {
-    title: `${eventName} - Tickets | Bizzy`,
-    description: `Get tickets for ${eventName} on Bizzy.`,
-    openGraph: {
-      title: `${eventName} - Tickets | Bizzy`,
-      description: `Get tickets for ${eventName} on Bizzy.`,
-      images: data?.event?.flyer_image_url ? [data.event.flyer_image_url] : [],
-    },
-  }
 }
 
 function buildQueryString(sp: Record<string, string | string[] | undefined>): string {
@@ -70,23 +31,8 @@ function buildQueryString(sp: Record<string, string | string[] | undefined>): st
   return params.toString()
 }
 
-export default async function EventCheckoutPage({ params, searchParams }: PageProps) {
+export default async function EventCheckoutRedirect({ params, searchParams }: PageProps) {
   const { id } = await params
-  const sp = await searchParams
-
-  const qs = buildQueryString(sp)
-  const target = `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${id}${qs ? `?${qs}` : ""}`
-  return (
-    <>
-      <meta httpEquiv="refresh" content={`0;url=${target}`} />
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `window.location.replace(${JSON.stringify(target)})`,
-        }}
-      />
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", fontFamily: "system-ui, sans-serif", color: "#666" }}>
-        <p>Redirecting to checkout…</p>
-      </div>
-    </>
-  )
+  const qs = buildQueryString(await searchParams)
+  redirect(`${laravelCheckoutBaseUrl()}/checkout/${id}${qs ? `?${qs}` : ""}`)
 }

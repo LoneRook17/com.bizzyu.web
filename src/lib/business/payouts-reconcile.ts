@@ -278,13 +278,13 @@ function normStatus(v: unknown): PayoutStatus {
 }
 
 function normalizeSharedVenue(raw: Partial<SharedVenueRef>): SharedVenueRef {
-  return { venue_id: num(raw.venue_id), name: str(raw.name) ?? "—" }
+  return { venue_id: num(raw.venue_id), name: str(raw.name) ?? "-" }
 }
 
 function normalizeBreakdownRow(raw: Partial<VenueBreakdownRow>): VenueBreakdownRow {
   return {
     venue_id: num(raw.venue_id),
-    name: str(raw.name) ?? "—",
+    name: str(raw.name) ?? "-",
     deposited_cents: num(raw.deposited_cents),
     in_transit_cents: num(raw.in_transit_cents),
     refunded_cents: num(raw.refunded_cents),
@@ -471,7 +471,7 @@ export function venueEmptyDepositsCopy(venueName?: string | null): { title: stri
 
 function normalizeTier(raw: Partial<ReconTier>): ReconTier {
   return {
-    tier_name: str(raw.tier_name) ?? "—",
+    tier_name: str(raw.tier_name) ?? "-",
     qty: num(raw.qty),
     amount_cents: num(raw.amount_cents),
   }
@@ -573,7 +573,7 @@ export const DEDICATED_BADGE_LABEL = "✓ Dedicated Stripe account"
 
 /** The dedicated-state reassurance sentence, naming the selected venue. */
 export function dedicatedReassurance(venueName?: string | null): string {
-  return `These deposits are for ${venueName || "this venue"} only — not shared with any other venue.`
+  return `These deposits are for ${venueName || "this venue"} only (not shared with any other venue).`
 }
 
 /** Which trio the strip's tiles show per state. SHARED leads with the venue's
@@ -621,12 +621,12 @@ export const THIS_VENUE_BADGE_LABEL = "This venue"
  *  amount is REAL (e.g. a fee-recovery adjustment) and must render as-is —
  *  clamping it to zero would break the footing the table exists to show. */
 export const NEGATIVE_UNALLOCATED_NOTE =
-  "A negative unallocated amount reflects a fee-recovery adjustment on the account — it's part of what makes the column add up to the total."
+  "A negative unallocated amount reflects a fee-recovery adjustment on the account. It's part of what makes the column add up to the total."
 
 /** Defensive only — the server asserts footing before responding, so this
  *  renders only if a response slipped through with broken arithmetic. */
 export const BREAKDOWN_MISMATCH_WARNING =
-  "These rows don't add up to the account total — the figures are shown as received. Contact support if this persists."
+  "These rows don't add up to the account total. The figures are shown as received. Contact support if this persists."
 
 export interface BreakdownTableRow {
   kind: "venue" | "unallocated" | "total"
@@ -718,6 +718,48 @@ export function buildBreakdownTable(s: PayoutsSummary, selectedVenueId?: number 
  *  it says something the reassurance doesn't — a sibling slice (shouldn't
  *  happen) or a nonzero unallocated remainder; a trivial one-venue table with
  *  zero unallocated would just be confusing noise under the ✓ badge. */
+/**
+ * Display-only: after Connect, a leftover Unallocated slice that belongs to
+ * the only venue on the account is shown on that venue. Does not write money
+ * flags — the table still foots.
+ */
+export function displayAllocateUnallocated(
+  table: BreakdownTable | null,
+  venues: readonly { id: number; name: string }[] = [],
+): BreakdownTable | null {
+  if (!table) return null
+  const unallocated = table.rows.find((row) => row.kind === "unallocated")
+  if (!unallocated) return table
+  const unused =
+    unallocated.deposited_cents === 0 &&
+    unallocated.in_transit_cents === 0 &&
+    unallocated.refunded_cents === 0
+  if (unused) return table
+
+  const venueRows = table.rows.filter((row) => row.kind === "venue")
+  let target = venueRows.length === 1 ? venueRows[0] : null
+  if (!target && venues.length === 1) {
+    target = venueRows.find((row) => row.venue_id === venues[0].id) ?? null
+  }
+  if (!target) return table
+
+  const rows = table.rows.map((row) => {
+    if (row === target) {
+      return {
+        ...row,
+        deposited_cents: row.deposited_cents + unallocated.deposited_cents,
+        in_transit_cents: row.in_transit_cents + unallocated.in_transit_cents,
+        refunded_cents: row.refunded_cents + unallocated.refunded_cents,
+      }
+    }
+    if (row.kind === "unallocated") {
+      return { ...row, deposited_cents: 0, in_transit_cents: 0, refunded_cents: 0 }
+    }
+    return row
+  })
+  return { ...table, rows, hasNegativeUnallocated: false }
+}
+
 export function showBreakdownTable(s: PayoutsSummary): boolean {
   if (!hasBreakdown(s)) return false
   if (summaryRenderState(s) === "dedicated_venue") {
@@ -893,7 +935,7 @@ function detailRowCells(o: ReconOrderRow, withCommission: boolean): string[] {
  *  operational per-order rows under a DETAILS section. */
 export function buildDepositCsv(recon: Reconciliation): string {
   const rows: string[][] = [
-    [`Bizzy payout reconciliation — ${recon.payout_id}`],
+    [`Bizzy payout reconciliation (${recon.payout_id})`],
     [`Arrival date`, recon.arrival_date ?? ""],
     [`Ties to Stripe`, tiesCheck(recon).ties ? "yes" : "no"],
     [],
@@ -902,9 +944,9 @@ export function buildDepositCsv(recon: Reconciliation): string {
 
   for (const ev of recon.events) {
     for (const t of ev.tiers) {
-      rows.push(["line", ev.name ?? "—", ev.date ?? "", t.tier_name, String(t.qty), centsToUsdStr(t.amount_cents)])
+      rows.push(["line", ev.name ?? "-", ev.date ?? "", t.tier_name, String(t.qty), centsToUsdStr(t.amount_cents)])
     }
-    rows.push(["event_subtotal", ev.name ?? "—", ev.date ?? "", "", "", centsToUsdStr(ev.subtotal_cents)])
+    rows.push(["event_subtotal", ev.name ?? "-", ev.date ?? "", "", "", centsToUsdStr(ev.subtotal_cents)])
   }
 
   rows.push(["door_covers", "", "", "", "", centsToUsdStr(recon.door_covers_cents)])
@@ -979,7 +1021,7 @@ export function buildDepositPdfHtml(recon: Reconciliation): string {
         )
         .join("")
       return (
-        `<tr class="ev"><td colspan="2">${esc(ev.name ?? "—")}${ev.date ? ` · ${esc(ev.date)}` : ""}</td><td class="r">${usd(ev.subtotal_cents)}</td></tr>` +
+        `<tr class="ev"><td colspan="2">${esc(ev.name ?? "-")}${ev.date ? ` · ${esc(ev.date)}` : ""}</td><td class="r">${usd(ev.subtotal_cents)}</td></tr>` +
         tiers
       )
     })
@@ -993,15 +1035,15 @@ export function buildDepositPdfHtml(recon: Reconciliation): string {
         }</tr></thead><tbody>${recon.orders
           .map(
             (o) =>
-              `<tr><td>${esc(o.order_id == null ? "—" : o.order_id)}</td><td>${esc(o.sale_date ?? "—")}</td><td>${esc(
-                o.event ?? "—",
-              )}</td><td>${esc(o.ticket_tier ?? "—")}</td><td class="r">${o.quantity}</td><td class="r">${usd(
+              `<tr><td>${esc(o.order_id == null ? "-" : o.order_id)}</td><td>${esc(o.sale_date ?? "-")}</td><td>${esc(
+                o.event ?? "-",
+              )}</td><td>${esc(o.ticket_tier ?? "-")}</td><td class="r">${o.quantity}</td><td class="r">${usd(
                 o.amount_cents,
-              )}</td><td>${o.is_door_sale ? "Yes" : "—"}</td><td>${esc(o.payout_status)}</td><td>${esc(
-                o.payout_date ?? "—",
-              )}</td><td class="mono">${esc(o.stripe_payout_id ?? "—")}</td><td class="mono">${esc(
-                o.stripe_payment_intent_id ?? "—",
-              )}</td>${withCommission ? `<td class="r">${o.promoter_commission_cents == null ? "—" : usd(o.promoter_commission_cents)}</td>` : ""}</tr>`,
+              )}</td><td>${o.is_door_sale ? "Yes" : "-"}</td><td>${esc(o.payout_status)}</td><td>${esc(
+                o.payout_date ?? "-",
+              )}</td><td class="mono">${esc(o.stripe_payout_id ?? "-")}</td><td class="mono">${esc(
+                o.stripe_payment_intent_id ?? "-",
+              )}</td>${withCommission ? `<td class="r">${o.promoter_commission_cents == null ? "-" : usd(o.promoter_commission_cents)}</td>` : ""}</tr>`,
           )
           .join("")}</tbody></table>`
       : ""
@@ -1028,7 +1070,7 @@ export function buildDepositPdfHtml(recon: Reconciliation): string {
   </style></head><body>
     <h1>Payout reconciliation</h1>
     <p class="sub">${esc(recon.payout_id)}${recon.arrival_date ? ` · deposited ${esc(recon.arrival_date)}` : ""}</p>
-    <span class="ties ${ties.ties ? "ok" : "warn"}">${ties.ties ? "✓ Ties to Stripe deposit" : `⚠ Off by ${usd(ties.deltaCents)} — does not tie`}</span>
+    <span class="ties ${ties.ties ? "ok" : "warn"}">${ties.ties ? "✓ Ties to Stripe deposit" : `⚠ Off by ${usd(ties.deltaCents)} (does not tie)`}</span>
     <h2>Line items</h2>
     <table><thead><tr><th>Event / tier</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead><tbody>
       ${eventRows}
@@ -1179,7 +1221,7 @@ export const COMPUTING_GIVE_UP_MS = 120_000
 export const COMPUTING_COPY = {
   title: "Crunching your payouts",
   description:
-    "First load can take a minute — we're reconciling every deposit with Stripe. This page will update by itself.",
+    "First load can take a minute. We're reconciling every deposit with Stripe. This page will update by itself.",
 } as const
 
 /** Subtle indicator text while a background recompute is in flight. */

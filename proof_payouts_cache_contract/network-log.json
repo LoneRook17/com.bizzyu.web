@@ -1,0 +1,353 @@
+[
+  {
+    "t": "2026-07-30T18:24:04.754Z",
+    "path": "http://localhost:3001/business/payouts",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:05.539Z",
+    "path": "/business/payouts/deposits?days=90",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:05.549Z",
+    "path": "/business/payouts/summary?days=90",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:05.816Z",
+    "path": "/business/payouts/summary?days=90",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:05.825Z",
+    "path": "/business/payouts/deposits?days=90",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:06.714Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:06.715Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:06.716Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:11.013Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:11.015Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:12.014Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:15.291Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:15.292Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:17.302Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:19.497Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:19.501Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:22.578Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:23.711Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:23.713Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:27.867Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:27.921Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:27.923Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:32.137Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:32.139Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:33.116Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:36.342Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:36.347Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:38.351Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:40.570Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:40.571Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:43.601Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:44.790Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:44.792Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:48.839Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 202,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:48.987Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:48.997Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "computing",
+    "computedAt": null,
+    "refreshing": "1",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:53.205Z",
+    "path": "/business/payouts/summary?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": null,
+    "computedAt": null,
+    "refreshing": null,
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:53.208Z",
+    "path": "/business/payouts/deposits?since=2026-07-14&until=2026-07-28",
+    "status": 200,
+    "state": "ready",
+    "computedAt": "2026-07-30T18:24:51.141Z",
+    "refreshing": "0",
+    "disposition": null
+  },
+  {
+    "t": "2026-07-30T18:24:54.151Z",
+    "path": "/business/payouts/export.csv?_=1&since=2026-07-14&until=2026-07-28&status=all",
+    "status": 200,
+    "state": "ready",
+    "computedAt": "2026-07-30T18:24:51.141Z",
+    "refreshing": "0",
+    "disposition": "attachment; filename=\"bizzy-payouts-2026-07-14-to-2026-07-28.csv\""
+  }
+]

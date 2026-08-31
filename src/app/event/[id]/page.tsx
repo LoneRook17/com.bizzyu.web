@@ -1,6 +1,11 @@
 import { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
+import { redirect } from "next/navigation"
+import {
+  loadVenuePublicEventIdSet,
+  weeklyCoverSaleOpenForPayloads,
+} from "@/lib/checkout/weekly-cover-sale"
+import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
@@ -16,6 +21,10 @@ interface EventResponse {
   promotion_enabled?: boolean | number
   promotion_commission_type?: "percent" | "fixed" | null
   promotion_commission_value?: number | null
+  venue_id?: number | string | null
+  product_kind?: string | null
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
 }
 
 interface PageProps {
@@ -23,14 +32,11 @@ interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-// Event ticket checkout lives on the Laravel app at bizzy-deals.com.
-// /checkout/:id on this Next.js app is the line-skip-only flow.
-// See .env.example - CHECKOUT_REDIRECT_BASE_URL is the canonical env name.
-// Dev: http://3.80.143.224  |  Prod: https://bizzy-deals.com
-const LARAVEL_CHECKOUT_BASE_URL =
-  process.env.CHECKOUT_REDIRECT_BASE_URL ||
-  process.env.LARAVEL_CHECKOUT_BASE_URL ||
-  "https://bizzy-deals.com"
+// Live event ticket checkout still lives on Laravel. This page owns /event/:id
+// (the next.config 307 was removed) so a host-ended Weekly Cover night can
+// fail closed instead of bouncing to a Laravel URL that still sells.
+// Vercel env: CHECKOUT_REDIRECT_BASE_URL on com-bizzyu-web-l2gp.
+const LARAVEL_CHECKOUT_BASE_URL = laravelCheckoutBaseUrl()
 
 async function getEvent(eventId: string): Promise<EventResponse | null> {
   try {
@@ -58,19 +64,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-function formatDate(iso?: string | null): string {
-  if (!iso) return ""
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return ""
-  return d.toLocaleString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })
-}
-
 export default async function PublicEventPage({ params, searchParams }: PageProps) {
   const { id } = await params
   const sp = await searchParams
@@ -87,59 +80,27 @@ export default async function PublicEventPage({ params, searchParams }: PageProp
     )
   }
 
-  const promotionEnabled = !!event.promotion_enabled
-  const startsAt = formatDate(event.start_date_time)
+  const publicListIds = await loadVenuePublicEventIdSet(API_URL, event.venue_id)
+  const saleOpen = weeklyCoverSaleOpenForPayloads({
+    uiPayload: event,
+    publicListIds,
+  })
+  if (!saleOpen) {
+    return (
+      <main className="min-h-screen bg-white text-ink flex items-center justify-center px-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold mb-2">This night is no longer on sale</h1>
+          <p className="text-sm text-gray-600 mb-4">Cover and Skip the Line are not available for this series.</p>
+          <Link href="/" className="text-sm text-primary hover:underline">Go home</Link>
+        </div>
+      </main>
+    )
+  }
 
   const refRaw = sp?.ref
   const ref = Array.isArray(refRaw) ? refRaw[0] : refRaw
-  const buyTicketHref =
+  redirect(
     `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${event.event_id}` +
-    (ref ? `?ref=${encodeURIComponent(ref)}` : "")
-
-  return (
-    <main className="min-h-screen bg-white text-ink">
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        {event.flyer_image_url && (
-          <div className="relative w-full aspect-[3/2] mb-6 rounded-2xl overflow-hidden bg-gray-100">
-            <Image
-              src={event.flyer_image_url}
-              alt={event.name}
-              fill
-              sizes="(max-width: 768px) 100vw, 768px"
-              className="object-cover"
-              unoptimized
-            />
-          </div>
-        )}
-        <h1 className="text-3xl font-bold mb-2">{event.name}</h1>
-        {event.venue_name && (
-          <p className="text-sm text-gray-600 mb-1">at {event.venue_name}</p>
-        )}
-        {startsAt && (
-          <p className="text-sm text-gray-600 mb-6">{startsAt}</p>
-        )}
-        {event.description && (
-          <p className="text-base text-gray-800 leading-relaxed mb-8 whitespace-pre-line">
-            {event.description}
-          </p>
-        )}
-
-        {promotionEnabled && (
-          <Link
-            href={`/promote/${event.event_id}`}
-            className="block w-full text-center rounded-xl bg-primary text-white font-semibold py-3 mb-3 hover:brightness-110 transition"
-          >
-            Get paid to promote this event &rarr;
-          </Link>
-        )}
-
-        <a
-          href={buyTicketHref}
-          className="block w-full text-center rounded-xl bg-ink text-white font-semibold py-3 hover:opacity-90 transition"
-        >
-          Buy Ticket
-        </a>
-      </div>
-    </main>
+      (ref ? `?ref=${encodeURIComponent(ref)}` : ""),
   )
 }

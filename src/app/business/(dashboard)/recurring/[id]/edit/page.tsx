@@ -16,6 +16,7 @@ export default function EditRecurringSeriesPage({ params }: { params: Promise<{ 
   // Pre-edit occurrences let the post-save report label nights by date.
   const [occurrences, setOccurrences] = useState<RecurringOccurrence[]>([])
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
+  const [isPending, setIsPending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -30,7 +31,10 @@ export default function EditRecurringSeriesPage({ params }: { params: Promise<{ 
       .finally(() => setLoading(false))
     apiClient
       .get<BusinessProfile>("/business/profile")
-      .then((p) => setStripeOnboarded(p.stripe_connect_onboarded))
+      .then((p) => {
+        setStripeOnboarded(p.stripe_connect_onboarded)
+        setIsPending(p.status === "pending" || p.status === "pending_approval" || p.status === "pending_verification")
+      })
       .catch(() => {})
   }, [id])
 
@@ -61,6 +65,7 @@ export default function EditRecurringSeriesPage({ params }: { params: Promise<{ 
       initialData={series}
       occurrences={occurrences}
       stripeOnboarded={stripeOnboarded}
+      isPending={isPending}
     />
   )
 }
