@@ -36,7 +36,10 @@ test("max per person 0 is valid and persists as no limit", () => {
   assert.ok(manage.includes("Quantity (0 = unlimited)"))
 
   const maxField = manage.slice(manage.indexOf("Max per person (0 = unlimited)"))
-  const input = maxField.slice(0, maxField.indexOf("</Input>"))
+  // Bound the scan to the max-per-person <Input /> itself. "</Input>" never
+  // occurs (self-closing), so the old slice ran to end-of-file and tripped on
+  // the surge editor's legitimate min="1" (After this sells) further down.
+  const input = maxField.slice(0, maxField.indexOf("/>"))
   assert.ok(input.includes('min="0"'), "HTML min must accept 0 so the browser does not block save")
   assert.ok(!input.includes('min="1"'), "min=1 is the validation that blocked Cover and Rumble")
 })
