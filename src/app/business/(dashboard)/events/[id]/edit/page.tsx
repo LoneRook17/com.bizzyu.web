@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { isPromotionEnabled } from "@/lib/business/create-publish"
 import { weeklyCoverNightEditHref } from "@/lib/business/door-access"
 import type { EventDetail, EventFormData } from "@/lib/business/types"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
@@ -55,7 +56,7 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
           is_21_plus: event.is_21_plus,
           flyer_image_url: event.flyer_image_url || "",
           tickets: event.tickets || [],
-          promotion_enabled: !!event.promotion_enabled,
+          promotion_enabled: isPromotionEnabled(event.promotion_enabled),
           promotion_commission_type: event.promotion_commission_type ?? undefined,
           promotion_commission_value: event.promotion_commission_value ?? null,
           lowstock_alerts_enabled: !!event.lowstock_alerts_enabled,

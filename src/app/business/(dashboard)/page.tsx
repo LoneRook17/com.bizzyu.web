@@ -10,6 +10,7 @@ import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { isVenueScopeNotFound } from "@/lib/business/venue-selection"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { apiClient } from "@/lib/business/api-client"
+import { nextUpcomingGreenEvent } from "@/lib/business/next-event-tile"
 import type {
   DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem,
 } from "@/lib/business/types"
@@ -19,12 +20,17 @@ import {
   ACCESS_ACCENT,
   WEEKLY_ACCESS_SECTION_LABEL,
   WEEKLY_ACCESS_TYPE_LABEL,
+  easternToday,
   fetchDoorAccessProgramsSafe,
+  fmtShortDate,
   isWeeklyCoverProduct,
+  loadProgramsUpcomingNights,
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
-import { homeUpcoming, nextAccessNight } from "@/lib/business/home-upcoming"
+import { homeUpcoming, nextAccessNight, type OneOffUpcomingNight } from "@/lib/business/home-upcoming"
+import { hostUpcomingShowsGreenNight } from "@/lib/business/series-nights-window"
+import { oneOffNightsFromSeries } from "@/lib/business/wc-upcoming"
 import { inactiveWeeklyCoverSeriesIds } from "@/lib/business/events-list"
 import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
 import {
@@ -42,10 +48,10 @@ import TrialHome from "@/components/business/v2/TrialHome"
 import EscrowPanel from "@/components/business/v2/EscrowPanel"
 import HomeStripeConnectPrompt from "@/components/business/v2/HomeStripeConnectPrompt"
 
-function fmtDate(s?: string | null) {
-  if (!s) return "-"
-  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-}
+// Date formatting is fmtShortDate (door-access.ts): bare "YYYY-MM-DD" night
+// dates format on the calendar — `new Date("2026-08-30")` is UTC midnight and
+// used to render "Aug 29" here for every US viewer — while event datetimes
+// keep the local parse this page always had.
 function fmtRelative(s: string) {
   const d = new Date(s).getTime()
   const mins = Math.round((Date.now() - d) / 60000)
@@ -93,6 +99,7 @@ export default function V2HomePage() {
   // degrade to [] — a business that runs no door access, or a build where the
   // endpoint is down, gets exactly the homepage it had before.
   const [programs, setPrograms] = useState<DoorAccessProgramSummary[]>([])
+  const [oneOffNights, setOneOffNights] = useState<OneOffUpcomingNight[]>([])
   const [probedInactiveIds, setProbedInactiveIds] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -134,7 +141,12 @@ export default function V2HomePage() {
   useEffect(() => {
     if (needsSetup || venuesLoading) return
     let cancelled = false
-    fetchDoorAccessProgramsSafe().then((rows) => { if (!cancelled) setPrograms(rows) })
+    fetchDoorAccessProgramsSafe().then(async (rows) => {
+      if (cancelled) return
+      setPrograms(rows)
+      const loaded = await loadProgramsUpcomingNights(rows.filter((p) => p.is_active))
+      if (!cancelled) setOneOffNights(oneOffNightsFromSeries(loaded, easternToday()))
+    })
     return () => { cancelled = true }
   }, [needsSetup, venuesLoading])
 
@@ -183,14 +195,25 @@ export default function V2HomePage() {
     ...new Set([...inactiveWeeklyCoverSeriesIds(programs, [], events), ...probedInactiveIds]),
   ]
   const showAccessSection = activePrograms.length > 0
+  // One "today" (US/Eastern) for every lower bound on this page: a stale/past
+  // next_night_date from the API must never surface as Next / Upcoming /
+  // Needs-attention.
+  const today = easternToday()
   const nextNights = activePrograms
-    .map(nextAccessNight)
+    .map((p) => nextAccessNight(p, today))
     .filter((n): n is NonNullable<ReturnType<typeof nextAccessNight>> => n !== null)
     .sort((a, b) => a.date.localeCompare(b.date))
   const soonestNight = nextNights[0] ?? null
 
   // The interleaved list (green events + pink nights) this card now shows.
-  const upcoming = homeUpcoming(showEventsSection ? events : [], activePrograms, 4, inactiveWcIds)
+  const upcoming = homeUpcoming(
+    showEventsSection ? events : [],
+    activePrograms,
+    4,
+    inactiveWcIds,
+    oneOffNights,
+    today,
+  )
   const showUpcomingCard = showEventsSection || showAccessSection
 
   // The "next night" tile answers across BOTH systems while they coexist — a
@@ -202,13 +225,19 @@ export default function V2HomePage() {
 
   // Attention items derived from real data
   const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
+  // WC-SMEAR follow-up (2026-08-29): "next event" must be the next start
+  // >= now ET, never a past occurrence. hostUpcomingShowsGreenNight alone
+  // let a finished standalone one-off (Aug 28 at 9pm, viewed Saturday the
+  // 29th) stay "coming up" forever — its one-off/Custom arms skip the date
+  // window on purpose for the LIST; the tile needs the future filter too.
   const nextEvent = showEventsSection
-    ? events.find((event) => {
+    ? nextUpcomingGreenEvent(events, (event) => {
         if (isApprovedCanceledStatus(event.status) || isWeeklyCoverProduct(event)) return false
         const seriesId = Number(event.recurring_series_id)
         if (inactiveWcIds.includes(seriesId) && !weeklyCoverNightNeedsPendingCancel(event, false)) {
           return false
         }
+        if (!hostUpcomingShowsGreenNight(event, today)) return false
         return true
       })
     : undefined
@@ -216,14 +245,14 @@ export default function V2HomePage() {
     attention.push({
       icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
       title: `${nextEvent.name} is coming up`,
-      sub: `${fmtDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
+      sub: `${fmtShortDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
       href: `/business/events/${nextEvent.event_id}/manage`, cta: "Manage",
     })
   }
   if (soonestNight) {
     attention.push({
       icon: Zap, tint: "bg-pink-50 dark:bg-pink-950/40 text-[#FF3ED1]",
-      title: `${soonestNight.program.name} runs ${fmtDate(soonestNight.date)}`,
+      title: `${soonestNight.program.name} runs ${fmtShortDate(soonestNight.date)}`,
       sub: `${soonestNight.program.upcoming_night_count} nights scheduled · ${soonestNight.program.tier_count} tiers`,
       href: programHref(soonestNight.program.id), cta: "Manage",
     })
@@ -295,7 +324,7 @@ export default function V2HomePage() {
                 <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
               )}
               {showEventsSection && (
-                <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtDate(stats.next_event_date)}` : "None scheduled"} />
+                <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtShortDate(stats.next_event_date)}` : "None scheduled"} />
               )}
             </>
           )}
@@ -336,7 +365,7 @@ export default function V2HomePage() {
             )}
             <MetricTile
               label="Next night"
-              value={nextAccessDate ? fmtDate(nextAccessDate) : "-"}
+              value={nextAccessDate ? fmtShortDate(nextAccessDate) : "-"}
               sub={nextAccessDate ? undefined : "None scheduled"}
             />
           </div>
@@ -414,7 +443,7 @@ export default function V2HomePage() {
                         <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full" style={{ backgroundColor: ACCESS_ACCENT }} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{p.name}</span>
-                          <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(entry.date)} · {p.venue_name}</span>
+                          <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(entry.date)} · {p.venue_name}</span>
                         </span>
                         <span
                           className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.06em]"
@@ -433,7 +462,7 @@ export default function V2HomePage() {
                       {showAccessSection && <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full bg-[#05EB54]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
-                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
                       </span>
                       <Badge variant={b.variant}>{b.label}</Badge>
                       <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
@@ -461,7 +490,7 @@ export default function V2HomePage() {
                   <Link key={d.id} href={`/business/deals/${d.id}`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{d.deal_title}</span>
-                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtDate(d.expired_date)}</span>
+                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtShortDate(d.expired_date)}</span>
                     </span>
                     <Badge variant="success">Live</Badge>
                     <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />

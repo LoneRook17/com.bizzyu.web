@@ -7,7 +7,6 @@ import { ArrowLeft, Loader2, MapPin } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import {
   ARTWORK_TEMPLATE_OPTIONS,
-  DEFAULT_ARTWORK_TEMPLATE,
   EVENT_TYPES,
   EVENT_TYPE_HINTS,
   EVENT_TYPE_LABELS,
@@ -23,14 +22,26 @@ import { Label } from "@/components/business/v2/ui/label"
 import { cn } from "@/lib/v2/utils"
 import {
   applySaveAsDraftFlag,
+  isPromotionEnabled,
+  promoterExtrasVisible,
   promoterToggleDisabled,
+  shouldOfferStripeConnectForError,
+  surfaceEventFormServerError,
   willDraftOnCreate,
 } from "@/lib/business/create-publish"
+import { shouldAutoPublishCreatedDraft } from "@/lib/business/live-after-approve"
+import { DateField, DateTimeField } from "@/components/business/v2/ui/date-time-field"
 import { ArtworkSection } from "./ArtworkSection"
 import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
 import { fmtDateTime, fmtTime } from "./eventStatus"
+import { RecurringEventWizard } from "@/components/business/v2/recurring/RecurringEventWizard"
+import { RepeatsOnDays } from "@/components/business/v2/recurring/RepeatsOnDays"
+import { todayIsoDate } from "@/lib/business/recurring-event-create"
+import { splitDateTimeLocal } from "@/lib/business/datetime-value"
+import { artworkTemplateForSave, resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
 import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
+import { tierSurgeToWire, tierWithSurgeDrafts, validateTierSurge } from "@/lib/business/event-tier-surge"
 
 interface EventFormProps {
   initialData?: Partial<EventFormData>
@@ -126,8 +137,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     is_recurring: initialData?.is_recurring || false,
     recurring_event: initialData?.recurring_event || undefined,
     flyer_image_url: initialData?.flyer_image_url || "",
-    tickets: initialData?.tickets || [{ ...EMPTY_TICKET }],
-    promotion_enabled: !!initialData?.promotion_enabled,
+    // Served rows carry surge_steps in the read shape — normalize to draft
+    // rungs so the tier form can edit them.
+    tickets: (initialData?.tickets || [{ ...EMPTY_TICKET }]).map(tierWithSurgeDrafts),
+    promotion_enabled: isPromotionEnabled(initialData?.promotion_enabled),
     promotion_commission_type: initialData?.promotion_commission_type || "percent",
     promotion_commission_value: initialData?.promotion_commission_value ?? null,
     notify_followers_on_publish: !!initialData?.notify_followers_on_publish,
@@ -158,6 +171,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   const [loading, setLoading] = useState(false)
   const [moderationNotice, setModerationNotice] = useState("")
   const [stripeConnecting, setStripeConnecting] = useState(false)
+  const [repeatDays, setRepeatDays] = useState<number[]>([])
+  const [seriesStarts, setSeriesStarts] = useState(() => todayIsoDate())
+  const [seriesEnds, setSeriesEnds] = useState("")
 
   const [addressPredictions, setAddressPredictions] = useState<{ description: string; place_id: string }[]>([])
   const [showPredictions, setShowPredictions] = useState(false)
@@ -255,6 +271,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       if (form.start_date_time && form.end_date_time && form.start_date_time >= form.end_date_time) {
         errs.end_date_time = "End date must be after start date"
       }
+    } else if (!isEditing) {
+      if (repeatDays.length === 0) errs.days_of_week = "Pick at least one night of the week"
+      if (!seriesStarts) errs.date_range_start = "Start date is required"
+      if (seriesEnds && seriesStarts && seriesEnds < seriesStarts) {
+        errs.date_range_end = "End date must be on or after the start date"
+      }
     }
     return errs
   }
@@ -273,6 +295,11 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         }
         if (tier.valid_from && tier.valid_until && tier.valid_from >= tier.valid_until) {
           errs.tickets = `"${tier.name}": the scan window must end after it starts`
+          break
+        }
+        const surgeError = validateTierSurge(tier)
+        if (surgeError) {
+          errs.tickets = surgeError
           break
         }
       }
@@ -329,6 +356,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isEditing && form.is_recurring) {
+      goToStep(1)
+      return
+    }
     await submitCreateOrEdit(false)
   }
 
@@ -359,17 +390,22 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         type: form.type,
         is_21_plus: form.is_21_plus,
         is_recurring: false,
-        flyer_image_url: form.flyer_image_url || undefined,
+        flyer_image_url: resolvedCreateFlyerUrl(form.flyer_image_url, currentVenue?.photo_url) || undefined,
         // V5 REDEMPTION — `redemption_mode` is NOT sent. The server derives it
         // from access_kind (services Event.createFullEvent / updateEvent), and a
         // value posted from here would be accepted and discarded anyway. Omitted
         // rather than sent-and-ignored so the payload states the actual contract.
       }
 
-      // 5.0 D10 — the template is only meaningful when there is no flyer; an
-      // uploaded flyer wins the artwork chain outright.
-      if (!form.flyer_image_url) {
-        payload.artwork_template = form.artwork_template || DEFAULT_ARTWORK_TEMPLATE
+      // Uploaded flyer or the venue photo. Classic is never implied.
+      const artworkTemplate = artworkTemplateForSave({
+        uploadedFlyer: form.flyer_image_url,
+        venuePhoto: currentVenue?.photo_url,
+        explicitTemplate: form.artwork_template,
+        isEditing,
+      })
+      if (artworkTemplate) {
+        payload.artwork_template = artworkTemplate
         payload.artwork_accent = form.artwork_accent || null
       }
 
@@ -384,6 +420,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           ticket_type: t.ticket_type,
           valid_from: t.valid_from || null,
           valid_until: t.valid_until || null,
+          // Both keys always — surge off must travel as an explicit clear;
+          // omission would leave a stored ladder in place.
+          ...tierSurgeToWire(t),
         }))
       }
 
@@ -438,7 +477,20 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           requires_stripe_to_publish?: boolean
           requires_approval_to_publish?: boolean
         }>("/business/events", body)
-        if (data.status === "draft") {
+        if (
+          shouldAutoPublishCreatedDraft({
+            returnedStatus: data.status,
+            isPending,
+            saveAsDraft,
+          })
+        ) {
+          try {
+            await apiClient.post(`/business/events/${data.event_id}/publish`)
+            router.push("/business/events")
+          } catch {
+            router.push(`/business/events/${data.event_id}`)
+          }
+        } else if (data.status === "draft") {
           // Saved as a draft (explicit Save as draft, or still pending approval).
           router.push(`/business/events/${data.event_id}`)
         } else if (data.moderation_status === "pending_review") {
@@ -449,7 +501,13 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         }
       }
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.")
+      // The leftover promoter-payout 400 must never paint its Connect demand
+      // (escrow / in-review shops don't need Connect for promoters — HE-2).
+      setServerError(
+        surfaceEventFormServerError(
+          err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
+        ),
+      )
     } finally {
       setLoading(false)
     }
@@ -473,6 +531,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   const promoDisabledReason = promoToggleDisabled
     ? "Add a paid ticket to enable the promoter program."
     : ""
+  const showPromoterExtras = promoterExtrasVisible(form.promotion_enabled, promoToggleDisabled)
   const commissionType = form.promotion_commission_type || "percent"
   const lowstockType = form.lowstock_threshold_type || "percent"
 
@@ -549,20 +608,104 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </CardContent>
       </Card>
 
-      {/* Date & time */}
+      {/* Date & time / Flutter When */}
       <Card>
-        <CardHeader><CardTitle>Date and time</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 pt-0 sm:grid-cols-2">
+        <CardHeader><CardTitle>{!isEditing ? "When" : "Date and time"}</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 gap-4 pt-0">
+          {!isEditing && (
+            <div>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="is_recurring"
+                  checked={!!form.is_recurring}
+                  onChange={(e) => {
+                    handleChange(e)
+                    if (e.target.checked && !seriesStarts) {
+                      setSeriesStarts(splitDateTimeLocal(form.start_date_time).date || todayIsoDate())
+                    }
+                    setErrors((prev) => ({ ...prev, days_of_week: "", date_range_start: "", date_range_end: "" }))
+                  }}
+                  className="size-4 rounded border-neutral-300 text-[#05EB54] focus:ring-[#05EB54] dark:border-neutral-700"
+                />
+                <span className="text-sm text-neutral-700 dark:text-neutral-300">Repeats weekly</span>
+              </label>
+              <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
+                Same event every week you pick. Stays a green event, not Weekly Cover.
+              </p>
+            </div>
+          )}
+          {!isEditing && form.is_recurring && (
+            <>
+              <RepeatsOnDays
+                days={repeatDays}
+                onToggle={(day) => {
+                  setRepeatDays((prev) =>
+                    prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
+                  )
+                  setErrors((prev) => ({ ...prev, days_of_week: "" }))
+                }}
+                error={errors.days_of_week}
+              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="series_starts" className="mb-1.5 block">Starts</Label>
+                  <DateField
+                    id="series_starts"
+                    value={seriesStarts}
+                    onChange={(next) => {
+                      setSeriesStarts(next)
+                      setErrors((prev) => ({ ...prev, date_range_start: "" }))
+                    }}
+                  />
+                  {errors.date_range_start && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_start}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="series_ends" className="mb-1.5 block">Ends</Label>
+                  <DateField
+                    id="series_ends"
+                    value={seriesEnds}
+                    placeholder="No end date"
+                    onChange={(next) => {
+                      setSeriesEnds(next)
+                      setErrors((prev) => ({ ...prev, date_range_end: "" }))
+                    }}
+                  />
+                  {errors.date_range_end && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_end}</p>}
+                </div>
+              </div>
+            </>
+          )}
+          {!form.is_recurring && (
+          <>
           <div>
             <Label htmlFor="start_date_time" className="mb-1.5 block">Starts</Label>
-            <Input id="start_date_time" name="start_date_time" type="datetime-local" value={form.start_date_time} onChange={handleChange} />
+            <DateTimeField
+              id="start_date_time"
+              name="start_date_time"
+              value={form.start_date_time}
+              onChange={(next) => {
+                setForm((prev) => ({ ...prev, start_date_time: next }))
+                setErrors((prev) => ({ ...prev, start_date_time: "" }))
+              }}
+            />
             {errors.start_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.start_date_time}</p>}
           </div>
           <div>
             <Label htmlFor="end_date_time" className="mb-1.5 block">Ends</Label>
-            <Input id="end_date_time" name="end_date_time" type="datetime-local" value={form.end_date_time} onChange={handleChange} />
+            <DateTimeField
+              id="end_date_time"
+              name="end_date_time"
+              value={form.end_date_time}
+              onChange={(next) => {
+                setForm((prev) => ({ ...prev, end_date_time: next }))
+                setErrors((prev) => ({ ...prev, end_date_time: "" }))
+              }}
+            />
             {errors.end_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_date_time}</p>}
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
 
@@ -655,11 +798,15 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         </CardContent>
       </Card>
 
-      {/* Artwork — flyer, or a template when there isn't one (D10/D-F4.1) */}
+      {/* Artwork — flyer upload. Create does not ask for a template. Venue photo is the empty-state default. */}
       <Card>
         <CardHeader className="flex-col items-start gap-1">
           <CardTitle>Artwork</CardTitle>
-          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Your flyer if you have one, a Bizzy template if you don&apos;t.</p>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+            {isEditing
+              ? "Your flyer if you have one. Skip it and we use your venue photo."
+              : "Optional flyer. Skip it and we use your venue photo."}
+          </p>
         </CardHeader>
         <CardContent className="pt-0">
           <ArtworkSection
@@ -669,6 +816,8 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             onTemplateChange={(t) => setForm((prev) => ({ ...prev, artwork_template: t }))}
             accent={form.artwork_accent}
             onAccentChange={(a) => setForm((prev) => ({ ...prev, artwork_accent: a }))}
+            showTemplatePicker={isEditing}
+            venuePhotoUrl={currentVenue?.photo_url || ""}
           />
         </CardContent>
       </Card>
@@ -713,7 +862,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Promoter program</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share your event link and earn this on each sale.</p>
+            {showPromoterExtras && (
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share your event link and earn this on each sale.</p>
+            )}
           </CardHeader>
           <CardContent className="pt-0">
             <label
@@ -734,7 +885,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             </label>
             {promoToggleDisabled && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoDisabledReason}</p>}
 
-            {form.promotion_enabled && !promoToggleDisabled && (
+            {showPromoterExtras && (
               <div className="mt-4 space-y-3">
                 <div>
                   <p className="mb-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">Commission type</p>
@@ -849,7 +1000,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                 door will do, they just don't get to pick it. Reads off the same
                 derived value the server will stamp. */}
             <ReviewRow label="Door" value="Bizzy scanner" />
-            <ReviewRow label="Artwork" value={summariseArtwork(form.flyer_image_url, form.artwork_template)} />
+            <ReviewRow label="Artwork" value={summariseArtwork(form.flyer_image_url, form.artwork_template, currentVenue?.photo_url)} />
             {form.type === "Ticketed" && (
               <ReviewRow
                 label="Promoters"
@@ -914,7 +1065,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       {serverError && (
         <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
           <p>{serverError}</p>
-          {/Stripe Connect/i.test(serverError) && (
+          {shouldOfferStripeConnectForError(serverError) && (
             <Button type="button" variant="primary" size="sm" className="mt-2" disabled={stripeConnecting} onClick={handleConnectStripe}>
               {stripeConnecting ? <><Loader2 className="size-3.5 animate-spin" /> Connecting…</> : "Connect Stripe →"}
             </Button>
@@ -945,6 +1096,28 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       </div>
     </>
   )
+
+  if (!isEditing && form.is_recurring && step > 0) {
+    return (
+      <RecurringEventWizard
+        seed={{
+          name: form.name,
+          description: form.description,
+          venue_id: form.venue_id ?? selectedVenue?.id ?? null,
+          venue_name: form.venue_name,
+          venue_address: form.venue_address,
+          type: form.type === "Free" ? "Free" : "Ticketed",
+          is_21_plus: !!form.is_21_plus,
+          flyer_image_url: form.flyer_image_url || "",
+          venue_photo_url: currentVenue?.photo_url || "",
+          days_of_week: repeatDays,
+          date_range_start: seriesStarts,
+          date_range_end: seriesEnds || null,
+        }}
+        onBackToDetails={() => goToStep(0)}
+      />
+    )
+  }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -1028,9 +1201,16 @@ function summariseTiers(tiers: TicketTier[]): string {
   return min === max ? `${count} · $${max.toFixed(2)}` : `${count} · ${min.toFixed(2)}-${max.toFixed(2)}`
 }
 
-function summariseArtwork(flyerUrl: string, template: ArtworkTemplate | null | undefined): string {
+function summariseArtwork(
+  flyerUrl: string,
+  template: ArtworkTemplate | null | undefined,
+  venuePhoto?: string | null,
+): string {
   if (flyerUrl) return "Your flyer"
-  const chosen = template ?? DEFAULT_ARTWORK_TEMPLATE
-  const label = ARTWORK_TEMPLATE_OPTIONS.find((o) => o.value === chosen)?.label ?? chosen
-  return `${label} template`
+  if (venuePhoto?.trim()) return "Venue photo"
+  if (template && template !== "classic") {
+    const label = ARTWORK_TEMPLATE_OPTIONS.find((o) => o.value === template)?.label ?? template
+    return `${label} template`
+  }
+  return "Venue photo"
 }

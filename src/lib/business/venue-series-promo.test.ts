@@ -41,8 +41,17 @@ test("series section copy names WC vs named RC and not the whole venue", () => {
 
 test("sibling path stays under venues and is not the Universal list", () => {
   assert.equal(seriesPromoListPath(12), "/business/venues/12/promo-codes/series")
-  assert.equal(seriesPromoBasePath(44), "/business/door-access/44/promo-codes")
+  assert.equal(seriesPromoBasePath("weekly_cover", 44), "/business/door-access/44/promo-codes")
   assert.notEqual(seriesPromoListPath(12), "/business/venues/12/promo-codes")
+})
+
+test("series promo REST root routes by product_kind: RC never hits door-access", () => {
+  // WC programs are served by door-access; named RC series by
+  // /business/recurring-series (services businessRecurringSeries.ts).
+  // Door-access resolution rejects non-door_access kinds, so sending an RC
+  // group there silently empty-lists and 404s CRUD.
+  assert.equal(seriesPromoBasePath("weekly_cover", 44), "/business/door-access/44/promo-codes")
+  assert.equal(seriesPromoBasePath("event", 9), "/business/recurring-series/9/promo-codes")
 })
 
 test("WC vs green chips and manage hrefs", () => {

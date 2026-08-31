@@ -25,7 +25,8 @@ export type HomeStripePromptInput = {
   /**
    * Is the BE-D escrow panel rendering right now? True whenever
    * shouldRenderEscrowPanel() is true: any non-empty state, except a
-   * paid banner whose 24h first-seen window has ended.
+   * paid banner whose 24h first-seen window has ended, or a Home hero
+   * in-transit / processing card whose settled withdrawal is ≥24h old.
    */
   escrowPanelVisible: boolean
   /**

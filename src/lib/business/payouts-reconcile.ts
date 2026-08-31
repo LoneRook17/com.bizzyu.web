@@ -718,6 +718,48 @@ export function buildBreakdownTable(s: PayoutsSummary, selectedVenueId?: number 
  *  it says something the reassurance doesn't — a sibling slice (shouldn't
  *  happen) or a nonzero unallocated remainder; a trivial one-venue table with
  *  zero unallocated would just be confusing noise under the ✓ badge. */
+/**
+ * Display-only: after Connect, a leftover Unallocated slice that belongs to
+ * the only venue on the account is shown on that venue. Does not write money
+ * flags — the table still foots.
+ */
+export function displayAllocateUnallocated(
+  table: BreakdownTable | null,
+  venues: readonly { id: number; name: string }[] = [],
+): BreakdownTable | null {
+  if (!table) return null
+  const unallocated = table.rows.find((row) => row.kind === "unallocated")
+  if (!unallocated) return table
+  const unused =
+    unallocated.deposited_cents === 0 &&
+    unallocated.in_transit_cents === 0 &&
+    unallocated.refunded_cents === 0
+  if (unused) return table
+
+  const venueRows = table.rows.filter((row) => row.kind === "venue")
+  let target = venueRows.length === 1 ? venueRows[0] : null
+  if (!target && venues.length === 1) {
+    target = venueRows.find((row) => row.venue_id === venues[0].id) ?? null
+  }
+  if (!target) return table
+
+  const rows = table.rows.map((row) => {
+    if (row === target) {
+      return {
+        ...row,
+        deposited_cents: row.deposited_cents + unallocated.deposited_cents,
+        in_transit_cents: row.in_transit_cents + unallocated.in_transit_cents,
+        refunded_cents: row.refunded_cents + unallocated.refunded_cents,
+      }
+    }
+    if (row.kind === "unallocated") {
+      return { ...row, deposited_cents: 0, in_transit_cents: 0, refunded_cents: 0 }
+    }
+    return row
+  })
+  return { ...table, rows, hasNegativeUnallocated: false }
+}
+
 export function showBreakdownTable(s: PayoutsSummary): boolean {
   if (!hasBreakdown(s)) return false
   if (summaryRenderState(s) === "dedicated_venue") {

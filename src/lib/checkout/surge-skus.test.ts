@@ -45,9 +45,12 @@ test("an orphan extra is kept so checkout is not blanked", () => {
   )
 })
 
-test("event checkout folds leftover SKUs and paints tickets.price_usd", () => {
-  const src = readFileSync(join(process.cwd(), "src/app/checkout/[id]/EventCheckoutClient.tsx"), "utf8")
-  assert.ok(src.includes("foldLeftoverSurgeSkus"), "guest checkout must fold leftover surge extras")
-  assert.ok(src.includes("ticket.price_usd"), "guest sees live tickets.price_usd")
-  assert.ok(!src.includes("price_id"), "checkout must not display or send a Stripe Price")
+test("guest tier surfaces still fold leftover SKUs (checkout itself is a Laravel redirect)", () => {
+  // HOST LOCK (2026-08-30): the Next checkout UI is gone — /checkout/:id
+  // 302s to Laravel. The fold still guards the guest tier lists this host
+  // DOES render (venue cards / event page tiers via venuePublic).
+  const lib = readFileSync(join(process.cwd(), "src/lib/venuePublic.ts"), "utf8")
+  assert.ok(lib.includes("foldLeftoverSurgeSkus"), "guest tier lists must fold leftover surge extras")
+  const page = readFileSync(join(process.cwd(), "src/app/checkout/[id]/page.tsx"), "utf8")
+  assert.ok(page.includes("laravelCheckoutBaseUrl"), "checkout path bounces to Laravel, renders no tiers")
 })

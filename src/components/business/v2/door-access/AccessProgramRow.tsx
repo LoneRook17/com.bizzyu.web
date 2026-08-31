@@ -1,6 +1,7 @@
 "use client"
 
 import { Zap } from "lucide-react"
+import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
   accessRowStats,
@@ -12,6 +13,7 @@ import {
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/HostListCard"
+import { WC_DRAFT_CHIP_LABEL } from "@/lib/business/wc-draft-hold"
 
 /**
  * A magenta WEEKLY ACCESS row (F9).
@@ -25,7 +27,9 @@ import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/H
  */
 export function AccessProgramRow({ program }: { program: DoorAccessProgramSummary }) {
   const { venues } = useVenue()
-  const chips: Array<{ label: string; variant: "neutral" | "info" }> = []
+  const { isPending } = useAuth()
+  const chips: Array<{ label: string; variant: "neutral" | "info" | "warning" }> = []
+  if (isPending) chips.push({ label: WC_DRAFT_CHIP_LABEL, variant: "neutral" })
   if (!program.is_active) chips.push({ label: "Ended", variant: "neutral" })
   if (program.promotion_enabled) chips.push({ label: "Promoted", variant: "info" })
   const imageUrl = resolveProgramImageUrl(program, venues)

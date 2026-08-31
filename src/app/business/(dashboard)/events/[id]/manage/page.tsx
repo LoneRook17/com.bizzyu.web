@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { Fragment, useState, useEffect, use } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Camera, ListChecks, Pencil, QrCode, Repeat, ScanLine, Ticket, Users, Tag, ChevronRight,
+  Camera, ListChecks, Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
@@ -13,7 +13,6 @@ import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-link
 import {
   ACCESS_ACCENT,
   isWeeklyCoverProduct,
-  programEditHref,
   programIdFromOwnedEvent,
   weeklyCoverNightEditHref,
 } from "@/lib/business/door-access"
@@ -34,6 +33,7 @@ import { CancelEventModal } from "@/components/business/v2/events/CancelEventMod
 import { DoorCodeCard } from "@/components/business/v2/events/DoorCodeCard"
 import { EventVenuePayoutBanner } from "@/components/business/v2/settings/VenuePayoutPaused"
 import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
+import { WeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 
 type Tile = {
   href: string
@@ -43,12 +43,39 @@ type Tile = {
   show: boolean
 }
 
+type ManageAccent = "event" | "access"
+
+// Weekly Cover is pink end to end (Luke, 2026-08-29 round 2): the tile hover,
+// like every other accent on a WC surface, follows ACCESS, never Bizzy green.
+const TILE_HOVER: Record<ManageAccent, { card: string; icon: string; title: string }> = {
+  event: {
+    card: "hover:border-[#05EB54]/40",
+    icon: "group-hover:bg-green-50 dark:group-hover:bg-green-950/40 group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]",
+    title: "group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]",
+  },
+  access: {
+    card: "hover:border-access/40",
+    icon: "group-hover:bg-access/10 group-hover:text-access dark:group-hover:text-access",
+    title: "group-hover:text-access dark:group-hover:text-access",
+  },
+}
+
 // 5.0 F11 / PRD 12.1 — the management page follows the app's control order:
 //   Share Link + Door Code → At the Door → Event Setup → Insights → Promote
 // Every destination below already existed; this is the app's sequence imposed
 // on them, not new surfaces. Door Access programs (DASH-A) get the same order
 // on their own series page.
-function ManageSection({ title, blurb, tiles }: { title: string; blurb: string; tiles: Tile[] }) {
+function ManageSection({
+  title,
+  blurb,
+  tiles,
+  accent = "event",
+}: {
+  title: string
+  blurb: string
+  tiles: Tile[]
+  accent?: ManageAccent
+}) {
   const visible = tiles.filter((t) => t.show)
   if (visible.length === 0) return null
   return (
@@ -59,24 +86,33 @@ function ManageSection({ title, blurb, tiles }: { title: string; blurb: string; 
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {visible.map((t) => (
-          <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} />
+          <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} accent={accent} />
         ))}
       </div>
     </section>
   )
 }
 
-function ManageTile({ href, icon: Icon, title, subtitle }: Omit<Tile, "show">) {
+function ManageTile({ href, icon: Icon, title, subtitle, accent = "event" }: Omit<Tile, "show"> & { accent?: ManageAccent }) {
+  const hover = TILE_HOVER[accent]
   return (
     <Link
       href={href}
-      className="group flex items-start gap-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm transition-all hover:border-[#05EB54]/40 hover:shadow-md"
+      className={cn(
+        "group flex items-start gap-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm transition-all hover:shadow-md",
+        hover.card,
+      )}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors group-hover:bg-green-50 dark:group-hover:bg-green-950/40 group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">
+      <span
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors",
+          hover.icon,
+        )}
+      >
         <Icon className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]">{title}</span>
+        <span className={cn("block text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors", hover.title)}>{title}</span>
         <span className="mt-0.5 block text-[13px] text-neutral-500 dark:text-neutral-400">{subtitle}</span>
       </span>
       <ChevronRight className="mt-0.5 size-4 shrink-0 text-neutral-300 dark:text-neutral-600" />
@@ -163,13 +199,12 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  // V5 REDEMPTION §5 — the door surface follows the event's KIND, not a stored
-  // preference. A door-access night sells a pass redeemed by camera + tap, so
-  // handing its host a scanner credential offers tooling the server will now
-  // REFUSE at the door (services utils/redemptionGuard): the scan endpoints
-  // reject a door-access pass with "Door Access passes are scanned with the
-  // camera at the door". Surfacing a scanner here would be advertising a
-  // dead end. Check-in history is kind-agnostic — both kinds redeem, both log.
+  // V5 REDEMPTION §5, updated for the instance-manage pass — the door surface
+  // follows the event's KIND, but a door-access pass is no longer scanner-
+  // refused: services utils/redemptionGuard accepts camera_tap AND native_scan
+  // for Weekly Cover, so a WC night's manage page carries the same Scan tile
+  // and door code an event's does. The camera stays the guest-facing default
+  // (the reminder card below); the redemption list stays the WC-primary CTA.
   // product_kind is the stamp when services sends it; an older payload falls
   // back to access_kind. Never a raw access_kind test, never the name.
   const isDoorAccess = isWeeklyCoverProduct(event)
@@ -181,15 +216,15 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
       icon: QrCode,
       title: "Scan",
       subtitle: "Scanner access and QR codes",
-      show: !isDoorAccess,
+      show: true,
     },
     {
       href: `${base}/checkins`,
       icon: CircleCheck,
       title: isDoorAccess ? "Redemption list" : "Check-in history",
-      subtitle: isDoorAccess
-        ? "Guests scan with any phone camera. Check names off here"
-        : "Attendee scan status",
+      // View-only, like the app: it SHOWS who has checked in. There is no
+      // check-names-off feature and the copy must not promise one.
+      subtitle: isDoorAccess ? "Everyone who's checked in tonight" : "Attendee scan status",
       show: true,
     },
   ]
@@ -207,12 +242,18 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // Event Setup — the things you configure before the doors open. "Manage
   // Tickets" is the tickets page, which owns tiers, the group sellout toggle and
   // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
+  // Luke (2026-08-29): the WC night manage mirrors green's setup row, so
+  // "Manage Tickets" replaces "Edit program" here. Program/weekday editing
+  // lives on the program page. Manage Tickets is the SAME tickets page as
+  // green, rendered pink and tickets-only; the services ticket-manage
+  // routes stamp the WC night Custom themselves, so edits there touch
+  // this night only. Edit night keeps door hours and closing.
   const setupTiles: Tile[] =
     wcNightEdit != null && wcProgramId != null
       ? [
-          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Cover prices, door hours, or close this night only", show: canEdit && seriesActive },
-          { href: programEditHref(wcProgramId), icon: Repeat, title: "Edit program", subtitle: "Weekday setup for future nights. Custom nights stay as they are", show: canEdit && seriesActive },
-          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
+          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Door hours, or close this night only", show: canEdit && seriesActive },
+          { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit && seriesActive },
+          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account for this night", show: true },
         ]
       : [
           { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
@@ -234,28 +275,35 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
   ]
 
+  // WC subtree renders pink end to end — the accent provider flips shared
+  // controls (Button primary, checkboxes) and the props below cover the rest.
+  const AccentScope = isDoorAccess ? WeeklyCoverAccent : Fragment
+  const accent: ManageAccent = isDoorAccess ? "access" : "event"
+
   return (
-    <>
+    <AccentScope>
+      {/* Round 3 (Luke, 2026-08-29): a WC night's manage IS its page — backing
+          into the event detail half-page resurrects a surface WC shouldn't
+          have. WC goes back to the Events list; events keep their detail. */}
       <Link
-        href={`/business/events/${id}`}
+        href={isDoorAccess ? "/business/events" : `/business/events/${id}`}
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
-        <ArrowLeft className="size-3.5" /> Back to event
+        <ArrowLeft className="size-3.5" /> {isDoorAccess ? "Back to events" : "Back to event"}
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
-            <Badge variant={badge.variant}>{badge.label}</Badge>
+            <Badge variant={isDoorAccess && badge.variant === "success" ? "access" : badge.variant}>{badge.label}</Badge>
           </div>
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">{fmtDate(event.start_date_time)} · {event.venue_name}</p>
         </div>
-        {/* §5 — same branch as the tiles below. The header CTA is the loudest
-            affordance on the page; pointing a door-access host at a scanner the
-            endpoints will refuse is the single most misleading thing this page
-            could do on the night. */}
-        <Button variant="secondary" asChild>
+        {/* The header CTA is the loudest affordance on the page. A WC night's
+            door runs off the redemption list first (guests scan with a phone
+            camera), so it stays the primary; the scanner is one tile below. */}
+        <Button variant={isDoorAccess ? "access-secondary" : "secondary"} asChild>
           {isDoorAccess ? (
             <Link href={`/business/events/${id}/manage/checkins`}><ListChecks /> Open redemption list</Link>
           ) : (
@@ -271,16 +319,15 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
 
       {/* 1 — Share Link + Door Code. First, because handing out the link and
           putting a staffer on the door are what a host does most. */}
-      {isLive && <ShareLinkRow url={eventCheckoutUrl(id)} title={event.name} label="Event link" />}
+      {isLive && <ShareLinkRow url={eventCheckoutUrl(id)} title={event.name} label="Event link" accent={accent} />}
 
       {/* Door code — the PRIMARY way to put a staffer on the door tonight.
           Owners used to fall back to the (broken) email-invite path because the
           dashboard had no way to hand out a scan credential; this is that way.
           Email invite is demoted to the "Managers & co-hosts" tile below. */}
-      {/* §5 — a door code is a SCANNER credential: it puts a staffer on the
-          native scanner for the night. On a door-access night that scanner now
-          refuses the very passes being sold, so the card is withheld rather than
-          issuing a credential to a door that can't use it. */}
+      {/* WC nights have NO door codes (Luke, 2026-08-29 round 2) — the guest
+          camera + redemption list run a Weekly Cover door. The door code stays
+          an events-only credential. */}
       {!isDoorAccess && (
         <DoorCodeCard
           eventId={id}
@@ -306,8 +353,8 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
               Guests scan with any phone camera
             </p>
             <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">
-              No scanner and no app setup at the door. Open the redemption list and
-              check names off as people arrive.
+              No scanner and no app setup at the door. Open the redemption list to
+              see who&apos;s checked in.
             </p>
           </div>
         </Card>
@@ -318,6 +365,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="At the door"
         blurb="Tonight's tools. Check guests in and see who has arrived."
         tiles={atTheDoorTiles}
+        accent={accent}
       />
 
       {/* 3 — Event Setup */}
@@ -325,6 +373,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="Event setup"
         blurb="Details, what you're selling, and who can help run it."
         tiles={setupTiles}
+        accent={accent}
       />
 
       {/* 4 — Insights */}
@@ -332,6 +381,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="Insights"
         blurb="How the event is performing."
         tiles={insightsTiles}
+        accent={accent}
       />
 
       {/* 5 — Promote */}
@@ -339,6 +389,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         title="Promote"
         blurb="Reach more people and reward the ones who bring them."
         tiles={promoteTiles}
+        accent={accent}
       />
 
       {/* cancellation banners */}
@@ -388,6 +439,6 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         eventName={event.name}
         onCancelled={() => router.push("/business/events")}
       />
-    </>
+    </AccentScope>
   )
 }

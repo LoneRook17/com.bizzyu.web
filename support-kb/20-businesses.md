@@ -48,7 +48,10 @@ apply to business/venue users.
   price.
 - **Promoters**: enable the Promoter Program on an event and set commission terms.
   Promoters get a personal share link; commissions accrue to the promoter's in-app
-  wallet and they cash out on demand (no weekly payout). Track under Manage → Promoters.
+  wallet, become available 2 days after that night's event, and they withdraw on
+  demand to Stripe. Stripe then deposits to their bank on its daily schedule. A
+  withdrawal is not a bank deposit yet (no weekly payout and no instant option).
+  Track under Manage → Promoters.
 - **Recurring events** (named series, e.g. Trivia Tuesdays): each generated
   night is a **green named Event** with its own tickets, sales, and 6-digit
   door code. This is **not** Weekly Cover. Open grouped series rows from the

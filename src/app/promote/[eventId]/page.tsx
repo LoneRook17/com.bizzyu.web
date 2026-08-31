@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
+import { isPromotionEnabled } from "@/lib/business/create-publish"
 import PromoteClient from "./PromoteClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
@@ -55,7 +56,7 @@ export default async function PromotePage({ params }: PageProps) {
     )
   }
 
-  if (!event.promotion_enabled) {
+  if (!isPromotionEnabled(event.promotion_enabled)) {
     return (
       <main className="min-h-screen bg-white text-ink flex items-center justify-center px-4">
         <div className="max-w-md text-center">

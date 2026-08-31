@@ -29,6 +29,17 @@ import {
   isSeriesActive,
   weeklyCoverNightNeedsPendingCancel,
 } from "./weekly-cover-visibility.ts"
+import {
+  HOST_CUSTOM_CHIP_LABEL,
+  isHostCustomNight,
+  type HostCustomNightInput,
+} from "./host-custom-night.ts"
+import {
+  WC_DRAFT_CHIP_LABEL,
+  isWeeklyCoverHoldStatus,
+  queuedWeeklyCoverNightEventIds,
+  weeklyCoverHoldChip,
+} from "./wc-draft-hold.ts"
 
 // ── D-P5 labels ─────────────────────────────────────────────────────────────
 
@@ -175,6 +186,7 @@ export type OwnedSeriesOccurrence = {
   ticket_sales_count?: number
   paid_orders?: number
   is_customized?: boolean | number | string
+  series_customized_at?: string | null
   flyer_image_url?: string
 }
 
@@ -257,6 +269,7 @@ export function doorAccessSeriesFromOwnedHydration(input: {
             passes_sold: occ.tickets_sold ?? occ.ticket_sales_count ?? match?.ticket_sales_count,
             paid_orders: occ.paid_orders,
             is_customized: occ.is_customized,
+            series_customized_at: occ.series_customized_at,
             start_time: startTime,
             end_time: endTime,
             tiers: templateTiers,
@@ -537,7 +550,7 @@ export const PROGRAM_LINK_LABEL = "Program link"
 export const PROGRAM_LINK_DESCRIPTION = "Every upcoming night"
 
 export const NIGHTS_HELPER_EDIT =
-  "Tap a night to change price, capacity, or hours for that date only. Those edits stay Custom; a later program save will not change them."
+  "Tap a night to open its manage page. Date-only edits made there stay Custom; a later program save will not change them."
 export const NIGHTS_HELPER_VIEW = "Tap a night to see what it sells."
 
 /** Night-page helper: this date is Custom. Series/program save leaves it alone. */
@@ -568,8 +581,37 @@ export function parseProgramPathId(raw: string | null | undefined): number | nul
 /** Default strip: the next N upcoming nights, not a 4-week ledger. */
 export const DEFAULT_NIGHT_PREVIEW_COUNT = 4
 
-/** Days fetched before the host opens More nights. Server clamps at 180. */
+/**
+ * FETCH lookahead for the program-edit load (weekday-template
+ * reconstruction), not a display window. Server clamps at 180. The dash
+ * DISPLAY window for generated nights is SERIES_NIGHTS_WINDOW_DAYS (30).
+ */
 export const DEFAULT_SERIES_LOOKAHEAD_DAYS = 28
+
+/**
+ * FETCH lookahead so far-future one-off / Custom nights still arrive.
+ * Display filters (hostShowsWeeklyCoverNight & co) then clip GENERATED
+ * series nights to the shared month window while Customs stay.
+ */
+export const ONE_OFF_SERIES_LOOKAHEAD_DAYS = 180
+
+export function isPinnedUpcomingNight(night: HostCustomNightInput): boolean {
+  return isHostCustomWeeklyCoverNight(night)
+}
+
+/** WC program nights are in a series; omit recurring_series_id so leftovers stay Custom. */
+export function isHostCustomWeeklyCoverNight(
+  night: HostCustomNightInput,
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean },
+): boolean {
+  return isHostCustomNight(
+    {
+      ...night,
+      product_kind: night.product_kind ?? "weekly_cover",
+    },
+    slot,
+  )
+}
 
 // ── Wire shapes (services/src/services/DoorAccessProgramService.ts) ─────────
 
@@ -730,6 +772,16 @@ export interface DoorAccessNight {
   passes_sold: number
   paid_orders: number
   is_customized: boolean
+  /** events.series_customized_at when services echoes it (door-access #104). */
+  series_customized_at?: string | null
+  /**
+   * Services override grain. weekday / program / series never chips Custom
+   * (Flutter `isHostCustomNight`). date / night is a one-date edit.
+   */
+  override_scope?: string | null
+  product_kind?: string | null
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
   is_closed: boolean
   has_override: boolean
   start_time: string
@@ -1042,7 +1094,18 @@ export function normalizeNight(raw: Record<string, unknown>): DoorAccessNight {
     end_date_time: raw.end_date_time == null ? null : str(raw.end_date_time),
     passes_sold: num(raw.passes_sold),
     paid_orders: num(raw.paid_orders),
-    is_customized: bool(raw.is_customized),
+    is_customized:
+      bool(raw.is_customized) || (typeof raw.series_customized_at === "string" && raw.series_customized_at.trim() !== ""),
+    series_customized_at:
+      raw.series_customized_at == null || raw.series_customized_at === "" ? null : str(raw.series_customized_at),
+    override_scope:
+      raw.override_scope == null || raw.override_scope === "" ? null : str(raw.override_scope),
+    product_kind: raw.product_kind == null || raw.product_kind === "" ? undefined : str(raw.product_kind),
+    access_kind: raw.access_kind == null || raw.access_kind === "" ? undefined : str(raw.access_kind),
+    recurring_series_id:
+      raw.recurring_series_id == null || raw.recurring_series_id === ""
+        ? undefined
+        : str(raw.recurring_series_id),
     is_closed: bool(raw.is_closed),
     has_override: bool(raw.has_override),
     start_time: str(raw.start_time),
@@ -1061,6 +1124,55 @@ export function normalizeNight(raw: Record<string, unknown>): DoorAccessNight {
         }
       : {}),
     ...("name" in raw ? { name: raw.name == null ? null : str(raw.name) } : {}),
+  }
+}
+
+/**
+ * Overlay stamped occurrence rows onto schedule nights.
+ *
+ * GET /business/door-access can return a far date as unstamped / no event_id
+ * even after the host created it (Flutter already stamped the event). A
+ * host-created far date must show as stamped + Custom, never "Not generated".
+ */
+export function applyOccurrenceStamps(
+  nights: DoorAccessNight[],
+  occurrences: OwnedSeriesOccurrence[],
+): DoorAccessNight[] {
+  if (occurrences.length === 0) return nights
+  const byDate = new Map<string, OwnedSeriesOccurrence>()
+  for (const occ of occurrences) {
+    const date = String(occ.occurrence_date ?? occ.start_date_time ?? "").slice(0, 10)
+    if (date.length !== 10) continue
+    byDate.set(date, occ)
+  }
+  return nights.map((night) => {
+    const occ = byDate.get(night.occurrence_date)
+    if (!occ) return night
+    const eventId = nullableNum(occ.event_id)
+    const stamp =
+      occ.series_customized_at == null || occ.series_customized_at === ""
+        ? night.series_customized_at
+        : str(occ.series_customized_at)
+    const stamped = eventId != null || night.is_stamped
+    if (!stamped && stamp == null) return night
+    return {
+      ...night,
+      event_id: eventId ?? night.event_id,
+      is_stamped: stamped,
+      series_customized_at: stamp ?? night.series_customized_at,
+    }
+  })
+}
+
+async function fetchOwnedOccurrences(seriesId: number): Promise<OwnedSeriesOccurrence[]> {
+  try {
+    const api = await client()
+    const data = await api.get<{ occurrences?: OwnedSeriesOccurrence[] }>(
+      `/business/recurring-series/${seriesId}`,
+    )
+    return Array.isArray(data.occurrences) ? data.occurrences : []
+  } catch {
+    return []
   }
 }
 
@@ -1126,12 +1238,38 @@ export async function fetchDoorAccessSeries(
     `/business/door-access/${programId}${qs}`
   )
   const nights = Array.isArray(data?.nights) ? data.nights : []
-  return {
-    program: normalizeProgram(data.program ?? {}),
-    nights: nights
-      .filter((n): n is Record<string, unknown> => !!n && typeof n === "object")
-      .map(normalizeNight),
+  const program = normalizeProgram(data.program ?? {})
+  let normalized = nights
+    .filter((n): n is Record<string, unknown> => !!n && typeof n === "object")
+    .map(normalizeNight)
+  if (normalized.some((night) => !night.is_stamped || night.event_id == null)) {
+    normalized = applyOccurrenceStamps(normalized, await fetchOwnedOccurrences(programId))
   }
+  return { program, nights: normalized }
+}
+
+export async function fetchDoorAccessSeriesSafe(
+  programId: number,
+  lookaheadDays?: number,
+): Promise<DoorAccessSeries | null> {
+  try {
+    return await fetchDoorAccessSeries(programId, lookaheadDays)
+  } catch {
+    return null
+  }
+}
+
+/** Load every program's nights with a far lookahead so one-offs are not clipped. */
+export async function loadProgramsUpcomingNights(
+  programs: DoorAccessProgramSummary[],
+  lookaheadDays: number = ONE_OFF_SERIES_LOOKAHEAD_DAYS,
+): Promise<Array<{ program: DoorAccessProgramSummary; nights: DoorAccessNight[] }>> {
+  return Promise.all(
+    programs.map(async (program) => {
+      const series = await fetchDoorAccessSeriesSafe(program.id, lookaheadDays)
+      return { program, nights: series?.nights ?? [] }
+    }),
+  )
 }
 
 /** GET /business/door-access/:id/nights/:date — the override editor's load. */
@@ -1196,6 +1334,84 @@ export interface ProgramUpdateResult {
   restamp_error: string | null
 }
 
+/** Create-time date_edit PUT must send a night write. Empty `{}` no-ops. */
+export const STAMP_EMPTY_NIGHT_WRITE =
+  "This date edit needs a night write. An empty save will not create the night."
+
+export function hostCreatedNightMissingEventMessage(date: string): string {
+  return `This night was not created (${date}). The date edit is saved but there is no event row yet.`
+}
+
+export function stampHostCreatedDateHasNightWrite(body: Record<string, unknown>): boolean {
+  return Object.keys(body).some((key) => key !== "publish" && body[key] !== undefined)
+}
+
+/**
+ * Night PUT body for a create-time date_edit. Draft still sends the night
+ * write and omits `publish`. Empty `{}` is a no-op and must not be sent.
+ */
+export function stampHostCreatedDatePayload(
+  body: Record<string, unknown>,
+  publish?: boolean,
+): Record<string, unknown> {
+  if (!stampHostCreatedDateHasNightWrite(body)) {
+    throw new Error(STAMP_EMPTY_NIGHT_WRITE)
+  }
+  const payload = { ...body }
+  if (publish !== false) payload.publish = true
+  return payload
+}
+
+/** Services is the source of truth: a stamped night has an events row. */
+export function assertHostCreatedNightHasEventRow(
+  night: { event_id?: number | string | null; is_stamped?: boolean },
+  date: string,
+): void {
+  const eventId = night.event_id == null || night.event_id === "" ? null : Number(night.event_id)
+  if (eventId != null && Number.isFinite(eventId) && eventId > 0) return
+  throw new Error(hostCreatedNightMissingEventMessage(date))
+}
+
+/**
+ * Stamp host-created one-off dates (create `date_edits` / game days).
+ * PUT the night write so services can materialize the events row. Do not
+ * swallow a missing night — the grid cannot chip Custom without event_id.
+ */
+export async function stampHostCreatedDates(
+  programId: number,
+  dateEdits: Record<string, Record<string, unknown>>,
+  opts?: { publish?: boolean },
+): Promise<void> {
+  for (const date of Object.keys(dateEdits).sort()) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    const payload = stampHostCreatedDatePayload(dateEdits[date] ?? {}, opts?.publish)
+    const result = await saveNightOverride(programId, date, payload as NightOverridePayload)
+    assertHostCreatedNightHasEventRow(result.night, date)
+  }
+}
+
+/**
+ * D3 after business approve / approved create: leftover draft nights go
+ * published. Also promotes leftover `pending_approval` from services #109.
+ * Pending hosts must not call this.
+ */
+export async function publishDraftNightsForProgram(programId: number): Promise<void> {
+  const { nights } = await fetchDoorAccessSeries(programId)
+  const api = await client()
+  for (const eventId of queuedWeeklyCoverNightEventIds(nights)) {
+    try {
+      await api.post(`/business/events/${eventId}/publish`)
+    } catch {
+      // LiveAfterApprove still promotes after business approve.
+    }
+  }
+}
+
+/** @deprecated Use publishDraftNightsForProgram. */
+export async function promotePendingApprovalNightsForProgram(programId: number): Promise<void> {
+  return publishDraftNightsForProgram(programId)
+}
+
 /** PUT /business/door-access/:id — save the whole program template. */
 export async function updateDoorAccessProgram(
   programId: number,
@@ -1228,6 +1444,44 @@ export function programEditHref(programId: number): string {
 
 export function nightHref(programId: number, date: string): string {
   return `/business/door-access/${programId}/nights/${date}`
+}
+
+/**
+ * WC night cancel — same admin request as a one-off. Do not invent a
+ * second money path or hard-delete ticket rows.
+ */
+export function weeklyCoverNightCancelPath(eventId: number): string {
+  return `/business/events/${eventId}/request-cancellation`
+}
+
+/**
+ * WC program / series-end — the door-access suspend, same route the app's
+ * DoorAccessApiService.suspend posts. NOT /business/recurring-series/:id
+ * /suspend: that is the green named-event surface, and its
+ * getOwnedSeries 404s weekly_cover / door_access program kinds on purpose
+ * (V5 F14), so posting there reads "Series not found" and cancels nothing.
+ */
+export function weeklyCoverProgramCancelPath(programId: number): string {
+  return `/business/door-access/${programId}/suspend`
+}
+
+export function weeklyCoverNightCancelEventId(
+  night: Pick<DoorAccessNight, "event_id" | "status">,
+): number | null {
+  if (night.status === "cancelled") return null
+  const id = Number(night.event_id)
+  return Number.isFinite(id) && id > 0 ? id : null
+}
+
+export async function cancelWeeklyCoverProgram(programId: number): Promise<{
+  message?: string
+  unpublished: number[]
+  skipped_customized: number[]
+  skipped_with_sales: number[]
+  pending_cancellation: number[]
+}> {
+  const api = await client()
+  return api.post(weeklyCoverProgramCancelPath(programId))
 }
 
 /** The night's date for nightHref: occurrence_date, else start_date_time's day. */
@@ -1333,6 +1587,22 @@ export function parseIsoDate(iso: string): { y: number; m: number; d: number } |
   const d = Number(match[3])
   if (m < 1 || m > 12 || d < 1 || d > 31) return null
   return { y, m, d }
+}
+
+/**
+ * "Aug 30" — Home's compact date, safe for BOTH shapes a date arrives in.
+ *
+ * Bare "YYYY-MM-DD" night dates are calendar strings: `new Date("2026-08-30")`
+ * is UTC midnight, and toLocaleDateString renders it as "Aug 29" for every US
+ * viewer. Those route through the calendar (same rule as fmtNightDate). Full
+ * datetimes ("YYYY-MM-DD HH:MM:SS" / ISO event starts) keep the local-parse
+ * path Home always used for them.
+ */
+export function fmtShortDate(s?: string | null): string {
+  if (!s) return "-"
+  const parts = /^\d{4}-\d{2}-\d{2}$/.test(s.trim()) ? parseIsoDate(s.trim()) : null
+  if (parts) return `${MONTH_NAMES[parts.m - 1]} ${parts.d}`
+  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 /**
@@ -1467,14 +1737,36 @@ export function programMetaLine(program: DoorAccessProgramSummary): string {
 }
 
 /**
+ * program.next_night_date, but only while that night is still today or later
+ * (US/Eastern). The stamp goes stale the morning after a night runs — and a
+ * cached/older API payload can serve one already past — and a stale stamp
+ * must read as "no next night", never paint yesterday as "Next". This is the
+ * ONE lower-bound guard for every surface that sorts or labels by a program's
+ * next night (Home tile, attention row, Upcoming list, schedule rows).
+ */
+export function upcomingNextNightDate(
+  program: Pick<DoorAccessProgramSummary, "next_night_date">,
+  today: string,
+): string | null {
+  const date = program.next_night_date
+  if (!date) return null
+  return date >= today ? date : null
+}
+
+/**
  * The desktop row's second line — the schedule facts that only exist on a
  * program. Ends at the next night, which is the thing a host actually looks
- * for; the full list is one click away on the series page.
+ * for; the full list is one click away on the series page. A stale (already
+ * ran) next_night_date drops the "Next:" segment entirely.
  */
-export function programScheduleLine(program: DoorAccessProgramSummary): string {
+export function programScheduleLine(
+  program: DoorAccessProgramSummary,
+  today: string = easternToday(),
+): string {
   const parts: string[] = [fmtWindow(program.start_time, program.end_time)]
-  if (program.next_night_date) {
-    parts.push(`Next: ${fmtNightDate(program.next_night_date)}`)
+  const nextDate = upcomingNextNightDate(program, today)
+  if (nextDate) {
+    parts.push(`Next: ${fmtNightDate(nextDate)}`)
   }
   parts.push(
     program.upcoming_night_count === 1
@@ -1548,25 +1840,35 @@ export function accessRowStats(
 
 // ── Night presentation ──────────────────────────────────────────────────────
 
-export type NightChip = { label: string; variant: "neutral" | "warning" | "danger" | "info" }
+export type NightChip = {
+  label: string
+  variant: "neutral" | "warning" | "danger" | "info" | "access" | "custom"
+}
 
 /**
  * The chips on a night row. Deliberately terse and additive — a night can be
- * closed AND customized AND unstamped at once, and a host needs to see all
- * three because each has a different fix.
+ * closed AND Custom AND unstamped at once, and a host needs to see all three
+ * because each has a different fix.
+ *
+ * Custom-chip audit (locked 2026-08-29): ONE Custom vocabulary everywhere.
+ * The old "Customized"/"Overridden" pair — derived from `is_customized` /
+ * `has_override` — painted a second chip language on the night page that no
+ * other host surface used. The pink Custom chip here is the same voter as
+ * the Host list and the program grid.
  */
 export function nightChips(night: DoorAccessNight, seriesActive = true): NightChip[] {
   const chips: NightChip[] = []
   if (night.is_closed) chips.push({ label: "Closed", variant: "danger" })
   if (night.status === "cancelled") chips.push({ label: "Cancelled", variant: "danger" })
+  if (isWeeklyCoverHoldStatus(night.status)) {
+    chips.push({ label: WC_DRAFT_CHIP_LABEL, variant: "neutral" })
+  }
   if (weeklyCoverNightNeedsPendingCancel(night, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
   }
-  if (night.has_override) chips.push({ label: "Overridden", variant: "info" })
-  // "Customized" means this date is Custom — a leftover generic-event stamp
-  // or a one-date edit. It stays a warning chip. The night editor still
-  // edits it (never a green Event). Series/program save leaves it alone.
-  if (night.is_customized) chips.push({ label: "Customized", variant: "warning" })
+  if (isHostCustomWeeklyCoverNight(night)) {
+    chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "access" })
+  }
   if (!night.is_stamped) chips.push({ label: "Not generated yet", variant: "neutral" })
   return chips
 }
@@ -1574,11 +1876,21 @@ export function nightChips(night: DoorAccessNight, seriesActive = true): NightCh
 /**
  * The ONE chip on a program-page preview card.
  *
- * A ledger of Closed / Overridden / Customized / Not on sale yet is what made
- * the list unreadable. Cards only say something when it changes what a host
- * does next: buyable now, or not generated yet.
+ * Custom (pink) is a later one-date edit vs that weekday SLOT, after the
+ * night is stamped. Fresh weekday-template nights never chip Custom, even
+ * when Mon/Wed/Fri differ or a far lookahead is still "Not generated".
+ * Unstamped weekday slots say Not generated. Unapproved-shop nights say
+ * Draft, not In review.
  */
-export function nightPreviewChip(night: DoorAccessNight, seriesActive = true): NightChip | null {
+export function nightPreviewChip(
+  night: DoorAccessNight,
+  seriesActive = true,
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean },
+  isPending = false,
+): NightChip | null {
+  if (paintsWeeklyCoverCustomChip(night, slot)) {
+    return { label: HOST_CUSTOM_CHIP_LABEL, variant: "access" }
+  }
   if (!night.is_stamped || night.event_id == null) {
     return { label: "Not generated", variant: "neutral" }
   }
@@ -1587,11 +1899,27 @@ export function nightPreviewChip(night: DoorAccessNight, seriesActive = true): N
     return { label: "Cancellation pending", variant: "warning" }
   }
   if (!seriesActive) return null
+  if (isPending || isWeeklyCoverHoldStatus(night.status)) {
+    return weeklyCoverHoldChip()
+  }
   const status = (night.status ?? "").toLowerCase()
   if (status === "published" || status === "approved" || status === "active") {
     return { label: "On sale", variant: "info" }
   }
   return null
+}
+
+/**
+ * Pink Custom on a night card. Create-time one-off = a date_edit that
+ * diverges from the weekday SLOT, after services stamps an events row.
+ * Unstamped weekday slots and is_customized alone are not Custom.
+ */
+export function paintsWeeklyCoverCustomChip(
+  night: DoorAccessNight,
+  slot?: { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean },
+): boolean {
+  if (!isHostCustomWeeklyCoverNight(night, slot)) return false
+  return night.is_stamped === true && night.event_id != null
 }
 
 /** Lowest priced tier still on sale, or a short empty phrase. Never an em dash. */
@@ -1602,14 +1930,24 @@ export function nightPreviewPrice(night: DoorAccessNight): string {
   return `From ${usdPrice(lowest)}`
 }
 
-/** Default view is a short strip; More nights reveals the rest of the fetch. */
+/** Default view is a short strip; More nights reveals the rest of the fetch.
+ *  Custom / one-off nights always stay visible, even when they are far out. */
 export function visibleUpcomingNights<T>(
   nights: T[],
   expanded: boolean,
-  limit: number = DEFAULT_NIGHT_PREVIEW_COUNT
+  limit: number = DEFAULT_NIGHT_PREVIEW_COUNT,
+  isPinned: (night: T) => boolean = () => false,
 ): T[] {
   if (expanded) return nights
-  return nights.slice(0, limit)
+  const pinned = new Set(nights.filter((night) => isPinned(night)))
+  const regular: T[] = []
+  for (const night of nights) {
+    if (pinned.has(night)) continue
+    if (regular.length >= limit) continue
+    regular.push(night)
+  }
+  const keep = new Set([...regular, ...pinned])
+  return nights.filter((night) => keep.has(night))
 }
 
 /**
@@ -1924,8 +2262,13 @@ export function buildNightOverridePayload(draft: NightDraft): NightOverridePaylo
 }
 
 /** Save night: override fields plus the restamp/publish path, not times_only. */
-export function buildNightSavePayload(draft: NightDraft): NightOverridePayload {
-  return { ...buildNightOverridePayload(draft), publish: true }
+export function buildNightSavePayload(
+  draft: NightDraft,
+  opts?: { publish?: boolean },
+): NightOverridePayload {
+  const body = buildNightOverridePayload(draft)
+  if (opts?.publish === false) return body
+  return { ...body, publish: true }
 }
 
 /** Does this draft still say anything the template doesn't? Drives "Reset". */

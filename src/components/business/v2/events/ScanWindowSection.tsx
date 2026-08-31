@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react"
 import { Info } from "lucide-react"
 import { useProductCheckboxClass } from "@/components/business/v2/door-access/WeeklyCoverAccent"
-import { Input } from "@/components/business/v2/ui/input"
+import { DateTimeField } from "@/components/business/v2/ui/date-time-field"
 import { Label } from "@/components/business/v2/ui/label"
 
 export const SCAN_WINDOW_LABEL = "Limit when this ticket can be scanned"
@@ -111,21 +111,19 @@ export function ScanWindowSection({
 }) {
   return (
     <ScanWindowToggle hasWindow={!!(valid_from || valid_until)} info={<ScanWindowInfo />} onClear={onClear}>
-      <div className="mt-1 grid grid-cols-2 gap-3">
+      <div className="mt-1 grid grid-cols-1 gap-3">
         <div>
           <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">From</Label>
-          <Input
-            type="datetime-local"
+          <DateTimeField
             value={(valid_from ?? "").replace(" ", "T").slice(0, 16)}
-            onChange={(e) => onUpdate("valid_from", e.target.value)}
+            onChange={(next) => onUpdate("valid_from", next)}
           />
         </div>
         <div>
           <Label className="mb-1 block text-xs text-neutral-600 dark:text-neutral-400">Until</Label>
-          <Input
-            type="datetime-local"
+          <DateTimeField
             value={(valid_until ?? "").replace(" ", "T").slice(0, 16)}
-            onChange={(e) => onUpdate("valid_until", e.target.value)}
+            onChange={(next) => onUpdate("valid_until", next)}
           />
         </div>
       </div>

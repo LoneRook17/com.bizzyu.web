@@ -28,6 +28,7 @@ import {
   resetNightHours,
   saveNightOverride,
   toTimeInput,
+  weeklyCoverNightCancelEventId,
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_SECTION_LABEL,
   validateNightDraft,
@@ -39,12 +40,16 @@ import {
 import { cn } from "@/lib/v2/utils"
 import { NightLeaveGuard } from "@/components/business/v2/door-access/NightLeaveGuard"
 import { NightTicketsEditor } from "@/components/business/v2/door-access/NightTicketsEditor"
+import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
+import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
+import { WC_DRAFT_WAITING_COPY, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
-import { Input } from "@/components/business/v2/ui/input"
+import { TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 
 /**
@@ -73,7 +78,7 @@ export default function DoorAccessNightPage({
   const { id, date } = use(params)
   const programId = Number(id)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isPending } = useAuth()
 
   const [program, setProgram] = useState<DoorAccessProgram | null>(null)
   const [night, setNight] = useState<DoorAccessNight | null>(null)
@@ -86,6 +91,7 @@ export default function DoorAccessNightPage({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [restampWarning, setRestampWarning] = useState<string | null>(null)
+  const [showCancel, setShowCancel] = useState(false)
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
 
@@ -151,7 +157,11 @@ export default function DoorAccessNightPage({
     setNotice(null)
     setRestampWarning(null)
     try {
-      const result = await saveNightOverride(programId, date, buildNightSavePayload(draft))
+      const result = await saveNightOverride(
+        programId,
+        date,
+        buildNightSavePayload(draft, { publish: shouldTreatDraftAsLive(isPending) }),
+      )
       showSaveOutcome(result, "Saved.")
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save this night.")
@@ -201,6 +211,11 @@ export default function DoorAccessNightPage({
   const editable = canEdit && nightIsEditable(night, program)
   const chips = nightChips(night, program.is_active)
   const dirty = !!(draft && baseline && nightDraftIsDirty(draft, baseline))
+  const cancelEventId = weeklyCoverNightCancelEventId(night)
+  const canCancelNight =
+    canEdit &&
+    cancelEventId != null &&
+    !weeklyCoverNightNeedsPendingCancel(night, program.is_active)
 
   return (
     <>
@@ -259,6 +274,12 @@ export default function DoorAccessNightPage({
         </Notice>
       )}
 
+      {(isWeeklyCoverHoldStatus(night.status) || isPending) && (
+        <Notice tone="draft">
+          {WC_DRAFT_WAITING_COPY}
+        </Notice>
+      )}
+
       {editable && (
         <Notice tone="info">{NIGHT_CUSTOM_HELPER}</Notice>
       )}
@@ -308,6 +329,31 @@ export default function DoorAccessNightPage({
           again.
         </p>
       )}
+
+      {canCancelNight && cancelEventId != null && (
+        <div className="flex justify-end">
+          <Button
+            variant="secondary"
+            className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+            onClick={() => setShowCancel(true)}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {canCancelNight && cancelEventId != null && (
+        <CancelEventModal
+          open={showCancel}
+          onOpenChange={setShowCancel}
+          eventId={cancelEventId}
+          eventName={fmtNightDate(night.occurrence_date, { withYear: true })}
+          onCancelled={() => {
+            setShowCancel(false)
+            router.push(programHref(programId))
+          }}
+        />
+      )}
     </>
   )
 }
@@ -328,7 +374,7 @@ function Notice({
   tone,
   children,
 }: {
-  tone: "info" | "warning" | "danger" | "success"
+  tone: "info" | "warning" | "danger" | "success" | "draft"
   children: React.ReactNode
 }) {
   const tones = {
@@ -338,6 +384,8 @@ function Notice({
     danger: "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300",
     success:
       "border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/40 dark:text-green-300",
+    draft:
+      "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300",
   }
   return (
     <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-[13px] ${tones[tone]}`}>
@@ -387,15 +435,14 @@ function HoursCard({
             <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
               Opens
             </span>
-            <Input
-              type="time"
+            <TimeField
               value={toTimeInput(draft.start_time)}
               disabled={!editable}
-              onChange={(e) =>
+              onChange={(next) =>
                 setDraft(
                   applyNightHours(
                     draft,
-                    fromTimeInput(e.target.value),
+                    fromTimeInput(next),
                     draft.end_time,
                     program.start_time,
                     program.end_time
@@ -408,16 +455,15 @@ function HoursCard({
             <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
               Closes
             </span>
-            <Input
-              type="time"
+            <TimeField
               value={toTimeInput(draft.end_time)}
               disabled={!editable}
-              onChange={(e) =>
+              onChange={(next) =>
                 setDraft(
                   applyNightHours(
                     draft,
                     draft.start_time,
-                    fromTimeInput(e.target.value),
+                    fromTimeInput(next),
                     program.start_time,
                     program.end_time
                   )

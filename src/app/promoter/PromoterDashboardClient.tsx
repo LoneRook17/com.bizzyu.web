@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { getApiBaseUrl } from "@/lib/api-url"
+import {
+  PROMOTER_WITHDRAWN_LABEL,
+  WITHDRAW_IN_TRANSIT_COPY,
+} from "@/lib/business/withdraw-copy"
 
 const API_URL = getApiBaseUrl()
 const TOKEN_STORAGE_KEY = "bz_auth_token"
@@ -11,6 +15,8 @@ interface DashboardTotals {
   lifetime_earned_cents: number
   pending_balance_cents: number
   paid_balance_cents: number
+  // Retired weekly / payouts.create date. Do not show it. Withdraw is
+  // Transfer-only; Stripe automatic daily pays the bank.
   next_payout_date: string | null
   lifetime_clicks: number
   lifetime_sales: number
@@ -45,16 +51,6 @@ function fmtMoney(cents: number): string {
     style: "currency",
     currency: "USD",
   })
-}
-
-function fmtPayoutDate(iso: string | null): string {
-  if (!iso) return ""
-  try {
-    const d = new Date(iso)
-    return `${d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}, 11am ET`
-  } catch {
-    return iso
-  }
 }
 
 function fmtEventDate(iso: string | null): string | null {
@@ -329,13 +325,11 @@ function TotalsCard({ totals }: { totals: DashboardTotals }) {
       </p>
       <div className="grid grid-cols-2 gap-3 mt-4">
         <Stat label="Pending" value={fmtMoney(totals.pending_balance_cents)} />
-        <Stat label="Paid out" value={fmtMoney(totals.paid_balance_cents)} />
+        <Stat label={PROMOTER_WITHDRAWN_LABEL} value={fmtMoney(totals.paid_balance_cents)} />
       </div>
-      {totals.next_payout_date && (
-        <p className="text-xs text-gray-500 mt-3">
-          Next payout: {fmtPayoutDate(totals.next_payout_date)}
-        </p>
-      )}
+      <p className="text-xs text-gray-500 mt-3">
+        {WITHDRAW_IN_TRANSIT_COPY}
+      </p>
       <div className="flex gap-2 mt-3 text-xs text-gray-700">
         <span className="bg-white border rounded px-2 py-0.5">
           {totals.lifetime_clicks} clicks

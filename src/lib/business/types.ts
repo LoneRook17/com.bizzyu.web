@@ -180,6 +180,14 @@ export interface EventListItem {
    */
   recurring_series_id?: number | null
   /**
+   * Present on `SELECT e.*` list rows when the night was hand-edited off the
+   * weekday template. Optional so an older payload still lists; Host Upcoming
+   * treats a missing value as "not Custom" and applies the 14-day series window.
+   */
+  series_customized_at?: string | null
+  /** Wire alias for series_customized_at IS NOT NULL on some list payloads. */
+  is_customized?: boolean | number | string | null
+  /**
    * V5 F14 — the pink flag. `'door_access'` marks one night of a Weekly Access
    * program; `'event'` is everything else and is the column default.
    *
@@ -228,6 +236,16 @@ export interface TicketTier {
   // Scheduled tickets: optional sales/scan window (datetime-local strings, US/Eastern wall-clock). Empty/null = no limit.
   valid_from?: string | null
   valid_until?: string | null
+  // Surge ladder (O4). `surge` holds the form's draft rungs (text inputs, so a
+  // half-typed number is never coerced mid-keystroke); `surge_steps` is the
+  // wire/read shape ({after_sold, price_usd} out, {threshold_sold, price_cents,
+  // price_usd} echoed back); `surge_base_price_usd` is the stored ladder base —
+  // an existing ladder validates against it, NOT price_usd, which has already
+  // moved for a part-way-fired ladder.
+  surge_enabled?: boolean
+  surge?: { afterSoldInput: string; priceInput: string }[]
+  surge_steps?: unknown[]
+  surge_base_price_usd?: number | null
 }
 
 export interface EventDetail extends EventListItem {
@@ -630,6 +648,16 @@ export interface PromoEventBreakdownRow {
   event_id: number
   event_name: string | null
   event_date: string | null
+  /**
+   * The program (recurring_event_series) this event belongs to, or null for a
+   * one-off. Additive (Aug 2026): lets the breakdown fold a program's nights
+   * into ONE line instead of a wall of rows. Absent on older API responses.
+   */
+  recurring_series_id?: number | null
+  /** recurring_event_series.name for the event's program; null for one-offs. */
+  series_name?: string | null
+  /** recurring_event_series.program_kind ('door_access', 'event', …); null for one-offs. */
+  program_kind?: string | null
   redemptions: number
   revenue_generated: number
 }
@@ -869,6 +897,12 @@ export interface RecurringTemplateTicket {
   valid_until_time: string | null
   valid_from_day_offset: number
   valid_until_day_offset: number
+  // Named-series surge, stored on the template so restamps re-apply it.
+  // Write {after_sold, price_usd}; the server echoes {threshold_sold,
+  // price_cents, price_usd}. Both keys travel together — surge off is an
+  // explicit surge_enabled:false + surge_steps:[], omission means keep.
+  surge_enabled?: boolean
+  surge_steps?: unknown[]
 }
 
 export interface RecurringSeriesListItem {

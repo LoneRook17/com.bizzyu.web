@@ -13,6 +13,7 @@ import type { DealFormData } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Badge } from "@/components/business/v2/ui/badge"
+import { DateField, TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import ImageUpload from "./ImageUpload"
@@ -388,13 +389,27 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="start_date">Start date</Label>
-                    <Input id="start_date" name="start_date" type="date" value={form.start_date} onChange={handleChange} />
+                    <DateField
+                      id="start_date"
+                      value={form.start_date}
+                      onChange={(next) => {
+                        setForm((prev) => ({ ...prev, start_date: next }))
+                        setErrors((prev) => ({ ...prev, start_date: "" }))
+                      }}
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="expired_date">
                       End date <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional)</span>
                     </Label>
-                    <Input id="expired_date" name="expired_date" type="date" value={form.expired_date} onChange={handleChange} />
+                    <DateField
+                      id="expired_date"
+                      value={form.expired_date}
+                      onChange={(next) => {
+                        setForm((prev) => ({ ...prev, expired_date: next }))
+                        setErrors((prev) => ({ ...prev, expired_date: "" }))
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -444,19 +459,17 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                               />
                               <span className="text-sm text-neutral-900 dark:text-neutral-100">{label}</span>
                             </label>
-                            <Input
-                              type="time"
+                            <TimeField
                               value={w.start}
                               disabled={!w.enabled}
-                              onChange={(e) => updateWindow(day, { start: e.target.value })}
+                              onChange={(next) => updateWindow(day, { start: next })}
                               className="flex-1 disabled:opacity-50"
                             />
                             <span className="text-sm text-neutral-500 dark:text-neutral-400">to</span>
-                            <Input
-                              type="time"
+                            <TimeField
                               value={w.end}
                               disabled={!w.enabled}
-                              onChange={(e) => updateWindow(day, { end: e.target.value })}
+                              onChange={(next) => updateWindow(day, { end: next })}
                               className="flex-1 disabled:opacity-50"
                             />
                           </div>

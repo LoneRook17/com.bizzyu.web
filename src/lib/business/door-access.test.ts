@@ -29,7 +29,9 @@ import {
   normalizeNightTier,
   formatDays,
   fmtNightDate,
+  fmtShortDate,
   parseIsoDate,
+  upcomingNextNightDate,
   nightDateBlock,
   fmtTime,
   fmtWindow,
@@ -83,6 +85,7 @@ import {
   programIdFromOwnedEvent,
   eventBelongsToSeries,
   doorAccessSeriesFromOwnedHydration,
+  applyOccurrenceStamps,
   isWeeklyCoverProduct,
   readProductKind,
   PROGRAM_KIND_DOOR_ACCESS,
@@ -112,6 +115,15 @@ import {
   NIGHT_CUSTOMIZED_NOTICE,
   EDIT_PROGRAM_LABEL,
   DEFAULT_NIGHT_PREVIEW_COUNT,
+  isPinnedUpcomingNight,
+  stampHostCreatedDatePayload,
+  stampHostCreatedDateHasNightWrite,
+  assertHostCreatedNightHasEventRow,
+  STAMP_EMPTY_NIGHT_WRITE,
+  hostCreatedNightMissingEventMessage,
+  weeklyCoverNightCancelEventId,
+  weeklyCoverNightCancelPath,
+  weeklyCoverProgramCancelPath,
   type DoorAccessNight,
   type DoorAccessProgram,
   type NightDraft,
@@ -221,6 +233,18 @@ test("fmtNightDate tolerates a datetime and refuses garbage without throwing", (
   assert.equal(fmtNightDate("2026-08-28 22:00:00"), "Fri, Aug 28")
   assert.equal(fmtNightDate("not-a-date"), "not-a-date")
   assert.equal(fmtNightDate(""), "")
+})
+
+test("fmtShortDate renders a bare night date's calendar day, never the UTC-shifted one", () => {
+  // Home's tiles/rows used `new Date("2026-08-30").toLocaleDateString(...)`,
+  // which is UTC midnight — "Aug 29" for every US viewer. If either of these
+  // prints the previous day, that bug is back.
+  assert.equal(fmtShortDate("2026-08-30"), "Aug 30")
+  assert.equal(fmtShortDate("2026-01-01"), "Jan 1")
+  // Datetimes keep the local-parse path (event starts are ET wall-clock).
+  assert.equal(fmtShortDate("2026-08-30 21:00:00"), "Aug 30")
+  assert.equal(fmtShortDate(null), "-")
+  assert.equal(fmtShortDate(""), "-")
 })
 
 test("parseIsoDate rejects out-of-range months and days", () => {
@@ -463,7 +487,7 @@ test("night ticket editor drafts until Save night and stays on the override", ()
   assert.ok(!src.includes("Use default"))
   assert.ok(!src.includes(">Override<") && !src.includes("Override</"))
   assert.ok(src.includes("Reset to program default"), "hours reset matches the price Reset pattern")
-  assert.ok(src.includes('type="time"'), "hour inputs stay visible")
+  assert.ok(src.includes("TimeField"), "hour inputs stay visible with a typed field and picker")
   assert.ok(src.includes("applyNightHours"), "typing a time is the override")
   assert.ok(src.includes("Closed this night"))
   assert.ok(src.includes("@radix-ui/react-switch"), "closed is a real switch, not a grey button")
@@ -939,9 +963,41 @@ test("normalizeNight coerces flags and sorts tiers", () => {
   assert.equal(n.is_stamped, true)
   assert.equal(n.is_closed, true)
   assert.equal(n.is_customized, false)
+  assert.equal(n.series_customized_at, null)
   assert.equal(n.event_id, 4410)
   assert.equal(n.passes_sold, 12)
   assert.deepEqual(n.tiers.map((t) => t.tier_key), ["cover", "skip"])
+})
+
+test("applyOccurrenceStamps overlays event_id so a host-created far date is stamped", () => {
+  const unstamped = night({
+    occurrence_date: "2026-12-31",
+    is_stamped: false,
+    event_id: null,
+    status: null,
+  })
+  const merged = applyOccurrenceStamps([unstamped], [
+    {
+      event_id: 1592,
+      occurrence_date: "2026-12-31",
+      series_customized_at: "2026-08-20 10:00:00",
+    },
+  ])
+  assert.equal(merged[0].event_id, 1592)
+  assert.equal(merged[0].is_stamped, true)
+  assert.equal(merged[0].series_customized_at, "2026-08-20 10:00:00")
+  assert.deepEqual(nightPreviewChip(merged[0]), { label: "Custom", variant: "access" })
+})
+
+test("normalizeNight treats series_customized_at as Custom", () => {
+  const stamped = normalizeNight({
+    occurrence_date: "2026-12-31",
+    is_stamped: 0,
+    event_id: null,
+    series_customized_at: "2026-08-20 10:00:00",
+  })
+  assert.equal(stamped.is_customized, true)
+  assert.equal(stamped.series_customized_at, "2026-08-20 10:00:00")
 })
 
 test("normalizeNight defaults a missing tiers array rather than throwing", () => {
@@ -1022,35 +1078,111 @@ test("programMetaLine drops empty segments instead of rendering blanks", () => {
 
 test("programScheduleLine leads with the window and singularizes one night", () => {
   assert.equal(
-    programScheduleLine(program()),
+    programScheduleLine(program(), "2026-08-27"),
     "10:00 PM - 2:00 AM · Next: Fri, Aug 28 · 8 nights scheduled"
   )
   assert.equal(
-    programScheduleLine(program({ next_night_date: null, upcoming_night_count: 1 })),
+    programScheduleLine(program({ next_night_date: null, upcoming_night_count: 1 }), "2026-08-27"),
     "10:00 PM - 2:00 AM · 1 night scheduled"
   )
 })
 
-test("nightChips are additive — a night can be several things at once", () => {
+test("a stale next_night_date is not painted as Next: — it already ran", () => {
+  assert.equal(
+    programScheduleLine(program(), "2026-08-30"),
+    "10:00 PM - 2:00 AM · 8 nights scheduled"
+  )
+  assert.equal(upcomingNextNightDate(program(), "2026-08-28"), "2026-08-28")
+  assert.equal(upcomingNextNightDate(program(), "2026-08-29"), null)
+  assert.equal(upcomingNextNightDate(program({ next_night_date: null }), "2026-08-27"), null)
+})
+
+test("nightChips are additive — and speak ONE Custom vocabulary (the voter)", () => {
   assert.deepEqual(nightChips(night()), [])
 
   const labels = (n: DoorAccessNight) => nightChips(n).map((c) => c.label)
   assert.deepEqual(labels(night({ is_closed: true })), ["Closed"])
-  assert.deepEqual(labels(night({ has_override: true })), ["Overridden"])
+  // Custom-chip audit (2026-08-29): "Overridden"/"Customized" are gone — an
+  // override row or is_customized flag ALONE never chips; the pink Custom
+  // chip follows the same voter every other host surface uses (the stamp).
+  assert.deepEqual(labels(night({ has_override: true })), [])
+  assert.deepEqual(labels(night({ is_customized: true })), [])
+  assert.deepEqual(
+    labels(night({ series_customized_at: "2026-08-20T01:00:00Z" })),
+    ["Custom"]
+  )
   assert.deepEqual(labels(night({ is_stamped: false })), ["Not generated yet"])
   assert.deepEqual(
-    labels(night({ is_closed: true, has_override: true, is_customized: true, is_stamped: false })),
-    ["Closed", "Overridden", "Customized", "Not generated yet"]
+    labels(
+      night({
+        is_closed: true,
+        has_override: true,
+        is_customized: true,
+        series_customized_at: "2026-08-20T01:00:00Z",
+        is_stamped: false,
+      })
+    ),
+    ["Closed", "Custom", "Not generated yet"]
   )
+  assert.deepEqual(labels(night({ status: "pending_approval" })), ["Draft"])
+  assert.deepEqual(labels(night({ status: "draft" })), ["Draft"])
 })
 
-test("nightPreviewChip only names on sale or not generated", () => {
+test("nightPreviewChip names Custom like the app after a one-date stamp, never from is_customized alone", () => {
   assert.deepEqual(nightPreviewChip(night()), { label: "On sale", variant: "info" })
   assert.deepEqual(nightPreviewChip(night({ is_stamped: false, event_id: null, status: null })), {
     label: "Not generated",
     variant: "neutral",
   })
-  assert.equal(nightPreviewChip(night({ status: "draft" })), null)
+  assert.deepEqual(
+    nightPreviewChip(night({ is_stamped: false, event_id: null, status: null, is_customized: true })),
+    { label: "Not generated", variant: "neutral" },
+    "is_customized alone is the additive chip, not Flutter Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        is_stamped: true,
+        event_id: 1592,
+        series_customized_at: "2026-08-20 10:00:00",
+      }),
+    ),
+    { label: "Custom", variant: "access" },
+  )
+  assert.deepEqual(
+    nightPreviewChip(night({ is_stamped: false, event_id: null }), true, { differsFromWeekdaySlot: true }),
+    { label: "Not generated", variant: "neutral" },
+    "unstamped weekday SLOT diverge is Not generated, not Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(night({ status: "draft" })),
+    { label: "Draft", variant: "neutral" },
+    "unapproved WC hold is draft",
+  )
+  assert.deepEqual(
+    nightPreviewChip(night({ status: "pending_approval" })),
+    { label: "Draft", variant: "neutral" },
+    "leftover pending_approval paints Draft, not In review",
+  )
+  assert.deepEqual(
+    nightPreviewChip(night(), true, undefined, true),
+    { label: "Draft", variant: "neutral" },
+    "pending hosts must not see On sale even if the night stamped published",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        is_stamped: true,
+        event_id: 1592,
+        series_customized_at: "2026-08-20 10:00:00",
+      }),
+      true,
+      undefined,
+      true,
+    ),
+    { label: "Custom", variant: "access" },
+    "pending does not recode the Custom voter",
+  )
   assert.equal(nightPreviewChip(night({ is_closed: true })), null)
   assert.equal(nightPreviewChip(night({ status: "cancelled" })), null)
   assert.deepEqual(
@@ -1058,11 +1190,90 @@ test("nightPreviewChip only names on sale or not generated", () => {
     { label: "Cancellation pending", variant: "warning" },
   )
   assert.equal(nightPreviewChip(night({ passes_sold: 0, paid_orders: 0 }), false), null)
-  // Overridden / Customized stay off the card. Those belong on the night page.
   assert.deepEqual(nightPreviewChip(night({ has_override: true, is_customized: true })), {
     label: "On sale",
     variant: "info",
   })
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-08-29",
+        event_id: 1340,
+        status: "pending_approval",
+        series_customized_at: null,
+        is_customized: false,
+      }),
+      true,
+      { slotEstablished: true, differsFromWeekdaySlot: false, offPatternDate: false },
+      true,
+    ),
+    { label: "Draft", variant: "neutral" },
+    "series 119 Sat-only pending night is Draft, not Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-08-29",
+        event_id: 1340,
+        series_customized_at: null,
+        is_customized: false,
+      }),
+      true,
+      { differsFromWeekdaySlot: true, offPatternDate: true },
+    ),
+    { label: "On sale", variant: "info" },
+    "empty SLOT hints without slotEstablished must not paint Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-10-15",
+        event_id: 2001,
+        status: "draft",
+        series_customized_at: null,
+        is_customized: false,
+      }),
+      true,
+      { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: true },
+      true,
+    ),
+    { label: "Custom", variant: "access" },
+    "stamped Oct 15 date_edit that diverges from the Thursday SLOT chips Custom",
+  )
+  assert.deepEqual(
+    nightPreviewChip(
+      night({
+        occurrence_date: "2026-10-15",
+        is_stamped: false,
+        event_id: null,
+        status: "draft",
+        series_customized_at: null,
+        has_override: true,
+      }),
+      true,
+      { slotEstablished: true, offPatternDate: false, differsFromWeekdaySlot: true },
+      true,
+    ),
+    { label: "Not generated", variant: "neutral" },
+    "override-only Oct 15 without an events row is not Custom yet",
+  )
+})
+
+test("draft stamp of a create date_edit sends the night write, not an empty body", () => {
+  const body = { is_closed: false, is_21_plus: false, start_time: "21:00", end_time: "02:00" }
+  assert.equal(stampHostCreatedDateHasNightWrite({}), false)
+  assert.equal(stampHostCreatedDateHasNightWrite({ publish: true }), false)
+  assert.equal(stampHostCreatedDateHasNightWrite(body), true)
+  assert.deepEqual(stampHostCreatedDatePayload(body, false), body)
+  assert.equal("publish" in stampHostCreatedDatePayload(body, false), false)
+  assert.deepEqual(stampHostCreatedDatePayload(body, true), { ...body, publish: true })
+  assert.throws(() => stampHostCreatedDatePayload({}, false), { message: STAMP_EMPTY_NIGHT_WRITE })
+  assert.throws(() => stampHostCreatedDatePayload({}, true), { message: STAMP_EMPTY_NIGHT_WRITE })
+  assert.doesNotThrow(() => assertHostCreatedNightHasEventRow({ event_id: 2001, is_stamped: true }, "2026-10-15"))
+  assert.throws(
+    () => assertHostCreatedNightHasEventRow({ event_id: null, is_stamped: false }, "2026-10-15"),
+    { message: hostCreatedNightMissingEventMessage("2026-10-15") },
+  )
 })
 
 test("nightPreviewPrice leads with From and never uses an em dash", () => {
@@ -1086,6 +1297,20 @@ test("visibleUpcomingNights defaults to the next 4, then expands", () => {
   assert.deepEqual(
     visibleUpcomingNights(rows, true).map((n) => n.occurrence_date),
     dates
+  )
+})
+
+test("visibleUpcomingNights keeps a far customized one-off in the preview", () => {
+  const dates = ["2026-08-28", "2026-08-29", "2026-09-04", "2026-09-05", "2026-09-11", "2026-12-31"]
+  const rows = dates.map((occurrence_date) =>
+    night({
+      occurrence_date,
+      series_customized_at: occurrence_date === "2026-12-31" ? "2026-08-20 10:00:00" : null,
+    }),
+  )
+  assert.deepEqual(
+    visibleUpcomingNights(rows, false, 4, isPinnedUpcomingNight).map((n) => n.occurrence_date),
+    ["2026-08-28", "2026-08-29", "2026-09-04", "2026-09-05", "2026-12-31"],
   )
 })
 
@@ -1286,7 +1511,7 @@ test("program page host copy has no em dashes", () => {
   assert.equal(PROGRAM_LINK_DESCRIPTION, "Every upcoming night")
   assert.equal(
     NIGHTS_HELPER_EDIT,
-    "Tap a night to change price, capacity, or hours for that date only. Those edits stay Custom; a later program save will not change them.",
+    "Tap a night to open its manage page. Date-only edits made there stay Custom; a later program save will not change them.",
   )
   assert.equal(EDIT_PROGRAM_LABEL, "Edit program")
   for (const line of copy) {
@@ -1307,9 +1532,48 @@ test("the program page is look-and-open, with Edit program as a dedicated route"
   assert.ok(!src.includes("toggleDay"), "night cards must not edit nights of week")
   assert.ok(src.includes("nightHref("), "cards must keep the existing per-night href")
   assert.ok(src.includes("NightPreviewCard"), "nights render as preview cards")
-  assert.ok(src.includes("More nights"), "far-future nights stay behind More nights")
+  assert.ok(src.includes("nightsForHostWeeklyCoverGrid"), "grid matches the shared month window")
+  assert.ok(src.includes("WC_DRAFT_CHIP_LABEL") || src.includes("Draft"), "pending program must chip Draft, not Live")
+  assert.ok(!src.includes("In review"), "pending program must not chip In review")
+  assert.ok(src.includes("!isPending"), "pending program must not hand out the public venue link")
+  assert.ok(src.includes("WC_DRAFT_WAITING_COPY") || src.includes("waiting on business approval"), "pending program copy must not look public")
+  assert.ok(src.includes("SERIES_NIGHTS_WINDOW_DAYS"), "window is the shared month helper")
+  assert.ok(!src.includes("More nights"), "do not hide weeks 3–N behind More nights")
+  assert.ok(!src.includes("LookaheadPicker"), "do not dump 4/12/24 weeks of Not generated lookaheads")
   assert.ok(src.includes("resolveNightCardImageUrl"), "each night card resolves its own flyer")
   assert.ok(src.includes("weekdayFlyerByDayFromNights"), "nights without Custom art keep the weekday flyer")
+  assert.ok(src.includes("ONE_OFF_SERIES_LOOKAHEAD_DAYS"), "series fetch must reach far one-off nights")
+  assert.ok(src.includes("nightPreviewChip"), "cards use the shared Custom / On sale chip")
+  assert.ok(src.includes(">Cancel<") || src.includes("Cancel"), "Cancel is on each night card")
+  assert.ok(src.includes("CancelEventModal"), "night Cancel uses the existing event cancel path")
+  assert.ok(src.includes("weeklyCoverNightCancelEventId"), "Cancel is wired to the stamped event id")
+  assert.ok(src.includes("CancelWeeklyCoverProgramDialog") || src.includes("Cancel program"), "program cancel matches Flutter Host series cancel")
+})
+
+test("WC night cancel uses the existing event request-cancellation path", () => {
+  assert.equal(weeklyCoverNightCancelEventId(night()), 4410)
+  assert.equal(weeklyCoverNightCancelEventId(night({ event_id: null })), null)
+  assert.equal(weeklyCoverNightCancelEventId(night({ status: "cancelled" })), null)
+  assert.equal(weeklyCoverNightCancelPath(4410), "/business/events/4410/request-cancellation")
+  // Door-access suspend, same as the app. The recurring-series suspend
+  // 404s WC program kinds ("Series not found") on purpose — V5 F14.
+  assert.equal(weeklyCoverProgramCancelPath(23), "/business/door-access/23/suspend")
+  const modal = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/events/CancelEventModal.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(modal.includes("/request-cancellation"), "do not invent a second money path")
+  const dialog = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/CancelWeeklyCoverProgramDialog.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(dialog.includes("cancelWeeklyCoverProgram"), "program cancel calls the existing suspend path")
+  const nightPage = readFileSync(
+    fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(nightPage.includes("CancelEventModal"), "instance page Cancel is the same one-off request")
+  assert.ok(nightPage.includes("weeklyCoverNightCancelEventId"), "instance Cancel is wired")
 })
 
 test("Weekly Access has a dedicated program editor, same fields as create", () => {
@@ -1408,6 +1672,8 @@ test("create writes stay program_kind=door_access and Save night PUTs publish/re
   assert.equal(payload.publish, true)
   assert.equal(payload.is_closed, false)
   assert.ok(payload.tiers?.length)
+  const heldSave = buildNightSavePayload(draftFromNight(night(), program()), { publish: false })
+  assert.equal("publish" in heldSave, false, "pending save must omit publish so the night stays draft")
 
   const wizard = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
@@ -1616,18 +1882,23 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(eventsPage.includes("inactiveWeeklyCoverSeriesIds"), "host-deleted series do not resurrect from published nights")
   assert.ok(eventsPage.includes("probeInactiveSeriesIds"), "every recurring_series_id is probed for is_active=0")
   assert.ok(eventsPage.includes("weeklyCoverProgramsForDash"), "ended / deleted programs leave the live list")
+  assert.ok(eventsPage.includes("shouldShowWeeklyCoverOnEventsTab"), "pending WC stays off Upcoming Live")
   assert.ok(eventsPage.includes("AccessProgramRow"), "working programs list still uses AccessProgramRow")
   const accessRow = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/AccessProgramRow.tsx", import.meta.url)),
     "utf8",
   )
   assert.ok(accessRow.includes("programHref(program.id)"), "AccessProgramRow hrefs the listed program id only")
+  assert.ok(accessRow.includes("isPending"), "pending hosts see Draft, not a live program row")
+  assert.ok(accessRow.includes("WC_DRAFT_CHIP_LABEL") || accessRow.includes("Draft"), "unapproved WC must not look Live")
+  assert.ok(!accessRow.includes("In review"), "unapproved WC must not chip In review")
   assert.ok(eventsPage.includes("programs={venuePrograms}"), "EventCard/SeriesGroupRow rematch against the venue-scoped programs")
   assert.ok(eventCard.includes("eventListHref"), "EventCard must not hardcode /business/events/:event_id for cover nights")
   assert.ok(eventCard.includes("eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)"), "EventCard hrefs WC nights via eventListHref")
   assert.ok(eventsPage.includes("weeklyCoverSeriesIds"), "list marks owned Weekly Cover series ids")
   assert.ok(eventsPage.includes("wcSeriesIds"), "list hrefs door-access/{seriesId} for those series")
   assert.ok(programPage.includes("loadDoorAccessSeriesForPath"), "program page recovers a night id or retries the series")
+  assert.ok(programPage.includes("isPending"), "program nights must not chip On sale while pending")
   assert.ok(!programPage.includes("resolveDoorAccessProgramIdFromEvent"), "do not GET events/:id for a listed series id")
   assert.ok(programPage.includes("parseProgramPathId"), "missing/NaN id is not a 404")
   assert.ok(programPage.includes("MISSING_PROGRAM_ID_TITLE"))
@@ -1797,23 +2068,28 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
     fileURLToPath(new URL("../../components/business/v2/door-access/NightEditorDialog.tsx", import.meta.url)),
     "utf8",
   )
-  assert.ok(editor.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "night editor toggles use the shared pink class")
+  assert.ok(editor.includes("AccessPillToggle"), "night editor toggles are pills, not square checkboxes")
+  assert.ok(!editor.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "weekday editor must not use square checkboxes")
   assert.ok(editor.includes('variant="access-secondary"'), "Add another Cover stays in the pink family")
   assert.ok(editor.includes("ACCESS_INK"), "ink on pink fill is #33052A")
-  assert.ok(editor.includes("applyIncludesCover"), "Cover included toggle rewrites the skip description")
-  assert.ok(editor.includes("syncSkipTierDescriptions"), "Save night re-derives skip blurbs from the toggle")
-  assert.ok(!editor.includes("patchTier(i, { includes_cover:"), "toggle must not flip the flag without the blurb")
-  assert.ok(editor.includes("ScanWindowToggle"), "weekday / game-day night editor paints ScanWindow under Surge")
-  assert.ok(editor.includes("<ScanWindowInfo weekly"), "scan window copy is the weekly relative variant")
-  assert.ok(editor.includes("<ScanWindowExamples weekly"), "scan window examples stay weekly")
-  assert.ok(editor.includes('type="time"'), "scan window is relative HH:mm, not a calendar datetime")
+  assert.ok(editor.includes("applyIncludesCover"), "Cover included toggle flips the flag (never the text — O1)")
+  assert.ok(!editor.includes("syncSkipTierDescriptions"), "O1: Save must not re-derive skip blurbs — no canned copy")
+  assert.ok(!editor.includes("defaultTierDescription"), "O1: no canned description template anywhere in the dialog")
+  assert.ok(editor.includes("setTierCustomDescription"), "Custom description toggle opens an empty box (O1: no canned fill)")
+  assert.ok(editor.includes("Off shows no description"), "the (i) says off means NO description, not canned text")
+  assert.ok(editor.includes("What they get"), "custom description field is What they get")
+  assert.ok(editor.includes('label="Scan Window"'), "scan window label matches the app")
+  assert.ok(!editor.includes("Limit when this ticket can be scanned"), "long scan-window label stays off the weekday editor")
+  assert.ok(!editor.includes("ScanWindowToggle"), "weekday editor owns its own From/Until scan window")
+  assert.ok(!editor.includes("ScanWindowExamples"), "scan window examples sit behind (i), not inline")
+  assert.ok(editor.includes("TimeField"), "scan window is relative HH:mm, not a calendar datetime")
   assert.ok(!editor.includes("datetime-local"), "WC templates must not send standalone valid_from / valid_until")
   assert.ok(!editor.includes("<ScanWindowSection"), "absolute ScanWindowSection stays off weekday / game-day templates")
-  const surgeAt = editor.indexOf("checked={tier.surge_enabled}")
-  const scanAt = editor.indexOf("<ScanWindowToggle")
-  const ageAt = editor.indexOf("checked={tier.is_21_plus}")
-  assert.ok(surgeAt >= 0 && scanAt > surgeAt, "ScanWindow sits under Surge")
-  assert.ok(ageAt > scanAt, "21+ stays after ScanWindow")
+  const surgeAt = editor.indexOf('label="Surge"')
+  const scanAt = editor.indexOf('label="Scan Window"')
+  const ageAt = editor.indexOf('label="21+"')
+  assert.ok(surgeAt >= 0 && scanAt > surgeAt, "Scan Window sits under Surge")
+  assert.ok(ageAt > scanAt, "21+ stays after Scan Window")
 
   const night = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/door-access/[id]/nights/[date]/page.tsx", import.meta.url)),
@@ -1830,6 +2106,10 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
   assert.ok(!eventForm.includes("WeeklyCoverAccent"), "event form must not wrap the Weekly Cover accent")
   assert.ok(eventForm.includes("#05EB54") || eventForm.includes("<Button"), "event form still uses the green path")
   assert.ok(!eventForm.includes("ScanWindowToggle"), "standalone EventForm must not grow a second relative scan window")
+  assert.ok(eventForm.includes("DateTimeField"), "Starts/Ends stay on the shared date+time widgets")
+  assert.ok(!eventForm.includes("datetime-local"), "event create must not fall back to native datetime-local")
+  assert.ok(!eventForm.includes("YYYY-MM-DDTHH:MM"), "event create must not show an ISO T string")
+  assert.ok(eventForm.includes("showTemplatePicker={isEditing}"), "one-off create does not ask for a flyer template")
 })
 
 test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker", () => {
@@ -1854,7 +2134,7 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     // choice cards must not grow their own copy. Steps that only mount the
     // dialog stay clean as long as they do not import ScanWindow themselves.
     if (!rel.endsWith("NightEditorDialog.tsx")) {
-      assert.ok(!/ScanWindow/.test(src), `${rel} still has a scan window on WC create`)
+      assert.ok(!/Scan Window/.test(src) && !/ScanWindow/.test(src), `${rel} still has a scan window on WC create`)
     }
     assert.ok(!/Save as draft/.test(src), `${rel} still has Save as draft`)
     assert.ok(!/Choose a venue|Select a venue/.test(src), `${rel} still shows a venue picker`)
@@ -1869,7 +2149,9 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     assert.ok(!/Give the program a name/.test(src), `${rel} still requires a typed name`)
     assert.ok(!/Every night is created with this name/.test(src), `${rel} still invites a rename`)
     assert.ok(!/step === ["']details["']/.test(src), `${rel} still has a Details step`)
-    assert.ok(!/promo code/i.test(src), `${rel} still mentions promo codes`)
+    if (!rel.endsWith("WcDoorStep.tsx") && !rel.endsWith("DoorAccessWizard.tsx")) {
+      assert.ok(!/promo code/i.test(src), `${rel} still mentions promo codes`)
+    }
     assert.ok(!/notify_followers_on_publish:\s*true/.test(src), `${rel} still blasts followers`)
   }
 
@@ -1877,6 +2159,7 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     fileURLToPath(new URL("../../components/business/v2/door-access/DoorAccessWizard.tsx", import.meta.url)),
     "utf8",
   )
+  assert.ok(wizard.includes("weeklyCoverCreateSalesMaps"), "create writes weekday_edits via the sales-map helper")
   assert.ok(wizard.includes("weekday_edits"), "create still writes weekday_edits")
   assert.ok(wizard.includes("date_edits"), "create still writes date_edits")
   assert.ok(wizard.includes("template_tickets"), "create still writes template_tickets")
@@ -1886,6 +2169,42 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(wizard.includes("WcProgressBar"), "pink progress bar on screens 2-9")
   assert.ok(wizard.includes("Look it over") || wizard.includes("WcReviewStep"), "review is Look it over")
   assert.ok(wizard.includes('isEdit && initialProducts ? STEP_DAYS : STEP_SELL'), "edit skips Sell when products exist")
+  assert.ok(wizard.includes("persistProgramPromoDrafts"), "Publish posts program-scoped promo drafts after create")
+  assert.ok(wizard.includes("wcPromoCreatePath"), "promo drafts hit the existing door-access promo API")
+  assert.ok(!wizard.includes("Tonight's nights aren't on the schedule yet"), "create success must not leak schedule empty-state")
+  assert.ok(!wizard.includes("No editable program fields provided"), "create success must not leak empty PATCH copy")
+  assert.ok(!wizard.includes("withDoorAccessProgramKind({})"), "create must not empty-PATCH the new program")
+  assert.ok(wizard.includes('kind: "created"'), "successful create still shows Program created + Open the program")
+  assert.ok(wizard.includes("stampHostCreatedDates"), "create date_edits must stamp those nights")
+  assert.ok(wizard.includes("createdDateEdits") || wizard.includes("dateEditsToWire(dateEdits"), "stamp uses the date_edits night write, not date keys only")
+  const stampSrc = readFileSync(
+    fileURLToPath(new URL("./door-access.ts", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(stampSrc.includes("assertHostCreatedNightHasEventRow"), "stamp fails if the events row is missing")
+  assert.ok(!stampSrc.includes("Nightly generate-now still picks these up"), "do not swallow a missing night row")
+  assert.ok(wizard.includes("applySaveAsDraftFlag"), "unapproved WC create sends save_as_draft")
+  assert.ok(wizard.includes("willDraftOnCreate"), "WC hold is draft until the business is approved")
+  assert.ok(wizard.includes("asDraft"), "success copy must distinguish draft vs live")
+  assert.ok(wizard.includes("WC_DRAFT_CREATED_COPY") || wizard.includes("Saved as a draft"), "success must say draft")
+  assert.ok(!wizard.includes("pendingApproval"), "do not use pending-approval success copy")
+  assert.ok(wizard.includes("shouldTreatDraftAsLive"), "pending WC must not stamp publish:true")
+  assert.ok(wizard.includes("saved && generationNotice.message"), "amber leftover is save-only, never after a successful create")
+
+  const door = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/door-access/WcDoorStep.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(door.includes("AccessPillToggle"), "promoter is a pill toggle")
+  assert.ok(door.includes("WcPromoCodesDraft"), "last page has the promo-code section")
+  assert.ok(!door.includes("WEEKLY_COVER_CHECKBOX_CLASS"), "last page must not use a square promoter checkbox")
+
+  const inputs = readFileSync(
+    fileURLToPath(new URL("../../components/business/v2/ui/input.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(inputs.includes("ACCESS_INPUT_FOCUS_CLASS"), "WC inputs use the pink caret/focus token")
+  assert.ok(inputs.includes("caret-access"), "WC caret is pink, not event green")
 
   const days = readFileSync(
     fileURLToPath(new URL("../../components/business/v2/door-access/WcDaysStep.tsx", import.meta.url)),
@@ -1902,8 +2221,11 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(!/contentEditable/.test(review), "Review name is display text, not editable")
   assert.ok(review.includes("reviewFlyerUrlForDay"), "review flyer follows the selected weekday")
   assert.ok(review.includes("ReviewFlyerPreview"), "Look it over shows the night flyer")
-  assert.ok(review.includes("No flyer"), "a night without a flyer shows a placeholder")
-  assert.ok(!review.includes("inheritedFlyerUrl"), "review must not treat the venue photo as a flyer")
+  assert.ok(review.includes("WHEN"), "Look it over has a WHEN row")
+  assert.ok(review.includes("WHERE"), "Look it over has a WHERE row")
+  assert.ok(review.includes("FORMAT"), "Look it over has a FORMAT row")
+  assert.ok(review.includes("venuePhotoUrl"), "Look it over can fall back to the venue photo")
+  assert.ok(!review.includes("No flyer"), "a missing custom flyer must not show a No flyer placeholder")
   assert.ok(review.includes("reviewSkipCoverSuffix"), "skip review suffix follows the Cover included toggle")
   assert.ok(!/tier\.kind === "skip" && tier\.includes_cover \?/.test(review), "off toggle must still show Cover NOT Included")
 

@@ -53,6 +53,31 @@ export function showsAccess(filter: EventTypeFilter): boolean {
   return filter !== "events"
 }
 
+/** Pending hosts keep WC off Upcoming Live. Approved hosts see Upcoming. */
+export function weeklyCoverEventsListTab(isPending: boolean): "upcoming" | "drafts" {
+  return isPending ? "drafts" : "upcoming"
+}
+
+export function shouldShowWeeklyCoverOnEventsTab(
+  tab: string,
+  isPending: boolean,
+  typeFilter: EventTypeFilter,
+): boolean {
+  if (!showsAccess(typeFilter)) return false
+  if (typeFilter === "access") return true
+  return tab === weeklyCoverEventsListTab(isPending)
+}
+
+/** Custom dates stay on the live tab when approved, Drafts when pending. */
+export function shouldShowWeeklyCoverOneOffsOnEventsTab(
+  tab: string,
+  isPending: boolean,
+  typeFilter: EventTypeFilter,
+): boolean {
+  if (!showsAccess(typeFilter)) return false
+  return tab === weeklyCoverEventsListTab(isPending)
+}
+
 /**
  * One rendered row. A `series` row owns >= 1 dated nights; a `single` row is a
  * one-off event (or a series TEMPLATE, which has no generated night to hide
@@ -242,6 +267,29 @@ export function eventListHref(
   // WC nights always open the series. Never /door-access/{event_id}.
   if (working == null) return programHref(programId)
   return programHref(working)
+}
+
+/** Statuses whose primary surface is still the detail page (publish / review flow). */
+const DETAIL_FIRST_STATUSES = new Set(["draft", "pending_approval", "pending_review"])
+
+/**
+ * Where a green list card's BODY click goes: straight to /manage (2026-08
+ * instance-manage pass — click = manage, the detail page is never a required
+ * hop). Two carve-outs keep old behavior:
+ *  - WC-stamped rows keep opening their program (same as `eventListHref`);
+ *    a WC night's manage entry is its Host-list night card.
+ *  - Draft / in-review events keep the detail page, which owns publish.
+ */
+export function eventCardBodyHref(
+  event: EventListItem,
+  programs: readonly ListedProgramRef[] = [],
+  wcSeriesIds: readonly number[] = [],
+  inactiveWcSeriesIds: readonly number[] = [],
+): string {
+  const listHref = eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
+  if (!listHref.startsWith("/business/events/")) return listHref
+  if (DETAIL_FIRST_STATUSES.has((event.status ?? "").toLowerCase())) return listHref
+  return `/business/events/${event.event_id}/manage`
 }
 
 /**

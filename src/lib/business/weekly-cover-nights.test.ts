@@ -30,19 +30,22 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
+  allEnabledTiers21Plus,
+  allProgramTiers21Plus,
   canonicalTierKey,
   cheapestPaidPrice,
+  derivedNight21Plus,
   collapseTiers,
   copyNightToDay,
   dateEditsToWire,
   daysQuestion,
-  defaultTierDescription,
+  defaultTierNameForNight,
+  reviewFormatLabel,
+  setTierCustomDescription,
+  tierHasCustomDescription,
   applyIncludesCover,
   derivedWeeklyCoverName,
   reviewSkipCoverSuffix,
-  skipCoverIncludedClause,
-  syncSkipTierDescriptions,
-  withSkipCoverClause,
   weeklyCoverProgramDescription,
   weeklyCoverProgramName,
   flutterWizardStep,
@@ -76,6 +79,13 @@ import {
   weekdayEditsFromNights,
   weekdayEditsToWire,
   weekdayFlyerByDayFromNights,
+  customOccurrenceDates,
+  dateEditsAreCustom,
+  hostCustomSlot,
+  isCustomWeeklyCoverNight,
+  nightDiffersFromWeekdaySlot,
+  nightIsOffPatternDate,
+  weeklyCoverCreateSalesMaps,
   weekdayHydrationNight,
   weekdayTemplateFlyer,
   weekdayTemplateToWire,
@@ -137,15 +147,21 @@ test("an inherited flyer is never mistaken for the night's own", () => {
   )
 })
 
-test("Look it over flyer is the night's own artwork, not the inherited venue photo", () => {
+test("Look it over flyer prefers own artwork, then the venue photo", () => {
   assert.equal(
     reviewFlyerUrl(night({ flyerImageUrl: "https://cdn/wed.jpg", inheritedFlyerUrl: "https://cdn/venue.jpg" })),
     "https://cdn/wed.jpg"
   )
-  assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" })), "")
-  assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "   ", inheritedFlyerUrl: "https://cdn/venue.jpg" })), "")
+  assert.equal(
+    reviewFlyerUrl(night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" })),
+    "https://cdn/venue.jpg"
+  )
+  assert.equal(
+    reviewFlyerUrl(night({ flyerImageUrl: "   ", inheritedFlyerUrl: "https://cdn/venue.jpg" })),
+    "https://cdn/venue.jpg"
+  )
   assert.equal(reviewFlyerUrl(night({ flyerImageUrl: "", flyerRemoved: true })), "")
-  assert.equal(reviewFlyerUrl(undefined), "")
+  assert.equal(reviewFlyerUrl(undefined, "https://cdn/venue.jpg"), "https://cdn/venue.jpg")
   assert.equal(reviewFlyerUrl(null), "")
 })
 
@@ -155,9 +171,9 @@ test("Look it over flyer follows the selected weekday", () => {
     5: night({ flyerImageUrl: "", inheritedFlyerUrl: "https://cdn/venue.jpg" }),
   }
   assert.equal(reviewFlyerUrlForDay(edits, 3), "https://cdn/wed.jpg")
-  assert.equal(reviewFlyerUrlForDay(edits, 5), "", "Friday has no own flyer, so review shows a placeholder")
-  assert.equal(reviewFlyerUrlForDay(edits, 1), "", "an unpicked Monday is empty, not a throw")
-  assert.equal(reviewFlyerUrlForDay(edits, null), "")
+  assert.equal(reviewFlyerUrlForDay(edits, 5), "https://cdn/venue.jpg", "Friday with no own flyer shows the venue photo")
+  assert.equal(reviewFlyerUrlForDay(edits, 1, "https://cdn/venue.jpg"), "https://cdn/venue.jpg")
+  assert.equal(reviewFlyerUrlForDay(edits, null, "https://cdn/venue.jpg"), "https://cdn/venue.jpg")
 })
 
 test("copying a weekday onto another does not carry its artwork", () => {
@@ -167,7 +183,24 @@ test("copying a weekday onto another does not carry its artwork", () => {
   assert.equal(copied.flyerRemoved, false)
   // Prices DO come across — that is the point of Copy.
   assert.equal(copied.tiers[0].priceInput, "20")
-  assert.match(copied.tiers[0].description, /Saturdays/)
+  assert.equal(copied.tiers[0].description, "", "custom description stays off when the source had none")
+})
+
+test("copying a weekday carries a custom description verbatim and re-derives default names", () => {
+  const source = night({
+    tiers: [
+      tier({
+        priceInput: "20",
+        name: "The Bar Friday Cover",
+        custom_description: true,
+        description: "Free shot before midnight",
+      }),
+    ],
+  })
+  const copied = copyNightToDay(source, { venueName: "The Bar", dayName: "Saturday" })
+  assert.equal(copied.tiers[0].name, "The Bar Saturday Cover")
+  assert.equal(copied.tiers[0].description, "Free shot before midnight", "O1: host text is never regenerated")
+  assert.equal(copied.tiers[0].custom_description, true)
 })
 
 // ── 2. Surge, both directions ───────────────────────────────────────────────
@@ -396,13 +429,13 @@ test("a weekday no longer on the schedule is not sent", () => {
   assert.deepEqual(Object.keys(wire), ["5"])
 })
 
-test("an off-schedule game day is dropped instead of 400ing the create", () => {
+test("a one-off can land on a weekday with no series cover", () => {
   // 2026-08-29 is a Saturday (6); 2026-08-28 is a Friday (5).
   const wire = dateEditsToWire(
     { "2026-08-28": night(), "2026-08-29": night() },
     [5]
   )
-  assert.deepEqual(Object.keys(wire), ["2026-08-28"])
+  assert.deepEqual(Object.keys(wire), ["2026-08-28", "2026-08-29"])
 })
 
 test("a night write always states is_closed and is_21_plus", () => {
@@ -411,8 +444,45 @@ test("a night write always states is_closed and is_21_plus", () => {
   assert.equal(wire.is_21_plus, false)
 })
 
-test("any live 21+ price lights the night's badge", () => {
-  const wire = nightToWire(night({ tiers: [tier({ priceInput: "10", is_21_plus: true })] }))
+// ── Per-ticket 21+ (ALL rule) ───────────────────────────────────────────────
+// REVERT CHECK: the original bug was the ANY rollup — one 21+ VIP table
+// stamped the whole night 21+ at save time. The night flag is now true only
+// when EVERY enabled tier is 21+. If any of these flip back to `.some(`,
+// the bug is back.
+
+test("one 21+ tier next to an all-ages tier does NOT paint the night", () => {
+  const wire = nightToWire(
+    night({
+      tiers: [
+        tier({ priceInput: "10", is_21_plus: true }),
+        tier({ kind: "skip", priceInput: "20" }),
+      ],
+    })
+  )
+  assert.equal(wire.is_21_plus, false)
+})
+
+test("every enabled tier 21+ lights the night's badge", () => {
+  const wire = nightToWire(
+    night({
+      tiers: [
+        tier({ priceInput: "10", is_21_plus: true }),
+        tier({ kind: "skip", priceInput: "20", is_21_plus: true }),
+      ],
+    })
+  )
+  assert.equal(wire.is_21_plus, true)
+})
+
+test("a disabled all-ages tier does not veto an otherwise 21+ night", () => {
+  const wire = nightToWire(
+    night({
+      tiers: [
+        tier({ priceInput: "10", is_21_plus: true }),
+        tier({ kind: "skip", priceInput: "20", is_disabled: true }),
+      ],
+    })
+  )
   assert.equal(wire.is_21_plus, true)
 })
 
@@ -421,6 +491,83 @@ test("a disabled 21+ tier does not light the night", () => {
     night({ tiers: [tier({ priceInput: "10" }), tier({ kind: "skip", is_21_plus: true, is_disabled: true })] })
   )
   assert.equal(wire.is_21_plus, false)
+})
+
+test("zero enabled tiers falls back to the night's own flag only", () => {
+  const allDisabled = [tier({ priceInput: "10", is_21_plus: true, is_disabled: true })]
+  assert.equal(nightToWire(night({ tiers: allDisabled })).is_21_plus, false)
+  assert.equal(nightToWire(night({ tiers: allDisabled, is21Plus: true })).is_21_plus, true)
+  assert.equal(nightToWire(night({ tiers: [], is21Plus: true })).is_21_plus, true)
+})
+
+test("an explicit night-level 21+ still wins over mixed tiers", () => {
+  const wire = nightToWire(
+    night({
+      is21Plus: true,
+      tiers: [tier({ priceInput: "10", is_21_plus: true }), tier({ kind: "skip", priceInput: "20" })],
+    })
+  )
+  assert.equal(wire.is_21_plus, true)
+})
+
+test("the weekday template applies the same ALL rule", () => {
+  const mixed = night({
+    tiers: [tier({ priceInput: "10", is_21_plus: true }), tier({ kind: "skip", priceInput: "20" })],
+  })
+  assert.equal(weekdayTemplateToWire(mixed).is_21_plus, false)
+  const all21 = night({
+    tiers: [
+      tier({ priceInput: "10", is_21_plus: true }),
+      tier({ kind: "skip", priceInput: "20", is_21_plus: true }),
+    ],
+  })
+  assert.equal(weekdayTemplateToWire(all21).is_21_plus, true)
+})
+
+test("tierToWire states is_21_plus as 0/1 and it round-trips", () => {
+  // Web drafts always hold a boolean, so every save states the flag — an
+  // omitted value is how OTHER clients say "unstated → inherit at stamp time".
+  assert.equal(tierToWire(tier({ is_21_plus: true })).is_21_plus, 1)
+  assert.equal(tierToWire(tier()).is_21_plus, 0)
+  const back = tierFromWire(tierToWire(tier({ priceInput: "10", is_21_plus: true })) as unknown as Record<string, unknown>)
+  assert.equal(back.is_21_plus, true)
+  const backOff = tierFromWire(tierToWire(tier({ priceInput: "10" })) as unknown as Record<string, unknown>)
+  assert.equal(backOff.is_21_plus, false)
+})
+
+test("allEnabledTiers21Plus is the ALL rule, not the ANY rollup", () => {
+  assert.equal(allEnabledTiers21Plus([]), false)
+  assert.equal(allEnabledTiers21Plus([tier({ is_21_plus: true }), tier({ kind: "skip" })]), false)
+  assert.equal(
+    allEnabledTiers21Plus([tier({ is_21_plus: true }), tier({ kind: "skip", is_21_plus: true })]),
+    true
+  )
+})
+
+test("the review step shows what will actually chip", () => {
+  // With visible tiers, services derives from THEM — a stale stamped night
+  // flag no longer shows a 21+ line the checkout will not have.
+  const stale = night({
+    is21Plus: true,
+    tiers: [tier({ priceInput: "10", is_21_plus: true }), tier({ kind: "skip", priceInput: "20" })],
+  })
+  assert.equal(derivedNight21Plus(stale), false)
+  assert.equal(derivedNight21Plus(night({ tiers: [tier({ is_21_plus: true })] })), true)
+  // Tier-less nights fall back to the stored flag, same as the API.
+  assert.equal(derivedNight21Plus(night({ tiers: [], is21Plus: true })), true)
+  assert.equal(derivedNight21Plus(night({ tiers: [] })), false)
+})
+
+test("the program Age flag needs every enabled tier on every open night 21+", () => {
+  const all21 = night({ tiers: [tier({ is_21_plus: true })] })
+  const mixed = night({ tiers: [tier({ is_21_plus: true }), tier({ kind: "skip" })] })
+  const closedAllAges = night({ isClosed: true, tiers: [tier()] })
+  assert.equal(allProgramTiers21Plus([all21, mixed]), false)
+  assert.equal(allProgramTiers21Plus([all21, all21]), true)
+  // A closed night sells nothing — its all-ages tier does not veto.
+  assert.equal(allProgramTiers21Plus([all21, closedAllAges]), true)
+  assert.equal(allProgramTiers21Plus([]), false)
+  assert.equal(allProgramTiers21Plus([closedAllAges]), false)
 })
 
 // ── Tier identity ───────────────────────────────────────────────────────────
@@ -470,26 +617,14 @@ test("the product is read back off a saved program's tiers", () => {
   assert.equal(productsFromTiers([tier({ kind: "cover" }), tier({ kind: "skip" })]), "both")
 })
 
-test("a skip tier's blurb says whether cover is included", () => {
-  assert.equal(
-    defaultTierDescription({ kind: "skip", includesCover: true, venueName: "The Bar", dayName: "Friday" }),
-    "Skip the line at The Bar on Fridays. Cover included."
-  )
-  assert.equal(
-    defaultTierDescription({ kind: "skip", includesCover: false, venueName: "The Bar", dayName: "Friday" }),
-    "Skip the line at The Bar on Fridays. Cover NOT Included"
-  )
-  assert.equal(
-    defaultTierDescription({ kind: "cover", includesCover: false, venueName: "The Bar", dayName: "Friday" }),
-    "Cover at The Bar on Fridays. Grants entry."
-  )
-  assert.equal(skipCoverIncludedClause(true), "Cover included.")
-  assert.equal(skipCoverIncludedClause(false), "Cover NOT Included")
+test("O1: the canned blurb generators are gone; review suffix stays UI-only", () => {
+  // The suffix is operator-facing Look-it-over copy driven by the flag — it
+  // never lands in a ticket description.
   assert.equal(reviewSkipCoverSuffix(true), " · Cover included")
   assert.equal(reviewSkipCoverSuffix(false), " · Cover NOT Included")
 })
 
-test("toggling Cover included rewrites the skip ticket description", () => {
+test("toggling Cover included flips the flag and NEVER touches the description", () => {
   const seeded = seedNightDraft({
     products: "skip",
     startTime: "21:00",
@@ -498,25 +633,27 @@ test("toggling Cover included rewrites the skip ticket description", () => {
     dayName: "Friday",
   })
   assert.equal(seeded.tiers[0].includes_cover, true)
-  assert.equal(seeded.tiers[0].description, "Skip the line at The Bar on Fridays. Cover included.")
+  assert.equal(seeded.tiers[0].description, "", "fresh create leaves Custom description off")
 
-  const off = applyIncludesCover(seeded.tiers[0], false, { venueName: "The Bar", dayName: "Friday" })
+  const offEmpty = applyIncludesCover(seeded.tiers[0], false)
+  assert.equal(offEmpty.includes_cover, false)
+  assert.equal(offEmpty.description, "")
+
+  const custom = { ...setTierCustomDescription(seeded.tiers[0], true), description: "Front door, no wait" }
+  const off = applyIncludesCover(custom, false)
   assert.equal(off.includes_cover, false)
-  assert.equal(off.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+  assert.equal(off.description, "Front door, no wait", "host text survives the toggle")
 
-  const on = applyIncludesCover(off, true, { venueName: "The Bar", dayName: "Friday" })
+  const on = applyIncludesCover(off, true)
   assert.equal(on.includes_cover, true)
-  assert.equal(on.description, "Skip the line at The Bar on Fridays. Cover included.")
+  assert.equal(on.description, "Front door, no wait")
 
-  const cover = applyIncludesCover(tier({ kind: "cover", description: "Cover at The Bar on Fridays. Grants entry." }), true, {
-    venueName: "The Bar",
-    dayName: "Friday",
-  })
-  assert.equal(cover.includes_cover, false)
-  assert.equal(cover.description, "Cover at The Bar on Fridays. Grants entry.")
+  const cover = applyIncludesCover(tier({ kind: "cover", description: "My own line" }), true)
+  assert.equal(cover.includes_cover, false, "cover tiers never include-cover")
+  assert.equal(cover.description, "My own line")
 })
 
-test("create payload skip description follows the Cover included toggle", () => {
+test("create payload carries the host's description or null — never canned copy", () => {
   const venue = { venueName: "The Bar", dayName: "Friday" }
   const onNight = seedNightDraft({
     products: "both",
@@ -527,64 +664,61 @@ test("create payload skip description follows the Cover included toggle", () => 
   const skipOn = onNight.tiers.find((t) => t.kind === "skip")
   assert.ok(skipOn)
   skipOn.priceInput = "25"
+  Object.assign(skipOn, setTierCustomDescription(skipOn, true), { description: "Front door, no wait" })
+  const coverOn = onNight.tiers.find((t) => t.kind === "cover")
+  assert.ok(coverOn)
+  // Toggle on but nothing typed — persists as null, not a canned stand-in.
+  Object.assign(coverOn, setTierCustomDescription(coverOn, true))
   const onWire = weekdayTemplateToWire(onNight)
-  const onSkip = (onWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]).find(
-    (t) => t.kind === "skip"
-  )
+  const wireTiers = onWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]
+  const onSkip = wireTiers.find((t) => t.kind === "skip")
   assert.equal(onSkip?.includes_cover, true)
-  assert.equal(onSkip?.description, "Skip the line at The Bar on Fridays. Cover included.")
-
-  const offNight = syncSkipTierDescriptions(
-    {
-      ...onNight,
-      tiers: onNight.tiers.map((t) => (t.kind === "skip" ? { ...t, includes_cover: false } : t)),
-    },
-    venue
-  )
-  const offWire = weekdayTemplateToWire(offNight)
-  const offSkip = (offWire.tiers as { kind: string; description: string | null; includes_cover: boolean }[]).find(
-    (t) => t.kind === "skip"
-  )
-  assert.equal(offSkip?.includes_cover, false)
-  assert.equal(offSkip?.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
+  assert.equal(onSkip?.description, "Front door, no wait")
+  const onCover = wireTiers.find((t) => t.kind === "cover")
+  assert.equal(onCover?.description, null, "empty custom text wires null")
 
   const tickets = templateTicketsFromNights({
     daysOfWeek: [5],
-    weekdayEdits: { 5: offNight },
+    weekdayEdits: { 5: onNight },
     fallbackTiers: seedTiersForProducts("both"),
   })
   const skipTicket = tickets.find((t) => t.tier_key === "skip")
-  assert.equal(skipTicket?.description, "Skip the line at The Bar on Fridays. Cover NOT Included")
-
+  assert.equal(skipTicket?.description, "Front door, no wait")
   const coverTicket = tickets.find((t) => t.tier_key === "cover")
-  assert.equal(coverTicket?.description, "Cover at The Bar on Fridays. Grants entry.")
+  assert.equal(coverTicket?.description, null)
 })
 
-test("tierToWire rewrites a stale Cover included clause when the toggle is off", () => {
-  const staleOff = tier({
+test("Custom description ON opens an empty box; OFF clears to no description", () => {
+  const base = emptyTier("cover")
+  assert.equal(tierHasCustomDescription(base), false)
+  const on = setTierCustomDescription(base, true)
+  assert.equal(on.description, "", "O1: no canned template is pre-filled")
+  assert.equal(tierHasCustomDescription(on), true, "the flag, not the text, holds the toggle open")
+  const off = setTierCustomDescription({ ...on, description: "typed something" }, false)
+  assert.equal(off.description, "")
+  assert.equal(tierHasCustomDescription(off), false)
+  assert.equal(reviewFormatLabel("cover"), "Weekly Cover")
+  assert.equal(reviewFormatLabel("both"), "Cover & Skip the Line")
+  assert.equal(reviewFormatLabel("skip"), "Skip the Line")
+})
+
+test("tierToWire passes host text through verbatim — no clause rewriting", () => {
+  const legacy = tier({
     kind: "skip",
     includes_cover: false,
+    custom_description: true,
     description: "Skip the line at The Bar on Fridays. Cover included.",
   })
-  assert.equal(tierToWire(staleOff).description, "Skip the line at The Bar on Fridays. Cover NOT Included")
-  assert.equal(tierToWire(staleOff).includes_cover, false)
+  // A saved legacy blurb is DATA now. The flag disagreeing with the text is
+  // fine — the flag drives the checkout chip, the text is just text.
+  assert.equal(tierToWire(legacy).description, "Skip the line at The Bar on Fridays. Cover included.")
+  assert.equal(tierToWire(legacy).includes_cover, false)
 
-  const staleOn = tier({
-    kind: "skip",
-    includes_cover: true,
-    description: "Skip the line at The Bar on Fridays. Cover NOT Included",
-  })
-  assert.equal(tierToWire(staleOn).description, "Skip the line at The Bar on Fridays. Cover included.")
+  const custom = tier({ kind: "skip", custom_description: true, description: "Front door, no wait" })
+  assert.equal(tierToWire(custom).description, "Front door, no wait")
 
-  const oldOffCopy = tier({
-    kind: "skip",
-    includes_cover: false,
-    description: "Skip the line at The Bar on Fridays. Cover not included, paid separately.",
-  })
-  assert.equal(tierToWire(oldOffCopy).description, "Skip the line at The Bar on Fridays. Cover NOT Included")
-
-  assert.equal(withSkipCoverClause("", false), "")
-  assert.equal(withSkipCoverClause("Front door, no wait", false), "Front door, no wait")
+  const off = tier({ kind: "skip", custom_description: false, description: "stale text left behind" })
+  assert.equal(tierToWire(off).description, null, "custom off wires null even if text lingers")
 })
 
 // ── 5. Dates never round-trip through a timezone ────────────────────────────
@@ -805,7 +939,7 @@ test("a weekday with nothing left returns null, so the caller falls back", () =>
 test("weekday hydration never seeds from a Custom night", () => {
   // Custom Friday at $30 must not become the Friday template when siblings are $10.
   const nights = [
-    servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
     servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
     servedNight("2026-09-11", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
   ]
@@ -816,8 +950,8 @@ test("weekday hydration never seeds from a Custom night", () => {
 
 test("a weekday whose every remaining night is Custom has no template to read", () => {
   const nights = [
-    servedNight("2026-08-28", 30, { is_customized: true }),
-    servedNight("2026-09-04", 25, { is_customized: true }),
+    servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00" }),
+    servedNight("2026-09-04", 25, { series_customized_at: "2026-08-20 10:00:00" }),
   ]
   assert.equal(weekdayHydrationNight({ isoWeekday: 5, nights, today: "2026-08-24" }), null)
 })
@@ -829,7 +963,7 @@ test("weekday night-card flyers skip Custom art and keep the weekday poster", ()
     photo_url: "https://cdn/venue.jpg",
   } as never
   const nights = [
-    servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
     servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
     servedNight("2026-09-11", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
   ]
@@ -839,8 +973,8 @@ test("weekday night-card flyers skip Custom art and keep the weekday poster", ()
     weekdayFlyerByDayFromNights({
       program,
       nights: [
-        servedNight("2026-08-28", 30, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
-        servedNight("2026-09-04", 25, { is_customized: true, flyer_image_url: "https://cdn/other.jpg" }),
+        servedNight("2026-08-28", 30, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
+        servedNight("2026-09-04", 25, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/other.jpg" }),
       ],
       today: "2026-08-24",
     })[5],
@@ -852,7 +986,7 @@ test("weekday night-card flyers skip Custom art and keep the weekday poster", ()
 test("a flyer-only Custom Friday does not become the Friday template", () => {
   const nights = [
     servedNight("2026-08-28", 10, {
-      is_customized: true,
+      series_customized_at: "2026-08-20 10:00:00",
       flyer_image_url: "https://cdn/one-off.jpg",
     }),
     servedNight("2026-09-04", 10, { flyer_image_url: "https://cdn/friday.jpg" }),
@@ -892,7 +1026,7 @@ test("weekdayEditsFromNights hydrates the full Friday template and skips Custom 
     template_tickets: [],
   } as never
   const nights = [
-    servedNight("2026-08-28", 40, { is_customized: true, flyer_image_url: "https://cdn/custom.jpg" }),
+    servedNight("2026-08-28", 40, { series_customized_at: "2026-08-20 10:00:00", flyer_image_url: "https://cdn/custom.jpg" }),
     servedNight("2026-09-04", 12, {
       flyer_image_url: "https://cdn/friday.jpg",
       start_time: "22:00",
@@ -945,6 +1079,25 @@ test("weekdayDraftFromWire keeps the weekday poster when it matches the program 
   assert.equal(draft.flyerImageUrl, "https://cdn/thursday.jpg")
 })
 
+test("default ticket names are {Venue} {Day} Cover / Skip the Line", () => {
+  assert.equal(defaultTierNameForNight("cover", { venueName: "The Bar", dayName: "Friday" }), "The Bar Friday Cover")
+  assert.equal(
+    defaultTierNameForNight("skip", { venueName: "The Bar", dayName: "Friday" }),
+    "The Bar Friday Skip the Line",
+  )
+  const seeded = seedNightDraft({
+    products: "both",
+    startTime: "21:00",
+    endTime: "02:00",
+    venueName: "The Bar",
+    dayName: "Friday",
+  })
+  assert.deepEqual(
+    seeded.tiers.map((t) => t.name),
+    ["The Bar Friday Cover", "The Bar Friday Skip the Line"],
+  )
+})
+
 test("create derives {Venue} Cover and never asks for a typed name", () => {
   assert.equal(derivedWeeklyCoverName("The Dungeon"), "The Dungeon Cover")
   assert.equal(derivedWeeklyCoverName("  The Bar  "), "The Bar Cover")
@@ -992,6 +1145,156 @@ test("Flutter wizard progress is screens 2-9, with the editor and copy as 5 and 
   assert.equal(flutterWizardStep({ wizardIndex: 3 }), 7)
   assert.equal(flutterWizardStep({ wizardIndex: 4 }), 8)
   assert.equal(flutterWizardStep({ wizardIndex: 5 }), 9)
+})
+
+test("Not generated lookaheads and two fresh Fridays do not chip Custom", () => {
+  const fridayA = servedNight("2026-08-28", 10)
+  const fridayB = servedNight("2026-09-04", 10)
+  const lookahead = servedNight("2026-12-25", 10, {
+    is_stamped: false,
+    event_id: null,
+    status: null,
+    tiers: [],
+  })
+  const namedA = servedNight("2026-08-28", 10, { name: "Cover Aug 28" })
+  const namedB = servedNight("2026-09-04", 10, { name: "Cover Sep 4" })
+  const program = { days_of_week: [5], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  assert.equal(
+    nightDiffersFromWeekdaySlot(fridayA, [fridayA, lookahead], program),
+    false,
+    "one stamped Friday vs a Not generated lookahead is not Custom",
+  )
+  assert.equal(
+    nightDiffersFromWeekdaySlot(lookahead, [fridayA, fridayB, lookahead], program),
+    false,
+    "unstamped lookahead never SLOT-diverges",
+  )
+  assert.equal(
+    nightDiffersFromWeekdaySlot(namedA, [namedA, namedB], program),
+    false,
+    "two fresh Fridays with different titles are still the weekday template",
+  )
+  assert.equal(isCustomWeeklyCoverNight(fridayA, [fridayA, fridayB, lookahead], program), false)
+  assert.equal(isCustomWeeklyCoverNight(lookahead, [fridayA, fridayB, lookahead], program), false)
+})
+
+test("series 119 Sat-only empty SLOT does not chip Custom", () => {
+  // DEV recon: Boobie Trap Cover, days_of_week=[6], nights 1340-1344,
+  // series_customized_at=null, 0 weekday_templates, 0 overrides.
+  const sats = ["2026-08-29", "2026-09-05", "2026-09-12", "2026-09-19", "2026-09-26"].map(
+    (date, i) =>
+      servedNight(date, 10, {
+        event_id: 1340 + i,
+        series_customized_at: null,
+        is_customized: false,
+        name: "Boobie Trap Cover",
+      }),
+  )
+  const program = { days_of_week: [6], start_time: "", end_time: "", name: "Boobie Trap Cover" }
+  const stringDays = { ...program, days_of_week: ["6"] as unknown as number[] }
+  for (const night of sats) {
+    assert.equal(nightIsOffPatternDate(night.occurrence_date, [6]), false, night.occurrence_date)
+    assert.equal(nightIsOffPatternDate(night.occurrence_date, ["6"]), false, "string Saturday key")
+    assert.equal(nightDiffersFromWeekdaySlot(night, sats, program), false, night.occurrence_date)
+    assert.equal(isCustomWeeklyCoverNight(night, sats, program), false, night.occurrence_date)
+    assert.equal(isCustomWeeklyCoverNight(night, sats, stringDays), false, "string days_of_week")
+    const slot = hostCustomSlot(night, sats, program)
+    assert.equal(slot.offPatternDate, false)
+    assert.equal(slot.differsFromWeekdaySlot, false)
+    assert.equal(slot.slotEstablished, true)
+  }
+  const emptySlot = hostCustomSlot(sats[0], sats, { days_of_week: [], start_time: "", end_time: "", name: "" })
+  assert.equal(emptySlot.slotEstablished, false)
+  assert.equal(emptySlot.offPatternDate, false)
+  assert.equal(emptySlot.differsFromWeekdaySlot, false)
+  assert.equal(isCustomWeeklyCoverNight(sats[0], sats, { days_of_week: [], start_time: "", end_time: "", name: "" }), false)
+  assert.equal(customOccurrenceDates(sats, program).size, 0)
+})
+
+test("Saturday-only create sends weekday_edits and dateEditsAreCustom is false", () => {
+  const sat = night({ startTime: "21:00", endTime: "02:00", tiers: [tier({ priceInput: "10" })] })
+  const maps = weeklyCoverCreateSalesMaps({
+    daysOfWeek: [6],
+    weekdayEdits: { 6: sat },
+    dateEdits: {},
+    fallbackNight: sat,
+  })
+  assert.equal(dateEditsAreCustom(maps.date_edits), false)
+  assert.equal(maps.dateEditsAreCustom, false)
+  assert.deepEqual(Object.keys(maps.weekday_edits), ["6"])
+  assert.deepEqual(Object.keys(maps.date_edits), [])
+  const fallbackOnly = weeklyCoverCreateSalesMaps({
+    daysOfWeek: [6],
+    weekdayEdits: {},
+    dateEdits: {},
+    fallbackNight: sat,
+  })
+  assert.deepEqual(Object.keys(fallbackOnly.weekday_edits), ["6"], "missing Sat draft still sends weekday_edits")
+})
+
+test("series 120 Thursday templates stay un-chipped; stamped Oct 15 price diverge is Custom", () => {
+  // DEV recon: Thursday SLOT $10, Oct 15 date_edit $99.13. Custom after stamp.
+  const thursdays = ["2026-09-03", "2026-09-10", "2026-09-17"].map((date, i) =>
+    servedNight(date, 10, {
+      event_id: 1400 + i,
+      series_customized_at: null,
+      is_customized: false,
+      name: "Cover",
+    }),
+  )
+  const october = servedNight("2026-10-15", 99.13, {
+    event_id: 2001,
+    series_customized_at: null,
+    is_customized: false,
+    name: "Cover",
+  })
+  const nights = [...thursdays, october]
+  const program = { days_of_week: [4], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  for (const row of thursdays) {
+    assert.equal(isCustomWeeklyCoverNight(row, nights, program), false, row.occurrence_date)
+    assert.equal(nightIsOffPatternDate(row.occurrence_date, [4]), false)
+  }
+  assert.equal(nightIsOffPatternDate("2026-10-15", [4]), false, "Oct 15 2026 is Thursday")
+  assert.equal(nightDiffersFromWeekdaySlot(october, nights, program), true)
+  assert.equal(isCustomWeeklyCoverNight(october, nights, program), true)
+  const dates = customOccurrenceDates(nights, program)
+  assert.equal(dates.has("2026-09-03"), false)
+  assert.equal(dates.has("2026-10-15"), true)
+})
+
+test("fresh Mon/Wed/Fri weekday templates that differ are not Custom", () => {
+  const nights = [
+    servedNight("2026-08-31", 10),
+    servedNight("2026-09-07", 10),
+    servedNight("2026-09-14", 10),
+    servedNight("2026-09-02", 15),
+    servedNight("2026-09-09", 15),
+    servedNight("2026-09-16", 15),
+    servedNight("2026-09-04", 20),
+    servedNight("2026-09-11", 20),
+    servedNight("2026-09-18", 20),
+  ]
+  const program = { days_of_week: [1, 3, 5], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  for (const night of nights) {
+    assert.equal(isCustomWeeklyCoverNight(night, nights, program), false, night.occurrence_date)
+    assert.equal(nightDiffersFromWeekdaySlot(night, nights, program), false, night.occurrence_date)
+  }
+  assert.equal(customOccurrenceDates(nights, program).size, 0)
+})
+
+test("fresh weekday SLOTs are not Custom; one later date that diverges is", () => {
+  const fridayA = servedNight("2026-08-28", 10)
+  const fridayB = servedNight("2026-09-04", 10)
+  const fridayC = servedNight("2026-09-11", 10)
+  const customFriday = servedNight("2026-09-18", 40)
+  const program = { days_of_week: [5], start_time: "21:00", end_time: "02:00", name: "Cover" }
+  assert.equal(nightDiffersFromWeekdaySlot(fridayA, [fridayA, fridayB, fridayC], program), false)
+  assert.equal(nightDiffersFromWeekdaySlot(customFriday, [fridayA, fridayB, fridayC, customFriday], program), true)
+  assert.equal(nightIsOffPatternDate("2026-12-31", [5]), true)
+  assert.equal(nightIsOffPatternDate("2026-08-28", [5]), false)
+  const dates = customOccurrenceDates([fridayA, fridayB, fridayC, customFriday], program)
+  assert.equal(dates.has("2026-08-28"), false)
+  assert.equal(dates.has("2026-09-18"), true)
 })
 
 test("blank qty and max serialize as 0 (unlimited)", () => {

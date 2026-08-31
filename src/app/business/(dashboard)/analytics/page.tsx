@@ -37,6 +37,7 @@ import {
 import {
   fetchDoorAccessProgramsSafe,
   fetchDoorAccessSeries,
+  ONE_OFF_SERIES_LOOKAHEAD_DAYS,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { PageHeader } from "@/components/business/v2/PageHeader"
@@ -211,7 +212,10 @@ function OwnerManagerView() {
             await Promise.all(
               programs.map(async (program) => {
                 try {
-                  const series = await fetchDoorAccessSeries(program.id, 180)
+                  // Classifier fetch, not a list: far lookahead so every WC
+                  // night's event id lands in the weekly bucket. Nothing here
+                  // paints nights, so the month display window does not apply.
+                  const series = await fetchDoorAccessSeries(program.id, ONE_OFF_SERIES_LOOKAHEAD_DAYS)
                   return weeklyEventIdsFromNights(series.nights)
                 } catch {
                   return []
@@ -271,7 +275,7 @@ function OwnerManagerView() {
         </TabsContent>
         {showEvents && (
           <TabsContent value="events">
-            {eventsLoading ? <AnalyticsSkeleton /> : events ? <EventsOverviewView data={events} isAllVenues={isAllVenues} /> : eventsForbidden ? <ForbiddenState /> : eventsErr ? <ErrorState /> : null}
+            {eventsLoading ? <AnalyticsSkeleton /> : events ? <EventsOverviewView data={events} isAllVenues={isAllVenues} fullPage accent="event" /> : eventsForbidden ? <ForbiddenState /> : eventsErr ? <ErrorState /> : null}
           </TabsContent>
         )}
         <TabsContent value="line-skips">
@@ -281,6 +285,8 @@ function OwnerManagerView() {
             <EventsOverviewView
               data={weekly}
               isAllVenues={isAllVenues}
+              fullPage
+              accent="weekly_cover"
               copy={{
                 totalLabel: ANALYTICS_ACCESS_TOTAL_LABEL,
                 upcomingTitle: ANALYTICS_ACCESS_ACTIVE_SECTION,
@@ -290,9 +296,9 @@ function OwnerManagerView() {
               }}
             />
           ) : lineSkips && lineSkips.instances.length > 0 ? (
-            <LineSkipsOverviewView data={lineSkips} isAllVenues={isAllVenues} />
+            <LineSkipsOverviewView data={lineSkips} isAllVenues={isAllVenues} fullPage />
           ) : weeklyPrograms.length > 0 ? (
-            <Section title={ANALYTICS_ACCESS_ACTIVE_SECTION} count={weeklyPrograms.length} defaultOpen>
+            <Section title={ANALYTICS_ACCESS_ACTIVE_SECTION} count={weeklyPrograms.length} defaultOpen fullPage accent="weekly_cover">
               <div className="flex flex-col gap-3">
                 {weeklyPrograms.map((program) => (
                   <AccessProgramRow key={program.id} program={program} />

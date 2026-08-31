@@ -53,6 +53,8 @@
  */
 
 import type { DoorAccessNight, DoorAccessProgram, DoorAccessTemplateTier } from "./door-access"
+import { isHostCustomNight } from "./host-custom-night.ts"
+import { SERIES_NIGHTS_WINDOW_DAYS, weeklyCoverNightIsHostStamped } from "./series-nights-window.ts"
 import type { RecurringTemplateTicket } from "./types"
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -213,12 +215,28 @@ export function defaultTierName(kind: NightTierKind): string {
   return kind === "skip" ? "Skip the Line" : "Cover"
 }
 
-/**
- * Binding Cover-included clause on a Skip the Line ticket. Exact app copy:
- * on → `Cover included.` / off → `Cover NOT Included` (no trailing period).
- */
-export function skipCoverIncludedClause(includesCover: boolean): string {
-  return includesCover ? "Cover included." : "Cover NOT Included"
+/** `{Venue} {Day} Cover` / `{Venue} {Day} Skip the Line` when both are known. */
+export function defaultTierNameForNight(
+  kind: NightTierKind,
+  opts?: { venueName?: string; dayName?: string },
+): string {
+  const venue = (opts?.venueName ?? "").trim()
+  const day = (opts?.dayName ?? "").trim()
+  const suffix = defaultTierName(kind)
+  if (venue && day) return `${venue} ${day} ${suffix}`
+  if (venue) return `${venue} ${suffix}`
+  if (day) return `${day} ${suffix}`
+  return suffix
+}
+
+export function looksLikeDefaultTierName(
+  name: string | null | undefined,
+  kind: NightTierKind,
+): boolean {
+  const trimmed = String(name ?? "").trim()
+  if (trimmed === "") return true
+  if (trimmed === defaultTierName(kind)) return true
+  return trimmed.endsWith(` ${defaultTierName(kind)}`)
 }
 
 /** Look it over suffix — same meaning, compact next to price / qty. */
@@ -226,32 +244,25 @@ export function reviewSkipCoverSuffix(includesCover: boolean): string {
   return includesCover ? " · Cover included" : " · Cover NOT Included"
 }
 
-const SKIP_COVER_CLAUSE =
-  /(?:Cover included\.?|Cover NOT Included|Cover not included, paid separately\.?)\s*$/i
-
-/**
- * Keep a skip blurb's cover clause aligned with the toggle. Empty and
- * custom (non-clause) text are left alone so a blank seed still serializes
- * as null and a host-written line is not overwritten at the wire.
- */
-export function withSkipCoverClause(description: string, includesCover: boolean): string {
-  const trimmed = description.trim()
-  if (trimmed === "" || !SKIP_COVER_CLAUSE.test(trimmed)) return trimmed
-  return trimmed.replace(SKIP_COVER_CLAUSE, skipCoverIncludedClause(includesCover))
+/** FORMAT row on Look it over. Guest name is Weekly Cover, never door access. */
+export function reviewFormatLabel(products: WcProducts | null): string {
+  if (products === "skip") return "Skip the Line"
+  if (products === "both") return "Cover & Skip the Line"
+  return "Weekly Cover"
 }
 
-/** The default blurb for a Weekly Cover tier. Says what a guest is buying. */
-export function defaultTierDescription(opts: {
-  kind: NightTierKind
-  includesCover: boolean
-  venueName?: string
-  dayName?: string
-}): string {
-  const venue = (opts.venueName ?? "").trim()
-  const at = venue === "" ? "" : ` at ${venue}`
-  const on = opts.dayName ? ` on ${opts.dayName}s` : ""
-  if (opts.kind !== "skip") return `Cover${at}${on}. Grants entry.`
-  return `Skip the line${at}${on}. ${skipCoverIncludedClause(opts.includesCover)}`
+/**
+ * Custom description is on when the host flipped the toggle (draft flag) or
+ * the served ticket already carries text. O1: the toggle no longer pre-fills
+ * canned copy, so an ON tier can legitimately hold empty text mid-edit — the
+ * flag, not the text, is the source of truth while the dialog is open.
+ */
+export function tierHasCustomDescription(tier: {
+  custom_description?: boolean
+  description?: string | null
+}): boolean {
+  if (tier.custom_description !== undefined) return tier.custom_description
+  return String(tier.description ?? "").trim() !== ""
 }
 
 // ── Drafts ──────────────────────────────────────────────────────────────────
@@ -276,9 +287,20 @@ export interface NightTierDraft {
   maxPerPersonInput: string
   /** This tier is off for this night. Not the same as the night being closed. */
   is_disabled: boolean
+  /**
+   * The Custom description toggle (O1). ON opens the box for host-written
+   * text; OFF persists null — no canned stand-in. The flag is form state; the
+   * wire only ever carries the text (or null).
+   */
+  custom_description: boolean
   /** Skip tiers only: buying it also gets them in. */
   includes_cover: boolean
-  /** Per-tier 21+. Any 21+ tier lights the night's badge, matching the app. */
+  /**
+   * Per-tier 21+ — the per-ticket truth (`tickets.is_21_plus`), round-tripped
+   * to the wire. The night's badge derives from it with the ALL rule: 21+ only
+   * when every enabled tier is (see `allEnabledTiers21Plus`). One 21+ VIP
+   * table no longer paints an all-ages door.
+   */
   is_21_plus: boolean
   surge_enabled: boolean
   surge: SurgeStepDraft[]
@@ -312,49 +334,41 @@ export interface NightDraft {
 export const EMPTY_SURGE_STEP: SurgeStepDraft = { afterSoldInput: "10", priceInput: "" }
 
 /**
- * Flip Cover included on a skip tier and re-derive the ticket description.
- * Cover tiers ignore the toggle — they are the cover.
+ * Flip Cover included on a skip tier and re-derive the ticket description
+ * only when Custom description is on. Off leaves description empty so the
+ * persist path stays null, same as a fresh Flutter weekday ticket.
  */
-export function applyIncludesCover(
-  tier: NightTierDraft,
-  includesCover: boolean,
-  opts?: { venueName?: string; dayName?: string }
-): NightTierDraft {
+export function applyIncludesCover(tier: NightTierDraft, includesCover: boolean): NightTierDraft {
   if (tier.kind !== "skip") return { ...tier, includes_cover: false }
-  return {
-    ...tier,
-    includes_cover: includesCover,
-    description: defaultTierDescription({
-      kind: "skip",
-      includesCover,
-      venueName: opts?.venueName,
-      dayName: opts?.dayName,
-    }),
-  }
+  // O1: flag only. The old behavior rewrote a custom description with canned
+  // "Skip the line at {Venue}…" copy — guests see Cover included via the
+  // checkout chip (driven by this flag), never via injected text.
+  return { ...tier, includes_cover: includesCover }
 }
 
-/** Re-derive every skip blurb from the current toggle so a stale seed cannot persist. */
-export function syncSkipTierDescriptions(
-  draft: NightDraft,
-  opts?: { venueName?: string; dayName?: string }
-): NightDraft {
-  return {
-    ...draft,
-    tiers: draft.tiers.map((tier) =>
-      tier.kind === "skip" ? applyIncludesCover(tier, tier.includes_cover, opts) : tier
-    ),
-  }
+/**
+ * Custom description toggle. Off by default and OFF MEANS NO DESCRIPTION —
+ * the wire carries null, nothing canned stands in. On simply opens the box;
+ * the host writes their own text (O1: the old canned template is gone).
+ */
+export function setTierCustomDescription(tier: NightTierDraft, on: boolean): NightTierDraft {
+  if (!on) return { ...tier, custom_description: false, description: "" }
+  return { ...tier, custom_description: true }
 }
 
-export function emptyTier(kind: NightTierKind): NightTierDraft {
+export function emptyTier(
+  kind: NightTierKind,
+  opts?: { venueName?: string; dayName?: string },
+): NightTierDraft {
   return {
     kind,
-    name: defaultTierName(kind),
+    name: defaultTierNameForNight(kind, opts),
     description: "",
     priceInput: "",
     quantityInput: "0",
     maxPerPersonInput: "0",
     is_disabled: false,
+    custom_description: false,
     includes_cover: kind === "skip",
     is_21_plus: false,
     surge_enabled: false,
@@ -390,15 +404,10 @@ export function seedNightDraft(opts: {
   venueName?: string
   dayName?: string
 }): NightDraft {
-  const tiers = seedTiersForProducts(opts.products ?? "cover")
-  for (const tier of tiers) {
-    tier.description = defaultTierDescription({
-      kind: tier.kind,
-      includesCover: tier.includes_cover,
-      venueName: opts.venueName,
-      dayName: opts.dayName,
-    })
-  }
+  const tiers = seedTiersForProducts(opts.products ?? "cover").map((tier) => ({
+    ...tier,
+    name: defaultTierNameForNight(tier.kind, { venueName: opts.venueName, dayName: opts.dayName }),
+  }))
   return {
     startTime: opts.startTime,
     endTime: opts.endTime,
@@ -419,10 +428,11 @@ export function cloneNightDraft(draft: NightDraft): NightDraft {
 }
 
 /**
- * Copy one weekday's setup onto another, re-seeding the day-specific blurbs so
- * "Thursday Cover" becomes "Friday". Prices, hours, surge and 21+ come across
- * untouched; artwork does not — a flyer is chosen for a night, not inherited
- * sideways from one.
+ * Copy one weekday's setup onto another, re-deriving day-specific NAMES so
+ * "Thursday Cover" becomes "Friday Cover". Prices, hours, surge, 21+ and any
+ * host-written description come across untouched (O1: descriptions are never
+ * regenerated); artwork does not — a flyer is chosen for a night, not
+ * inherited sideways from one.
  */
 export function copyNightToDay(
   source: NightDraft,
@@ -432,12 +442,9 @@ export function copyNightToDay(
   next.flyerImageUrl = ""
   next.flyerRemoved = false
   for (const tier of next.tiers) {
-    tier.description = defaultTierDescription({
-      kind: tier.kind,
-      includesCover: tier.includes_cover,
-      venueName: opts.venueName,
-      dayName: opts.dayName,
-    })
+    if (looksLikeDefaultTierName(tier.name, tier.kind)) {
+      tier.name = defaultTierNameForNight(tier.kind, opts)
+    }
   }
   return next
 }
@@ -492,6 +499,7 @@ export interface NightTierWire {
   is_disabled: boolean
   kind: NightTierKind
   includes_cover: boolean
+  is_21_plus: 0 | 1
   ticket_type: "paid" | "free"
   surge_enabled: boolean
   surge_steps: SurgeStepWire[]
@@ -505,13 +513,12 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
   const price = parsePrice(tier.priceInput)
   const steps = surgeStepsToWire(tier)
   const hasWindow = tier.valid_from_time !== "" || tier.valid_until_time !== ""
-  const description =
-    tier.kind === "skip"
-      ? withSkipCoverClause(tier.description, tier.includes_cover)
-      : tier.description.trim()
+  // O1: the description is the host's text or nothing. Custom off wires null;
+  // no clause rewriting, no canned stand-in.
+  const description = tierHasCustomDescription(tier) ? tier.description.trim() : ""
   return {
     tier_key: resolveTierKey(tier.kind, tier.tier_key),
-    name: tier.name.trim() || defaultTierName(tier.kind),
+    name: tier.name.trim() || defaultTierNameForNight(tier.kind),
     description: description === "" ? null : description,
     price_usd: price,
     quantity: parseCount(tier.quantityInput),
@@ -519,6 +526,11 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
     is_disabled: tier.is_disabled,
     kind: tier.kind,
     includes_cover: tier.kind === "skip" && tier.includes_cover,
+    // Always stated: web drafts hold a real boolean per tier (the editor shows
+    // the checkbox), so every save stamps it. Services treats an OMITTED value
+    // as "unstated → inherit the night/program flag at stamp time" — only
+    // clients that never rendered the toggle get to omit it.
+    is_21_plus: tier.is_21_plus ? 1 : 0,
     ticket_type: price > 0 ? "paid" : "free",
     // Surge off must travel as an explicit empty list, not an omission: that is
     // how `parseSurgeIntent` is told to clear a stored ladder rather than leave
@@ -532,6 +544,48 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
   }
 }
 
+// ── Per-ticket 21+ (Aug 2026) ───────────────────────────────────────────────
+//
+// 21+ is per-TICKET now (`tickets.is_21_plus`); the night/event flag is derived.
+// The old ANY rollup here — one 21+ tier lights the whole night — is exactly
+// what painted an all-ages door 21+ over a single VIP table. The tier-derived
+// value follows the ALL rule, matching how services derives the checkout chip.
+
+/**
+ * ALL rule over one night's tiers: true only when there is at least one
+ * enabled (`!is_disabled`) tier AND every enabled tier is 21+. Disabled tiers
+ * do not vote. Zero enabled tiers is "no opinion" — callers fall back to the
+ * night's own flag.
+ */
+export function allEnabledTiers21Plus(tiers: NightTierDraft[]): boolean {
+  const enabled = tiers.filter((t) => !t.is_disabled)
+  return enabled.length > 0 && enabled.every((t) => t.is_21_plus)
+}
+
+/**
+ * What this night will actually chip: services derives from the visible tiers
+ * first (ALL rule) and reads the stored night flag only when there are none.
+ * Review/display surfaces use this so they show what checkout will show.
+ */
+export function derivedNight21Plus(draft: NightDraft): boolean {
+  const enabled = draft.tiers.filter((t) => !t.is_disabled)
+  return enabled.length > 0 ? enabled.every((t) => t.is_21_plus) : draft.is21Plus
+}
+
+/**
+ * Program-level "Age" line: 21+ only when every enabled tier on every OPEN
+ * night is 21+, and there is at least one such tier. Closed nights sell
+ * nothing, so they do not vote. The flag is mostly cosmetic now (program page
+ * Age line) plus the inherit-default for unstated tiers — the ALL rule is the
+ * honest value, not the old ANY sweep.
+ */
+export function allProgramTiers21Plus(nights: NightDraft[]): boolean {
+  const enabled = nights
+    .filter((n) => !n.isClosed)
+    .flatMap((n) => n.tiers.filter((t) => !t.is_disabled))
+  return enabled.length > 0 && enabled.every((t) => t.is_21_plus)
+}
+
 /**
  * One night write — the value of a `date_edits[date]` entry, and the body of
  * `PUT …/nights/:date`. Weekday templates use `weekdayTemplateToWire` instead.
@@ -543,7 +597,8 @@ export function nightToWire(draft: NightDraft): Record<string, unknown> {
   const own = draft.flyerImageUrl.trim()
   const body: Record<string, unknown> = {
     is_closed: draft.isClosed,
-    is_21_plus: draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus),
+    // ALL rule (see above) — an explicit night-level 21+ still wins.
+    is_21_plus: draft.is21Plus || allEnabledTiers21Plus(draft.tiers),
   }
   if (draft.startTime !== "") body.start_time = draft.startTime
   if (draft.endTime !== "") body.end_time = draft.endTime
@@ -566,7 +621,8 @@ export function weekdayTemplateToWire(draft: NightDraft): Record<string, unknown
   const own = draft.flyerImageUrl.trim()
   const body: Record<string, unknown> = {
     is_closed: draft.isClosed,
-    is_21_plus: draft.is21Plus || draft.tiers.some((t) => !t.is_disabled && t.is_21_plus),
+    // ALL rule (see above) — an explicit night-level 21+ still wins.
+    is_21_plus: draft.is21Plus || allEnabledTiers21Plus(draft.tiers),
     start_time: draft.startTime,
     end_time: draft.endTime,
     tiers: draft.tiers.map(tierToWire),
@@ -579,33 +635,59 @@ export function weekdayTemplateToWire(draft: NightDraft): Record<string, unknown
 /** `weekday_edits` — ISO weekday (as a string key) → full weekday template. */
 export function weekdayEditsToWire(
   edits: Record<number, NightDraft>,
-  daysOfWeek: number[]
+  daysOfWeek: number[],
+  fallback?: NightDraft | null,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {}
-  for (const day of [...daysOfWeek].sort((a, b) => a - b)) {
-    const draft = edits[day]
+  for (const day of normalizeIsoWeekdays(daysOfWeek)) {
+    const draft = edits[day] ?? fallback ?? null
     if (!draft) continue
     out[String(day)] = weekdayTemplateToWire(draft)
   }
   return out
 }
 
+/** Host set at least one game-day date_edit. Saturday-only weekday create is false. */
+export function dateEditsAreCustom(dateEdits: Record<string, unknown>): boolean {
+  return Object.keys(dateEdits).length > 0
+}
+
+/**
+ * Create sales maps. Saturday-only (or any weekday template) always sends
+ * `weekday_edits`. `date_edits` only when the host set a game day.
+ */
+export function weeklyCoverCreateSalesMaps(opts: {
+  daysOfWeek: number[]
+  weekdayEdits: Record<number, NightDraft>
+  dateEdits: Record<string, NightDraft>
+  fallbackNight?: NightDraft | null
+}): {
+  weekday_edits: Record<string, unknown>
+  date_edits: Record<string, Record<string, unknown>>
+  dateEditsAreCustom: boolean
+} {
+  const weekday_edits = weekdayEditsToWire(opts.weekdayEdits, opts.daysOfWeek, opts.fallbackNight)
+  const date_edits = dateEditsToWire(opts.dateEdits, opts.daysOfWeek)
+  return {
+    weekday_edits,
+    date_edits,
+    dateEditsAreCustom: dateEditsAreCustom(date_edits),
+  }
+}
+
 /**
  * `date_edits` — Y-m-d → night write.
  *
- * Off-schedule dates are dropped rather than sent: services 400s a
- * `date_edits` key that is not a scheduled night, and one bad date would take
- * the whole create down with it. The calendar already refuses to open them, so
- * this is the belt to that braces.
+ * One-off / Custom nights may land on any calendar day, including a weekday
+ * that has no series cover. Invalid date keys are still dropped.
  */
 export function dateEditsToWire(
   edits: Record<string, NightDraft>,
-  daysOfWeek: number[]
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
+  _daysOfWeek?: number[]
+): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {}
   for (const date of Object.keys(edits).sort()) {
-    const weekday = isoWeekdayOfDate(date)
-    if (weekday == null || !daysOfWeek.includes(weekday)) continue
+    if (isoWeekdayOfDate(date) == null) continue
     out[date] = nightToWire(edits[date])
   }
   return out
@@ -778,6 +860,8 @@ export function tierFromWire(raw: Record<string, unknown>): NightTierDraft {
     kind,
     name: String(raw.name ?? "").trim() || defaultTierName(kind),
     description: raw.description == null ? "" : String(raw.description),
+    // Served text means the toggle was on when this saved.
+    custom_description: String(raw.description ?? "").trim() !== "",
     priceInput: price > 0 ? trimMoney(price) : "",
     quantityInput: String(numOf(raw.quantity)),
     maxPerPersonInput: String(numOf(raw.max_per_person)),
@@ -946,12 +1030,144 @@ function isTerminal(night: DoorAccessNight): boolean {
 }
 
 /**
- * A date-local Custom night. `is_customized` is the wire flag (including a
- * leftover `series_customized_at` stamp). Series/program save must not treat
- * this night as the weekday template.
+ * A date-local Custom night vs that weekday's SLOT — not `is_customized` /
+ * `has_override` alone. Series/program save must not treat this night as
+ * the weekday template.
  */
-export function isCustomWeeklyCoverNight(night: { is_customized?: unknown }): boolean {
-  return truthy(night.is_customized)
+export function isCustomWeeklyCoverNight(
+  night: {
+    series_customized_at?: string | null
+    flyer_image_url_override?: string | null
+    override_scope?: string | null
+    occurrence_date?: string | null
+    product_kind?: string | null
+    access_kind?: string | null
+    recurring_series_id?: number | string | null
+  },
+  nights?: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
+): boolean {
+  return isHostCustomNight(hostCustomInputFromNight(night), hostCustomSlot(night, nights, program))
+}
+
+export function hostCustomInputFromNight(night: {
+  series_customized_at?: string | null
+  flyer_image_url_override?: string | null
+  override_scope?: string | null
+  occurrence_date?: string | null
+  product_kind?: string | null
+  access_kind?: string | null
+  recurring_series_id?: number | string | null
+}): Parameters<typeof isHostCustomNight>[0] {
+  return {
+    product_kind: night.product_kind ?? "weekly_cover",
+    access_kind: night.access_kind,
+    recurring_series_id: night.recurring_series_id,
+    series_customized_at: night.series_customized_at,
+    flyer_image_url_override: night.flyer_image_url_override,
+    override_scope: night.override_scope,
+    occurrence_date: night.occurrence_date,
+  }
+}
+
+/** ISO weekdays 1–7. Coerce string keys so `["6"]` still means Saturday. */
+export function normalizeIsoWeekdays(days: unknown): number[] {
+  if (!Array.isArray(days)) return []
+  const out: number[] = []
+  for (const raw of days) {
+    const n = Number(raw)
+    if (!Number.isFinite(n) || n < 1 || n > 7) continue
+    if (!out.includes(n)) out.push(n)
+  }
+  return out.sort((a, b) => a - b)
+}
+
+/** Off-pattern: a date the weekday schedule does not run. Empty SLOT is not off-pattern. */
+export function nightIsOffPatternDate(
+  occurrenceDate: string | null | undefined,
+  daysOfWeek: unknown,
+): boolean {
+  const days = normalizeIsoWeekdays(daysOfWeek)
+  if (!occurrenceDate || days.length === 0) return false
+  const weekday = isoWeekdayOfDate(occurrenceDate)
+  if (weekday == null) return false
+  return !days.includes(weekday)
+}
+
+/**
+ * SLOT signature: flyer, tickets, prices, doors, title. Same fields the
+ * Flutter voter compares to the weekday template.
+ */
+export function hostCustomSlotSignature(night: DoorAccessNight & Record<string, unknown>): string {
+  const title = String(night.name ?? "").trim()
+  return `${nightSignature(night)}|${title}`
+}
+
+/**
+ * Later one-date edit vs that weekday's SLOT. Fresh create weekdays share
+ * a SLOT so this is false even when Mon/Wed/Fri templates differ.
+ */
+export function nightDiffersFromWeekdaySlot(
+  night: DoorAccessNight,
+  nights: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
+): boolean {
+  // Unstamped / Not generated lookaheads are not Custom. Comparing them
+  // to a 180-day dump is the #97 leftover that painted every fresh night.
+  if (!weeklyCoverNightIsHostStamped(night)) return false
+  const weekday = isoWeekdayOfDate(night.occurrence_date)
+  if (weekday == null) return false
+  const self = hostCustomSlotSignature(night as DoorAccessNight & Record<string, unknown>)
+  const siblings = nights.filter((row) => {
+    if (row.occurrence_date === night.occurrence_date) return false
+    if (isoWeekdayOfDate(row.occurrence_date) !== weekday) return false
+    if (!weeklyCoverNightIsHostStamped(row)) return false
+    if (isNeverChipOrStampCustom(row)) return false
+    return !isTerminal(row)
+  })
+  if (siblings.length < 2) {
+    // Alone, or only one sibling, is the SLOT itself (fresh create).
+    // One later-edited date still chips via series_customized_at / flyer.
+    // Off-pattern dates chip via `nightIsOffPatternDate`, not this compare.
+    void program
+    return false
+  }
+  const mode = modeOf(siblings.map((row) => hostCustomSlotSignature(row as DoorAccessNight & Record<string, unknown>)))
+  if (mode == null) return false
+  return self !== mode
+}
+
+function isNeverChipOrStampCustom(night: DoorAccessNight): boolean {
+  return isHostCustomNight(hostCustomInputFromNight(night))
+}
+
+export function hostCustomSlot(
+  night: { occurrence_date?: string | null; override_scope?: string | null },
+  nights?: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
+): { differsFromWeekdaySlot?: boolean; offPatternDate?: boolean; slotEstablished?: boolean } {
+  const days = normalizeIsoWeekdays(program?.days_of_week)
+  const slotEstablished = days.length > 0
+  return {
+    slotEstablished,
+    offPatternDate: slotEstablished && nightIsOffPatternDate(night.occurrence_date, days),
+    differsFromWeekdaySlot:
+      slotEstablished && nights != null && night.occurrence_date
+        ? nightDiffersFromWeekdaySlot(night as DoorAccessNight, nights, program)
+        : false,
+  }
+}
+
+/** Dates that chip Custom on WC program cards. */
+export function customOccurrenceDates(
+  nights: DoorAccessNight[],
+  program?: Pick<DoorAccessProgram, "days_of_week" | "start_time" | "end_time" | "name">,
+): Set<string> {
+  const out = new Set<string>()
+  for (const night of nights) {
+    if (isCustomWeeklyCoverNight(night, nights, program)) out.add(night.occurrence_date)
+  }
+  return out
 }
 
 function nightFlyerKey(night: Record<string, unknown>): string {
@@ -1108,8 +1324,9 @@ export function isoDateOf(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-/** How far ahead the game-day calendar looks. Matches the app's lookahead. */
-export const WC_LOOKAHEAD_DAYS = 120
+// The old 120-day WC_LOOKAHEAD_DAYS is gone (Luke 2026-08-30): the
+// game-day calendar paints generated weekday marks for the shared month
+// window only. Callers wanting a different bound pass lookaheadDays.
 
 /**
  * The dates this program will actually run, as plain Y-m-d strings.
@@ -1131,7 +1348,7 @@ export function scheduledDates(opts: {
   if (Number.isNaN(start.getTime())) return []
 
   const horizon = new Date(start)
-  horizon.setDate(horizon.getDate() + (opts.lookaheadDays ?? WC_LOOKAHEAD_DAYS))
+  horizon.setDate(horizon.getDate() + (opts.lookaheadDays ?? SERIES_NIGHTS_WINDOW_DAYS))
   const limit = opts.rangeEnd && opts.rangeEnd !== "" ? opts.rangeEnd : null
 
   const out: string[] = []
@@ -1248,24 +1465,32 @@ export function validateAllNights(opts: {
 /**
  * Flyer shown on Look it over for one weekday draft.
  *
- * Own artwork only (`flyerImageUrl`). Inherited venue/program photos stay in
- * the night editor as a fallback, not as a per-night flyer. Empty string means
- * the review shows a placeholder; Publish is unaffected.
+ * Own artwork first. If they did not upload a custom flyer, the venue photo
+ * (inheritedFlyerUrl, then fallbackUrl) — same fallback as the app. Empty
+ * string is only when nothing is available; Publish is unaffected.
  */
-export function reviewFlyerUrl(draft: NightDraft | undefined | null): string {
-  return (draft?.flyerImageUrl ?? "").trim()
+export function reviewFlyerUrl(
+  draft: NightDraft | undefined | null,
+  fallbackUrl = ""
+): string {
+  const own = (draft?.flyerImageUrl ?? "").trim()
+  if (own !== "") return own
+  const inherited = (draft?.inheritedFlyerUrl ?? "").trim()
+  if (inherited !== "") return inherited
+  return fallbackUrl.trim()
 }
 
 /**
  * Same weekday selection as the text preview (EVERY WEDNESDAY, prices, times).
- * A missing day, an unset night, or a night with no own flyer all return "".
+ * A missing day or unset night falls back to the venue photo when provided.
  */
 export function reviewFlyerUrlForDay(
   weekdayEdits: Record<number, NightDraft>,
-  day: number | null | undefined
+  day: number | null | undefined,
+  fallbackUrl = ""
 ): string {
-  if (day == null) return ""
-  return reviewFlyerUrl(weekdayEdits[day])
+  if (day == null) return fallbackUrl.trim()
+  return reviewFlyerUrl(weekdayEdits[day], fallbackUrl)
 }
 
 /** A one-line summary for a weekday card: "Cover $10 · Skip $20 · Surge". */

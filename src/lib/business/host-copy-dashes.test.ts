@@ -59,6 +59,8 @@ test("escrow and payments host copy has no em or en dashes", () => {
     ["./payouts-computing-poll.ts", "payouts computing copy"],
     ["./payouts-reconcile.ts", "payouts reconcile copy"],
     ["./promoter-tab-copy.ts", "promoter tab copy"],
+    ["./promoter-commission-hold.ts", "promoter commission hold copy"],
+    ["./withdraw-copy.ts", "host/promoter withdraw copy"],
   ]
   for (const [rel, label] of files) {
     assertNoTypographicDashes(rel, label)
@@ -69,10 +71,12 @@ test("escrow and payments host copy has no em or en dashes", () => {
     "utf8",
   )
   assert.ok(panel.includes("Once your business Stripe account is set up"))
-  assert.ok(panel.includes("No action needed."))
-  assert.ok(panel.includes("Nothing waits in escrow anymore."))
   assert.ok(panel.includes("Ready to send"))
   assert.ok(panel.includes("It is not on the way"))
+  assert.ok(panel.includes("in transit"))
+  assert.ok(panel.includes("has not been deposited"))
+  assert.ok(!panel.includes("Nothing waits in escrow anymore."))
+  assert.ok(!panel.includes("Payout to your bank"))
   assert.ok(!panel.includes("onboarding —"))
   assert.ok(!panel.includes("needed —"))
   assert.ok(!panel.includes("directly —"))

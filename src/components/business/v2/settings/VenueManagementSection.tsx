@@ -106,36 +106,38 @@ export default function VenueManagementSection() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="flex flex-col gap-3">
           {venues.map((venue) => {
             const payoutBlock = getVenuePayoutBlock(venue, stripeAccounts)
             return (
             <Card key={venue.id} className="overflow-hidden">
-              <div className="relative h-32 bg-neutral-100 dark:bg-neutral-800">
-                {venue.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={venue.photo_url} alt={venue.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-neutral-300 dark:text-neutral-600">
-                    <ImageIcon className="size-10" />
-                  </div>
-                )}
-                <div className="absolute right-2 top-2 flex items-center gap-1.5">
-                  {payoutBlock && <VenuePayoutPausedBadge />}
-                  <Badge variant={venue.is_active ? "success" : "neutral"}>
-                    {venue.is_active ? "Active" : "Inactive"}
-                  </Badge>
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800">
+                  {venue.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={venue.photo_url} alt={venue.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-neutral-300 dark:text-neutral-600">
+                      <ImageIcon className="size-6" />
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="p-4">
-                <h3 className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{venue.name}</h3>
-                {venue.address && <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400">{venue.address}</p>}
-                {payoutBlock && (
-                  <VenuePayoutPausedBanner venueName={venue.name} reason={payoutBlock} className="mt-3" />
-                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{venue.name}</h3>
+                    <Badge variant={venue.is_active ? "success" : "neutral"}>
+                      {venue.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                    {payoutBlock && <VenuePayoutPausedBadge />}
+                  </div>
+                  {venue.address && <p className="mt-0.5 truncate text-[13px] text-neutral-500 dark:text-neutral-400">{venue.address}</p>}
+                  {payoutBlock && (
+                    <VenuePayoutPausedBanner venueName={venue.name} reason={payoutBlock} className="mt-2" />
+                  )}
+                </div>
                 {isOwner && (
-                  <div className="mt-3 flex gap-2">
-                    <Button variant="secondary" size="sm" className="flex-1" onClick={() => setEditVenue(venue)}>
+                  <div className="flex shrink-0 gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => setEditVenue(venue)}>
                       Edit
                     </Button>
                     <Button

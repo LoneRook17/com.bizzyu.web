@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
   ACCESS_BUTTON_VARIANT,
   WEEKLY_ACCESS_CREATION_LABEL,
   programHref,
+  publishDraftNightsForProgram,
+  stampHostCreatedDates,
   updateDoorAccessProgram,
   withDoorAccessProgramKind,
   type DoorAccessNight,
@@ -18,6 +21,8 @@ import {
 import {
   cheapestPaidPrice,
   dateEditsToWire,
+  weeklyCoverCreateSalesMaps,
+  allProgramTiers21Plus,
   weeklyCoverProgramDescription,
   weeklyCoverProgramName,
   firstConfiguredNight,
@@ -31,13 +36,28 @@ import {
   trimMoney,
   validateAllNights,
   weekdayEditsFromNights,
-  weekdayEditsToWire,
   type NightDraft,
   type WcProducts,
 } from "@/lib/business/weekly-cover-nights"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
+import {
+  applySaveAsDraftFlag,
+  isLeftoverPromoterPayoutPathError,
+  isPromotionEnabled,
+  promoterToggleDisabled,
+  willDraftOnCreate,
+} from "@/lib/business/create-publish"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
+import { WC_DRAFT_CREATED_COPY, WC_DRAFT_REVIEW_BANNER } from "@/lib/business/wc-draft-hold"
 import { commissionInputToStored, commissionValueToInput } from "@/components/business/v2/events/EventForm"
+import {
+  readyWcPromoDrafts,
+  validateWcPromoDraft,
+  wcPromoCreatePath,
+  wcPromoCreatePayload,
+  type WcPromoDraft,
+} from "@/lib/business/wc-create-promo"
 import { isoDayFull } from "@/components/business/v2/recurring/schedule"
 import { WcProductsStep } from "@/components/business/v2/door-access/WcProductsStep"
 import { WcDaysStep } from "@/components/business/v2/door-access/WcDaysStep"
@@ -53,9 +73,11 @@ import { WcProgressBar } from "@/components/business/v2/door-access/WcProgressBa
  * Luke's per-weekday / per-date write (weekday_edits, date_edits,
  * template_tickets from the first night, cover/skip keys, flyer omit/null
  * rules, promoter gate) stays. What this rewrite removes from CREATE is
- * everything the app does not ask: typed name, description, program 21+,
- * program hours, date range, program flyer, venue picker, VIP, scan windows,
- * stock alerts, promo codes, follower blast, save-as-draft.
+ * everything the app does not ask: typed name, program 21+,
+ * program hours, date range, program flyer, venue picker, VIP,
+ * stock alerts, follower blast, save-as-draft. Scan Window and Custom
+ * description live on the weekday Prices editor. Promo codes live on the
+ * last page and POST to the program-scoped promo API after Publish.
  *
  * Screens (Flutter 2-9; 1 is the create-funnel choice):
  *   0 Sell     what it sells — Cover / Skip / Both
@@ -75,6 +97,13 @@ const STEP_DATES = 3
 const STEP_DOOR = 4
 const STEP_REVIEW = 5
 
+async function persistProgramPromoDrafts(programId: number, drafts: WcPromoDraft[]) {
+  const ready = readyWcPromoDrafts(drafts)
+  for (const draft of ready) {
+    await apiClient.post(wcPromoCreatePath(programId), wcPromoCreatePayload(draft))
+  }
+}
+
 interface CreateResponse {
   program: DoorAccessProgram & { id: number }
   generation: unknown | null
@@ -87,16 +116,20 @@ export function DoorAccessWizard({
   initialData,
   initialNights = [],
   stripeOnboarded = true,
+  isPending: isPendingProp,
 }: {
   mode?: "create" | "edit"
   programId?: number
   initialData?: DoorAccessProgram
   initialNights?: DoorAccessNight[]
   stripeOnboarded?: boolean
-  /** Kept so create/edit pages can still pass pending status. Unused: no draft CTA. */
+  /** Same draft-until-business-approve hold as EventForm. */
   isPending?: boolean
 }) {
   const router = useRouter()
+  const { isPending: authPending } = useAuth()
+  const isPending = isPendingProp ?? authPending
+  const willDraft = willDraftOnCreate(isPending)
   const isEdit = mode === "edit"
   const { venues, selectedVenue } = useVenue()
   const backHref = isEdit && programId ? programHref(programId) : "/business/create"
@@ -122,13 +155,14 @@ export function DoorAccessWizard({
   })
   const [dateEdits, setDateEdits] = useState<Record<string, NightDraft>>({})
 
-  const [promotionEnabled, setPromotionEnabled] = useState(!!initialData?.promotion_enabled)
+  const [promotionEnabled, setPromotionEnabled] = useState(isPromotionEnabled(initialData?.promotion_enabled))
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">(
     initialData?.promotion_commission_type ?? "percent"
   )
   const [promotionValueInput, setPromotionValueInput] = useState(
     commissionValueToInput(initialData?.promotion_commission_type ?? "percent", initialData?.promotion_commission_value)
   )
+  const [promoDrafts, setPromoDrafts] = useState<WcPromoDraft[]>([])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [nightErrors, setNightErrors] = useState<string[]>([])
@@ -142,6 +176,7 @@ export function DoorAccessWizard({
     id: number
     message: string
     kind: "created" | "updated"
+    asDraft?: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -201,12 +236,11 @@ export function DoorAccessWizard({
   const hasPaidTier = hasPaidPrice(paidPrices)
   const cheapestPaid = cheapestPaidPrice(paidPrices)
 
-  const promoToggleDisabled = !hasPaidTier || !stripeOnboarded
-  const promoDisabledReason = !hasPaidTier
+  const promoToggleDisabled = promoterToggleDisabled(hasPaidTier)
+  const promoDisabledReason = promoToggleDisabled
     ? "Price at least one night before you can run a promoter program."
-    : !stripeOnboarded
-      ? "Connect Stripe before enabling the promoter program. Promoters need a payout path to sell into."
-      : ""
+    : ""
+  void stripeOnboarded
 
   useEffect(() => {
     if (promoToggleDisabled && promotionEnabled) setPromotionEnabled(false)
@@ -236,9 +270,14 @@ export function DoorAccessWizard({
   const detailsPayload = (): Record<string, unknown> => {
     const start = firstNight?.startTime || "21:00"
     const end = firstNight?.endTime || "02:00"
-    const any21 =
-      Object.values(weekdayEdits).some((n) => n.is21Plus || n.tiers.some((t) => t.is_21_plus)) ||
-      Object.values(dateEdits).some((n) => n.is21Plus || n.tiers.some((t) => t.is_21_plus))
+    // Per-ticket 21+: the program flag is 21+ only when EVERY enabled tier
+    // across the program is (ALL rule), never the old ANY sweep that let one
+    // 21+ table paint the whole program. Mostly cosmetic (Age line) plus the
+    // inherit-default for tiers saved without a stated flag.
+    const all21 = allProgramTiers21Plus([
+      ...Object.values(weekdayEdits),
+      ...Object.values(dateEdits),
+    ])
     return {
       name: programName,
       description: programDescription,
@@ -250,7 +289,7 @@ export function DoorAccessWizard({
       date_range_end: isEdit ? (initialData?.date_range_end ?? null) : null,
       start_time: start,
       end_time: end,
-      is_21_plus: any21,
+      is_21_plus: all21,
     }
   }
 
@@ -260,8 +299,12 @@ export function DoorAccessWizard({
     // date_edits are Custom one-offs from THIS session (create game days).
     // Edit never hydrates Custom nights into dateEdits, so a program save
     // cannot send night-local Custom fields to restamp onto those nights.
-    const weekday = weekdayEditsToWire(weekdayEdits, daysOfWeek)
-    const dates = dateEditsToWire(dateEdits, daysOfWeek)
+    const maps = weeklyCoverCreateSalesMaps({
+      daysOfWeek,
+      weekdayEdits,
+      dateEdits,
+      fallbackNight: firstNight,
+    })
     const flyer = (firstNight?.flyerImageUrl || "").trim()
 
     const payload: Record<string, unknown> = {
@@ -271,10 +314,12 @@ export function DoorAccessWizard({
       flyer_image_url: flyer || null,
     }
 
-    if (Object.keys(weekday).length > 0) payload.weekday_edits = weekday
-    // Create may send date_edits. Edit only sends them when the host set a
-    // game day in this session — never the already-Custom nights on the series.
-    if (Object.keys(dates).length > 0) payload.date_edits = dates
+    // Always send weekday_edits for the picked days. Omitting them left
+    // series 119 with an empty SLOT (0 weekday_templates) and a false Custom voter.
+    if (daysOfWeek.length > 0) payload.weekday_edits = maps.weekday_edits
+    // Create may send date_edits. Saturday-only weekday create is not Custom.
+    // Edit only sends them when the host set a game day in this session.
+    if (maps.dateEditsAreCustom) payload.date_edits = maps.date_edits
 
     if (promotionEnabled && !promoToggleDisabled) {
       const { value } = commissionInputToStored(commissionType, promotionValueInput)
@@ -318,6 +363,9 @@ export function DoorAccessWizard({
         }
       }
     }
+    const started = promoDrafts.filter((d) => d.code.trim() !== "" || d.discount_value.trim() !== "")
+    const promoProblem = started.map(validateWcPromoDraft).find((m) => m != null)
+    if (promoProblem) errs.promo_codes = promoProblem
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -334,6 +382,10 @@ export function DoorAccessWizard({
       return true
     } catch (err) {
       if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+        // Flutter create does not Stripe-gate promoter. This dash-only
+        // validate-step still throws the leftover payout-path copy; D4
+        // opened the toggle and must not leave Continue blocked on it.
+        if (isLeftoverPromoterPayoutPathError(err.message)) return true
         setServerError(err.message)
         return false
       }
@@ -383,16 +435,24 @@ export function DoorAccessWizard({
     setSubmitting(true)
     setServerError("")
     try {
-      const body = {
-        ...detailsPayload(),
-        ...salesPayload(),
-      }
+      const body = applySaveAsDraftFlag(
+        withDoorAccessProgramKind({
+          ...detailsPayload(),
+          ...salesPayload(),
+        }),
+        willDraft,
+      )
 
       if (isEdit && programId != null) {
-        const data = await updateDoorAccessProgram(programId, withDoorAccessProgramKind(body))
+        const data = await updateDoorAccessProgram(programId, body)
         if (data.restamp_error) {
           setGenerationNotice({ id: programId, message: data.restamp_error, kind: "updated" })
           return
+        }
+        try {
+          await persistProgramPromoDrafts(programId, promoDrafts)
+        } catch {
+          // Program saved. Codes can still be added on the program page.
         }
         router.push(programHref(programId))
         return
@@ -400,32 +460,31 @@ export function DoorAccessWizard({
 
       const data = await apiClient.post<CreateResponse>(
         "/business/door-access",
-        withDoorAccessProgramKind(body),
+        body,
       )
       const id = Number(data.program?.id)
-      let restamped = false
       if (Number.isFinite(id) && id > 0) {
         try {
-          const restamp = await updateDoorAccessProgram(id, withDoorAccessProgramKind({}))
-          if (restamp.restamp_error) {
-            setGenerationNotice({ id, message: restamp.restamp_error, kind: "created" })
-            return
-          }
-          restamped = true
-        } catch (err) {
-          setGenerationNotice({
-            id,
-            message:
-              err instanceof ApiError
-                ? err.message
-                : "The program saved, but scheduling tonight's nights did not finish. The nightly job will pick them up.",
-            kind: "created",
-          })
-          return
+          await persistProgramPromoDrafts(id, promoDrafts)
+        } catch {
+          // Program saved. Codes can still be added on the program page.
         }
       }
-      if (data.generation_error && !restamped) {
-        setGenerationNotice({ id, message: data.generation_error, kind: "created" })
+      if (Number.isFinite(id) && id > 0) {
+        const createdDateEdits = dateEditsToWire(dateEdits, daysOfWeek)
+        if (Object.keys(createdDateEdits).length > 0) {
+          await stampHostCreatedDates(id, createdDateEdits, {
+            publish: shouldTreatDraftAsLive(isPending),
+          })
+        }
+        if (shouldTreatDraftAsLive(isPending)) {
+          try {
+            await publishDraftNightsForProgram(id)
+          } catch {
+            // LiveAfterApprove still promotes queued drafts after approve.
+          }
+        }
+        setGenerationNotice({ id, message: "", kind: "created", asDraft: willDraft })
         return
       }
       router.push(programHref(id))
@@ -463,15 +522,17 @@ export function DoorAccessWizard({
           <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
             {saved
               ? "The template is saved. Upcoming nights that still follow it will pick up the new defaults."
-              : `${programName} is live and selling.`}
+              : generationNotice.asDraft
+                ? WC_DRAFT_CREATED_COPY
+                : `${programName} is live and selling.`}
           </p>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
-          <p className="font-semibold">
-            {saved ? "Upcoming nights could not be restamped just now" : "Tonight's nights aren't on the schedule yet"}
-          </p>
-          <p className="mt-0.5">{generationNotice.message}</p>
-        </div>
+        {saved && generationNotice.message ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
+            <p className="font-semibold">Upcoming nights could not be restamped just now</p>
+            <p className="mt-0.5">{generationNotice.message}</p>
+          </div>
+        ) : null}
         <div>
           <Button size="lg" variant={ACCESS_BUTTON_VARIANT} onClick={() => router.push(programHref(generationNotice.id))}>
             Open the program
@@ -594,6 +655,12 @@ export function DoorAccessWizard({
               promoDisabledReason={promoDisabledReason}
               cheapestPaid={cheapestPaid}
               commissionError={errors.promotion_commission_value}
+              promoDrafts={promoDrafts}
+              onPromoDrafts={(next) => {
+                setPromoDrafts(next)
+                setErrors((p) => ({ ...p, promo_codes: "" }))
+              }}
+              promoDraftsError={errors.promo_codes}
             />
           </CardContent>
         </Card>
@@ -605,6 +672,8 @@ export function DoorAccessWizard({
             <WcReviewStep
               products={products}
               venueName={scopedVenueName}
+              venueAddress={scopedVenueAddress}
+              venuePhotoUrl={currentVenue?.photo_url || ""}
               derivedName={programName}
               daysOfWeek={daysOfWeek}
               weekdayEdits={weekdayEdits}
@@ -614,6 +683,17 @@ export function DoorAccessWizard({
               promotionEnabled={promotionEnabled && !promoToggleDisabled}
               commissionSummary={commissionSummary}
             />
+            {!isEdit && (
+              <div
+                className={
+                  willDraft
+                    ? "mt-4 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300"
+                    : "mt-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300"
+                }
+              >
+                {willDraft ? WC_DRAFT_REVIEW_BANNER : "This publishes the moment you create it."}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

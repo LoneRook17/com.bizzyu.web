@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
+import { validateRecurringTierSurge } from "@/lib/business/event-tier-surge"
 import { useVenue } from "@/lib/business/venue-context"
 import { cn } from "@/lib/v2/utils"
 import type {
@@ -16,11 +17,13 @@ import type {
 } from "@/lib/business/types"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
+import { DateField, TimeField } from "@/components/business/v2/ui/date-time-field"
 import { Input, Textarea, Select } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import {
   Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
 } from "@/components/business/v2/ui/dialog"
+import { isPromotionEnabled, promoterExtrasVisible, promoterToggleDisabled } from "@/lib/business/create-publish"
 import {
   commissionValueToInput, commissionInputToStored,
   lowstockValueToInput, lowstockInputToStored,
@@ -29,6 +32,7 @@ import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
 import { ISO_DAYS, upcomingScheduleDates, fmtDateOnlyLong } from "./schedule"
 import { RestampReport } from "./RestampReport"
 import { RecurringTierEditor, EMPTY_RECURRING_TIER, type RecurringTierRow, tierRowsToTemplate, templateToTierRows } from "./RecurringTierEditor"
+import { resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
 
 const NAME_MAX_LENGTH = 100
 
@@ -81,7 +85,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
       : [{ ...EMPTY_RECURRING_TIER, name: "General Admission" }]
   )
 
-  const [promotionEnabled, setPromotionEnabled] = useState(!!initialData?.promotion_enabled)
+  const [promotionEnabled, setPromotionEnabled] = useState(isPromotionEnabled(initialData?.promotion_enabled))
   const [commissionType, setCommissionType] = useState<"percent" | "fixed">(initialData?.promotion_commission_type ?? "percent")
   const [promotionValueInput, setPromotionValueInput] = useState<string>(
     commissionValueToInput(initialData?.promotion_commission_type ?? "percent", initialData?.promotion_commission_value)
@@ -128,10 +132,11 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
   )
 
   const hasPaidTicket = type === "Ticketed" && tiers.some((t) => (parseFloat(t.priceInput) || 0) > 0)
-  const promoToggleDisabled = !hasPaidTicket
-  const promoDisabledReason = !hasPaidTicket
+  const promoToggleDisabled = promoterToggleDisabled(hasPaidTicket)
+  const promoDisabledReason = promoToggleDisabled
     ? "Add a paid ticket to enable the promoter program."
     : ""
+  const showPromoterExtras = promoterExtrasVisible(promotionEnabled, promoToggleDisabled)
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
@@ -159,6 +164,13 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             errs.tickets = `"${tier.name}": the scan window must end after it starts (tip: a window past midnight ends next morning)`
             break
           }
+        }
+        // Surge is always offered; nonsense (free tier, no paid price, bad
+        // rungs) is refused here with inline copy, never by hiding the box.
+        const surgeProblem = validateRecurringTierSurge(tier)
+        if (surgeProblem) {
+          errs.tickets = surgeProblem
+          break
         }
       }
     }
@@ -188,7 +200,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
       venue_address: venueAddress,
       type,
       is_21_plus: is21Plus,
-      flyer_image_url: flyerImageUrl || null,
+      flyer_image_url: resolvedCreateFlyerUrl(flyerImageUrl, currentVenue?.photo_url) || null,
       template_tickets: type === "Ticketed" ? tierRowsToTemplate(tiers) : [],
       notify_followers_on_publish: notifyFollowers,
     }
@@ -343,12 +355,10 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="date_range_start" className="mb-1.5 block">First night on or after</Label>
-              <Input
+              <DateField
                 id="date_range_start"
-                type="date"
                 value={dateRangeStart}
-                onChange={(e) => { setDateRangeStart(e.target.value); setErrors((p) => ({ ...p, date_range_start: "" })) }}
-                className={cn(errors.date_range_start && errClass)}
+                onChange={(next) => { setDateRangeStart(next); setErrors((p) => ({ ...p, date_range_start: "" })) }}
               />
               {errors.date_range_start && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_start}</p>}
             </div>
@@ -356,12 +366,10 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
               <Label htmlFor="date_range_end" className="mb-1.5 block">
                 Runs until <span className="font-normal text-neutral-400 dark:text-neutral-500">(optional. Leave blank to run until you suspend it)</span>
               </Label>
-              <Input
+              <DateField
                 id="date_range_end"
-                type="date"
                 value={dateRangeEnd}
-                onChange={(e) => { setDateRangeEnd(e.target.value); setErrors((p) => ({ ...p, date_range_end: "" })) }}
-                className={cn(errors.date_range_end && errClass)}
+                onChange={(next) => { setDateRangeEnd(next); setErrors((p) => ({ ...p, date_range_end: "" })) }}
               />
               {errors.date_range_end && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_end}</p>}
             </div>
@@ -370,23 +378,19 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="start_time" className="mb-1.5 block">Starts at</Label>
-              <Input
+              <TimeField
                 id="start_time"
-                type="time"
                 value={startTime}
-                onChange={(e) => { setStartTime(e.target.value); setErrors((p) => ({ ...p, start_time: "" })) }}
-                className={cn(errors.start_time && errClass)}
+                onChange={(next) => { setStartTime(next); setErrors((p) => ({ ...p, start_time: "" })) }}
               />
               {errors.start_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.start_time}</p>}
             </div>
             <div>
               <Label htmlFor="end_time" className="mb-1.5 block">Ends at</Label>
-              <Input
+              <TimeField
                 id="end_time"
-                type="time"
                 value={endTime}
-                onChange={(e) => { setEndTime(e.target.value); setErrors((p) => ({ ...p, end_time: "" })) }}
-                className={cn(errors.end_time && errClass)}
+                onChange={(next) => { setEndTime(next); setErrors((p) => ({ ...p, end_time: "" })) }}
               />
               {errors.end_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.end_time}</p>}
               <p className="mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
@@ -530,9 +534,19 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
 
       {/* Flyer */}
       <Card>
-        <CardHeader><CardTitle>Flyer image</CardTitle></CardHeader>
+        <CardHeader className="flex-col items-start gap-1">
+          <CardTitle>Flyer image</CardTitle>
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+            Optional. Skip it and we use your venue photo.
+          </p>
+        </CardHeader>
         <CardContent className="pt-0">
-          <ImageUpload value={flyerImageUrl} onChange={setFlyerImageUrl} />
+          <ImageUpload
+            value={flyerImageUrl}
+            onChange={setFlyerImageUrl}
+            fallbackSrc={currentVenue?.photo_url || null}
+            fallbackCaption="Venue photo. Nights use this until you add a flyer."
+          />
         </CardContent>
       </Card>
 
@@ -546,7 +560,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             </p>
           </CardHeader>
           <CardContent className="pt-0">
-            <RecurringTierEditor tiers={tiers} onChange={(t) => { setTiers(t); setErrors((p) => ({ ...p, tickets: "" })) }} />
+            <RecurringTierEditor tiers={tiers} onChange={(t) => { setTiers(t); setErrors((p) => ({ ...p, tickets: "" })) }} showSurge />
             {errors.tickets && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tickets}</p>}
           </CardContent>
         </Card>
@@ -579,7 +593,9 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
         <Card>
           <CardHeader className="flex-col items-start gap-1">
             <CardTitle>Promoter program</CardTitle>
-            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share each night&apos;s link and earn this on every sale.</p>
+            {showPromoterExtras && (
+              <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share each night&apos;s link and earn this on every sale.</p>
+            )}
           </CardHeader>
           <CardContent className="pt-0">
             <label
@@ -597,7 +613,7 @@ export function SeriesForm({ mode, seriesId, initialData, occurrences = [], stri
             </label>
             {promoToggleDisabled && <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoDisabledReason}</p>}
 
-            {promotionEnabled && !promoToggleDisabled && (
+            {showPromoterExtras && (
               <div className="mt-4 space-y-3">
                 <div>
                   <p className="mb-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-300">Commission type</p>

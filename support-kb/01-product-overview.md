@@ -42,7 +42,9 @@ school at signup; if their school isn't on Bizzy yet they can request it.
   and line skips (Upcoming / Past / All) with their QR codes.
 - **Promoter** — a user who promotes an event with a personal tracking link and
   earns commission on tickets sold through it. Commission accrues to their in-app
-  wallet and they cash out on demand (there is no weekly payout).
+  wallet, becomes available 2 days after that night's event, and they withdraw on
+  demand to Stripe. Stripe then deposits to their bank on its daily schedule. A
+  withdrawal is not a bank deposit yet (there is no weekly payout and no instant option).
 - **Service fee** — added on top of ticket/line-skip prices and paid by the buyer.
   Businesses receive the full price they set.
 

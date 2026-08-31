@@ -5,15 +5,17 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import {
   cloneNightDraft,
+  defaultTierNameForNight,
   fmtGameDay,
   isoWeekdayOfDate,
+  looksLikeDefaultTierName,
   nightPriceSummary,
   scheduledDates,
   seedNightDraft,
-  WC_LOOKAHEAD_DAYS,
   type NightDraft,
   type WcProducts,
 } from "@/lib/business/weekly-cover-nights"
+import { SERIES_NIGHTS_WINDOW_DAYS } from "@/lib/business/series-nights-window"
 import { isoDayFull } from "@/components/business/v2/recurring/schedule"
 import { NightEditorDialog } from "@/components/business/v2/door-access/NightEditorDialog"
 
@@ -60,6 +62,10 @@ export function WcDatesStep({
   const [editing, setEditing] = useState<string | null>(null)
   const [monthOffset, setMonthOffset] = useState(0)
 
+  // Scheduled-weekday marks paint only the shared month window (Luke
+  // 2026-08-30 — no 4-month template dump). Every future cell stays
+  // clickable either way: a far date renders as the dashed one-off cell
+  // and a host can still give October 31st its own night.
   const runs = useMemo(
     () =>
       new Set(
@@ -67,7 +73,7 @@ export function WcDatesStep({
           daysOfWeek,
           rangeStart,
           rangeEnd,
-          lookaheadDays: WC_LOOKAHEAD_DAYS,
+          lookaheadDays: SERIES_NIGHTS_WINDOW_DAYS,
         })
       ),
     [daysOfWeek, rangeStart, rangeEnd]
@@ -95,7 +101,19 @@ export function WcDatesStep({
     const weekday = isoWeekdayOfDate(date)
     // Seed from that weekday's own setup, so the host only changes what differs.
     const fromWeekday = weekday == null ? undefined : weekdayEdits[weekday]
-    if (fromWeekday) return cloneNightDraft(fromWeekday)
+    if (fromWeekday) {
+      // W13: a Saturday game day seeded from the Friday template must not keep
+      // "… Friday Cover" — re-derive default-looking names for THIS date's day.
+      // Host-typed names come across untouched.
+      const next = cloneNightDraft(fromWeekday)
+      const dayName = weekday == null ? undefined : isoDayFull(weekday)
+      for (const tier of next.tiers) {
+        if (looksLikeDefaultTierName(tier.name, tier.kind)) {
+          tier.name = defaultTierNameForNight(tier.kind, { venueName, dayName })
+        }
+      }
+      return next
+    }
     return seedNightDraft({
       products,
       startTime: defaultStartTime || "",
@@ -157,21 +175,27 @@ export function WcDatesStep({
             const runsTonight = runs.has(date)
             const hasOverride = !!dateEdits[date]
             const dayNumber = Number(date.slice(8, 10))
+            const past = date < today.toLocaleDateString("en-CA")
             return (
               <button
                 key={date}
                 type="button"
-                disabled={!runsTonight}
+                disabled={past}
                 onClick={() => setEditing(date)}
-                aria-label={`${fmtGameDay(date)}${hasOverride ? " (has its own prices)" : ""}`}
+                aria-label={`${fmtGameDay(date)}${hasOverride ? " (has its own prices)" : runsTonight ? "" : " (one-off)"}`}
                 className={cn(
                   "relative flex aspect-square items-center justify-center rounded-lg text-[13px] font-medium tabular-nums transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-access/40",
-                  !runsTonight && "text-neutral-300 dark:text-neutral-700",
-                  runsTonight &&
+                  past && "text-neutral-300 dark:text-neutral-700",
+                  !past &&
+                    !runsTonight &&
+                    !hasOverride &&
+                    "border border-dashed border-neutral-300 text-neutral-500 hover:border-access hover:text-access dark:border-neutral-700",
+                  !past &&
+                    runsTonight &&
                     !hasOverride &&
                     "border border-neutral-200 text-neutral-700 hover:border-access hover:text-access dark:border-neutral-700 dark:text-neutral-300",
-                  runsTonight && hasOverride && "bg-access font-bold text-white"
+                  hasOverride && "bg-access font-bold text-white"
                 )}
               >
                 {dayNumber}
@@ -184,7 +208,7 @@ export function WcDatesStep({
         </div>
 
         <p className="mt-3 text-[12px] text-neutral-500 dark:text-neutral-400">
-          Dotted nights are the ones this program runs. Filled ones have their own prices.
+          Dotted nights are the weekly series. Any other future day can be a one-off. Filled ones have their own prices.
         </p>
       </div>
 

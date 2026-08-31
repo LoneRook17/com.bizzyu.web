@@ -17,6 +17,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string, destination?: string | null) => Promise<void>
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
+  applyBusinessPatch: (patch: Partial<Business>) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -98,9 +99,23 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     await fetchMe()
   }
 
+  const applyBusinessPatch = (patch: Partial<Business>) => {
+    setBusiness((prev) => (prev ? { ...prev, ...patch } : prev))
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, business, isLoading, isAuthenticated, isPending, login, logout, refreshProfile }}
+      value={{
+        user,
+        business,
+        isLoading,
+        isAuthenticated,
+        isPending,
+        login,
+        logout,
+        refreshProfile,
+        applyBusinessPatch,
+      }}
     >
       {children}
     </AuthContext.Provider>
