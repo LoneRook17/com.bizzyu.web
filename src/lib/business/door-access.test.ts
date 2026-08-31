@@ -2288,3 +2288,95 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
   assert.ok(sell.includes("IN_APP_CHOICE_BODY_CLASS"), "Sell body follows dash light/dark type")
   assert.ok(!sell.includes("useTheme"), "Sell tiles use dark: classes, not a one-off switcher")
 })
+
+// ── per-tier 21+ on the night page (migration 038) ──────────────────────────
+
+test("21+ inherits as ABSENCE on the wire — never as null, which services flags to 0", () => {
+  // Program is 21+, tiers say nothing: the draft shows the effective answer
+  // but the PUT must not mention the key at all.
+  const draft = draftFromNight(night(), program())
+  for (const tier of draft.tiers) {
+    assert.equal(tier.is_21_plus, true, "effective value follows the program")
+    assert.equal(tier.inherit_is_21_plus, true)
+  }
+  const payload = buildNightOverridePayload(draft)
+  for (const tier of payload.tiers ?? []) {
+    assert.ok(!("is_21_plus" in tier), "inherited 21+ must be omitted, not null")
+  }
+})
+
+test("unticking 21+ on one tier pins an explicit false for that tier only", () => {
+  const baseline = draftFromNight(night(), program())
+  const parsed = parseRecurringNightTier({
+    name: "Cover",
+    description: "",
+    ticket_type: "paid",
+    priceInput: "10",
+    quantityInput: "0",
+    maxPerPersonInput: "2",
+    valid_from_time: "",
+    valid_until_time: "",
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+    is_21_plus: false,
+  })
+  assert.equal(parsed.error, null)
+  const next = applyRecurringNightTier(baseline, "cover", parsed.values, {
+    name: "Cover",
+    description: null,
+    ticket_type: "paid",
+    price_usd: 10,
+    quantity: 0,
+    max_per_person: 2,
+    valid_from_time: null,
+    valid_until_time: null,
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+    is_21_plus: true, // template baseline: the program is 21+
+  })
+  const payload = buildNightOverridePayload(next)
+  assert.equal(payload.tiers?.[0].is_21_plus, false, "cover pinned all-ages")
+  assert.ok(!("is_21_plus" in (payload.tiers?.[1] ?? {})), "skip untouched")
+
+  // Ticking it back to the baseline releases the pin (key gone again).
+  const reverted = applyRecurringNightTier(next, "cover", { ...parsed.values, is_21_plus: true }, {
+    name: "Cover",
+    description: null,
+    ticket_type: "paid",
+    price_usd: 10,
+    quantity: 0,
+    max_per_person: 2,
+    valid_from_time: null,
+    valid_until_time: null,
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+    is_21_plus: true,
+  })
+  const revertedPayload = buildNightOverridePayload(reverted)
+  assert.ok(!("is_21_plus" in (revertedPayload.tiers?.[0] ?? {})))
+})
+
+test("a form that never showed the 21+ control leaves the stored flag alone", () => {
+  // parseRecurringNightTier without the field yields values without the key,
+  // and applyRecurringNightTier must not invent a pin from that.
+  const baseline = draftFromNight(night(), program())
+  const parsed = parseRecurringNightTier({
+    name: "Cover",
+    description: "",
+    ticket_type: "paid",
+    priceInput: "15",
+    quantityInput: "0",
+    maxPerPersonInput: "2",
+    valid_from_time: "",
+    valid_until_time: "",
+    valid_from_day_offset: 0,
+    valid_until_day_offset: 0,
+  })
+  assert.equal(parsed.error, null)
+  assert.ok(!("is_21_plus" in parsed.values))
+  const next = applyRecurringNightTier(baseline, "cover", parsed.values, undefined)
+  assert.equal(next.tiers[0].is_21_plus, true, "effective value untouched")
+  assert.equal(next.tiers[0].inherit_is_21_plus, true)
+  const payload = buildNightOverridePayload(next)
+  assert.ok(!("is_21_plus" in (payload.tiers?.[0] ?? {})))
+})

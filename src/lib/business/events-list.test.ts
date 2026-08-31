@@ -25,6 +25,7 @@ import {
   seriesRowHref,
   seriesRowNumbers,
   parseEventTypeFilter,
+  eventsListQueryTab,
   seriesHref,
   seriesRowStats,
   showsAccess,
@@ -807,6 +808,45 @@ test("pending hosts keep Weekly Cover off Upcoming Live", () => {
   assert.equal(shouldShowWeeklyCoverOneOffsOnEventsTab("upcoming", false, "all"), true)
   assert.equal(shouldShowWeeklyCoverOneOffsOnEventsTab("upcoming", true, "all"), false)
   assert.equal(shouldShowWeeklyCoverOneOffsOnEventsTab("drafts", true, "access"), true)
+  assert.equal(eventsListQueryTab("recurring"), "upcoming", "Recurring is not a server tab")
+  assert.equal(eventsListQueryTab("upcoming"), "upcoming")
+  assert.equal(eventsListQueryTab("past"), "past")
+  assert.equal(
+    shouldShowWeeklyCoverOnEventsTab("recurring", false, "all"),
+    true,
+    "Recurring keeps WC schedule rows",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOnEventsTab("recurring", false, "events"),
+    true,
+    "Recurring still shows WC schedules when the Events type chip is on",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", false, "all"),
+    true,
+    "Recurring lists WC night cards on Tonight/Upcoming dates",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", true, "all"),
+    true,
+    "Recurring is a kind filter — pending hosts still see WC nights",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", false, "events"),
+    false,
+    "Events type chip still hides WC nights on Recurring",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOneOffsOnEventsTab("recurring", false, "access"),
+    true,
+    "Weekly Cover chip still shows WC nights even if Recurring was the last status tab",
+  )
+  assert.equal(
+    shouldShowWeeklyCoverOneOffsOnEventsTab("past", false, "access"),
+    true,
+    "Weekly Cover chip is not gated on the hidden status tab",
+  )
+  assert.equal(shouldShowWeeklyCoverOnEventsTab("past", false, "access"), true)
 })
 
 test("the missing aggregates are registered, not just commented", () => {

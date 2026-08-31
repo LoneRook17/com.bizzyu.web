@@ -49,6 +49,7 @@ function OffsetSelect({ value, onChange, idPrefix }: { value: number; onChange: 
 }
 
 const SURGE_INFO = "Price goes up after a set number of tickets sell."
+const AGE_INFO = "Buyers see a 21+ badge on this ticket."
 
 export function RecurringTierEditor({
   tiers,
@@ -57,6 +58,7 @@ export function RecurringTierEditor({
   allowRemove = true,
   showIdentityFields = true,
   showSurge = false,
+  show21Plus = false,
 }: {
   tiers: RecurringTierRow[]
   onChange: (tiers: RecurringTierRow[]) => void
@@ -70,6 +72,12 @@ export function RecurringTierEditor({
    * would render a dead checkbox, so it stays opt-in.
    */
   showSurge?: boolean
+  /**
+   * WC night page only for now: the one caller whose draft adapter carries
+   * the flag through to the night-override PUT. Same dead-checkbox logic as
+   * showSurge, so it only surfaces where the value actually persists.
+   */
+  show21Plus?: boolean
 }) {
   const update = (index: number, patch: Partial<RecurringTierRow>) => {
     const next = [...tiers]
@@ -278,6 +286,21 @@ export function RecurringTierEditor({
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {show21Plus && (
+            <div className="mt-3">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={!!tier.is_21_plus}
+                  onChange={(e) => update(i, { is_21_plus: e.target.checked })}
+                  className="size-4 rounded border-neutral-300 dark:border-neutral-700"
+                />
+                <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">21+ only</span>
+                <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{AGE_INFO}</span>
+              </label>
             </div>
           )}
 

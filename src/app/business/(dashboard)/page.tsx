@@ -28,6 +28,7 @@ import {
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
+import { canViewRevenue } from "@/lib/business/analytics-access"
 import { homeUpcoming, nextAccessNight, type OneOffUpcomingNight } from "@/lib/business/home-upcoming"
 import { hostUpcomingShowsGreenNight } from "@/lib/business/series-nights-window"
 import { oneOffNightsFromSeries } from "@/lib/business/wc-upcoming"
@@ -178,6 +179,7 @@ export default function V2HomePage() {
     showEvents: config.showEvents,
     showLineSkips: config.showLineSkips,
     showDeals: config.showDeals,
+    canViewRevenue: canViewRevenue(user?.business_role),
   })
   const showEventsSection = sections.events
   const showLineSkipSection = sections.lineSkips
@@ -350,7 +352,7 @@ export default function V2HomePage() {
             </Link>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-            {showLineSkipSection && (
+            {showLineSkipSection && canViewRevenue(user?.business_role) && (
               <MetricTile label="Revenue (all-time)" value={usd(lineSkipRevenue)} />
             )}
             {showLineSkipSection && (

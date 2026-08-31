@@ -123,3 +123,18 @@ test("a zero event count and a false line-skip flag are the safe reading of a fa
   assert.equal(s.events, false)
   assert.equal(s.lineSkips, false)
 })
+
+// ── MONEY TILES ARE OWNER-ONLY ──────────────────────────────────────────────
+
+test("a manager's Home hides the revenue tile and the column count follows", () => {
+  const owner = homeSections(shape({ totalEvents: 9, showEvents: true, showDeals: true, canViewRevenue: true }))
+  const manager = homeSections(shape({ totalEvents: 9, showEvents: true, showDeals: true, canViewRevenue: false }))
+  assert.equal(owner.revenueTile, true)
+  assert.equal(manager.revenueTile, false)
+  assert.equal(manager.tileCount, owner.tileCount - 1)
+})
+
+test("callers that do not state a role keep today's shapes (absent = owner)", () => {
+  const s = homeSections(shape({ totalEvents: 9, showEvents: true, showDeals: true }))
+  assert.equal(s.revenueTile, true)
+})

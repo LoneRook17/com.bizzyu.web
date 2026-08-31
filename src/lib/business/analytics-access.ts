@@ -31,6 +31,17 @@ export function canViewEventAnalytics(role: BusinessRole | null | undefined): bo
   return role === "owner" || role === "manager"
 }
 
+/**
+ * MONEY figures (all-time revenue tiles) — owner only, matching the team
+ * permission matrix's "View revenue & payouts: manager no" row and the
+ * payouts gate next door. Deliberately NOT canViewEventAnalytics: managers
+ * keep the Analytics tab (attendance, check-ins), they just don't get the
+ * revenue headline on Home.
+ */
+export function canViewRevenue(role: BusinessRole | null | undefined): boolean {
+  return role === "owner"
+}
+
 /** What the Events tab renders after its fetch rejects. A 403 (an owner/manager
  *  session the server still refuses — a stale or venue-scoped role, or the
  *  parallel services gate) is NOT an error wall; it collapses to a calm access

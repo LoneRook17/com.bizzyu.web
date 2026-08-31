@@ -10,7 +10,9 @@
 //
 // Grouping is the reason the "Recurring" nav item could die (D2-2): a series
 // is not a parallel world any more, it is a row on this list that opens the
-// existing /business/recurring/:id page.
+// existing /business/recurring/:id page. The Recurring status chip still
+// exists — it keeps Host layout and lists RC + WC nights on dates, plus
+// Schedules (RC series and WC programs). Standalone named one-offs stay off.
 
 import type { EventListItem, RecurringSeriesListItem } from "./types"
 import {
@@ -58,11 +60,22 @@ export function weeklyCoverEventsListTab(isPending: boolean): "upcoming" | "draf
   return isPending ? "drafts" : "upcoming"
 }
 
+/**
+ * Recurring is a kind filter, not a server status. GET /business/events?tab=recurring
+ * still looks for leftover series TEMPLATE rows (is_recurring, no FK) and comes
+ * back empty. Live RC nights live on the upcoming list; we filter them here.
+ */
+export function eventsListQueryTab(tab: string): string {
+  return tab === "recurring" ? "upcoming" : tab
+}
+
 export function shouldShowWeeklyCoverOnEventsTab(
   tab: string,
   isPending: boolean,
   typeFilter: EventTypeFilter,
 ): boolean {
+  // Recurring = RC + WC nights on dates + Schedules (RC series AND WC programs).
+  if (tab === "recurring") return true
   if (!showsAccess(typeFilter)) return false
   if (typeFilter === "access") return true
   return tab === weeklyCoverEventsListTab(isPending)
@@ -75,6 +88,13 @@ export function shouldShowWeeklyCoverOneOffsOnEventsTab(
   typeFilter: EventTypeFilter,
 ): boolean {
   if (!showsAccess(typeFilter)) return false
+  // Weekly Cover chip: nights + WC schedules, even if a leftover status tab
+  // (Recurring / Past / Drafts) is still in state while the status row is hidden.
+  if (typeFilter === "access") return true
+  // Recurring keeps Host layout: WC night cards on Tonight/Upcoming dates
+  // (repeating + Custom/one-off; far Custom never clips). Green standalone
+  // named one-offs stay off via recurringNightsOnly.
+  if (tab === "recurring") return true
   return tab === weeklyCoverEventsListTab(isPending)
 }
 
