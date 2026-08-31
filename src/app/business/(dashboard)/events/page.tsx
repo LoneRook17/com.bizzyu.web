@@ -14,6 +14,7 @@ import {
   eventAccessGroupsForPrograms,
   eventAccessGroupsForVenue,
   EVENT_TYPE_FILTERS,
+  eventsListQueryTab,
   groupEventRows,
   inactiveWeeklyCoverSeriesIds,
   parseEventTypeFilter,
@@ -71,13 +72,16 @@ import {
  * THE manage surface (D2-4). One page, two types, one create funnel.
  *
  * Two filters stack here and they are NOT the same question:
- *   • the TYPE segment (All / Events / Weekly Access) — which KIND of thing;
+ *   • the TYPE segment (All / Events / Weekly Cover) — which KIND of thing;
  *   • the status tabs (Upcoming / Past / Drafts / Recurring) — which STATE,
- *     and only meaningful for dated events, so they hide in the access view.
+ *     except Recurring, which is a kind filter (RC nights + Schedules).
+ *     Status tabs hide in the Weekly Cover-only view.
  *
- * Live Upcoming matches Flutter Host: Tonight, expandable Upcoming events & WC
- * (today+14 for series; one-off / Custom always), then Schedules (WC weekday
- * templates + green RC). Past / Drafts / Recurring keep the older list.
+ * Live Upcoming and Recurring match Flutter Host: Tonight, expandable
+ * Upcoming events & WC (today+30 for series; one-off / Custom always), then
+ * Schedules. Recurring keeps RC series nights plus both RC and WC schedule
+ * rows. Weekly Cover keeps WC nights plus WC schedules. Past / Drafts keep
+ * the older flat list.
  *
  * Everything this page replaced still opens its own existing page: a series row
  * → /business/recurring/:id, an access row → /business/door-access/:id, an
@@ -170,13 +174,14 @@ export default function V2EventsPage() {
 
   const fetchEvents = useCallback(async () => {
     setLoading(true)
+    const queryTab = eventsListQueryTab(tab)
     try {
       const data = await apiClient.get<{ events: EventListItem[]; total: number }>(
-        `/business/events?tab=${tab}&page=${page}&limit=${limit}${venueParam}`,
+        `/business/events?tab=${queryTab}&page=${page}&limit=${limit}${venueParam}`,
       )
       let next = data.events
       let nextTotal = data.total
-      if (tab === "upcoming" && !isPending) {
+      if (queryTab === "upcoming" && !isPending) {
         const drafts = await apiClient.get<{ events: EventListItem[]; total: number }>(
           `/business/events?tab=drafts&page=1&limit=50${venueParam}`
         )
@@ -258,10 +263,10 @@ export default function V2EventsPage() {
   // those series stay as pending-cancel EventCards (same as a one-off).
   const activePrograms = weeklyCoverProgramsForDash(venuePrograms)
 
-  // In the combined view only on the tab that means "what's on". "Past" /
-  // "Drafts" / "Recurring" are questions about dated events; an ongoing program
-  // is not an answer to any of them. The Weekly Cover segment used to keep
-  // Ended rows; a host series delete with 0 sales must leave the dash entirely.
+  // Upcoming pins WC programs as Schedules. Recurring does too — that chip
+  // is RC nights + both RC and WC schedule rows. Past / Drafts stay dated
+  // events only. The Weekly Cover segment used to keep Ended rows; a host
+  // series delete with 0 sales must leave the dash entirely.
   const visiblePrograms = shouldShowWeeklyCoverOnEventsTab(tab, isPending, effectiveType)
     ? activePrograms
     : []
@@ -284,6 +289,7 @@ export default function V2EventsPage() {
         showEvents: showsEvents(effectiveType),
         showAccessNights,
         showAccessSchedules,
+        recurringNightsOnly: tab === "recurring",
       })
     : null
 

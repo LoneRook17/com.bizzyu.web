@@ -15,6 +15,7 @@ import {
   hostDashSections,
   includeGreenOccurrence,
   occurrenceIsPinned,
+  isRecurringNamedEventNight,
   shouldUseHostDashLayout,
   visibleHostUpcoming,
 } from "./host-dash-sections.ts"
@@ -148,12 +149,13 @@ function sections(
   })
 }
 
-test("Host layout is the live Upcoming tab or the Weekly Cover segment", () => {
+test("Host layout is Upcoming, Recurring, or the Weekly Cover segment", () => {
   assert.equal(shouldUseHostDashLayout("upcoming", "all"), true)
   assert.equal(shouldUseHostDashLayout("upcoming", "events"), true)
   assert.equal(shouldUseHostDashLayout("past", "all"), false)
   assert.equal(shouldUseHostDashLayout("drafts", "all"), false)
-  assert.equal(shouldUseHostDashLayout("recurring", "all"), false)
+  assert.equal(shouldUseHostDashLayout("recurring", "all"), true)
+  assert.equal(shouldUseHostDashLayout("recurring", "events"), true)
   assert.equal(shouldUseHostDashLayout("past", "access"), true)
 })
 
@@ -348,6 +350,141 @@ test("unstamped leftover nights of a host-ended series stay off the Host list", 
   assert.equal(hostDashIsEmpty(out), true)
 })
 
+test("Recurring chip is not a no-op: RC nights only, plus RC and WC schedules", () => {
+  const wc = program(23)
+  const trivia = series(7, "Trivia Fridays")
+  const input = {
+    events: [
+      ev(80, "2026-09-04 21:00:00", null, { name: "Halloween one-off" }),
+      ev(10, "2026-09-04 21:00:00", 7, { name: "Trivia" }),
+      ev(11, "2026-09-11 21:00:00", 7, { name: "Trivia" }),
+      ev(621, "2026-09-04 21:00:00", 23, {
+        name: "Weekly Cover",
+        product_kind: "weekly_cover" as const,
+        access_kind: "door_access",
+      }),
+    ],
+    programs: [wc],
+    programNights: [{ program: wc, nights: [night("2026-09-04", { event_id: 621 })] }],
+    series: [trivia],
+    wcSeriesIds: [23],
+  }
+
+  const all = sections(input)
+  assert.ok(
+    all.upcoming.some((row) => row.kind === "event" && row.event.event_id === 80),
+    "All/Upcoming still lists a standalone one-off",
+  )
+  assert.ok(
+    all.upcoming.some((row) => row.kind === "event" && row.event.event_id === 10),
+    "All/Upcoming still lists RC nights",
+  )
+  assert.ok(
+    all.upcoming.some((row) => row.kind === "access" || row.kind === "access-event"),
+    "All/Upcoming still lists WC nights",
+  )
+
+  const recurring = hostDashSections({
+    ...input,
+    today: TODAY,
+    showEvents: true,
+    showAccessNights: false,
+    showAccessSchedules: true,
+    recurringNightsOnly: true,
+  })
+  const nightIds = [...recurring.tonight, ...recurring.upcoming]
+    .filter((row) => row.kind === "event")
+    .map((row) => (row.kind === "event" ? row.event.event_id : 0))
+  assert.deepEqual(nightIds, [10, 11], "Recurring lists RC series nights, not standalones")
+  assert.ok(
+    recurring.tonight.concat(recurring.upcoming).every((row) => row.kind === "event"),
+    "Recurring does not dump WC nights into Tonight/Upcoming",
+  )
+  assert.ok(
+    recurring.schedules.some((row) => row.kind === "series" && row.seriesId === 7),
+    "Recurring Schedules includes the green RC series",
+  )
+  assert.ok(
+    recurring.schedules.some((row) => row.kind === "access" && row.program.id === 23),
+    "Recurring Schedules includes the pink WC program",
+  )
+  assert.notEqual(
+    all.upcoming.length,
+    recurring.upcoming.length + recurring.tonight.length,
+    "Recurring is a real filter — it is not the unfiltered Host list",
+  )
+})
+
+test("Weekly Cover chip keeps WC nights and a distinct Schedules block", () => {
+  const wc = program(23)
+  const trivia = series(7, "Trivia Fridays")
+  const out = hostDashSections({
+    events: [
+      ev(10, "2026-09-04 21:00:00", 7, { name: "Trivia" }),
+      ev(80, "2026-09-04 21:00:00", null, { name: "One-off" }),
+      ev(900, "2026-10-15 21:00:00", 23, {
+        name: "Custom WC",
+        product_kind: "weekly_cover" as const,
+        series_customized_at: "2026-08-28 23:00:00",
+      }),
+    ],
+    programs: [wc],
+    programNights: [
+      {
+        program: wc,
+        nights: [
+          night("2026-09-04", { event_id: 502 }),
+          night("2026-10-15", {
+            event_id: 900,
+            series_customized_at: "2026-08-28 23:00:00",
+            has_override: true,
+          }),
+        ],
+      },
+    ],
+    series: [trivia],
+    wcSeriesIds: [23],
+    today: TODAY,
+    showEvents: false,
+    showAccessNights: true,
+    showAccessSchedules: true,
+  })
+  const nights = [...out.tonight, ...out.upcoming]
+  assert.ok(nights.length >= 2, "Weekly Cover lists individual WC nights")
+  assert.ok(
+    nights.every((row) => row.kind === "access" || row.kind === "access-event"),
+    "Weekly Cover nights stay pink — no green RC / one-off cards",
+  )
+  assert.ok(
+    nights.some((row) => row.date === "2026-10-15"),
+    "Custom WC never clips, even past today+30",
+  )
+  assert.equal(out.schedules.length, 1, "Weekly Cover keeps a distinct Schedules block")
+  assert.equal(out.schedules[0]?.kind, "access")
+  assert.ok(
+    !out.schedules.some((row) => row.kind === "series"),
+    "Weekly Cover Schedules is WC programs only, not green RC series",
+  )
+  assert.equal(HOST_DASH_SCHEDULES, "Schedules")
+})
+
+test("isRecurringNamedEventNight is RC series nights only", () => {
+  assert.equal(isRecurringNamedEventNight(ev(10, "2026-09-04 21:00:00", 7)), true)
+  assert.equal(isRecurringNamedEventNight(ev(80, "2026-09-04 21:00:00", null)), false)
+  assert.equal(
+    isRecurringNamedEventNight(
+      ev(621, "2026-09-04 21:00:00", 23, { product_kind: "weekly_cover" }),
+      [23],
+    ),
+    false,
+  )
+  assert.equal(
+    isRecurringNamedEventNight(ev(1, "2026-09-04 21:00:00", null, { is_recurring: true })),
+    false,
+    "legacy series TEMPLATE rows are not RC nights",
+  )
+})
+
 test("Events-only hides WC; Weekly Cover-only hides green RC schedules", () => {
   const wc = program(23)
   const trivia = series(7, "Trivia Fridays")
@@ -394,7 +531,9 @@ test("Events page uses the Host sections, not a flat night pile", () => {
   const page = readFileSync(join(process.cwd(), "src/app/business/(dashboard)/events/page.tsx"), "utf8")
   assert.ok(page.includes("hostDashSections"), "live list groups through hostDashSections")
   assert.ok(page.includes("HostDashList") || page.includes("HOST_DASH_TONIGHT"), "page renders the Host sections")
-  assert.ok(page.includes("shouldUseHostDashLayout"), "Past/Drafts/Recurring keep the existing list")
+  assert.ok(page.includes("shouldUseHostDashLayout"), "Past/Drafts keep the existing list")
+  assert.ok(page.includes("eventsListQueryTab"), "Recurring fetches upcoming nights, not tab=recurring")
+  assert.ok(page.includes("recurringNightsOnly"), "Recurring chip drops standalone one-offs")
 })
 
 test("date separators are Sat Aug 29 / Thu Sep 3, not a comma stack", () => {

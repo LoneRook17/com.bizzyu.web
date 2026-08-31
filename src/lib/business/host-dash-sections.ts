@@ -124,13 +124,15 @@ export type HostDashSectionsInput = {
   showEvents: boolean
   showAccessNights: boolean
   showAccessSchedules: boolean
+  /** Recurring chip: green RC series nights only — drop standalone one-offs. */
+  recurringNightsOnly?: boolean
   windowDays?: number
 }
 
-/** Live Host layout: Upcoming tab, or the Weekly Cover-only segment. */
+/** Live Host layout: Upcoming, Recurring, or the Weekly Cover-only segment. */
 export function shouldUseHostDashLayout(tab: string, typeFilter: EventTypeFilter): boolean {
   if (typeFilter === "access") return true
-  return tab === "upcoming"
+  return tab === "upcoming" || tab === "recurring"
 }
 
 export function occurrenceIsPinned(row: HostDashOccurrence): boolean {
@@ -184,6 +186,21 @@ export function includeGreenOccurrence(
     return weeklyCoverNightNeedsPendingCancel(event, false)
   }
   return !isWeeklyCoverProduct(event)
+}
+
+/**
+ * Green named-event series night (RC). Not a standalone one-off. Not WC.
+ * Recurring chip uses this so the filter is not "everything" and not empty.
+ */
+export function isRecurringNamedEventNight(
+  event: EventListItem,
+  wcSeriesIds: readonly number[] = [],
+): boolean {
+  if (isSeriesTemplateRow(event)) return false
+  if (listedWeeklyCoverProgramId(event, wcSeriesIds) != null) return false
+  if (isWeeklyCoverProduct(event)) return false
+  const seriesId = Number(event.recurring_series_id)
+  return Number.isFinite(seriesId) && seriesId > 0
 }
 
 function greenShowsOnHostList(event: EventListItem, today: string, windowDays: number): boolean {
@@ -401,6 +418,7 @@ export function hostDashSections(input: HostDashSectionsInput): HostDashSections
     showEvents,
     showAccessNights,
     showAccessSchedules,
+    recurringNightsOnly = false,
     windowDays = SERIES_NIGHTS_WINDOW_DAYS,
   } = input
   const inactive = new Set(inactiveWcIds)
@@ -410,6 +428,7 @@ export function hostDashSections(input: HostDashSectionsInput): HostDashSections
   if (showEvents) {
     for (const event of events) {
       if (!includeGreenOccurrence(event, wcSeriesIds, inactive)) continue
+      if (recurringNightsOnly && !isRecurringNamedEventNight(event, wcSeriesIds)) continue
       if (!greenShowsOnHostList(event, today, windowDays)) continue
       const date = eventOccurrenceDate(event)
       if (!date) continue
