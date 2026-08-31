@@ -13,6 +13,12 @@ import { cn } from "@/lib/v2/utils"
 interface TicketTierFormProps {
   tiers: TicketTier[]
   onChange: (tiers: TicketTier[]) => void
+  /**
+   * The event's own 21+ toggle. A tier that has never stated a flag shows the
+   * event's answer (and the payload omits it, so the API keeps stamping the
+   * event flag); ticking the box pins an explicit per-tier value.
+   */
+  eventIs21Plus?: boolean
 }
 
 const EMPTY_TIER: TicketTier = {
@@ -31,6 +37,8 @@ const EMPTY_TIER: TicketTier = {
 // Same explanation the Weekly Cover dialog and the app use.
 const SURGE_INFO = "Price goes up after a set number of tickets sell."
 
+export const AGE_INFO = "Buyers see a 21+ badge on this ticket."
+
 // Matches the mobile app's ticket-description field (optional, 64-char cap).
 export const TICKET_DESCRIPTION_MAX = 64
 
@@ -39,7 +47,7 @@ const TICKET_TYPE_LABELS: Record<string, string> = {
   free: "Free",
 }
 
-export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
+export function TicketTierForm({ tiers, onChange, eventIs21Plus }: TicketTierFormProps) {
   const updateTier = (index: number, field: keyof TicketTier, value: string | number) => {
     const updated = [...tiers]
     updated[index] = { ...updated[index], [field]: value }
@@ -236,6 +244,19 @@ export function TicketTierForm({ tiers, onChange }: TicketTierFormProps) {
                   </button>
                 </div>
               )}
+          </div>
+
+          <div className="mt-3">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={tier.is_21_plus === undefined ? !!eventIs21Plus : !!tier.is_21_plus}
+                onChange={(e) => patchTier(i, { is_21_plus: e.target.checked })}
+                className="size-4 rounded border-neutral-300 dark:border-neutral-700"
+              />
+              <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300">21+ only</span>
+              <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{AGE_INFO}</span>
+            </label>
           </div>
 
           <div className="mt-3 flex items-center justify-between">

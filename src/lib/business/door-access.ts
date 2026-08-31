@@ -879,6 +879,11 @@ export interface NightOverridePayload {
     valid_until_time?: string | null
     valid_from_day_offset?: number | null
     valid_until_day_offset?: number | null
+    /**
+     * OMITTED unless the tier explicitly pins one. Services coerces a sent
+     * null to 0 (toFlag), so "inherit" must travel as absence, never null.
+     */
+    is_21_plus?: boolean
   }>
 }
 
@@ -2009,6 +2014,14 @@ export interface NightTierDraft {
   valid_from_day_offset: number
   valid_until_day_offset: number
   inherit_scan_window: boolean
+  /**
+   * Per-tier 21+ (migration 038), as the EFFECTIVE value (override, else
+   * template tier, else the program flag). Optional so pre-existing draft
+   * literals (tests, wizard steps) stay valid; undefined = say nothing, and
+   * the PUT then omits the key so the stored override is left alone.
+   */
+  is_21_plus?: boolean
+  inherit_is_21_plus?: boolean
 }
 
 /** Create-series Add ticket tier values, applied to one night draft tier. */
@@ -2023,6 +2036,8 @@ export interface NightTierFormValues {
   valid_until_time: string | null
   valid_from_day_offset: number
   valid_until_day_offset: number
+  /** Absent = the editing surface never showed the control; leave it alone. */
+  is_21_plus?: boolean
 }
 
 export interface NightDraft {
@@ -2176,6 +2191,8 @@ export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgra
         ? tier.max_per_person
         : (template?.max_per_person ?? 0)
       const templateMax = template?.max_per_person ?? maxPerPerson
+      const template21 = template?.is_21_plus ?? program.is_21_plus
+      const tier21 = tier.is_21_plus ?? template21
       const scan = resolveNightScanWindow(tier, template)
       return {
         tier_key: tier.tier_key,
@@ -2199,6 +2216,8 @@ export function draftFromNight(night: DoorAccessNight, program: DoorAccessProgra
         valid_from_day_offset: scan.valid_from_day_offset,
         valid_until_day_offset: scan.valid_until_day_offset,
         inherit_scan_window: inheritIfMatchesScan(scan, template),
+        is_21_plus: tier21,
+        inherit_is_21_plus: tier21 === template21,
       }
     }),
   }
@@ -2257,6 +2276,12 @@ export function buildNightOverridePayload(draft: NightDraft): NightOverridePaylo
       valid_until_time: tier.inherit_scan_window ? null : tier.valid_until_time,
       valid_from_day_offset: tier.inherit_scan_window ? null : tier.valid_from_day_offset,
       valid_until_day_offset: tier.inherit_scan_window ? null : tier.valid_until_day_offset,
+      // The one field where inherit travels as ABSENCE, not null — services
+      // toFlag()s a sent null straight to 0 ("not 21+"), which would pin an
+      // explicit override the host never expressed.
+      ...(tier.inherit_is_21_plus === false && typeof tier.is_21_plus === "boolean"
+        ? { is_21_plus: tier.is_21_plus }
+        : {}),
     })),
   }
 }
@@ -2480,6 +2505,7 @@ export function applyRecurringNightTier(
         valid_until_time?: string | null
         valid_from_day_offset?: number
         valid_until_day_offset?: number
+        is_21_plus?: boolean
       }
     | undefined
 ): NightDraft {
@@ -2512,6 +2538,15 @@ export function applyRecurringNightTier(
             valid_from_day_offset: values.valid_from_day_offset,
             valid_until_day_offset: values.valid_until_day_offset,
             inherit_scan_window: inheritIfMatchesScan(values, template),
+            // Only when the form stated one — a surface without the control
+            // must not silently pin (or release) the stored flag.
+            ...(values.is_21_plus === undefined
+              ? {}
+              : {
+                  is_21_plus: values.is_21_plus,
+                  inherit_is_21_plus:
+                    values.is_21_plus === (template?.is_21_plus ?? tier.is_21_plus),
+                }),
           }
         : tier
     ),
@@ -2529,6 +2564,7 @@ export function parseRecurringNightTier(row: {
   valid_until_time: string
   valid_from_day_offset: number
   valid_until_day_offset: number
+  is_21_plus?: boolean
 }): { values: NightTierFormValues; error: string | null } {
   const name = row.name.trim()
   if (!name) {
@@ -2580,6 +2616,7 @@ export function parseRecurringNightTier(row: {
       valid_until_time: validUntilTime,
       valid_from_day_offset: validFromTime ? row.valid_from_day_offset : 0,
       valid_until_day_offset: validUntilTime ? row.valid_until_day_offset : 0,
+      ...(row.is_21_plus === undefined ? {} : { is_21_plus: row.is_21_plus }),
     },
     error: null,
   }

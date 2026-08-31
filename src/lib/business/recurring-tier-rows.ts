@@ -34,6 +34,12 @@ export interface RecurringTierRow {
    */
   surge_enabled?: boolean
   surge?: SurgeStepDraft[]
+  /**
+   * Per-tier 21+ (WC night page only for now). OPTIONAL for the same reason
+   * as surge: rows minted without it leave the stored flag alone, and
+   * `tierRowsToTemplate` never writes it.
+   */
+  is_21_plus?: boolean
 }
 
 export const EMPTY_RECURRING_TIER: RecurringTierRow = {

@@ -101,12 +101,17 @@ export function DateTimeField({
   value,
   onChange,
   className,
+  datePlaceholder,
+  timePlaceholder,
 }: {
   id?: string
   name?: string
   value: string
   onChange: (next: string) => void
   className?: string
+  /** Empty-field hints only ("Day of", "Next day") — never a value. */
+  datePlaceholder?: string
+  timePlaceholder?: string
 }) {
   const parts = splitDateTimeLocal(value)
   const [date, setDate] = useState(parts.date)
@@ -143,11 +148,11 @@ export function DateTimeField({
       {name ? <input type="hidden" name={name} value={value} /> : null}
       <div>
         <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Date</p>
-        <DateField id={id} value={date} onChange={(next) => commit(next, time)} />
+        <DateField id={id} value={date} onChange={(next) => commit(next, time)} {...(datePlaceholder ? { placeholder: datePlaceholder } : {})} />
       </div>
       <div>
         <p className="mb-1 text-xs text-neutral-500 dark:text-neutral-400">Time</p>
-        <TimeField id={id ? `${id}_time` : undefined} value={time} onChange={(next) => commit(date, next)} />
+        <TimeField id={id ? `${id}_time` : undefined} value={time} onChange={(next) => commit(date, next)} {...(timePlaceholder ? { placeholder: timePlaceholder } : {})} />
       </div>
     </div>
   )
@@ -309,12 +314,14 @@ export function TimeField({
   onChange,
   className,
   disabled = false,
+  placeholder = "7:00 PM",
 }: {
   id?: string
   value: string
   onChange: (next: string) => void
   className?: string
   disabled?: boolean
+  placeholder?: string
 }) {
   const [open, setOpen] = useState(false)
   const [typed, setTyped] = useState(() => formatClock12h(value))
@@ -360,7 +367,7 @@ export function TimeField({
         <Input
           id={id}
           type="text"
-          placeholder="7:00 PM"
+          placeholder={placeholder}
           value={typed}
           disabled={disabled}
           onChange={(e) => commitTyped(e.target.value)}

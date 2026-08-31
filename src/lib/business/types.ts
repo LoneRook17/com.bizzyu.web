@@ -226,6 +226,9 @@ export interface TicketTier {
   sold_count?: number
   max_per_person?: number
   ticket_type: 'paid' | 'free' | 'guest'
+  // Per-tier 21+ (migration 038). Undefined = the form never stated one, so
+  // the API stamps the event's own 21+ flag; the payload omits it then.
+  is_21_plus?: boolean
   is_hidden?: boolean
   // Operator "force sold out" flag. Unlike is_hidden, the tier stays visible on
   // checkout but shows a Sold Out banner and can't be purchased. Quantity is
