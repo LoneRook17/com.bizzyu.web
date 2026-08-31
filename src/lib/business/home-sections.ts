@@ -28,6 +28,14 @@ export type HomeSectionsInput = {
   showEvents: boolean
   showLineSkips: boolean
   showDeals: boolean
+  /**
+   * Role gate for MONEY tiles — owner only (the team permission matrix has
+   * always said manager: no for "View revenue & payouts"; the tiles just
+   * never checked). The server omits total_revenue for non-owners too, so
+   * this hides the tiles rather than rendering a dash. Optional so callers
+   * that predate the gate (tests) keep their shapes; absent = owner.
+   */
+  canViewRevenue?: boolean
 }
 
 export type HomeSections = {
@@ -51,10 +59,11 @@ export type HomeSections = {
 
 export function homeSections(input: HomeSectionsInput): HomeSections {
   const { totalEvents, hasLineSkipNights, showEvents, showLineSkips, showDeals } = input
+  const canViewRevenue = input.canViewRevenue ?? true
 
   const events = showEvents && totalEvents > 0
   const lineSkips = showLineSkips && hasLineSkipNights
-  const revenueTile = events || showDeals
+  const revenueTile = (events || showDeals) && canViewRevenue
   const dealsCard = !events && showDeals
 
   // Mirrors the tiles page.tsx renders: revenue, active deals, claims
