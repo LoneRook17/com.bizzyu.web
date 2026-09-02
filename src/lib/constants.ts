@@ -17,6 +17,10 @@ export const NAV_LINKS = [
   { label: "Students", href: "/" },
   { label: "Restaurants", href: "/post-a-deal" },
   { label: "Bars & Events", href: "/events" },
+  /* National brands (DoorDash, Spotify, ...) listing a student offer in the
+     National Deals tab. Distinct from Restaurants, which is local businesses
+     posting a campus deal. */
+  { label: "For Brands", href: "/brands" },
   { label: "About", href: "/about" },
 ];
 

@@ -204,6 +204,16 @@ export default function BusinessesPage() {
           <p className="mt-10 text-center text-sm text-muted">
             Used for 100+ college nightlife events nationwide.
           </p>
+          {/* Third audience, deliberately not a third door: a national brand
+              with a student plan is not a local business, and its path is the
+              brand partner program, not a campus deal or a venue demo. */}
+          <p className="mt-4 text-center text-sm text-muted">
+            National brand with a student offer?{" "}
+            <Link href="/brands" className="text-primary-dark font-semibold hover:underline">
+              See the brand partner program
+            </Link>
+            .
+          </p>
         </AnimatedSection>
       </SectionContainer>
 
