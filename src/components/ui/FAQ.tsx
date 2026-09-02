@@ -45,7 +45,9 @@ export default function FAQ({ items, tone = "light" }: FAQProps) {
       {items.map((item, index) => (
         <div key={index} className={`rounded-2xl overflow-hidden ${t.card}`}>
           <button
+            type="button"
             onClick={() => setOpenIndex(openIndex === index ? null : index)}
+            aria-expanded={openIndex === index}
             className="w-full flex items-center justify-between px-6 py-5 text-left"
           >
             <span className={`text-lg font-semibold pr-4 ${t.question}`}>

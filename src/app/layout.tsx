@@ -116,6 +116,9 @@ export const metadata: Metadata = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  // Stable id so a page can point at this node (about / provider / publisher)
+  // instead of restating it. /brands does.
+  "@id": "https://bizzyu.com/#organization",
   name: "Bizzy",
   url: "https://bizzyu.com",
   logo: "https://bizzyu.com/images/bizzy-logo.png",
