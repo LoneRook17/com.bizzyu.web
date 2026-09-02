@@ -7,6 +7,9 @@ import FAQ from "@/components/ui/FAQ";
 import JsonLd from "@/components/seo/JsonLd";
 import BrandApplicationForm from "@/components/brands/BrandApplicationForm";
 import StickyApplyCTA from "@/components/brands/StickyApplyCTA";
+import NationalDealsShelf from "@/components/brands/NationalDealsShelf";
+import BrandLogoStrip from "@/components/brands/BrandLogoStrip";
+import { fetchNationalDeals } from "@/lib/brands/nationalDeals";
 import { og } from "@/lib/og";
 import {
   BRANDS_CONTACT_EMAIL,
@@ -162,63 +165,12 @@ function WhyIcon({ name, className = "" }: { name: string; className?: string })
   );
 }
 
-/* A National Deals shelf, the way a student sees it, with one open slot. No
-   real brand is named: the page is for brands that are not on it yet. */
-function DealsShelf() {
-  const rows = [
-    { name: "Music streaming", perk: "Student plan", muted: true },
-    { name: "Your brand", perk: "Your student offer", featured: true },
-    { name: "Food delivery", perk: "Student pricing", muted: true },
-    { name: "Study tools", perk: "Free months for students", muted: true },
-  ];
-  return (
-    <div className="relative mx-auto w-full max-w-sm">
-      <div className="absolute -inset-6 bg-gradient-to-tr from-primary/25 via-primary/5 to-transparent rounded-[2.5rem] blur-2xl pointer-events-none" />
-      <div className="relative rounded-[2rem] bg-ink text-white p-5 shadow-2xl shadow-black/30 ring-1 ring-white/10">
-        <div className="flex items-center justify-between mb-4 px-1">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">National Deals</p>
-          <p className="text-[11px] text-white/40">Every campus</p>
-        </div>
-        <ul className="space-y-2.5">
-          {rows.map((r) => (
-            <li
-              key={r.name}
-              className={`flex items-center gap-3 rounded-2xl px-4 py-3.5 ${
-                r.featured
-                  ? "bg-primary text-ink shadow-lg shadow-primary/30"
-                  : "bg-white/[0.06] border border-white/10"
-              }`}
-            >
-              <div
-                className={`w-10 h-10 rounded-xl flex-shrink-0 ${
-                  r.featured ? "bg-ink/10 border border-ink/10" : "bg-white/10"
-                }`}
-                aria-hidden
-              />
-              <div className="min-w-0 flex-1">
-                <p className={`text-sm font-bold leading-snug ${r.featured ? "text-ink" : "text-white"}`}>
-                  {r.name}
-                </p>
-                <p className={`text-xs leading-snug mt-0.5 ${r.featured ? "text-ink/70" : "text-white/50"}`}>
-                  {r.perk}
-                </p>
-              </div>
-              <span
-                className={`text-[10px] font-bold uppercase tracking-widest rounded-full px-2 py-1 ${
-                  r.featured ? "bg-ink text-primary" : "bg-white/10 text-white/60"
-                }`}
-              >
-                {r.featured ? "Verified" : "Student"}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
+export default async function BrandsPage() {
+  // Real brands from the live National Deals feed, for the hero shelf and the
+  // logo strip. Degrades to [] so a dead API costs the proof, not the page.
+  const deals = await fetchNationalDeals();
+  const realStats = BRAND_STATS.filter((s) => s.value !== STAT_PLACEHOLDER);
 
-export default function BrandsPage() {
   return (
     <>
       <JsonLd data={webPageJsonLd} />
@@ -227,8 +179,8 @@ export default function BrandsPage() {
 
       {/* ─── 1. Hero ──────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-white">
-        <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(120%_90%_at_20%_0%,black,transparent_70%)] [-webkit-mask-image:radial-gradient(120%_90%_at_20%_0%,black,transparent_70%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(65%_50%_at_95%_0%,rgba(5,235,84,0.16),transparent_60%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-dot-grid [mask-image:radial-gradient(90%_70%_at_15%_0%,black,transparent_70%)] [-webkit-mask-image:radial-gradient(90%_70%_at_15%_0%,black,transparent_70%)] pointer-events-none opacity-60" />
+        <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_100%_0%,rgba(5,235,84,0.14),transparent_60%)] pointer-events-none" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-5 sm:px-6 pt-10 pb-12 md:pt-28 md:pb-20">
@@ -267,36 +219,50 @@ export default function BrandsPage() {
 
                 {/* STAT ROW. Two of these are STAT_PLACEHOLDER until Cooper
                     supplies real numbers; see lib/brands/copy.ts. */}
-                {/* Placeholder stats are dropped at render time, so the page
-                    can ship before the numbers exist without printing "[X]".
-                    Fill them in lib/brands/copy.ts and they appear. */}
-                <dl className="mt-8 md:mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-lg">
-                  {BRAND_STATS.filter((s) => s.value !== STAT_PLACEHOLDER).map((s) => (
-                    <div key={s.label} className="border-l-2 border-primary pl-3 sm:pl-4">
-                      <dt className="sr-only">{s.label}</dt>
-                      <dd className="text-xl sm:text-2xl md:text-3xl font-bold text-ink tracking-tight leading-none">
-                        {s.value}
-                      </dd>
-                      <dd className="text-[11px] sm:text-xs md:text-sm text-muted mt-1.5 leading-tight" aria-hidden>
-                        {s.label}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                {/* Stat row only once at least two real numbers exist in
+                    lib/brands/copy.ts; a single "Free" on its own read as a
+                    leftover. Until then, the three facts a brand checks first. */}
+                {realStats.length >= 2 ? (
+                  <dl className="mt-8 md:mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-lg">
+                    {realStats.map((s) => (
+                      <div key={s.label} className="border-l-2 border-primary pl-3 sm:pl-4">
+                        <dt className="sr-only">{s.label}</dt>
+                        <dd className="text-xl sm:text-2xl md:text-3xl font-bold text-ink tracking-tight leading-none">
+                          {s.value}
+                        </dd>
+                        <dd className="text-[11px] sm:text-xs md:text-sm text-muted mt-1.5 leading-tight" aria-hidden>
+                          {s.label}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <ul className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-muted">
+                    {["Free to list", "Non-exclusive", "Reviewed by hand", "Live at every US university"].map((p) => (
+                      <li key={p} className="inline-flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-primary-dark" />
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </AnimatedSection>
             </div>
 
             <div className="lg:col-span-5">
               <AnimatedSection delay={0.15} variant="fade-left">
-                <DealsShelf />
+                <NationalDealsShelf deals={deals} />
               </AnimatedSection>
             </div>
           </div>
         </div>
       </section>
 
+      {/* ─── 1b. Proof: brands already in National Deals ───────── */}
+      <BrandLogoStrip deals={deals} />
+
       {/* ─── 2. Why Bizzy ─────────────────────────────────────── */}
-      <section className="bg-gray-50 border-y border-gray-100">
+      <section className="bg-gray-50 border-b border-gray-100">
         <SectionContainer className="!py-16 md:!py-24">
           <AnimatedSection>
             <div className="max-w-2xl mb-12">
