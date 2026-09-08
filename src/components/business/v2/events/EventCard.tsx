@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
 import {
   eventCardBodyHref,
-  eventListHref,
   eventRowStats,
   listedWeeklyCoverProgramId,
   type ListedProgramRef,
@@ -33,9 +32,8 @@ import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-
  * which is exactly the seam F9 exists to close.
  *
  * What this card kept from its pre-F9 form: the View / Manage / Scan footer.
- * The app reaches those by opening the row first; a dashboard has the width to
- * offer them directly, and taking them away would have been a regression
- * dressed up as a redesign.
+ * View = guest checkout when the event is live; otherwise View is hidden.
+ * Manage (and the card body) stay on the host side — never overload View.
  */
 export function EventCard({
   event,
@@ -87,17 +85,16 @@ export function EventCard({
     .filter(Boolean)
     .join(" · ")
 
-  const href = eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
   // Click = manage (2026-08 instance-manage pass): the card body opens the full
-  // manage page directly; View keeps the detail page reachable.
+  // manage page directly. View is always the guest checkout when live — never
+  // a second host detail/pre-manage page under the same label.
   const bodyHref = eventCardBodyHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
   const isWcRow = programId != null || isWeeklyCoverProduct(event)
-  // A green recurring occurrence (RC night). Its card carries View + Manage
-  // only — Scan lives inside manage — and View is the GUEST page for that
-  // night, not a second dash half-page.
+  // RC nights: View + Manage only (Scan lives inside manage).
   const isSeriesNight = !isWcRow && Number(event.recurring_series_id ?? 0) > 0
-  const guestViewUrl =
-    isSeriesNight && isPubliclyLinkable(event.status) ? eventCheckoutUrl(event.event_id) : null
+  const guestViewUrl = isPubliclyLinkable(event.status)
+    ? eventCheckoutUrl(event.event_id)
+    : null
 
   return (
     <HostListCard
@@ -123,13 +120,11 @@ export function EventCard({
       stats={eventRowStats(event)}
       actions={
         <>
-          <Button variant="ghost" size="sm" asChild>
-            {guestViewUrl ? (
+          {guestViewUrl && (
+            <Button variant="ghost" size="sm" asChild>
               <a href={guestViewUrl} target="_blank" rel="noopener noreferrer">View</a>
-            ) : (
-              <Link href={href}>View</Link>
-            )}
-          </Button>
+            </Button>
+          )}
           <Button variant="ghost" size="sm" asChild>
             <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>
           </Button>
