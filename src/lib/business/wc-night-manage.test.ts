@@ -66,20 +66,24 @@ test("WC-stamped rows keep opening their program, same as eventListHref", () => 
 
 // ── Card source guards ──────────────────────────────────────────────────────
 
-test("EventCard: body = manage, RC cards lose Scan and View goes guest-facing", () => {
+test("EventCard: body = manage, View is guest checkout when live for all events", () => {
   const src = read("src/components/business/v2/events/EventCard.tsx")
   assert.ok(src.includes("eventCardBodyHref"), "card body routes through the click=manage helper")
-  assert.ok(
-    src.includes("eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)"),
-    "View keeps the eventListHref contract for plain events",
-  )
   assert.ok(src.includes("isSeriesNight"), "RC occurrences are distinguished")
   assert.ok(
     src.includes("!isSeriesNight && !isWcRow"),
     "Scan renders only on plain one-off event cards",
   )
-  assert.ok(src.includes("eventCheckoutUrl"), "RC View is the guest checkout page for that night")
-  assert.ok(src.includes("isPubliclyLinkable"), "guest View is withheld until the night is live")
+  assert.ok(src.includes("eventCheckoutUrl(event.event_id)"), "View is the guest checkout page")
+  assert.ok(src.includes("isPubliclyLinkable(event.status)"), "guest View is withheld until live")
+  assert.ok(
+    !src.includes("eventListHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)"),
+    "View must not route plain events to host detail under the View label",
+  )
+  assert.ok(
+    src.includes("{guestViewUrl && ("),
+    "View is omitted when the event is not publicly linkable",
+  )
 })
 
 test("AccessNightCard: guest View uses the Laravel checkout link, never a dash half-page", () => {
