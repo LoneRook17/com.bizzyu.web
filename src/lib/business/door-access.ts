@@ -1725,7 +1725,7 @@ export function redemptionModeLabel(mode: RedemptionMode): string {
 
 /**
  * The F9 card's single metadata line, mirroring the app's accessProgramMeta:
- * `Venue · nights · Recurring cover and line skip · From $X`.
+ * `Venue · nights · Recurring cover and skip the line ticket · From $X`.
  *
  * Empty segments are dropped rather than rendered blank, so a program with no
  * venue reads "Fri · Sat · …" and not " · Fri · Sat · …".
@@ -1734,7 +1734,7 @@ export function programMetaLine(program: DoorAccessProgramSummary): string {
   return [
     program.venue_name,
     formatDays(program.days_of_week),
-    "Recurring cover and line skip",
+    "Recurring cover and skip the line ticket",
     program.lowest_price_usd != null ? `From ${usdPrice(program.lowest_price_usd)}` : "",
   ]
     .filter((s) => s.length > 0)

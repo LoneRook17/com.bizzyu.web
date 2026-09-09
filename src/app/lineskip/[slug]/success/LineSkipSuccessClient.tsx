@@ -159,7 +159,7 @@ export default function LineSkipSuccessClient({
           </p>
         </div>
 
-        {/* Get your line skips in the app */}
+        {/* Get your skip the line tickets in the app */}
         <div className="mb-6 rounded-2xl border border-[#1e1e2e] bg-[#141420] p-6 text-center">
           <h2 className="mb-2 text-2xl font-extrabold text-white">Get your Skip the Line in the app</h2>
           <p className="mb-6 text-sm text-gray-400">
@@ -189,7 +189,7 @@ export default function LineSkipSuccessClient({
         {/* Details card */}
         <div className="mb-6 overflow-hidden rounded-2xl border" style={{ borderColor: `${ACCESS}40`, backgroundColor: `${ACCESS}0d` }}>
           <div className="flex items-center justify-between px-5 py-3" style={{ backgroundColor: ACCESS }}>
-            <span className="text-sm font-extrabold text-black/80">LINE SKIP</span>
+            <span className="text-sm font-extrabold text-black/80">SKIP THE LINE TICKET</span>
             <span className="rounded-full bg-black/10 px-3 py-0.5 text-xs font-bold text-black/70">INCLUDES COVER</span>
           </div>
           <div className="p-5">

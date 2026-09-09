@@ -95,7 +95,7 @@ export interface QuickStats {
   next_event_date: string | null
   // LSK-19 line-skip aggregate. Optional because an older server (a rollback to
   // :150 or below) answers this endpoint without them — the Home page must read
-  // "no line skips" from their absence, never crash on it.
+  // "no skip the line tickets" from their absence, never crash on it.
   /** Has this business EVER scheduled a night? Presence, not revenue — a venue
    *  with nights and no sales is still a line-skip venue and sees a real $0. */
   has_line_skip_nights?: boolean
@@ -710,7 +710,7 @@ export interface TrackingLink {
   created_at: string
 }
 
-// Line Skip types
+// Skip the Line Ticket types
 export interface LineSkip {
   id: number
   business_id: number
@@ -750,7 +750,7 @@ export interface LineSkipInstance {
   updated_at: string
 }
 
-// Per-weekday recurring settings for a line skip program (0=Sun..6=Sat). Each
+// Per-weekday recurring settings for a skip the line ticket program (0=Sun..6=Sat). Each
 // selected day may carry its own price/time/limit; days without an override row
 // fall back to the program's default_* values.
 export interface LineSkipDayOverride {
@@ -778,7 +778,7 @@ export interface LineSkipFormData {
   default_capacity: string // string for form input, empty = unlimited
 }
 
-// Line Skip Analytics types
+// Skip the Line Ticket Analytics types
 export interface LineSkipInstanceAnalytics {
   // Core instance fields - echoed by the API so the night-detail page can render
   // the configured price/time/date and drive the edit modal without a 2nd fetch.

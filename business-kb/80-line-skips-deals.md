@@ -1,13 +1,13 @@
-# Line skips (legacy) & deals
+# Skip the line tickets (legacy) & deals
 
-## Line skips are a legacy product
+## Skip the line tickets are a legacy product
 
-Line skips were Bizzy's original door product: customers paid in advance for a
+Skip the line tickets were Bizzy's original door product: customers paid in advance for a
 specific night, showed a QR at the door, and walked to the front with
 guaranteed entry, cover included.
 
-That product has been **retired for new setups**. There is no Line skips item
-in the sidebar and **no way to create a new line-skip schedule** from the
+That product has been **retired for new setups**. There is no Skip the line tickets item
+in the sidebar and **no way to create a new skip the line ticket schedule** from the
 dashboard. The modern way to sell nightlife entry is a **Weekly Cover**
 series: Cover as the base tier, with **"Skip the Line"** as a faster-entry
 option on a night (see "Weekly Cover"). If an owner asks how to set up line
@@ -15,24 +15,24 @@ skips, point them to Weekly Cover, not to a create flow that no longer exists.
 
 ### Venues that still have a legacy schedule
 
-Existing line-skip schedules **keep working** until the venue turns them off:
+Existing skip the line ticket schedules **keep working** until the venue turns them off:
 nights keep generating on the rolling schedule (about 2 weeks ahead) and keep
 selling.
 
 - **Where to find it**: inside **Events**, in the Weekly Cover view, through
-  the muted legacy line-skips link. Opening a night from there still works.
+  the muted legacy skip the line tickets link. Opening a night from there still works.
 - **Managing nights**: each upcoming night can be edited (price, quantity,
   times) or cancelled. Cancelling a night automatically refunds every buyer
   for that night (see "Stripe & payouts" for what a refund does).
-- **Turning the schedule off**: the legacy Line skips page has a "Turn off
-  line skip" action (owner or manager). It is **blocked while a future night
+- **Turning the schedule off**: the legacy Skip the line tickets page has a "Turn off
+  skip the line ticket" action (owner or manager). It is **blocked while a future night
   still has paid passes** — the dialog says how many passes across how many
   nights. Cancel those nights first (which refunds those buyers), then turn
   it off.
 - **Sold passes always keep working** exactly as bought: one night, one use,
   camera scan, cover included. Never tell a customer or an owner that a sold
   pass stopped being valid because the product is legacy.
-- **Scanning**: line skips are scanned with the phone's **regular camera app**,
+- **Scanning**: skip the line tickets are scanned with the phone's **regular camera app**,
   not the in-app scanner (see "Scanning & door counters").
 
 ### A naming collision worth knowing about
@@ -45,13 +45,13 @@ someone says it, they might mean:
   See "Weekly Cover". This is the most likely meaning going forward.
 - **A ticket tier they named "Skip the Line"** on a **named event**. That is
   just a ticket: in-app scanner, cover only if they said so.
-- **A legacy Bizzy line skip**, the retired standalone product above. Camera
+- **A legacy Bizzy skip the line ticket**, the retired standalone product above. Camera
   scan, includes cover.
 
 If it isn't clear which one an owner means, ask one short question before
 answering, because the scanning method and the management screens are
-different. Don't assume a ticket named "Skip the Line" is a line skip, and
-don't send a Weekly Cover owner to the legacy line-skips screen to fix Cover.
+different. Don't assume a ticket named "Skip the Line" is a skip the line ticket, and
+don't send a Weekly Cover owner to the legacy skip the line tickets screen to fix Cover.
 
 ## Deals
 

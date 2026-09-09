@@ -1,7 +1,7 @@
 # Onboarding Personalization Plan — v2 Dashboard
 
 **Branch:** `feature/dashboard-redesign` · **Status:** planned, not started
-**Decisions locked:** no user-facing email verification (emails are notification-only) · deals-only mode hides Events + Line skips entirely · mode switchable anytime in Settings.
+**Decisions locked:** no user-facing email verification (emails are notification-only) · deals-only mode hides Events + Skip the line tickets entirely · mode switchable anytime in Settings.
 
 ---
 
@@ -47,7 +47,7 @@ Signup creates a session and drops the user straight into trial mode.
 ### Mode effects (single source of truth: `src/lib/v2/mode.ts`)
 - `useDashboardMode()` hook reads `business.dashboard_mode` from `useAuth` (hybrid when null/unknown for safety).
 - A `MODE_CONFIG` map drives everything:
-  - **Sidebar nav** — deals: Home, Deals, Marketing, Analytics, Team, Settings (Events + Line skips hidden). events: Home, Events, Line skips, Marketing, Analytics, Team, Settings (Deals hidden). hybrid: current nav.
+  - **Sidebar nav** — deals: Home, Deals, Marketing, Analytics, Team, Settings (Events + Skip the line tickets hidden). events: Home, Events, Skip the line tickets, Marketing, Analytics, Team, Settings (Deals hidden). hybrid: current nav.
   - **Home page** — metric tiles, "Needs your attention," and bento cards filtered to the mode; deals mode leads with claim/redemption stats + "Create deal" CTA, events mode with ticket sales/check-ins + "Create event" CTA.
   - **TrialHome** — hero checklist step becomes "Build your first deal" / "Create your first event" / both options for hybrid.
   - **Analytics** — default tab follows mode.

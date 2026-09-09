@@ -159,7 +159,7 @@ export default function LineSkipCalendar({
       {/* Repeat chip + tip */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-          Tap a night to add a line skip. Doing it weekly? Turn on <span className="font-medium text-neutral-700 dark:text-neutral-300">Repeat</span> when you add one.
+          Tap a night to add a skip the line ticket. Doing it weekly? Turn on <span className="font-medium text-neutral-700 dark:text-neutral-300">Repeat</span> when you add one.
         </p>
         {usualLabel ? (
           <span className="inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-1 text-xs text-neutral-600 dark:text-neutral-300">
@@ -310,7 +310,7 @@ export default function LineSkipCalendar({
           {addDate && (
             <>
               <DialogHeader>
-                <DialogTitle>Add line skip</DialogTitle>
+                <DialogTitle>Add skip the line ticket</DialogTitle>
                 <DialogDescription>{longDate(addDate)}</DialogDescription>
               </DialogHeader>
               {addError && <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-400">{addError}</div>}

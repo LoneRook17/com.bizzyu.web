@@ -215,6 +215,6 @@ The business dashboard at `src/app/business/(dashboard)/` is the operator surfac
 - **Per-event Announcements + SMS Blast** — composer pages under `events/[id]/manage/announcements/` and `events/[id]/manage/sms-blast/`. Reachable from the manage cards grid in `events/[id]/manage/page.tsx`.
 - **Promoter Program section** on event create/edit forms (`EventForm.tsx`) — toggle + commission terms; gates ≤50%, paid-ticket-only, host has Stripe Connect.
 - **Promoter dashboard** — `src/app/promoter/page.tsx` (lifetime earnings, per-event clicks/sales/revenue, inline SVG sparklines).
-- **Apple Wallet "Add" buttons** — surfaced on `/checkout/[id]/success` (event) and the line-skip success page; UA-gated (Safari/iOS).
+- **Apple Wallet "Add" buttons** — surfaced on `/checkout/[id]/success` (event) and the skip the line ticket success page; UA-gated (Safari/iOS).
 
 Marketing component library: `src/components/business/dashboard/marketing/` (AttendeeDetailDrawer, CampaignDetailDrawer, BlastComposerModal, etc.). Door counters recap card: `src/components/business/dashboard/DoorCountersRecap.tsx`.

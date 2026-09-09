@@ -40,7 +40,7 @@ test("events is next when deals is empty", () => {
   assert.equal(landingTab(state({ eventsCount: 2, lineSkipsCount: 5 })), "events")
 })
 
-test("a line-skip-only venue lands on line skips — the whole point of LSK-23", () => {
+test("a line-skip-only venue lands on skip the line tickets — the whole point of LSK-23", () => {
   assert.equal(landingTab(state({ lineSkipsCount: 4 })), "line-skips")
 })
 
@@ -81,7 +81,7 @@ test("the choice is made on the settle, once", () => {
 
 test("pinned means pinned — a later refetch never re-snaps the tab", () => {
   // The operator is reading Deals; a venue switch brings back a payload where
-  // only line skips have data. The tab must not move under them.
+  // only skip the line tickets have data. The tab must not move under them.
   assert.equal(resolveLandingTab(state({ lineSkipsCount: 9 }), true), null)
   // Still nothing even on a fresh settle with different data.
   assert.equal(resolveLandingTab(state({ dealsCount: 1, eventsCount: 1 }), true), null)

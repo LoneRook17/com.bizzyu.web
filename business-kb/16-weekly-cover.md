@@ -7,7 +7,7 @@ prices). Bizzy generates each upcoming night. Customers buy **Cover** for
 
 It is **not** a named Event. A custom night is still Weekly Cover. It is
 not Trivia Tuesdays (see "Recurring events") and not the standalone line
-skip (see "Line skips & deals").
+skip (see "Skip the line tickets & deals").
 
 User-facing name is **Weekly Cover** / **Cover**. Don't tell an owner or a
 guest it is "door access". The dashboard URL and API may still say
@@ -68,7 +68,7 @@ Line can include cover or not; the owner sets that, and checkout shows
 it.
 
 A Weekly Cover tier named **"Skip the Line"** is still Weekly Cover. It
-is not the standalone **Line skips** product in the old line-skip
+is not the standalone **Skip the line tickets** product in the old skip the line ticket
 schedule. If an owner says "skip the line", ask which one before you
 answer: scanning and setup screens are different.
 
@@ -94,7 +94,7 @@ Check-in opens closer to doors and closes after that night's window.
 ## Cancelling a night
 
 Cancelling a Weekly Cover night refunds that night's buyers the same way
-cancelling an event or a line-skip night does. If there is money to
+cancelling an event or a skip the line night does. If there is money to
 refund, it goes to the Bizzy team for review first; if there is nothing
 refundable, it cancels immediately. You can't cancel a night that has
 already ended. See "Events".

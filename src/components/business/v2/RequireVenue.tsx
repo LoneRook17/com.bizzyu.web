@@ -8,7 +8,7 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 
 /**
- * Deals, events, and line skips are always attached to a venue - creation is
+ * Deals, events, and skip the line tickets are always attached to a venue - creation is
  * impossible without one. Wrap create pages in this guard so venueless
  * businesses get a clear next step instead of a dead-end form.
  */

@@ -101,7 +101,7 @@ function OwnerManagerView() {
     apiClient
       .get<LineSkipAnalyticsOverview>(`/business/line-skips/analytics/overview?_=1${venueParam}`)
       .then(setLineSkips)
-      .catch((err) => { console.error("Failed to load line skip analytics:", err); setLineSkips(null) })
+      .catch((err) => { console.error("Failed to load skip the line ticket analytics:", err); setLineSkips(null) })
       .finally(() => setLineSkipsLoading(false))
   }, [venueParam])
 

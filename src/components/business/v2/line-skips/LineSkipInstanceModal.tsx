@@ -302,7 +302,7 @@ export default function LineSkipInstanceModal({
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="ls_dqty">Line skip quantity</Label>
+              <Label htmlFor="ls_dqty">Skip the line ticket quantity</Label>
               <Input
                 id="ls_dqty"
                 type="number"

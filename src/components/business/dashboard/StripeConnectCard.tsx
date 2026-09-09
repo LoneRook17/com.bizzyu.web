@@ -170,7 +170,7 @@ export function StripeReturnBanner({ onComplete }: { onComplete: () => void }) {
     return (
       <div className="rounded-xl border border-green-200 bg-green-50 p-4 mb-4">
         <p className="text-sm text-green-700 font-medium">
-          Stripe Connect setup complete! You can now create paid events and sell line skips.
+          Stripe Connect setup complete! You can now create paid events and sell skip the line tickets.
         </p>
       </div>
     )

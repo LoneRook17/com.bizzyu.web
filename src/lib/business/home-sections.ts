@@ -1,6 +1,6 @@
 // Which product sections the business dashboard HOME page shows (LSK-19).
 //
-// The bug: a venue that only sells line skips opened /business to Revenue $0,
+// The bug: a venue that only sells skip the line tickets opened /business to Revenue $0,
 // Attendees 0, Upcoming events 0 and a "Create an event" button for a product
 // it does not run. Nephews sold three passes this morning and its dashboard was
 // indistinguishable from a venue that has never sold anything.

@@ -68,7 +68,7 @@ export const metadata: Metadata = {
   // superlative, and it rode on every page that did not override it, including
   // every share card. Same family as the hardcoded star rating below.
   description:
-    "Student-only deals at the spots around your campus, plus event tickets and line skips. Free to use, no membership.",
+    "Student-only deals at the spots around your campus, plus event tickets and skip the line tickets. Free to use, no membership.",
   keywords: [
     "college deals",
     "student discounts",
@@ -89,7 +89,7 @@ export const metadata: Metadata = {
   ...og({
     title: "Your college town in one app",
     description:
-      "Student-only deals at the spots around your campus, plus event tickets and line skips. Free to use, no membership, no coupons.",
+      "Student-only deals at the spots around your campus, plus event tickets and skip the line tickets. Free to use, no membership, no coupons.",
   }),
   icons: {
     icon: [

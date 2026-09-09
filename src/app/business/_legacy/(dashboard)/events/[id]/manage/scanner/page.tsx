@@ -22,7 +22,7 @@ export default function ScannerLinksPage({ params }: { params: Promise<{ id: str
           <li>Each ticket has a unique QR code containing a check-in URL</li>
           <li>Door staff scans the QR code using the Bizzy scanner</li>
           <li>The system validates the ticket and marks it as redeemed</li>
-          <li>A full-screen confirmation shows entry type (Entry / Line Skip)</li>
+          <li>A full-screen confirmation shows entry type (Entry / Skip the Line Ticket)</li>
         </ol>
       </div>
 
@@ -60,7 +60,7 @@ export default function ScannerLinksPage({ params }: { params: Promise<{ id: str
         <ul className="space-y-1.5 text-xs text-blue-700">
           <li>Ensure good lighting for camera scanning</li>
           <li>Hold the camera steady, about 6-8 inches from the QR code</li>
-          <li>Green screen = entry, Orange screen = line skip only</li>
+          <li>Green screen = entry, Orange screen = skip the line ticket only</li>
           <li>Red screen = invalid or already scanned</li>
           <li>Check-in stats update in real-time across all devices</li>
         </ul>

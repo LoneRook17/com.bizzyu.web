@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   ...og({
     title: "Your college town in one app",
     description:
-      "Student-only deals at the spots around campus, plus event tickets and line skips. Free to use, no membership, no coupons.",
+      "Student-only deals at the spots around campus, plus event tickets and skip the line tickets. Free to use, no membership, no coupons.",
   }),
 };
 
@@ -135,7 +135,7 @@ export default async function Home() {
                   {/* The headline now carries "one app", so the sub says WHAT is
                       in it and WHERE, rather than repeating the phrase. */}
                   <p className="text-lg md:text-xl text-muted mb-8 max-w-xl leading-relaxed">
-                    Student-only deals, campus events, tickets, and line skips at the spots right
+                    Student-only deals, campus events, tickets, and skip the line tickets at the spots right
                     around you.
                   </p>
 
@@ -309,7 +309,7 @@ export default async function Home() {
                 .
               </h2>
               <p className="text-lg text-white/60 leading-relaxed mb-9 max-w-lg">
-                Every DJ night, bar crawl, and game day around campus, with tickets and line skips
+                Every DJ night, bar crawl, and game day around campus, with tickets and skip the line tickets
                 you grab in seconds. It all lives in the app, so there is nothing to print and
                 nothing to lose at the door.
               </p>

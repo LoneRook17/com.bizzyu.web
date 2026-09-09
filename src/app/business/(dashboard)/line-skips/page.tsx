@@ -120,7 +120,7 @@ export default function LineSkipsPage() {
           blockingInstanceIds: body?.blocking_instance_ids,
         })
       } else {
-        setDeactivateError({ message: "Failed to turn off line skip" })
+        setDeactivateError({ message: "Failed to turn off skip the line ticket" })
       }
     } finally {
       setDeactivating(false)
@@ -130,12 +130,12 @@ export default function LineSkipsPage() {
   return (
     <>
       <PageHeader
-        title="Line skips"
+        title="Skip the line tickets"
         description="Let customers skip the line and pay cover in advance."
         actions={
           canEdit && program?.is_active ? (
             <Button variant="subtle" onClick={() => { setDeactivateError(null); setShowDeactivateConfirm(true) }}>
-              Turn off line skip
+              Turn off skip the line ticket
             </Button>
           ) : undefined
         }
@@ -144,7 +144,7 @@ export default function LineSkipsPage() {
       {/* Venue picker when there's more than one and none is selected */}
       {venueId == null ? (
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-5">
-          <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">Pick a venue to manage its line skips:</p>
+          <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">Pick a venue to manage its skip the line tickets:</p>
           <div className="space-y-2">
             {venues.map((v) => (
               <button
@@ -224,13 +224,13 @@ export default function LineSkipsPage() {
       <Dialog open={showDeactivateConfirm} onOpenChange={(o) => !o && setShowDeactivateConfirm(false)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Turn off this line skip?</DialogTitle>
+            <DialogTitle>Turn off this skip the line ticket?</DialogTitle>
             <DialogDescription>
-              This stops {program?.name ?? "the line skip"} from running and closes any future nights with no paid tickets.
+              This stops {program?.name ?? "the skip the line ticket"} from running and closes any future nights with no paid tickets.
             </DialogDescription>
           </DialogHeader>
           <p className="text-xs text-neutral-400 dark:text-neutral-500">
-            To turn off a line skip that has paid future tickets, close those nights individually first. Each individual cancellation goes through our refund policy.
+            To turn off a skip the line ticket that has paid future tickets, close those nights individually first. Each individual cancellation goes through our refund policy.
           </p>
           {deactivateError && (
             <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2">

@@ -68,6 +68,7 @@ import {
   BREAKDOWN_MISMATCH_WARNING,
 } from "@/lib/business/payouts-reconcile"
 import { hideCombinedAccount } from "@/lib/business/payouts-scope"
+import { displayTerm } from "@/lib/business/payouts"
 
 // ── Range picker (segmented, 90d default) — mirrors DealFunnel's RangePicker ──
 // Relocated here from the removed PayoutsView; the owner reconcile container is
@@ -651,8 +652,8 @@ function DetailsTable({ rows }: { rows: ReconOrderRow[] }) {
             <tr key={`${o.order_id ?? "row"}-${i}`} className="border-b border-neutral-100 last:border-0 dark:border-neutral-800">
               <td className={TD_R}>{o.order_id ?? "-"}</td>
               <td className={TD}>{o.sale_date ?? "-"}</td>
-              <td className={TD}>{o.event ?? "-"}</td>
-              <td className={TD}>{o.ticket_tier ?? "-"}</td>
+              <td className={TD}>{o.event ? displayTerm(o.event) : "-"}</td>
+              <td className={TD}>{o.ticket_tier ? displayTerm(o.ticket_tier) : "-"}</td>
               <td className={TD_R}>{o.quantity}</td>
               <td className={cn(TD_R, "font-semibold")}>{money(o.amount_cents)}</td>
               <td className={TD}>

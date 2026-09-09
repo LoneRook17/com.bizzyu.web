@@ -31,7 +31,7 @@ export function venueJsonLd(page: VenuePage, url: string) {
     ...(venue.venuePhotoUrl ? { image: venue.venuePhotoUrl } : {}),
     ...(address ? { address } : venue.address ? { address: venue.address } : {}),
     ...(sameAs.length ? { sameAs } : {}),
-    // Line skips are a real, priced product at this bar, so they belong on the
+    // Skip the line tickets are a real, priced product at this bar, so they belong on the
     // venue rather than on any one event: they are sold per night, not per show.
     ...(lineSkips.length
       ? {

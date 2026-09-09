@@ -236,7 +236,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
       <div className="py-16 text-center">
         <p className="mb-4 text-sm text-red-500 dark:text-red-400">{error || "Analytics not available"}</p>
         <Button variant="link" asChild>
-          <Link href="/business/line-skips">Back to line skips</Link>
+          <Link href="/business/line-skips">Back to skip the line tickets</Link>
         </Button>
       </div>
     )
@@ -265,7 +265,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
         }
       />
       <Link href="/business/line-skips" className="-mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-        <ArrowLeft className="size-4" /> Back to line skips
+        <ArrowLeft className="size-4" /> Back to skip the line tickets
       </Link>
 
       {/* stat tiles */}
@@ -273,7 +273,7 @@ function InstanceDetailInner({ params }: { params: Promise<{ instanceId: string 
         <div ref={analyticsRef} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StatTile label="Revenue" value={money(analytics.total_revenue_cents)} />
           <StatTile label="Tickets sold" value={analytics.tickets_sold} />
-          <StatTile label="Line skip quantity">
+          <StatTile label="Skip the line ticket quantity">
             <div className="mt-0.5 flex items-baseline gap-1.5">
               <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                 {analytics.capacity !== null ? `${analytics.tickets_sold} / ${analytics.capacity}` : "Unlimited"}

@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Line Skip | Bizzy",
-  description: "Line Skip ticket verification",
+  title: "Skip the Line Ticket | Bizzy",
+  description: "Skip the Line Ticket verification",
   robots: { index: false, follow: false },
 }
 

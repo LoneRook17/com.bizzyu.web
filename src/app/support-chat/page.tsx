@@ -10,7 +10,7 @@ import SupportChat from "@/components/support/SupportChat"
 // page just wires in the student audience + token from the query string.
 
 const WELCOME =
-  "Hey! I'm Bizzy's support assistant. Ask me anything about deals, tickets, line skips, or your account. 👋"
+  "Hey! I'm Bizzy's support assistant. Ask me anything about deals, tickets, skip the line tickets, or your account. 👋"
 
 const SUGGESTIONS = [
   "Why can't I claim this deal?",

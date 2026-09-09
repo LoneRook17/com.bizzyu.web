@@ -8,7 +8,7 @@ import { readCachedDashboardMode, resolveDashboardMode } from "@/lib/v2/mode-cac
  * Single source of truth for what each dashboard mode shows.
  *
  * Mode semantics:
- * - 'deals'  - deals only (the majority of businesses). Events + Line skips hidden.
+ * - 'deals'  - deals only (the majority of businesses). Events + Skip the line tickets hidden.
  * - 'events' - events & tickets. Deals hidden.
  * - 'hybrid' - everything (the original dashboard).
  *
