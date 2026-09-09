@@ -51,7 +51,7 @@ export default async function CampusNights({ campus }: { campus: Campus }) {
               : `${campus.venues.length} bars on Bizzy.`}
           </SplitHeading>
           <p className="text-white/60 text-lg leading-relaxed">
-            Tickets, cover, and line skips, bought before you get there.
+            Tickets, cover, and skip the line tickets, bought before you get there.
           </p>
         </div>
 

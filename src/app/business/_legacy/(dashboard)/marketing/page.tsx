@@ -20,7 +20,7 @@ type TabKey = "events" | "followers"
  *
  * The venue scope comes from the global `useVenue()` context (the
  * sidebar's venue switcher), NOT a page-local dropdown - keeps the
- * Marketing tab consistent with Line Skips / Team / etc.
+ * Marketing tab consistent with Skip the Line Tickets / Team / etc.
  */
 export default function MarketingPage() {
   const { user } = useAuth()

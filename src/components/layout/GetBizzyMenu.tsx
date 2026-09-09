@@ -18,7 +18,7 @@ const OPTIONS = [
     href: APP_STORE_URL,
     external: true,
     title: "Download the app",
-    detail: "Deals, events and line skips near you",
+    detail: "Deals, events and skip the line tickets near you",
     icon: "phone",
   },
   {

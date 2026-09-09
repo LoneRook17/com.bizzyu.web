@@ -142,7 +142,7 @@ test("out-of-scope 404: a scoped member's notdeployed(404) → picker; owner's �
 
 test("switcher-sync: picking a venue targets the GLOBAL switcher with that id and leaves the chooser", () => {
   const intent = venuePickIntent(262)
-  assert.equal(intent.switcherVenueId, 262) // → setSelectedVenue(262), same as line skips
+  assert.equal(intent.switcherVenueId, 262) // → setSelectedVenue(262), same as skip the line tickets
   assert.equal(intent.clearScopeForced, true) // leave the picker, render that venue
 })
 

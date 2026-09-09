@@ -88,6 +88,7 @@ import {
   type PayoutStatusFilter,
   centsToUsdStr,
   csvFilename,
+  displayTerm,
   downloadCsv,
   isNotDeployed,
   normalizePayoutsResponse,
@@ -915,8 +916,8 @@ function detailRowCells(o: ReconOrderRow, withCommission: boolean): string[] {
   const cells = [
     o.order_id == null ? "" : String(o.order_id),
     o.sale_date ?? "",
-    o.event ?? "",
-    o.ticket_tier ?? "",
+    displayTerm(o.event ?? ""),
+    displayTerm(o.ticket_tier ?? ""),
     String(o.quantity),
     centsToUsdStr(o.amount_cents),
     o.is_door_sale ? "yes" : "no",
@@ -1036,8 +1037,8 @@ export function buildDepositPdfHtml(recon: Reconciliation): string {
           .map(
             (o) =>
               `<tr><td>${esc(o.order_id == null ? "-" : o.order_id)}</td><td>${esc(o.sale_date ?? "-")}</td><td>${esc(
-                o.event ?? "-",
-              )}</td><td>${esc(o.ticket_tier ?? "-")}</td><td class="r">${o.quantity}</td><td class="r">${usd(
+                o.event ? displayTerm(o.event) : "-",
+              )}</td><td>${esc(o.ticket_tier ? displayTerm(o.ticket_tier) : "-")}</td><td class="r">${o.quantity}</td><td class="r">${usd(
                 o.amount_cents,
               )}</td><td>${o.is_door_sale ? "Yes" : "-"}</td><td>${esc(o.payout_status)}</td><td>${esc(
                 o.payout_date ?? "-",

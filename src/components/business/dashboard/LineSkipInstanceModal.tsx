@@ -321,7 +321,7 @@ export default function LineSkipInstanceModal({
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-ink mb-1">Line Skip Quantity</label>
+              <label className="block text-sm font-medium text-ink mb-1">Skip the Line Ticket Quantity</label>
               <input
                 type="number"
                 min="1"

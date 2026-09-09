@@ -56,7 +56,7 @@ export function formatTime(raw: string | null | undefined): string {
   return `${h12}:${String(t.mm).padStart(2, "0")} ${ampm}`;
 }
 
-/** "21:00:00" -> "9:00 PM". Line skips carry date and time in separate fields. */
+/** "21:00:00" -> "9:00 PM". Skip the line tickets carry date and time in separate fields. */
 export function formatClock(raw: string | null | undefined): string {
   if (!raw) return "";
   const [h, m] = raw.split(":");

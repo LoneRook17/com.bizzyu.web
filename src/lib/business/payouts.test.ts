@@ -22,6 +22,7 @@ import {
   isRefundRow,
   isAdjustmentRow,
   channelLabel,
+  displayTerm,
   rangeForDays,
   isoDate,
   centsToUsdStr,
@@ -204,12 +205,27 @@ test("isAdjustmentRow: adjustment channel prefix", () => {
   assert.equal(isAdjustmentRow(FIXTURE.payouts[0].rows[0]), false)
 })
 
-test("channelLabel: friendly labels, passthrough for refund/adjustment/line skip", () => {
+test("channelLabel: friendly labels, passthrough for refund/adjustment, rebrand for line skip", () => {
   assert.equal(channelLabel("apple_pay"), "Apple Pay")
   assert.equal(channelLabel("door"), "Door")
   assert.equal(channelLabel("web"), "Web")
   assert.equal(channelLabel("refund (web)"), "refund (web)")
-  assert.equal(channelLabel("line skip (in-app)"), "line skip (in-app)")
+  assert.equal(channelLabel("adjustment: fee_recovery"), "adjustment: fee_recovery")
+  // The wire value is underscored — PayoutReconciliationService emits
+  // `line_skip (in-app|web)` — and refunds nest it. Display must never leak it.
+  assert.equal(channelLabel("line_skip (in-app)"), "Skip the Line Ticket (in-app)")
+  assert.equal(channelLabel("line_skip (web)"), "Skip the Line Ticket (web)")
+  assert.equal(channelLabel("refund (line_skip (web))"), "refund (Skip the Line Ticket (web))")
+})
+
+test("displayTerm: scrubs the server's wording from every spelling, leaves the rest alone", () => {
+  // `event` and `ticket_tier` arrive already-worded from the API.
+  assert.equal(displayTerm("Line Skip"), "Skip the Line Ticket")
+  assert.equal(displayTerm("line_skip (web)"), "Skip the Line Ticket (web)")
+  assert.equal(displayTerm("Line Skip — instance 412"), "Skip the Line Ticket — instance 412")
+  assert.equal(displayTerm("line-skip adjustment"), "Skip the Line Ticket adjustment")
+  assert.equal(displayTerm("GA DOOR"), "GA DOOR")
+  assert.equal(displayTerm(""), "")
 })
 
 // ── Fee-coverage label (honest actual/est caption) ───────────────────────────

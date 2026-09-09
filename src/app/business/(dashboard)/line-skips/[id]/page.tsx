@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 /**
  * The per-schedule detail page was folded into the single /business/line-skips
  * calendar (stats live below the calendar there now). This route is kept only so
- * existing deep links still resolve: it selects the line skip's venue, then
+ * existing deep links still resolve: it selects the skip the line ticket's venue, then
  * redirects to the consolidated page.
  */
 export default function LineSkipDetailRedirect({ params }: { params: Promise<{ id: string }> }) {

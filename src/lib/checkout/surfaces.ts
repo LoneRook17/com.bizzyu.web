@@ -6,7 +6,7 @@ export const GLASS =
 export const GLASS_SOFT =
   "rounded-2xl border border-white/15 bg-white/[0.05] backdrop-blur-xl"
 
-/** Weekly Cover / Door Access / Line Skip — AppColors.v5AccessAccent */
+/** Weekly Cover / Door Access / Skip the Line Ticket — AppColors.v5AccessAccent */
 export const ACCESS = "#FF3ED1"
 export const ACCESS_DARK = "#C2185B"
 export const ACCESS_LIGHT = "#FF7BE0"

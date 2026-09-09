@@ -63,12 +63,12 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "welcome",
         title: "Welcome to Bizzy for business",
         blocks: [
-          { kind: "p", text: "Bizzy helps bars, clubs, restaurants, and venues sell tickets, run Weekly Cover, offer deals, and manage line skips to college students. It's your all-in-one tool for reaching students on campus." },
+          { kind: "p", text: "Bizzy helps bars, clubs, restaurants, and venues sell tickets, run Weekly Cover, offer deals, and manage skip the line tickets to college students. It's your all-in-one tool for reaching students on campus." },
           { kind: "p", text: "From this dashboard you can:" },
           { kind: "ul", items: [
             "Events: create named events, sell tickets, and track who shows up",
             "Weekly Cover: sell Cover for your regular nights (pink on Events)",
-            "Line skips: the standalone skip-the-line product (not a Weekly Cover tier)",
+            "Skip the line tickets: the standalone skip-the-line product (not a Weekly Cover tier)",
             "Deals: post special offers that drive foot traffic",
             "Analytics: see tickets sold, Weekly Cover nights, revenue, and top-performing deals",
             "Team: invite staff, managers, and promoters",
@@ -94,7 +94,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "ol", items: [
             "You sign up and fill in your business details",
             "The Bizzy team reviews your information",
-            "Once approved, you get full access to create events, Weekly Cover, deals, and line skips",
+            "Once approved, you get full access to create events, Weekly Cover, deals, and skip the line tickets",
           ] },
           { kind: "p", text: "Approval usually takes 1-2 business days. While you wait you can still log in, explore the dashboard, and set up your venue." },
         ],
@@ -103,8 +103,8 @@ export const HELP_SECTIONS: HelpSection[] = [
         id: "connecting-stripe",
         title: "Connecting Stripe (getting paid)",
         blocks: [
-          { kind: "p", text: "Stripe is the payment service that handles the money. When a customer buys a ticket or line skip, Stripe collects payment and sends your share to your bank account." },
-          { kind: "p", text: "You must connect Stripe before you can create any paid events, Weekly Cover, or line skips. To connect:" },
+          { kind: "p", text: "Stripe is the payment service that handles the money. When a customer buys a ticket or skip the line ticket, Stripe collects payment and sends your share to your bank account." },
+          { kind: "p", text: "You must connect Stripe before you can create any paid events, Weekly Cover, or skip the line tickets. To connect:" },
           { kind: "ol", items: [
             "Go to Settings in the sidebar",
             "Find the Stripe Connect section and click \"Set up business Stripe\"",
@@ -141,7 +141,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "p", text: "A venue is a physical location: your bar, club, restaurant, or any place you host events or offer deals." },
           { kind: "ul", items: [
             "Your business can have multiple venues",
-            "Every event, Weekly Cover series, deal, and line skip is attached to a specific venue",
+            "Every event, Weekly Cover series, deal, and skip the line ticket is attached to a specific venue",
             "Each venue has its own page in the app",
           ] },
           { kind: "p", text: "Use the venue switcher at the top of the sidebar to move between venues. Selecting a venue filters the whole dashboard to that location; \"All venues\" shows everything." },
@@ -316,7 +316,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     ],
     faqs: [
       { q: "Is a custom night its own event now?", a: "No. A custom night is still Weekly Cover. Editing the program still restamps that night. If you want a one-off named show, create a separate Event from the green tile." },
-      { q: "A student bought Skip the Line. Is that a line skip?", a: "Not always. It might be a Weekly Cover option for that night, a named-event ticket tier, or the standalone line-skip product. Check what they have in Wallet before you answer." },
+      { q: "A student bought Skip the Line. Is that a skip the line ticket?", a: "Not always. It might be a Weekly Cover option for that night, a named-event ticket tier, or the standalone line-skip product. Check what they have in Wallet before you answer." },
     ],
   },
   {
@@ -348,46 +348,46 @@ export const HELP_SECTIONS: HelpSection[] = [
   },
   {
     id: "line-skips",
-    title: "Line skips",
+    title: "Skip the line tickets",
     icon: Zap,
-    intro: "Line skips let customers pay to skip the line and get guaranteed entry.",
+    intro: "Skip the line tickets let customers pay to skip the line and get guaranteed entry.",
     subsections: [
       {
         id: "what-are-line-skips",
-        title: "What are line skips?",
+        title: "What are skip the line tickets?",
         blocks: [
-          { kind: "p", text: "Customers buy a line skip in advance, show a QR code at the door, and go straight to the front of the line. This is the standalone line-skip product, not a Weekly Cover tier also named Skip the Line." },
-          { kind: "note", text: "A line skip is guaranteed entry, and the price includes cover. The customer doesn't pay again at the door. All Bizzy line skips include cover." },
+          { kind: "p", text: "Customers buy a skip the line ticket in advance, show a QR code at the door, and go straight to the front of the line. This is the standalone line-skip product, not a Weekly Cover tier also named Skip the Line." },
+          { kind: "note", text: "A skip the line ticket is guaranteed entry, and the price includes cover. The customer doesn't pay again at the door. All Bizzy skip the line tickets include cover." },
         ],
       },
       {
         id: "creating-line-skip",
-        title: "Creating a line skip schedule",
+        title: "Creating a skip the line ticket schedule",
         blocks: [
           { kind: "ol", items: [
-            "Go to Line skips in the sidebar and click \"Create line skip\"",
+            "Go to Skip the line tickets in the sidebar and click \"Create skip the line ticket\"",
             "Set the name, description, days of the week, and start date",
             "Set doors open/close times, price, and quantity per night",
           ] },
-          { kind: "note", text: "Line skips run on a rolling schedule. The system creates upcoming nights 2 weeks ahead automatically. You don't create each night manually." },
+          { kind: "note", text: "Skip the line tickets run on a rolling schedule. The system creates upcoming nights 2 weeks ahead automatically. You don't create each night manually." },
         ],
       },
       {
         id: "managing-line-skip-nights",
         title: "Managing nights",
         blocks: [
-          { kind: "p", text: "Open a line skip schedule to see all upcoming and past nights. For each night you can edit the price, quantity, or times, or cancel the night." },
+          { kind: "p", text: "Open a skip the line ticket schedule to see all upcoming and past nights. For each night you can edit the price, quantity, or times, or cancel the night." },
         ],
       },
       {
         id: "scanning-line-skips",
-        title: "Scanning line skips",
+        title: "Scanning skip the line tickets",
         blocks: [
-          { kind: "note", text: "Line skips do NOT use the in-app scanner. Use your phone's regular camera app instead." },
+          { kind: "note", text: "Skip the line tickets do NOT use the in-app scanner. Use your phone's regular camera app instead." },
           { kind: "ol", items: [
             "Open your phone's camera app (not the Bizzy app)",
             "Point it at the customer's QR code",
-            "Tap the link that pops up, it shows whether the line skip is valid",
+            "Tap the link that pops up, it shows whether the skip the line ticket is valid",
           ] },
         ],
       },
@@ -496,7 +496,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "ul", items: [
             "Owner: full access to everything, including settings and billing",
-            "Manager: create and manage events, deals, and line skips; view analytics; no business settings",
+            "Manager: create and manage events, deals, and skip the line tickets; view analytics; no business settings",
             "Staff: scan tickets, sell via Tap-to-Pay, view basic event info",
             "Promoter: view their share link and promotion performance",
           ] },
@@ -551,7 +551,7 @@ export const HELP_SECTIONS: HelpSection[] = [
           { kind: "ul", items: [
             "View your Stripe connection status",
             "Reconnect if Stripe needs more information",
-            "Stay connected while you have active paid events or line skips",
+            "Stay connected while you have active paid events or skip the line tickets",
           ] },
         ],
       },
@@ -576,7 +576,7 @@ export const HELP_SECTIONS: HelpSection[] = [
         blocks: [
           { kind: "ul", items: [
             "All sales are final, customers can't request individual refunds",
-            "Refunds only happen when you cancel an event, a Weekly Cover night, or a line skip night",
+            "Refunds only happen when you cancel an event, a Weekly Cover night, or a skip the line night",
             "If you cancel, every buyer gets a full refund automatically",
           ] },
         ],
@@ -657,13 +657,13 @@ export const HELP_SECTIONS: HelpSection[] = [
     intro: "Quick answers to the most common questions.",
     subsections: [],
     faqs: [
-      { q: "When do I get paid?", a: "Money from ticket sales and line skips is transferred to your bank account through Stripe, typically within 2-3 business days after the transaction." },
+      { q: "When do I get paid?", a: "Money from ticket sales and skip the line tickets is transferred to your bank account through Stripe, typically within 2-3 business days after the transaction." },
       { q: "What fees does Bizzy charge?", a: "A small service fee is added on top of your price and paid by the customer. You receive the full amount you set. The fee comes out of the customer's total, not your pocket." },
       { q: "How do I see how much money I've made?", a: ANALYTICS_HELP_REVENUE_FAQ },
       { q: "Can I change the ticket price after people have bought tickets?", a: "Yes, you can change the price for future purchases. Existing ticket holders keep their original price." },
       { q: "What if my event sells out?", a: "A \"Sold out\" badge appears and no more tickets can be purchased. To sell more, increase the ticket quantity." },
       { q: "Do deals cost me anything?", a: "No. Creating and running deals on Bizzy is completely free. Deals drive foot traffic to your venue at no cost." },
-      { q: "What does \"includes cover\" mean?", a: "On a standalone line skip, the price includes the cover charge. The customer pays once and doesn't pay again at the door. All Bizzy line skips include cover. Weekly Cover is a different product: guests buy Cover (or a Skip the Line option on that night)." },
+      { q: "What does \"includes cover\" mean?", a: "On a standalone skip the line ticket, the price includes the cover charge. The customer pays once and doesn't pay again at the door. All Bizzy skip the line tickets include cover. Weekly Cover is a different product: guests buy Cover (or a Skip the Line option on that night)." },
       { q: "What's the difference between Weekly Cover and an event?", a: "Weekly Cover is a series of regular nights. Guests buy Cover for one date. It shows pink. A named event is a titled show or night (green) with in-app scanning and a 6-digit door code. Don't guess from a title that ends in Cover." },
       { q: "I can't log in. What do I do?", a: "Click \"Forgot password\" on the login page to reset it. If that doesn't work, email support@bizzyu.com." },
       { q: "The dashboard looks broken or won't load.", a: "Refresh the page first. If that doesn't help, clear your browser cache or try a different browser. Still stuck? Email support@bizzyu.com." },

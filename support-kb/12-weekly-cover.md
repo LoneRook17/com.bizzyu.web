@@ -8,7 +8,7 @@ Students buy **Cover** (or a Skip the Line option on that same night) for **one
 specific night**. It is not a pass for the whole run, a membership, or a
 subscription.
 
-## How to tell it from an event or a line skip
+## How to tell it from an event or a skip the line ticket
 
 Identify the product from what the app/wallet actually is, **never from the
 title**. A night named "Weekly Cover Launch Party" or anything ending in
@@ -21,8 +21,8 @@ title**. A night named "Weekly Cover Launch Party" or anything ending in
 - **Named event** — `product_kind` is `event`. Green. Concerts, DJ nights,
   Trivia Tuesdays, themed shows. Staff scan with the in-app Bizzy scanner
   (or a 6-digit door code on the login screen).
-- **Line skip** — the standalone nightlife product bought from a venue's
-  line-skip listing. Includes cover. Scanned with the phone's regular camera.
+- **Skip the line ticket** — the standalone nightlife product bought from a venue's
+  skip the line ticket listing. Includes cover. Scanned with the phone's regular camera.
   Not the same thing as a Weekly Cover tier named "Skip the Line".
 
 If it isn't clear, have them check the **Wallet** tab. Don't guess.
@@ -53,8 +53,8 @@ If it isn't clear, have them check the **Wallet** tab. Don't guess.
 A night can sell **Cover** (entry) and/or **Skip the Line** (faster entry;
 the venue chooses whether cover is included). Read what's included at
 checkout. A "Skip the Line" option **inside Weekly Cover** is still Cover
-for that night, scanned the Weekly Cover way. The standalone **line skip**
-product is bought from the venue's line-skip listing.
+for that night, scanned the Weekly Cover way. The standalone **skip the line ticket**
+product is bought from the venue's skip the line ticket listing.
 
 ## Refunds
 

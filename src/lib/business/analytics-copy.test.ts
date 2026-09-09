@@ -1,4 +1,4 @@
-// Analytics host copy (D-P5). The Weekly Access tab used to read "Line skips".
+// Analytics host copy (D-P5). The Weekly Access tab used to read "Skip the line tickets".
 // These strings are the only ones the Analytics page, its empty states, and
 // the Analytics help copy render — pin that none of them still name the old
 // product, and that the student "Door Access" string stays off this surface.
@@ -18,7 +18,7 @@ test("Analytics tab uses the host Weekly Cover name (renamed from Weekly Access)
   assert.equal(ANALYTICS_ACCESS_TAB_LABEL, "Weekly Cover")
 })
 
-test("no host-facing Analytics copy says line skip or Door Access", () => {
+test("no host-facing Analytics copy says skip the line ticket or Door Access", () => {
   assert.ok(ANALYTICS_HOST_COPY.length > 0)
   for (const s of ANALYTICS_HOST_COPY) {
     assert.doesNotMatch(s, BANNED, JSON.stringify(s))

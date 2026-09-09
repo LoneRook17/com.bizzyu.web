@@ -1,7 +1,7 @@
 // Guard for the sticky-bar price removal (LSK-24).
 //
 // The night card showed the ticket price ($1); the mobile sticky bar floating
-// over it showed the fee-inclusive total ("Get Line Skip: $1.50"). Two
+// over it showed the fee-inclusive total ("Get Skip the Line Ticket: $1.50"). Two
 // different numbers on one screen, with nothing explaining the gap — customers
 // read it as a bait-and-switch. The bar is now a pure call to action, and the
 // breakdown lives on the phone step instead (LSK-25, order-summary.ts).
@@ -43,10 +43,10 @@ test("the sticky bar shows no price — that was the bait-and-switch", () => {
 
 test("the sticky bar is still a clear CTA, in the existing product wording", () => {
   const bar = stickyBarBlock(source())
-  assert.ok(bar.includes("Get Line Skip"), "the sticky CTA lost its label")
-  // A rename of "Line Skip" is pending and undecided; this change must not
-  // pre-empt it, so the wording is pinned as it stands.
-  assert.ok(!/Skip the Line|Fast Pass|Line Pass/i.test(bar), "the product was renamed here")
+  assert.ok(bar.includes("Get Skip the Line Ticket"), "the sticky CTA lost its label")
+  // The product is "Skip the Line Ticket" (rebranded from "Line Skip" in Sep 2026);
+  // the wording is pinned so a stray rename does not slip in here.
+  assert.ok(!/Line Skip|Fast Pass|Line Pass/i.test(bar), "the product was renamed here")
 })
 
 test("the in-flow CTA keeps its total — it is the one with context", () => {
@@ -54,7 +54,7 @@ test("the in-flow CTA keeps its total — it is the one with context", () => {
   const bar = stickyBarBlock(src)
   const elsewhere = src.replace(bar, "")
   assert.ok(
-    elsewhere.includes("`Get Line Skip: ${formatPrice(fees.total)}`"),
+    elsewhere.includes("`Get Skip the Line Ticket: ${formatPrice(fees.total)}`"),
     "the in-flow CTA lost its total — it sits under the order summary and should keep it",
   )
 })

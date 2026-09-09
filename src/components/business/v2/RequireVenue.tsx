@@ -8,9 +8,9 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 
 /**
- * Events, line skips, door access, and recurring series are attached to a
- * venue. Deals are not — a shop with no venue can still create one, so do not
- * wrap the deal form in this guard.
+ * Events, skip the line tickets, door access, and recurring series are attached
+ * to a venue. Deals are not — a shop with no venue can still create one, so do
+ * not wrap the deal form in this guard.
  */
 export default function RequireVenue({ children }: { children: React.ReactNode }) {
   const { venues, isLoading } = useVenue()

@@ -91,7 +91,7 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
         setPriceDisplay((line_skip.default_price_cents / 100).toFixed(2))
       })
       .catch((err) => {
-        setServerError(err instanceof ApiError ? err.message : "Failed to load Line Skip")
+        setServerError(err instanceof ApiError ? err.message : "Failed to load Skip the Line Ticket")
       })
       .finally(() => setPageLoading(false))
   }, [id])
@@ -182,7 +182,7 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
       await apiClient.put(`/business/line-skips/${id}`, payload)
       router.push(`/business/line-skips/${id}`)
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : "Failed to update Line Skip")
+      setServerError(err instanceof ApiError ? err.message : "Failed to update Skip the Line Ticket")
     } finally {
       setLoading(false)
     }
@@ -200,9 +200,9 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
   return (
     <div className="max-w-2xl">
       <Link href={`/business/line-skips/${id}`} className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-        &larr; Back to Line Skip
+        &larr; Back to Skip the Line Ticket
       </Link>
-      <h1 className="text-xl font-bold text-ink mb-6">Edit Line Skip</h1>
+      <h1 className="text-xl font-bold text-ink mb-6">Edit Skip the Line Ticket</h1>
 
       {serverError && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
@@ -344,7 +344,7 @@ export default function EditLineSkipPage({ params }: { params: Promise<{ id: str
           </div>
           <div>
             <label className="block text-sm font-medium text-ink mb-1">
-              Line Skip Quantity <span className="text-gray-400 font-normal">(optional)</span>
+              Skip the Line Ticket Quantity <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <input
               type="number"

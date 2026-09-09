@@ -225,7 +225,7 @@ export default function AboutPage() {
             <div className="space-y-6 text-muted text-lg leading-relaxed">
               <p>
                 Bizzy is the campus app for everything happening around your
-                school. Events, tickets, line skip, exclusive local deals, and
+                school. Events, tickets, skip the line ticket, exclusive local deals, and
                 the businesses students actually go to, all in one place,
                 curated for each campus.
               </p>
@@ -296,7 +296,7 @@ export default function AboutPage() {
             {[
               {
                 title: "One App for Campus",
-                desc: "Events, tickets, line skip, deals, and local spots in a single feed, not a different app for each thing students do.",
+                desc: "Events, tickets, skip the line ticket, deals, and local spots in a single feed, not a different app for each thing students do.",
               },
               {
                 title: "Campus by Campus",

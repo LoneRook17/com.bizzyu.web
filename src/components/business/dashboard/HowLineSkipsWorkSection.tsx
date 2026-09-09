@@ -4,10 +4,10 @@ export default function HowLineSkipsWorkSection() {
       <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
         <div className="mb-3">
           <h2 className="text-base md:text-lg font-bold text-ink mb-1">
-            How line skips work
+            How skip the line tickets work
           </h2>
           <p className="text-sm text-muted leading-relaxed">
-            Line skips let students skip the line at your venue on busy
+            Skip the line tickets let students skip the line at your venue on busy
             nights. They purchase a skip in Bizzy, walk up to your line-skip
             line, and show the QR at the door. Your door staff scans it with
             any phone camera and they walk in.
@@ -17,7 +17,7 @@ export default function HowLineSkipsWorkSection() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
           <FactPill
             title="0% fees"
-            body="We take nothing from line skips. Payouts go straight to your Stripe account."
+            body="We take nothing from skip the line tickets. Payouts go straight to your Stripe account."
           />
           <FactPill
             title="Includes cover"

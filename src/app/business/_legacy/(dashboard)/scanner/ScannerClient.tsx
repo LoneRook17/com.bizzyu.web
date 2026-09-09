@@ -257,7 +257,7 @@ export default function ScannerClient() {
     if (!result) return ""
     if (result.status === "redeemed_now") {
       return isLineSkip
-        ? "from-[#c2410c] to-[#ea580c]"   // Orange for line skip
+        ? "from-[#c2410c] to-[#ea580c]"   // Orange for skip the line ticket
         : "from-[#0d7a3e] to-[#05EB54]"   // Green for event ticket
     }
     return "from-[#8B1A2B] to-[#c41e3a]"
@@ -266,7 +266,7 @@ export default function ScannerClient() {
   const getResultLabel = () => {
     if (!result) return ""
     if (result.status === "redeemed_now") {
-      return isLineSkip ? "LINE SKIP" : "ENTRY"
+      return isLineSkip ? "SKIP THE LINE TICKET" : "ENTRY"
     }
     const labels: Record<string, string> = {
       already_redeemed: "ALREADY SCANNED",
@@ -483,7 +483,7 @@ export default function ScannerClient() {
                           <div className="ml-3 text-right shrink-0">
                             <p className={`text-xs font-semibold ${getLogStatusColor(entry.status, entry.type)}`}>
                               {entry.status === "redeemed_now"
-                                ? entry.type === "line_skip" ? "LINE SKIP" : "ENTRY"
+                                ? entry.type === "line_skip" ? "SKIP THE LINE TICKET" : "ENTRY"
                                 : entry.status === "already_redeemed"
                                   ? "ALREADY IN"
                                   : "ERROR"}

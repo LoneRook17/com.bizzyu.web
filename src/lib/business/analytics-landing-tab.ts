@@ -35,7 +35,7 @@ export interface AnalyticsTabData {
 export const DEFAULT_ANALYTICS_TAB: AnalyticsTab = "deals"
 
 /**
- * First non-empty of deals → events → line skips.
+ * First non-empty of deals → events → skip the line tickets.
  *
  * All three empty (a brand-new business, or every fetch failed) falls back to
  * Deals: it is the leftmost tab and renders a "No deals yet" EmptyState that

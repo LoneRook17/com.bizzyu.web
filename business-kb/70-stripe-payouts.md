@@ -1,7 +1,7 @@
 # Stripe & payouts (getting paid)
 
 Stripe is the payment service that handles the money. When a customer buys a ticket or
-line skip, Stripe collects payment and sends your share to your bank account.
+skip the line ticket, Stripe collects payment and sends your share to your bank account.
 
 ## Connecting Stripe
 
@@ -17,11 +17,11 @@ Cover**.
 - You can also complete Stripe setup from the Bizzy phone app.
 - In **Settings → Stripe Connect** you can view your connection status and **reconnect**
   if Stripe needs more information. Stay connected while you have anything
-  actively selling (events, Weekly Cover, or a legacy line-skip schedule).
+  actively selling (events, Weekly Cover, or a legacy skip the line ticket schedule).
 
 ## Multiple venues: per-venue payout accounts
 
-By default, all of your ticket and line-skip sales pay out to one Stripe account (your
+By default, all of your ticket and skip the line ticket sales pay out to one Stripe account (your
 **default payout account**). If you run more than one venue and want a venue's sales to
 land in a **different** Stripe account, you can set that up under **Settings → Payments →
 Venue payout accounts**.
@@ -86,7 +86,7 @@ support@bizzyu.com rather than answering from this pack.
 - **Customers can't self-serve refunds**, and businesses don't issue individual refunds
   from the dashboard. Exceptional cases go through support (support@bizzyu.com).
 - Refunds happen automatically only when **you cancel** an event, a Weekly Cover
-  night, or a line-skip night.
+  night, or a skip the line night.
   Then every buyer is refunded in full (price + fees) automatically, and the money is
   **pulled back from your Stripe account** (Stripe may add processing fees for the
   reversal). See the "Events" article for the cancellation flow and the

@@ -205,7 +205,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         errs.end_date_time = "End date must be after start date"
       }
     }
-    /* DISABLED: Recurring events temporarily removed to avoid confusion with line skips
+    /* DISABLED: Recurring events temporarily removed to avoid confusion with skip the line tickets
     if (form.is_recurring && (!form.recurring_event?.nights || form.recurring_event.nights.length === 0)) {
       errs.recurring_nights = "Add at least one night for your recurring event"
     }
@@ -271,7 +271,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         flyer_image_url: form.flyer_image_url || undefined,
       }
 
-      /* DISABLED: Recurring events temporarily removed to avoid confusion with line skips
+      /* DISABLED: Recurring events temporarily removed to avoid confusion with skip the line tickets
       if (form.is_recurring && form.recurring_event?.nights?.length) {
         payload.recurringNights = form.recurring_event.nights.map((night) => ({
           frequency: "Weekly",
@@ -455,7 +455,7 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         </div>
       </div>
 
-      {/* DISABLED: Recurring events temporarily removed to avoid confusion with line skips */}
+      {/* DISABLED: Recurring events temporarily removed to avoid confusion with skip the line tickets */}
 
       {/* Date & Time */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">

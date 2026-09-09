@@ -134,7 +134,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
             })
           setDays(rows)
         } catch (err) {
-          if (!cancelled) setServerError(err instanceof ApiError ? err.message : "Failed to load line skip")
+          if (!cancelled) setServerError(err instanceof ApiError ? err.message : "Failed to load skip the line ticket")
         } finally {
           if (!cancelled) setPageLoading(false)
         }
@@ -281,7 +281,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
       }
       router.push("/business/line-skips")
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : "Failed to save line skip")
+      setServerError(err instanceof ApiError ? err.message : "Failed to save skip the line ticket")
     } finally {
       setLoading(false)
     }
@@ -306,7 +306,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
     return (
       <div className="max-w-2xl">
         <Link href="/business/line-skips" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-          <ArrowLeft className="size-4" /> Back to line skips
+          <ArrowLeft className="size-4" /> Back to skip the line tickets
         </Link>
         <Card className="mt-4 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40">
           <CardContent className="p-6">
@@ -315,7 +315,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
               <div>
                 <h2 className="mb-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100">Connect your Stripe account</h2>
                 <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
-                  Line skips are paid products. You need to connect your Stripe account before you can start selling them.
+                  Skip the line tickets are paid products. You need to connect your Stripe account before you can start selling them.
                 </p>
                 {stripeError && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{stripeError}</p>}
                 <Button onClick={handleConnectStripe} disabled={stripeConnecting}>
@@ -333,19 +333,19 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
   return (
     <div className="max-w-2xl">
       <Link href={backHref} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-        <ArrowLeft className="size-4" /> Back to line skips
+        <ArrowLeft className="size-4" /> Back to skip the line tickets
       </Link>
       <h1 className="mb-6 mt-2 text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-        {isEdit ? "Edit line skip" : "Create line skip"}
+        {isEdit ? "Edit skip the line ticket" : "Create skip the line ticket"}
       </h1>
 
       {!isEdit && (
         <div className="mb-5 space-y-2 rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-4 py-3">
           <p className="text-sm text-blue-700 dark:text-blue-400">
-            Line skips include cover. Customers who purchase a line skip will skip the line and have their cover included in the price.
+            Skip the line tickets include cover. Customers who purchase a skip the line ticket will skip the line and have their cover included in the price.
           </p>
           <p className="text-sm text-blue-700 dark:text-blue-400">
-            Line skip tickets are scanned using the universal scanner. Customers simply show their QR code and staff scan it with any phone camera. No app or special equipment needed.
+            Skip the line tickets are scanned using the universal scanner. Customers simply show their QR code and staff scan it with any phone camera. No app or special equipment needed.
           </p>
         </div>
       )}
@@ -410,7 +410,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
           <div>
             <Label>Nights it runs</Label>
             <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">
-              Tap the nights this line skip runs. Each night has its own price &amp; hours. Set them all the same, or charge more on busy nights.
+              Tap the nights this skip the line ticket runs. Each night has its own price &amp; hours. Set them all the same, or charge more on busy nights.
             </p>
           </div>
 
@@ -560,7 +560,7 @@ export default function LineSkipForm({ mode, lineSkipId }: LineSkipFormProps) {
         <div className="flex items-center gap-3 pt-2">
           <Button type="submit" size="lg" disabled={loading}>
             {loading && <Loader2 className="size-4 animate-spin" />}
-            {isEdit ? (loading ? "Saving..." : "Save changes") : loading ? "Creating..." : "Create line skip"}
+            {isEdit ? (loading ? "Saving..." : "Save changes") : loading ? "Creating..." : "Create skip the line ticket"}
           </Button>
           <Button variant="secondary" size="lg" asChild>
             <Link href={backHref}>Cancel</Link>

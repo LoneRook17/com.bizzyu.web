@@ -111,7 +111,7 @@ export default function VenueSeoPage({ page }: { page: VenuePage }) {
               <p className="text-lg md:text-xl text-white/70 max-w-2xl leading-relaxed mb-8">
                 {venue.description?.trim()
                   ? venue.description
-                  : `Tickets, cover and line skips at ${venue.name}, bought on your phone before you get there.`}
+                  : `Tickets, cover and skip the line tickets at ${venue.name}, bought on your phone before you get there.`}
               </p>
 
               {venue.address && (
@@ -228,7 +228,7 @@ export default function VenueSeoPage({ page }: { page: VenuePage }) {
         </section>
       )}
 
-      {/* ─── Line skips ───────────────────────────────────── */}
+      {/* ─── Skip the line tickets ───────────────────────────────────── */}
       {lineSkips.length > 0 && (
         <section className="bg-gray-50 border-t border-gray-100" id="line-skips">
           <SectionContainer className="!py-14 md:!py-20">
@@ -441,7 +441,7 @@ export default function VenueSeoPage({ page }: { page: VenuePage }) {
                 : `${venue.name} is on Bizzy.`}
             </h2>
             <p className="text-white/70 text-lg mb-9 max-w-xl mx-auto leading-relaxed">
-              Buy your ticket or line skip in the app, show your phone at the door,
+              Buy your ticket or skip the line ticket in the app, show your phone at the door,
               and walk in. Bizzy is free to download.
             </p>
             <Button href={APP_STORE_URL} external size="lg">
@@ -458,7 +458,7 @@ export default function VenueSeoPage({ page }: { page: VenuePage }) {
  * The FAQ, built from rows rather than written.
  *
  * These are the modifier queries the venue's own Google Business Profile does
- * not answer: cover, tickets, line skip, what is on tonight. An entry is only
+ * not answer: cover, tickets, skip the line ticket, what is on tonight. An entry is only
  * included when the data can answer it, so a quiet bar gets a short FAQ instead
  * of four hedged non-answers.
  */
@@ -501,9 +501,9 @@ function buildFaq(page: VenuePage): Array<{ question: string; answer: string }> 
           Math.min(...lineSkips.map((l) => l.price_cents / 100)),
         )}. Buy one in the app, walk to the front, show your phone.`
       // No claim about what OTHER bars are selling. This component cannot see
-      // their line skips, and a page that guesses at a fact it has no row for
+      // their skip the line tickets, and a page that guesses at a fact it has no row for
       // is exactly what makes a generated page worthless.
-      : `${venue.name} is not selling line skips on Bizzy at the moment. Every bar on Bizzy near ${entry.campus} is listed on the ${entry.campusFullName} page.`,
+      : `${venue.name} is not selling skip the line tickets on Bizzy at the moment. Every bar on Bizzy near ${entry.campus} is listed on the ${entry.campusFullName} page.`,
   });
 
   if (venue.address) {

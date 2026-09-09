@@ -32,7 +32,7 @@ Open `http://localhost:3001/business/v2`. If you're sent to login, sign in via t
 - **Home** — restructured: metric tiles, a "Needs your attention" hub, and a bento (upcoming events + recent activity)
 - **Trial / intro** — the pre-approval "path to going live" onboarding (shown automatically for pending businesses)
 - **Events** — list (tabs), create/edit, detail, and the full **manage** hub (tickets, team, promoters, promo codes, announcements, SMS blast, analytics, check-ins, scanner)
-- **Deals** — list/create/edit/detail · **Line skips** — list/create/edit/detail/instance
+- **Deals** — list/create/edit/detail · **Skip the line tickets** — list/create/edit/detail/instance
 - **Analytics** (role-based) · **Marketing** (event + follower blasts) · **Universal promo codes**
 - **Team** · **Settings** (profile, logo, Stripe Connect, venues, security) · **QR Scanner** · **Help**
 
@@ -66,7 +66,7 @@ Items that exist on `feature/dashboard-redesign` / dev but need explicit action
 when promoting to prod:
 
 - [ ] **Public page redesigns ride this branch**: `/venue/[venueId]` and
-      `/lineskip/[slug]` (gold-accent line-skip checkout, marketing chrome
+      `/lineskip/[slug]` (gold-accent skip the line ticket checkout, marketing chrome
       stripped via `LayoutShell`). Merging this branch to prod ships them —
       review them on the dev preview BEFORE merging.
 - [ ] **`TURNSTILE_SECRET_KEY`** must be set in the prod services task-def —

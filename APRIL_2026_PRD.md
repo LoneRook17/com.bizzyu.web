@@ -11,8 +11,8 @@
 
 1. Executive Summary
 2. Multi-Venue Architecture
-3. Venue Web Page & Line Skip Checkout
-4. Line Skip Quantity Editing (In-App)
+3. Venue Web Page & Skip the Line Ticket Checkout
+4. Skip the Line Ticket Quantity Editing (In-App)
 5. Business Dashboard Photo Management
 6. Stripe Dashboard Embedded In-App
 7. Cooper UI Changes Audit & Integration
@@ -24,14 +24,14 @@
 
 ## 1. Executive Summary
 
-This update has one major architectural feature (multi-venue businesses), one new web feature (venue pages with line skip web checkout), and a set of bug fixes and quality-of-life improvements across all four repos.
+This update has one major architectural feature (multi-venue businesses), one new web feature (venue pages with skip the line ticket web checkout), and a set of bug fixes and quality-of-life improvements across all four repos.
 
 **Priority order:**
 1. Bug fixes (deals freeze, push notifications, ticket descriptions, school color, profile refresh)
 2. Multi-venue architecture (DB + API + business portal + Flutter app + Laravel admin)
-3. Venue web page & line skip web checkout
+3. Venue web page & skip the line ticket web checkout
 4. Business dashboard photos
-5. Line skip quantity editing in-app
+5. Skip the line ticket quantity editing in-app
 6. Stripe embedded in-app
 7. Cooper UI cherry-picks (after all above are stable)
 
@@ -41,7 +41,7 @@ This update has one major architectural feature (multi-venue businesses), one ne
 
 ### 2.1 Overview
 
-A business is a parent entity. A venue is a child entity. Every business has at least one venue. Large businesses (e.g., a holding company owning bars A, B, and C at UF) can have multiple venues. Events, deals, and line skips belong to a venue, not directly to a business. Team members can be scoped to a specific venue or be global (agency over all venues).
+A business is a parent entity. A venue is a child entity. Every business has at least one venue. Large businesses (e.g., a holding company owning bars A, B, and C at UF) can have multiple venues. Events, deals, and skip the line tickets belong to a venue, not directly to a business. Team members can be scoped to a specific venue or be global (agency over all venues).
 
 ### 2.2 Database Schema
 
@@ -95,7 +95,7 @@ A business is a parent entity. A venue is a child entity. Every business has at 
 
 **Modified endpoints:**
 
-All event, deal, and line skip creation endpoints must now accept `venue_id` and validate that:
+All event, deal, and skip the line ticket creation endpoints must now accept `venue_id` and validate that:
 - The venue belongs to the authenticated business.
 - The authenticated team member has access to that venue (is global or assigned to it).
 
@@ -114,7 +114,7 @@ All event, deal, and line skip creation endpoints must now accept `venue_id` and
 
 **Venue Switcher:**
 - Add a dropdown/selector in the sidebar or top nav that lists all venues for the business.
-- Selecting a venue filters all dashboard content (events, deals, line skips, analytics, team) to that venue.
+- Selecting a venue filters all dashboard content (events, deals, skip the line tickets, analytics, team) to that venue.
 - Add an "All Venues" option that shows aggregate data (analytics only; event/deal creation still requires selecting a specific venue).
 - The currently selected venue persists in state (localStorage or context).
 
@@ -140,7 +140,7 @@ All event, deal, and line skip creation endpoints must now accept `venue_id` and
 **Popular Venues / Business Pages:**
 - The existing Popular Venues section already queries `/ui/venues/popular`.
 - Update the data model to use `venue_id` as the primary key for navigation.
-- Each venue gets its own page showing: venue photo, line skips, events, and deals for that venue ONLY.
+- Each venue gets its own page showing: venue photo, skip the line tickets, events, and deals for that venue ONLY.
 - If a business has 3 venues, all 3 appear as separate cards in Popular Venues. They are independent.
 
 **Event Creation (Business Members In-App):**
@@ -158,38 +158,38 @@ All event, deal, and line skip creation endpoints must now accept `venue_id` and
 
 ---
 
-## 3. Venue Web Page & Line Skip Checkout
+## 3. Venue Web Page & Skip the Line Ticket Checkout
 
 ### 3.1 Overview
 
-A new public web page at `bizzyu.com/venue/[venueId]` (or `/venue/[slug]`) that serves as the venue's public presence. This is where line skip share links redirect to.
+A new public web page at `bizzyu.com/venue/[venueId]` (or `/venue/[slug]`) that serves as the venue's public presence. This is where skip the line ticket share links redirect to.
 
 ### 3.2 Page Content
 
 The venue page displays:
 1. **Venue header**: Photo, name, address, business name.
-2. **Available line skips**: List of active line skips for tonight/upcoming with price and "Buy" button. The "Buy" button links to a web checkout flow (similar to existing event web checkout but for line skips).
+2. **Available skip the line tickets**: List of active skip the line tickets for tonight/upcoming with price and "Buy" button. The "Buy" button links to a web checkout flow (similar to existing event web checkout but for skip the line tickets).
 3. **Upcoming events**: List of upcoming events at this venue with date, name, price, and a link to the existing event web checkout page (`/checkout/[eventId]`).
 4. **Deals**: Active deals at this venue (view-only, claim in app).
 
-### 3.3 Line Skip Web Checkout
+### 3.3 Skip the Line Ticket Web Checkout
 
-Currently, line skips have no web checkout. Build one at `bizzyu.com/lineskip/checkout/[instanceId]` (or integrate into the venue page):
-- Show line skip details: venue, date, time, price.
+Currently, skip the line tickets have no web checkout. Build one at `bizzyu.com/lineskip/checkout/[instanceId]` (or integrate into the venue page):
+- Show skip the line ticket details: venue, date, time, price.
 - Quantity selector (1-4 per purchase, configurable).
 - Stripe Checkout integration (same pattern as event web checkout).
 - On success: show QR code / confirmation with UUID for scanning.
 
 ### 3.4 Share Flow
 
-- When a user shares a line skip from the app, the share link goes to `bizzyu.com/venue/[venueId]` (the venue page), not a bare line skip URL.
-- The venue page shows the line skip in context alongside events and deals.
+- When a user shares a skip the line ticket from the app, the share link goes to `bizzyu.com/venue/[venueId]` (the venue page), not a bare skip the line ticket URL.
+- The venue page shows the skip the line ticket in context alongside events and deals.
 - The "Popular Venues" / business page in the Flutter app should have a "Share" button that generates this venue URL.
-- Old bare-UUID line skip links should redirect to the venue page with the relevant line skip highlighted.
+- Old bare-UUID skip the line ticket links should redirect to the venue page with the relevant skip the line ticket highlighted.
 
 ---
 
-## 4. Line Skip Quantity Editing (In-App)
+## 4. Skip the Line Ticket Quantity Editing (In-App)
 
 ### 4.1 Who Can Edit
 
@@ -199,9 +199,9 @@ Currently, line skips have no web checkout. Build one at `bizzyu.com/lineskip/ch
 
 ### 4.2 What They Edit
 
-- The `default_capacity` on a line skip template (affects future generated instances).
-- The `capacity` on a specific line skip instance (tonight's line skip).
-- UI: on the venue detail page or a dedicated line skip management section, show each active line skip with current capacity, sold count, and an edit button that opens a number input.
+- The `default_capacity` on a skip the line ticket template (affects future generated instances).
+- The `capacity` on a specific skip the line ticket instance (tonight's skip the line ticket).
+- UI: on the venue detail page or a dedicated skip the line ticket management section, show each active skip the line ticket with current capacity, sold count, and an edit button that opens a number input.
 
 ### 4.3 API
 
@@ -258,8 +258,8 @@ If the WebView approach is too complex or Stripe's embedded components don't ren
 - This bypasses all Node.js middleware (rate limiting, moderation, role checks) and duplicates business logic.
 
 **Feature removals (Cooper branched before these were built on dev):**
-- Removed all line skip pages, components, types, nav links, and analytics tabs.
-- Removed checkout pages, line skip scan pages.
+- Removed all skip the line ticket pages, components, types, nav links, and analytics tabs.
+- Removed checkout pages, skip the line ticket scan pages.
 - Removed ticket price inline editing from event detail page.
 - Removed camera fallback/error handling in scanner.
 
@@ -314,13 +314,13 @@ Cherry-pick individual UI-only commits after verifying each doesn't bring in old
 
 **Fix:** Once source is found, disable or make configurable.
 
-### 8.6 Universal Scanner for Line Skips
+### 8.6 Universal Scanner for Skip the Line Tickets
 
-**Verification needed:** The universal scanner at `bizzyu.com/checkin/[uuid]` and batch scanner at `bizzyu.com/scanner` were built in Phase 8 for event tickets. Verify they also work for line skip QR codes:
-- Line skip ticket instances should have a UUID.
-- Scanner should detect whether a scanned UUID is an event ticket or a line skip.
-- GREEN scanner = regular ticket check-in. ORANGE scanner = line skip check-in.
-- If scanner doesn't handle line skips, extend API to check both `ticket_instances` and `line_skip_purchases` tables.
+**Verification needed:** The universal scanner at `bizzyu.com/checkin/[uuid]` and batch scanner at `bizzyu.com/scanner` were built in Phase 8 for event tickets. Verify they also work for skip the line ticket QR codes:
+- Skip the line ticket instances should have a UUID.
+- Scanner should detect whether a scanned UUID is an event ticket or a skip the line ticket.
+- GREEN scanner = regular ticket check-in. ORANGE scanner = skip the line ticket check-in.
+- If scanner doesn't handle skip the line tickets, extend API to check both `ticket_instances` and `line_skip_purchases` tables.
 
 ---
 
@@ -374,7 +374,7 @@ ALTER TABLE businesses ADD COLUMN photo_url VARCHAR(500);
 |---------|-------------|------|
 | 1 | Flutter bug fixes (profile, deals, color, tickets) | Flutter |
 | 2 | Push notification investigation | Laravel + Firebase |
-| 3 | Line skip scanner verification | Node.js + Next.js |
+| 3 | Skip the line ticket scanner verification | Node.js + Next.js |
 
 ### Phase B: Multi-Venue DB + API
 
@@ -398,14 +398,14 @@ ALTER TABLE businesses ADD COLUMN photo_url VARCHAR(500);
 |---------|-------------|------|
 | 10 | Popular Venues / business pages update | Flutter |
 | 11 | Event creation venue selector | Flutter |
-| 12 | Line skip quantity editing | Flutter |
+| 12 | Skip the line ticket quantity editing | Flutter |
 
 ### Phase E: New Web Features
 
 | Session | Description | Repo |
 |---------|-------------|------|
 | 13 | Venue web page | Next.js |
-| 14 | Line skip web checkout | Next.js |
+| 14 | Skip the line ticket web checkout | Next.js |
 
 ### Phase F: Photos + Stripe Embed
 

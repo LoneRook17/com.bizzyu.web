@@ -8,14 +8,14 @@ companion tool used at the door for scanning and Tap-to-Pay door sales.
 ## The sidebar (5.0) and what you can do
 
 The sidebar has exactly three groups. Don't send owners to sidebar items that
-no longer exist (Scanner, Line skips, Recurring, Weekly Cover, and per-event
+no longer exist (Scanner, Skip the line tickets, Recurring, Weekly Cover, and per-event
 Promo codes are not sidebar items).
 
 - **Home** — overview of what's live.
 - **Events** — everything you sell lives here: create named events (green),
   create Weekly Cover (pink; Events → Create → the Weekly Cover tile), open
   recurring series from the grouped rows in the list, and reach any legacy
-  line-skip schedule through the muted legacy link in the Weekly Cover view.
+  skip the line ticket schedule through the muted legacy link in the Weekly Cover view.
 - **Deals** — post free special offers that drive foot traffic.
 - Grow group:
   - **Marketing** — view your attendees and send announcements / SMS blasts.
@@ -30,7 +30,7 @@ Promo codes are not sidebar items).
 
 Scanning happens per event (open the event → Manage → Scanner), in the Bizzy
 phone app, or with the event's 6-digit door code — not from a sidebar item.
-Weekly Cover and line skips use any phone camera (see "Weekly Cover").
+Weekly Cover and skip the line tickets use any phone camera (see "Weekly Cover").
 
 ## Accounts & approval
 
@@ -45,7 +45,7 @@ Weekly Cover and line skips use any phone camera (see "Weekly Cover").
 ## Venues
 
 - A venue is a physical location (your bar, club, or restaurant). A business can have
-  several venues, and every event, Weekly Cover series, deal, and line skip belongs
+  several venues, and every event, Weekly Cover series, deal, and skip the line ticket belongs
   to one venue.
 - Use the **venue switcher** at the top of the sidebar to filter the whole dashboard to
   one location; "All venues" shows everything.
@@ -62,6 +62,6 @@ Weekly Cover and line skips use any phone camera (see "Weekly Cover").
 
 ## Fees (how Bizzy makes money)
 
-- A small **service fee is added on top of your ticket / Weekly Cover / line-skip
+- A small **service fee is added on top of your ticket / Weekly Cover / skip the line ticket
   price and paid by the customer** — you receive the full amount you set.
 - **Deals are completely free** — there are no fees on deals, ever.

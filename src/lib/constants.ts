@@ -78,7 +78,7 @@ export const EVENTS_FAQ = [
   {
     question: "Does Bizzy charge the venue?",
     answer:
-      "No. Venues pay 0% platform fees. Your bar keeps 100% of the ticket, line skip, and cover price you set. Students pay the service fee at checkout.",
+      "No. Venues pay 0% platform fees. Your bar keeps 100% of the ticket, skip the line ticket, and cover price you set. Students pay the service fee at checkout.",
   },
   {
     question: "How does the promoter payout actually work?",
@@ -88,7 +88,7 @@ export const EVENTS_FAQ = [
   {
     question: "Can we send SMS blasts to past attendees?",
     answer:
-      "Yes. SMS blasts go to every student who's attended a past event at your venue. Personalized to your bar. One-tap to grab a line skip or ticket. Included and unlimited.",
+      "Yes. SMS blasts go to every student who's attended a past event at your venue. Personalized to your bar. One-tap to grab a skip the line ticket or ticket. Included and unlimited.",
   },
   {
     question: "Can my door staff use it?",

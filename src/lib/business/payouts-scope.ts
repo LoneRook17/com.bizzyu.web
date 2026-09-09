@@ -11,7 +11,7 @@
 //   4. out-of-scope fallback — a scoped member's fetch that 404s (selected venue
 //      not in their set) folds into the picker, never an error/coming-soon.
 //   5. switcher-sync intent — picking a venue sets the GLOBAL venue switcher to it
-//      (identical to line skips), which re-scopes every venue-aware fetch.
+//      (identical to skip the line tickets), which re-scopes every venue-aware fetch.
 //
 // No React, no api-client import → unit-testable under `node --test`, exactly like
 // payouts-access.ts and team-payouts-access.ts. The page/ReconcileView only render
@@ -55,7 +55,7 @@ export function isScopedPayoutsMember(access: PayoutsAccess | null | undefined):
 
 /**
  * The picker-state decision. Render the "pick a venue" chooser (no payouts data,
- * no error styling — a calm chooser, exactly like line skips) when:
+ * no error styling — a calm chooser, exactly like skip the line tickets) when:
  *   • the global switcher is on All venues AND the caller is a scoped member, OR
  *   • a fetch already forced it — a VENUE_SCOPE_REQUIRED 403 (no venue chosen) or
  *     a scoped member's out-of-scope 404. `scopeForced` is only ever set for a

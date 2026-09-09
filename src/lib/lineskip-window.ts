@@ -1,7 +1,7 @@
 import { wallClockStamp, nowWallClockStamp, stampClock } from "./wall-clock.ts"
 
 /**
- * Redemption window for a legacy line skip, on /ls/[uuid].
+ * Redemption window for a legacy skip the line ticket, on /ls/[uuid].
  *
  * Mirrors the guest check-in surface (checkin-guest.ts) in mechanism: wall-clock
  * stamps compared digit for digit, never handed to `new Date()`. The two pages
@@ -157,7 +157,7 @@ export function lineSkipWindowNotice(
     const opensClock = stampClock(opens)
     const doorsClock = stampClock(doors)
     return {
-      headline: "This line skip is not active yet",
+      headline: "This skip the line ticket is not active yet",
       detail: opensClock
         ? doorsClock
           ? `Check-in opens at ${opensClock}. Doors are at ${doorsClock}.`
@@ -168,7 +168,7 @@ export function lineSkipWindowNotice(
 
   const closesClock = stampClock(closes)
   return {
-    headline: "This line skip has ended",
+    headline: "This skip the line ticket has ended",
     detail: closesClock
       ? `Check-in closed at ${closesClock}.`
       : "Check-in has closed.",

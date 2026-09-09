@@ -68,13 +68,13 @@ export default function LineSkipsPage() {
       <HowLineSkipsWorkSection />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-ink">Line Skips</h1>
+        <h1 className="text-xl font-bold text-ink">Skip the Line Tickets</h1>
         {canCreate && (
           <button
             onClick={handleCreate}
             className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all cursor-pointer"
           >
-            Create Line Skip
+            Create Skip the Line Ticket
           </button>
         )}
       </div>
@@ -97,12 +97,12 @@ export default function LineSkipsPage() {
         </div>
       ) : lineSkips.length === 0 ? (
         <EmptyState
-          title="No Line Skips yet"
-          message="Line Skips let students pay to skip the line at your venue during peak hours. You set the price, capacity, and nights. Students claim through Bizzy and show a QR code at the door."
-          actionLabel={canCreate ? "Create Line Skip" : undefined}
+          title="No Skip the Line Tickets yet"
+          message="Skip the Line Tickets let students pay to skip the line at your venue during peak hours. You set the price, capacity, and nights. Students claim through Bizzy and show a QR code at the door."
+          actionLabel={canCreate ? "Create Skip the Line Ticket" : undefined}
           onAction={canCreate ? handleCreate : undefined}
           learnMoreHref="/business/help#line-skips"
-          learnMoreLabel="How line skips work"
+          learnMoreLabel="How skip the line tickets work"
         />
       ) : (
         <div className="space-y-3">

@@ -11,11 +11,11 @@
 
 ## 1. Background
 
-The Bizzy business dashboard is the operator surface where venues create events, post deals, run line skips, manage their team, and view analytics. It works and is feature-complete, but it has two problems we want to fix together:
+The Bizzy business dashboard is the operator surface where venues create events, post deals, run skip the line tickets, manage their team, and view analytics. It works and is feature-complete, but it has two problems we want to fix together:
 
 1. **The UI feels "vibe-coded."** It functions, but it reads as a developer-built admin panel rather than a designed product. The root causes are concrete and fixable (see §4): there are **no shared UI primitives** — every page re-implements buttons, cards, inputs, modals, and skeletons inline with repeated Tailwind class strings (e.g. the `bg-gradient-to-br from-[#2ECB4E] to-[#05EB54]` button appears copy-pasted across many files). Spacing, typography, empty states, and loading states are inconsistent page-to-page.
 
-2. **The approval gate blocks everything.** A newly signed-up business lands in a `pending_approval` state where it can *see* the dashboard chrome but is actively **blocked from the core value** — the Events, Line Skips, and Deals routes redirect back to home, their sidebar links are disabled, and a banner reads "You can view the dashboard but cannot create events or deals yet." We lose the new operator at their moment of peak motivation, right after signup, while they wait on a human review.
+2. **The approval gate blocks everything.** A newly signed-up business lands in a `pending_approval` state where it can *see* the dashboard chrome but is actively **blocked from the core value** — the Events, Skip the Line Tickets, and Deals routes redirect back to home, their sidebar links are disabled, and a banner reads "You can view the dashboard but cannot create events or deals yet." We lose the new operator at their moment of peak motivation, right after signup, while they wait on a human review.
 
 ### Current gate mechanics (as built today)
 
@@ -96,7 +96,7 @@ Recommendation: **(b)** for interactive primitives (modals, dropdowns, tabs) whe
 
 While a business is **not approved**, the dashboard runs in **Trial Mode**:
 
-- **Full navigability.** Remove the redirect + disabled-link blocking for Events / Deals / Line Skips. Pending operators can open these sections and see how they work.
+- **Full navigability.** Remove the redirect + disabled-link blocking for Events / Deals / Skip the Line Tickets. Pending operators can open these sections and see how they work.
 - **Build a first deal/event for real.** The create flows are open. On submit, the item is **saved and queued** rather than published — surfaced everywhere as a **"Queued — goes live when you're approved"** status, not an error.
 - **Guided & secluded.** A trial home that replaces the empty stat-card grid (which today just reads "data will populate once approved") with a **getting-started checklist / tutorial**: *Verify email → Set up your venue → Build your first deal → Get approved → Go live.* Progress is visible; the "Build your first deal" step is the primary CTA.
 - **Honest feature locking.** Features that can't be meaningfully trialed pre-approval (e.g. SMS blasts, promoter payouts, Stripe payouts, real scanning) are shown but clearly **locked** with a short "available once approved" affordance — visible so they understand the product, not hidden.
@@ -146,7 +146,7 @@ Unchanged functionally; it is simply the redesigned dashboard. Once approved, th
 | 1 | **Design system foundation** | Tokens in `globals.css` + primitive components (`Button`, `Card`, inputs, `Modal`, `Badge`, `EmptyState`, `Skeleton`, `Toast`); Storybook-style demo page | OQ-1 decision |
 | 2 | **Shell + home redesign** | Redesigned `DashboardShell`/`Sidebar`/`Topbar` + dashboard home on the new system | Phase 1 |
 | 3 | **Trial mode (front-end)** | Remove route gate, add Trial context + getting-started checklist, reframe banner, "queued" status across forms/lists/badges | Phase 1; §7 contract |
-| 4 | **Section restyle** | Migrate Events, Deals, Line Skips, Analytics, Team, Marketing, Settings, Scanner onto the new components | Phase 2 |
+| 4 | **Section restyle** | Migrate Events, Deals, Skip the Line Tickets, Analytics, Team, Marketing, Settings, Scanner onto the new components | Phase 2 |
 | 5 | **QA + polish** | Cross-section visual QA, responsive pass, a11y pass, trial→approved transition test | Phases 2–4 |
 
 Phases 1–2 (design system + shell) and Phase 3 (trial mode) can largely run in parallel once the foundation lands.

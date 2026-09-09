@@ -314,7 +314,7 @@ export default function V2HomePage() {
             <>
               {/* This is the EVENT revenue figure. It is never blended with the
                   line-skip take below — Backroads is $171,782 of events against
-                  $12 of line skips, and one total would erase the $12. */}
+                  $12 of skip the line tickets, and one total would erase the $12. */}
               {sections.revenueTile && <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />}
               {config.showDeals && (
                 <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
@@ -335,7 +335,7 @@ export default function V2HomePage() {
 
       {/* LSK-19 — the door-side figures, as their OWN labelled row so they can
           never be read as part of (or blended into) the event totals above.
-          D2-6 widened it from line skips to WEEKLY ACCESS: the same row now
+          D2-6 widened it from skip the line tickets to WEEKLY ACCESS: the same row now
           covers programs and the legacy nights side by side, because a venue
           mid-F15 genuinely runs both and needs to see both. "View all" points
           at the Events page, where Weekly Access now lives — never at the

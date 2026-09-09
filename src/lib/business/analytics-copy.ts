@@ -2,7 +2,7 @@
 //
 // Analytics is a HOST dashboard. The old line-skip product tab is the same
 // IA as Events vs Weekly Cover (renamed from Weekly Access): hosts see
-// Weekly Cover, never "line skip" / "Line skip" / "Skip the Line", and
+// Weekly Cover, never "skip the line ticket" / "Skip the line ticket" / "Skip the Line", and
 // never the student string "Door Access".
 //
 // Display only. Tab values (`line-skips`), API paths

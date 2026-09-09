@@ -42,9 +42,9 @@ test("a business with events but ZERO revenue still sees the events section", ()
   assert.equal(s.events, true)
 })
 
-// ── SHAPE: LINE SKIPS ONLY (Paddock 150, Nephews 319) ───────────────────────
+// ── SHAPE: SKIP THE LINE TICKETS ONLY (Paddock 150, Nephews 319) ───────────────────────
 
-test("line skips only — the section appears and the event tiles do not", () => {
+test("skip the line tickets only — the section appears and the event tiles do not", () => {
   const s = homeSections(shape({ hasLineSkipNights: true }))
   assert.equal(s.lineSkips, true)
   assert.equal(s.events, false) // no event tiles, no "Create an event" empty state
@@ -64,7 +64,7 @@ test("both — event tiles as today, PLUS the Skip the Line section", () => {
 })
 
 test("both — the two figures are separate SECTIONS, so neither can absorb the other", () => {
-  // Backroads is $171,782 of events against $12 of line skips. Both flags true
+  // Backroads is $171,782 of events against $12 of skip the line tickets. Both flags true
   // means two rows; there is no code path here that produces one combined total.
   const s = homeSections(shape({ totalEvents: 3, hasLineSkipNights: true, showDeals: true }))
   assert.equal(s.events, true)

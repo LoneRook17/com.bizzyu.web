@@ -117,7 +117,7 @@ export default function DoorAccessProgramsPage() {
       <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
         Looking for the older setup? Your{" "}
         <Link href="/business/line-skips" className="font-medium text-[#05EB54] hover:underline">
-          Line Skips
+          Skip the Line Tickets
         </Link>{" "}
         are still running and unchanged.
       </p>

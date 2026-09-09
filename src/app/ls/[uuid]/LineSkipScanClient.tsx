@@ -151,7 +151,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
           <div className="mb-6 text-6xl">?</div>
           <h1 className="mb-2 text-2xl font-bold text-white">Confirm Entry</h1>
           <p className="mb-8 text-lg text-white/70">
-            Redeem line skip for <span className="font-bold text-white">{ticket?.attendee_name}</span>?
+            Redeem skip the line ticket for <span className="font-bold text-white">{ticket?.attendee_name}</span>?
           </p>
           {/* Gated on the window too, not just on `redeeming`. The main screen
               only offers this overlay while the night is valid, but the page
@@ -233,7 +233,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
           <h1 className="mb-3 text-4xl font-black text-white tracking-tight">CANCELLED</h1>
-          <p className="text-lg text-white/80">This line skip night has been cancelled</p>
+          <p className="text-lg text-white/80">This skip the line night has been cancelled</p>
           <button
             onClick={() => setOverlay(null)}
             className="mt-8 w-full rounded-2xl bg-white/20 py-4 text-lg font-semibold text-white active:bg-white/30 transition-colors"
@@ -253,7 +253,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h1 className="mb-3 text-4xl font-black text-white tracking-tight">NOT ACTIVE</h1>
-          <p className="text-lg text-white/80">This line skip is outside the redemption window</p>
+          <p className="text-lg text-white/80">This skip the line ticket is outside the redemption window</p>
           <button
             onClick={() => setOverlay(null)}
             className="mt-8 w-full rounded-2xl bg-white/20 py-4 text-lg font-semibold text-white active:bg-white/30 transition-colors"
@@ -309,7 +309,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
         {/* Header */}
         <div className="mb-5 text-center">
           <span className="inline-block rounded-full bg-[#D4AF37]/20 px-4 py-1.5 text-sm font-bold text-[#D4AF37] tracking-wide">
-            LINE SKIP
+            SKIP THE LINE TICKET
           </span>
         </div>
 
@@ -361,7 +361,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
                 <svg className="mx-auto mb-2 h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
-                <p className="text-lg font-bold text-red-400">This line skip night has been cancelled</p>
+                <p className="text-lg font-bold text-red-400">This skip the line night has been cancelled</p>
               </div>
             )}
 
@@ -377,7 +377,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
                     notice now carries the real opening time, and doors as a
                     separate sentence. */}
                 <p className="text-lg font-bold text-orange-400">
-                  {windowNotice?.headline ?? "This line skip is not active yet"}
+                  {windowNotice?.headline ?? "This skip the line ticket is not active yet"}
                 </p>
                 <p className="mt-1 text-sm text-orange-400/70">
                   {windowNotice?.detail ?? "Check-in has not opened yet."}
@@ -391,7 +391,7 @@ export default function LineSkipScanClient({ uuid }: { uuid: string }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p className="text-lg font-bold text-orange-400">
-                  {windowNotice?.headline ?? "This line skip has ended"}
+                  {windowNotice?.headline ?? "This skip the line ticket has ended"}
                 </p>
                 <p className="mt-1 text-sm text-orange-400/70">
                   {windowNotice?.detail ?? "Check-in has closed."}

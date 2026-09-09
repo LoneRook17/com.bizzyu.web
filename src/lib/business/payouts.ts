@@ -43,7 +43,8 @@ export type ResolvedVia =
  *  structural in the resolver — see recon §C); this client never re-sums fees. */
 export interface SaleRow {
   sale_date: string
-  /** door | web | apple_pay | line skip (...) | refund (<orig>) | adjustment:* */
+  /** door | web | apple_pay | line skip (...) | refund (<orig>) | adjustment:* — raw
+   *  wire values; display rebranding ("Skip the Line Ticket") happens in channelLabel. */
   sale_channel: string
   event: string | null
   event_date: string | null
@@ -302,6 +303,14 @@ export function isAdjustmentRow(row: SaleRow): boolean {
   return row.sale_channel.toLowerCase().startsWith("adjustment")
 }
 
+/** Rebrand the API's wire wording for display only. The server still says
+ *  "line skip"/"line_skip" in `sale_channel`, `event`, and `ticket_tier`, and
+ *  its payout reconciliation matches on that wording — so this is applied at
+ *  render/export time and never to parsed data or anything matched against. */
+export function displayTerm(s: string): string {
+  return s.replace(/line[ _-]skip/gi, "Skip the Line Ticket")
+}
+
 /** Human-friendly channel label for display (keeps refund/adjustment prefixes). */
 export function channelLabel(channel: string): string {
   const map: Record<string, string> = {
@@ -310,7 +319,10 @@ export function channelLabel(channel: string): string {
     door: "Door",
     tap_to_pay: "Tap to Pay",
   }
-  return map[channel] ?? channel
+  if (map[channel]) return map[channel]
+  // Refunds nest the value as "refund (line_skip (web))", so rebrand wherever
+  // it sits in the string — matching only a bare prefix misses that form.
+  return displayTerm(channel)
 }
 
 // ── Date range (default 90 days — a quarter's bookkeeping) ────────────────────
@@ -385,10 +397,10 @@ function saleRowCsvCells(row: SaleRow, payoutId: string, payoutDate: string | nu
     payoutDate ?? "",
     status,
     row.sale_date,
-    row.sale_channel,
-    row.event ?? "",
+    channelLabel(row.sale_channel),
+    displayTerm(row.event ?? ""),
     row.event_date ?? "",
-    row.ticket_tier ?? "",
+    displayTerm(row.ticket_tier ?? ""),
     String(row.quantity),
     row.buyer ?? "",
     row.order_id == null ? "" : String(row.order_id),

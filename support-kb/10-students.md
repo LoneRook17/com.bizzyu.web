@@ -80,9 +80,9 @@ Grounded in a code-behavior trace (2026-07-03). Re-verify when flows change.
   immediately** to support@bizzyu.com with the email on the account, event name,
   and purchase time.
 
-## Line skips (legacy product)
+## Skip the line tickets (legacy product)
 
-- Line skips are an **older Bizzy product** that most venues have replaced
+- Skip the line tickets are an **older Bizzy product** that most venues have replaced
   with **Weekly Cover** (where faster entry is a "Skip the Line" option on a
   night). A few venues still sell them, and anything already purchased keeps
   working exactly as bought — don't tell a student their pass is invalid
@@ -95,8 +95,8 @@ Grounded in a code-behavior trace (2026-07-03). Re-verify when flows change.
 - One-time use; valid only for the specific night/time window purchased.
 - Same refund policy as tickets: final sale unless the venue cancels the night, in
   which case unredeemed passes are automatically refunded in full.
-- **"Skip the line" can mean three different things.** (1) A **line skip**, the
-  product above, bought from the venue's line-skip listing. (2) A **named-event
+- **"Skip the line" can mean three different things.** (1) A **skip the line ticket**, the
+  product above, bought from the venue's skip the line ticket listing. (2) A **named-event
   ticket tier** called "Skip the Line": just a ticket, scanned with the in-app
   scanner, cover only if the venue says so. (3) A **Weekly Cover** option also
   called Skip the Line: still Cover for that night, scanned with any phone

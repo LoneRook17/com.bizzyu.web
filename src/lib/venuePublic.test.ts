@@ -547,7 +547,7 @@ test("night chip price uses that night's min cover, From when tiers", () => {
         min_ticket_price: null,
         tickets: [
           { name: "Cover", price_usd: 8 },
-          { name: "Line skip", price_usd: 15 },
+          { name: "Skip the line ticket", price_usd: 15 },
         ],
       }),
     ),
@@ -750,11 +750,11 @@ test("one tier or only a min price reads Cover $5; several tiers list names", ()
         min_ticket_price: null,
         tickets: [
           { name: "Cover", price_usd: 5 },
-          { name: "Line skip", price_usd: 15 },
+          { name: "Skip the line ticket", price_usd: 15 },
         ],
       }),
     ]),
-    ["Cover $5", "Line skip $15"],
+    ["Cover $5", "Skip the line ticket $15"],
   )
   assert.deepEqual(
     weeklyAccessPriceLines([

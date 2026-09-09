@@ -71,7 +71,7 @@ test("host escrow and host payout timing copy is unchanged", () => {
   const help = read("../../app/business/(dashboard)/help/content.ts")
   assert.ok(
     help.includes(
-      "Money from ticket sales and line skips is transferred to your bank account through Stripe, typically within 2-3 business days after the transaction.",
+      "Money from ticket sales and skip the line tickets is transferred to your bank account through Stripe, typically within 2-3 business days after the transaction.",
     ),
     "host FAQ payout timing moved",
   )

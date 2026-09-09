@@ -16,7 +16,7 @@ There are **two different kinds of team** on Bizzy:
 
 - **Owner** — full access to everything, including settings and billing.
 - **Manager** — create and manage events, Weekly Cover, and deals (plus any
-  legacy line-skip schedule); view analytics; **no** business settings.
+  legacy skip the line ticket schedule); view analytics; **no** business settings.
 - **Staff** — scan tickets, sell via Tap-to-Pay, view basic event info.
 - **Promoter** — view their share link and promotion performance.
 

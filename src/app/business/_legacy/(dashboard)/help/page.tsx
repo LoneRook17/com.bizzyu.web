@@ -77,17 +77,17 @@ const SECTIONS: Section[] = [
         id: "welcome",
         title: "1.1 Welcome to Bizzy for Business",
         content: `
-          <p><strong>Bizzy</strong> is a platform that helps bars, clubs, restaurants, and venues sell tickets, offer deals, and manage line skips to college students.</p>
+          <p><strong>Bizzy</strong> is a platform that helps bars, clubs, restaurants, and venues sell tickets, offer deals, and manage skip the line tickets to college students.</p>
           <p>Think of it as your all-in-one tool for reaching students on campus and making it easy for them to find your events, claim your deals, and skip the line at your venue.</p>
           <p><strong>What can you do from this dashboard?</strong></p>
           <ul>
             <li><strong>Events</strong> &mdash; Create events, sell tickets, and track who shows up</li>
-            <li><strong>Line Skips</strong> &mdash; Let customers pay to skip the line on your busiest nights</li>
+            <li><strong>Skip the Line Tickets</strong> &mdash; Let customers pay to skip the line on your busiest nights</li>
             <li><strong>Deals</strong> &mdash; Post special offers that drive foot traffic to your venue</li>
             <li><strong>Analytics</strong> &mdash; See how many tickets you&rsquo;ve sold, how much money you&rsquo;ve made, and which deals are performing best</li>
             <li><strong>Team</strong> &mdash; Invite your staff, managers, and promoters to help run things</li>
             <li><strong>Settings</strong> &mdash; Manage your venues, connect your bank account through Stripe, and update your business info</li>
-            <li><strong>Scanner</strong> &mdash; Scan QR code tickets and line skips at the door</li>
+            <li><strong>Scanner</strong> &mdash; Scan QR code tickets and skip the line tickets at the door</li>
           </ul>
           <p>All of these are accessible from the sidebar on the left side of your screen (or the menu icon at the top on mobile).</p>
         `,
@@ -120,7 +120,7 @@ const SECTIONS: Section[] = [
           <ol>
             <li><strong>You sign up</strong> &mdash; fill in your business details and create your account</li>
             <li><strong>We review it</strong> &mdash; the Bizzy team checks your information to make sure everything looks good</li>
-            <li><strong>You get approved</strong> &mdash; once approved, you&rsquo;ll have full access to create events, deals, and line skips</li>
+            <li><strong>You get approved</strong> &mdash; once approved, you&rsquo;ll have full access to create events, deals, and skip the line tickets</li>
           </ol>
           <p>Approval usually takes <strong>1&ndash;2 business days</strong>. While you wait, you can still log in, look around the dashboard, and set up your venue &mdash; you just can&rsquo;t create events or deals until you&rsquo;re approved.</p>
           <p>Haven&rsquo;t heard back after 2 business days? Email <strong>support@bizzyu.com</strong> and we&rsquo;ll check on your application.</p>
@@ -130,8 +130,8 @@ const SECTIONS: Section[] = [
         id: "connecting-stripe",
         title: "1.4 Connecting Stripe (Getting Paid)",
         content: `
-          <p><strong>Stripe</strong> is the payment service that handles all the money. When a customer buys a ticket or line skip, Stripe collects the payment and sends your share directly to your bank account. You don&rsquo;t need to understand how Stripe works behind the scenes &mdash; just follow these steps to connect it.</p>
-          <p><strong>Why do I need Stripe?</strong> Without Stripe, you can&rsquo;t receive money from ticket sales or line skips. You <strong>must</strong> connect Stripe before you can create any paid events or line skips.</p>
+          <p><strong>Stripe</strong> is the payment service that handles all the money. When a customer buys a ticket or skip the line ticket, Stripe collects the payment and sends your share directly to your bank account. You don&rsquo;t need to understand how Stripe works behind the scenes &mdash; just follow these steps to connect it.</p>
+          <p><strong>Why do I need Stripe?</strong> Without Stripe, you can&rsquo;t receive money from ticket sales or skip the line tickets. You <strong>must</strong> connect Stripe before you can create any paid events or skip the line tickets.</p>
           <p><strong>How to connect Stripe:</strong></p>
           <ol>
             <li>Go to <strong>Settings</strong> in the sidebar</li>
@@ -147,7 +147,7 @@ const SECTIONS: Section[] = [
             </li>
             <li>Once you finish the Stripe setup, you&rsquo;ll be brought back to the Bizzy dashboard</li>
           </ol>
-          <p><strong>How long until I get paid?</strong> After each ticket sale or line skip purchase, the money typically arrives in your bank account within <strong>2&ndash;3 business days</strong>.</p>
+          <p><strong>How long until I get paid?</strong> After each ticket sale or skip the line ticket purchase, the money typically arrives in your bank account within <strong>2&ndash;3 business days</strong>.</p>
         `,
       },
       {
@@ -187,8 +187,8 @@ const SECTIONS: Section[] = [
           <p>Here&rsquo;s what you need to know:</p>
           <ul>
             <li>Your business can have <strong>multiple venues</strong> (for example, if you own two bar locations)</li>
-            <li>Every event, deal, and line skip you create is attached to a specific venue</li>
-            <li>Each venue has its own page in the Bizzy app where customers can see your upcoming events, deals, and line skips</li>
+            <li>Every event, deal, and skip the line ticket you create is attached to a specific venue</li>
+            <li>Each venue has its own page in the Bizzy app where customers can see your upcoming events, deals, and skip the line tickets</li>
           </ul>
           <p><strong>The venue switcher:</strong> At the top of the sidebar, you&rsquo;ll see a dropdown menu. This lets you switch between your venues. When you select a venue, everything in the dashboard (events, deals, analytics) filters to show only that venue&rsquo;s data. Select &ldquo;All Venues&rdquo; to see everything at once.</p>
         `,
@@ -205,7 +205,7 @@ const SECTIONS: Section[] = [
             <li><strong>Photo</strong> &mdash; upload a photo of your venue (this shows in the app, so make it a good one!)</li>
             <li><strong>Website &amp; Instagram</strong> (optional) &mdash; add links so customers can find you online</li>
           </ol>
-          <p>That&rsquo;s it! Once your venue is created, you can start creating events, deals, and line skips.</p>
+          <p>That&rsquo;s it! Once your venue is created, you can start creating events, deals, and skip the line tickets.</p>
         `,
       },
       {
@@ -219,7 +219,7 @@ const SECTIONS: Section[] = [
             <li>Fill in the same information (name, address, description, photo)</li>
             <li>Your new venue will appear in the dropdown</li>
           </ol>
-          <p>Each venue operates independently &mdash; it has its own events, deals, line skips, and analytics.</p>
+          <p>Each venue operates independently &mdash; it has its own events, deals, skip the line tickets, and analytics.</p>
         `,
       },
       {
@@ -244,7 +244,7 @@ const SECTIONS: Section[] = [
             <li>Use the <strong>dropdown at the top of the sidebar</strong> to switch between venues</li>
             <li>Select <strong>&ldquo;All Venues&rdquo;</strong> to see everything across all your locations</li>
             <li>Select a <strong>specific venue</strong> to filter everything to just that location</li>
-            <li>When you create something new (event, deal, line skip), it&rsquo;s created for whichever venue you currently have selected</li>
+            <li>When you create something new (event, deal, skip the line ticket), it&rsquo;s created for whichever venue you currently have selected</li>
           </ul>
         `,
       },
@@ -443,37 +443,37 @@ const SECTIONS: Section[] = [
     ],
   },
 
-  /* ---- 5. Line Skips ---- */
+  /* ---- 5. Skip the Line Tickets ---- */
   {
     id: "line-skips",
-    title: "Line Skips",
+    title: "Skip the Line Tickets",
     icon: (
       <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
       </svg>
     ),
-    intro: "Line skips let customers pay to skip the line and get guaranteed entry.",
+    intro: "Skip the line tickets let customers pay to skip the line and get guaranteed entry.",
     subsections: [
       {
         id: "what-are-line-skips",
-        title: "5.1 What are Line Skips?",
+        title: "5.1 What are Skip the Line Tickets?",
         content: `
-          <p>Line skips let customers <strong>pay to skip the line</strong> at your venue. Here&rsquo;s how they work:</p>
+          <p>Skip the line tickets let customers <strong>pay to skip the line</strong> at your venue. Here&rsquo;s how they work:</p>
           <ul>
-            <li>Customers buy a line skip in advance through the Bizzy app</li>
+            <li>Customers buy a skip the line ticket in advance through the Bizzy app</li>
             <li>When they arrive, they show a QR code (a square barcode that appears on their phone screen) at the door</li>
             <li>You scan it using your <strong>phone&rsquo;s camera app</strong>, and they go straight to the front of the line (see section 5.4 for details)</li>
           </ul>
-          <p><strong>Important:</strong> A line skip means <strong>guaranteed entry</strong>. &ldquo;Includes Cover&rdquo; means the line skip price <em>includes</em> the cover charge &mdash; the customer doesn&rsquo;t pay again at the door. All line skips on Bizzy include cover.</p>
+          <p><strong>Important:</strong> A skip the line ticket means <strong>guaranteed entry</strong>. &ldquo;Includes Cover&rdquo; means the skip the line ticket price <em>includes</em> the cover charge &mdash; the customer doesn&rsquo;t pay again at the door. All skip the line tickets on Bizzy include cover.</p>
         `,
       },
       {
         id: "creating-line-skip",
-        title: "5.2 Creating a Line Skip Schedule",
+        title: "5.2 Creating a Skip the Line Ticket Schedule",
         content: `
           <ol>
-            <li>Go to <strong>Line Skips</strong> in the sidebar</li>
-            <li>Click the green <strong>&ldquo;Create Line Skip&rdquo;</strong> button</li>
+            <li>Go to <strong>Skip the Line Tickets</strong> in the sidebar</li>
+            <li>Click the green <strong>&ldquo;Create Skip the Line Ticket&rdquo;</strong> button</li>
             <li>Fill in the details:
               <ul>
                 <li><strong>Name</strong> &mdash; e.g., &ldquo;Skip the Line at [Your Venue]&rdquo;</li>
@@ -481,22 +481,22 @@ const SECTIONS: Section[] = [
                 <li><strong>Days of the week</strong> &mdash; select which nights (e.g., Friday and Saturday)</li>
                 <li><strong>Start date</strong> &mdash; when the schedule begins</li>
                 <li><strong>Doors open and close times</strong></li>
-                <li><strong>Price</strong> &mdash; how much the line skip costs</li>
-                <li><strong>Quantity</strong> &mdash; how many line skips are available per night</li>
+                <li><strong>Price</strong> &mdash; how much the skip the line ticket costs</li>
+                <li><strong>Quantity</strong> &mdash; how many skip the line tickets are available per night</li>
               </ul>
             </li>
           </ol>
-          <p><strong>How it works behind the scenes:</strong> Line skips run on a <strong>rolling schedule</strong>. The system automatically creates upcoming nights 2 weeks in advance. As nights pass, new ones are added. You don&rsquo;t need to manually create each night &mdash; it&rsquo;s all automatic!</p>
+          <p><strong>How it works behind the scenes:</strong> Skip the line tickets run on a <strong>rolling schedule</strong>. The system automatically creates upcoming nights 2 weeks in advance. As nights pass, new ones are added. You don&rsquo;t need to manually create each night &mdash; it&rsquo;s all automatic!</p>
         `,
       },
       {
         id: "managing-line-skip-nights",
-        title: "5.3 Managing Line Skip Nights",
+        title: "5.3 Managing Skip the Line Nights",
         content: `
-          <p>Click on a line skip schedule to see all upcoming and past nights. For each night, you can:</p>
+          <p>Click on a skip the line ticket schedule to see all upcoming and past nights. For each night, you can:</p>
           <ul>
             <li><strong>Edit the price</strong> &mdash; maybe you want to charge more on a holiday weekend</li>
-            <li><strong>Edit the quantity</strong> &mdash; add more line skips if demand is high</li>
+            <li><strong>Edit the quantity</strong> &mdash; add more skip the line tickets if demand is high</li>
             <li><strong>Edit the details</strong> &mdash; change the times for a special night</li>
             <li><strong>Cancel the night</strong> &mdash; if you&rsquo;re closed or something changes (see the Cancellations section below)</li>
           </ul>
@@ -504,17 +504,17 @@ const SECTIONS: Section[] = [
       },
       {
         id: "scanning-line-skips",
-        title: "5.4 Scanning Line Skips",
+        title: "5.4 Scanning Skip the Line Tickets",
         content: `
-          <p><strong>Line skips do NOT use the in-app scanner.</strong> Instead, use your phone&rsquo;s regular <strong>camera app</strong> to scan line skip QR codes. This is called the <strong>universal scanner</strong>.</p>
+          <p><strong>Skip the line tickets do NOT use the in-app scanner.</strong> Instead, use your phone&rsquo;s regular <strong>camera app</strong> to scan skip the line ticket QR codes. This is called the <strong>universal scanner</strong>.</p>
           <p><strong>How to do it:</strong></p>
           <ol>
             <li>Open your phone&rsquo;s <strong>camera app</strong> (the one that came with your phone &mdash; not the Bizzy app)</li>
             <li>Point it at the customer&rsquo;s QR code on their phone</li>
             <li>A link will pop up on your screen &mdash; tap it</li>
-            <li>The link will show you whether the line skip is valid or not</li>
+            <li>The link will show you whether the skip the line ticket is valid or not</li>
           </ol>
-          <p><strong>Do not</strong> use the Bizzy in-app scanner or any scanning links for line skips. The camera app is the only way.</p>
+          <p><strong>Do not</strong> use the Bizzy in-app scanner or any scanning links for skip the line tickets. The camera app is the only way.</p>
         `,
       },
     ],
@@ -652,7 +652,7 @@ const SECTIONS: Section[] = [
       },
       {
         id: "line-skip-analytics",
-        title: "7.4 Line Skip Analytics",
+        title: "7.4 Skip the Line Ticket Analytics",
         content: `
           <ul>
             <li><strong>Active schedules</strong></li>
@@ -709,7 +709,7 @@ const SECTIONS: Section[] = [
           <p>When you add someone to your <strong>business team</strong>, you assign them a role. Each role has different levels of access:</p>
           <ul>
             <li><strong>Owner</strong> &mdash; Full access to everything. Can manage the team, change settings, view all analytics. This is you (the person who created the business account).</li>
-            <li><strong>Manager</strong> &mdash; Can create and manage events, deals, and line skips. Can view analytics. Cannot change business settings or manage the owner&rsquo;s account.</li>
+            <li><strong>Manager</strong> &mdash; Can create and manage events, deals, and skip the line tickets. Can view analytics. Cannot change business settings or manage the owner&rsquo;s account.</li>
             <li><strong>Staff</strong> &mdash; Can scan tickets at the door, sell tickets via Tap-to-Pay, and view basic event info. Cannot create events or change settings.</li>
             <li><strong>Promoter</strong> &mdash; Can view their own promoter share link and see how their promotions are performing. Cannot manage events or view full analytics.</li>
           </ul>
@@ -826,7 +826,7 @@ const SECTIONS: Section[] = [
           <ul>
             <li>View your <strong>Stripe connection status</strong> (connected or not connected)</li>
             <li><strong>Reconnect</strong> if Stripe asks for additional information or if your connection was interrupted</li>
-            <li>You must <strong>stay connected to Stripe</strong> while you have active paid events or line skips &mdash; otherwise you won&rsquo;t be able to receive payments</li>
+            <li>You must <strong>stay connected to Stripe</strong> while you have active paid events or skip the line tickets &mdash; otherwise you won&rsquo;t be able to receive payments</li>
           </ul>
         `,
       },
@@ -849,7 +849,7 @@ const SECTIONS: Section[] = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
       </svg>
     ),
-    intro: "What happens when you cancel an event or line skip night, and how refunds work.",
+    intro: "What happens when you cancel an event or skip the line night, and how refunds work.",
     subsections: [
       {
         id: "refund-policy",
@@ -857,8 +857,8 @@ const SECTIONS: Section[] = [
         content: `
           <p>Here&rsquo;s the simple version:</p>
           <ul>
-            <li><strong>All sales are final</strong> &mdash; customers cannot request individual refunds for tickets or line skips</li>
-            <li>The <strong>only time refunds happen</strong> is if <strong>you</strong> (the business) cancel an event or line skip night</li>
+            <li><strong>All sales are final</strong> &mdash; customers cannot request individual refunds for tickets or skip the line tickets</li>
+            <li>The <strong>only time refunds happen</strong> is if <strong>you</strong> (the business) cancel an event or skip the line night</li>
             <li>If you cancel, every customer who purchased a ticket gets a <strong>full refund automatically</strong></li>
           </ul>
         `,
@@ -891,13 +891,13 @@ const SECTIONS: Section[] = [
       },
       {
         id: "cancelling-line-skip",
-        title: "10.4 Cancelling a Line Skip Night",
+        title: "10.4 Cancelling a Skip the Line Night",
         content: `
           <p>Same process as events:</p>
           <ol>
-            <li>Go to the line skip &rarr; find the night &rarr; <strong>&ldquo;Cancel&rdquo;</strong></li>
+            <li>Go to the skip the line ticket &rarr; find the night &rarr; <strong>&ldquo;Cancel&rdquo;</strong></li>
           </ol>
-          <p><strong>Important:</strong> Customers who <strong>already used</strong> their line skip (already got in the venue) are <strong>not refunded</strong> &mdash; they received the service. Only customers who haven&rsquo;t used their line skip yet get a refund.</p>
+          <p><strong>Important:</strong> Customers who <strong>already used</strong> their skip the line ticket (already got in the venue) are <strong>not refunded</strong> &mdash; they received the service. Only customers who haven&rsquo;t used their skip the line ticket yet get a refund.</p>
         `,
       },
       {
@@ -935,7 +935,7 @@ const SECTIONS: Section[] = [
           <ul>
             <li>Your <strong>events</strong> appear in the Events tab, sorted by date</li>
             <li>Your <strong>deals</strong> appear in the Deals tab</li>
-            <li>Your <strong>venue</strong> appears in the Venues section if you have upcoming events or active line skips</li>
+            <li>Your <strong>venue</strong> appears in the Venues section if you have upcoming events or active skip the line tickets</li>
           </ul>
           <p>Customers browse by campus, so your content is shown to students at the university closest to your venue.</p>
         `,
@@ -966,11 +966,11 @@ const SECTIONS: Section[] = [
       },
       {
         id: "how-customers-buy-line-skips",
-        title: "11.4 How Customers Buy Line Skips",
+        title: "11.4 How Customers Buy Skip the Line Tickets",
         content: `
           <ol>
             <li>They find your venue in the Bizzy app</li>
-            <li>They find the line skip &rarr; select a night &rarr; pay</li>
+            <li>They find the skip the line ticket &rarr; select a night &rarr; pay</li>
             <li>They receive a QR code in the app</li>
             <li>They show it at the door, you scan it, and they skip the line</li>
           </ol>
@@ -992,7 +992,7 @@ const SECTIONS: Section[] = [
     subsections: [],
     faqs: [
       // Payments & Money
-      { q: "When do I get paid?", a: "Money from ticket sales and line skips is transferred to your bank account through Stripe, typically within 2\u20133 business days after the transaction." },
+      { q: "When do I get paid?", a: "Money from ticket sales and skip the line tickets is transferred to your bank account through Stripe, typically within 2\u20133 business days after the transaction." },
       { q: "What fees does Bizzy charge?", a: "A small service fee is added on top of your price and paid by the customer. You receive the full amount you set \u2014 the fee comes out of the customer\u2019s total, not out of your pocket." },
       { q: "How do I see how much money I\u2019ve made?", a: "Go to Analytics in the sidebar. Your revenue is shown for events, Weekly Access, and overall." },
       // Events
@@ -1001,10 +1001,10 @@ const SECTIONS: Section[] = [
       // Deals
       { q: "Do deals cost me anything?", a: "No. Creating and running deals on Bizzy is completely free. There are no fees. Deals are designed to drive foot traffic to your venue at no cost to you." },
       { q: "Can I limit how many people claim my deal?", a: "The frequency setting (daily, weekly, monthly, anytime) controls how often each individual person can claim. There\u2019s no total cap on the number of unique people who can claim." },
-      // Line Skips
-      { q: "What does \u201cIncludes Cover\u201d mean?", a: "It means the line skip price includes the cover charge. The customer pays once for the line skip and doesn\u2019t pay again at the door. All line skips on Bizzy include cover." },
-      { q: "Can I change the price for a specific night?", a: "Yes! Click on the line skip schedule, find the specific night, and click \u201cEdit Price.\u201d This is great for charging more on holidays or special event nights." },
-      { q: "What happens if no one buys a line skip for a night?", a: "Nothing at all. The night just passes. No charges, no action needed on your part." },
+      // Skip the Line Tickets
+      { q: "What does \u201cIncludes Cover\u201d mean?", a: "It means the skip the line ticket price includes the cover charge. The customer pays once for the skip the line ticket and doesn\u2019t pay again at the door. All skip the line tickets on Bizzy include cover." },
+      { q: "Can I change the price for a specific night?", a: "Yes! Click on the skip the line ticket schedule, find the specific night, and click \u201cEdit Price.\u201d This is great for charging more on holidays or special event nights." },
+      { q: "What happens if no one buys a skip the line ticket for a night?", a: "Nothing at all. The night just passes. No charges, no action needed on your part." },
       // Technical
       { q: "I can\u2019t log in. What do I do?", a: "Click \u201cForgot Password\u201d on the login page to reset your password. If that doesn\u2019t work, email support@bizzyu.com and we\u2019ll help you get back into your account." },
       { q: "The dashboard looks broken or won\u2019t load.", a: "Try refreshing the page first. If that doesn\u2019t fix it, clear your browser cache (go to your browser\u2019s Settings \u2192 Clear Browsing Data). If it\u2019s still broken, try a different browser (like Chrome, Safari, or Firefox). Still having issues? Email support@bizzyu.com." },

@@ -27,7 +27,7 @@ Files:
 - `50-scanners-door-counters.md` — ticket/line-skip scanning + door counters.
 - `60-team.md` — business team vs event co-hosts, roles, invites.
 - `70-stripe-payouts.md` — connecting Stripe, payout timing, refunds.
-- `80-line-skips-deals.md` — LEGACY line skips (no new creation; manage/turn off only) + deals + national-deals boundary.
+- `80-line-skips-deals.md` — LEGACY skip the line tickets (no new creation; manage/turn off only) + deals + national-deals boundary.
 - `90-analytics-marketing.md` — analytics, Tap-to-Pay, marketing/blasts.
 
 ## Editing

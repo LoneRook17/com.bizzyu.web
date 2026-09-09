@@ -61,12 +61,12 @@ Good to know:
 - Money from a door-code Tap-to-Pay sale still routes to the venue's own Stripe
   account, exactly like any other door sale.
 
-## Scanning line skips (different!)
+## Scanning skip the line tickets (different!)
 
-- **Line skips do NOT use the in-app scanner.** Use the phone's **regular camera app**
+- **Skip the line tickets do NOT use the in-app scanner.** Use the phone's **regular camera app**
   instead.
-- Open your phone's camera, point it at the customer's line-skip QR code, and tap the
-  link that pops up — it shows whether the line skip is valid.
+- Open your phone's camera, point it at the customer's skip the line ticket QR code, and tap the
+  link that pops up — it shows whether the skip the line ticket is valid.
 
 ## Door counters (headcounts at the door)
 

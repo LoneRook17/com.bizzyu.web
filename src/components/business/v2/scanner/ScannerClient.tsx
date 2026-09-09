@@ -251,7 +251,7 @@ export default function ScannerClient() {
 
   const getResultLabel = () => {
     if (!result) return ""
-    if (result.status === "redeemed_now") return isLineSkip ? "LINE SKIP" : "ENTRY"
+    if (result.status === "redeemed_now") return isLineSkip ? "SKIP THE LINE TICKET" : "ENTRY"
     const labels: Record<string, string> = {
       already_redeemed: "ALREADY SCANNED",
       invalid: "INVALID TICKET",
@@ -288,7 +288,7 @@ export default function ScannerClient() {
   }
   const logLabel = (status: string, type?: string) =>
     status === "redeemed_now"
-      ? type === "line_skip" ? "LINE SKIP" : "ENTRY"
+      ? type === "line_skip" ? "SKIP THE LINE TICKET" : "ENTRY"
       : status === "already_redeemed" ? "ALREADY IN" : "ERROR"
 
   if (loading) {
