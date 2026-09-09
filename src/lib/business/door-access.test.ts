@@ -1066,13 +1066,13 @@ test("usdPrice says Free rather than $0.00, and fmtQuantity says Unlimited for 0
 test("programMetaLine mirrors the app's F9 metadata line", () => {
   assert.equal(
     programMetaLine(program()),
-    "The Fictional Tap · Fri · Sat · Recurring cover and line skip · From $10.00"
+    "The Fictional Tap · Fri · Sat · Recurring cover and skip the line ticket · From $10.00"
   )
 })
 
 test("programMetaLine drops empty segments instead of rendering blanks", () => {
   const line = programMetaLine(program({ venue_name: "", days_of_week: [], lowest_price_usd: null }))
-  assert.equal(line, "Recurring cover and line skip")
+  assert.equal(line, "Recurring cover and skip the line ticket")
   assert.ok(!line.includes(" ·  · "))
 })
 
@@ -2279,7 +2279,7 @@ test("WC create matches Flutter: no Details leftovers, no VIP, no venue picker",
     "utf8",
   )
   assert.ok(sell.includes("DoorOpen"), "Cover uses a door icon")
-  assert.ok(sell.includes("Zap"), "Line skip uses a bolt icon")
+  assert.ok(sell.includes("Zap"), "Skip the line ticket uses a bolt icon")
   assert.ok(sell.includes("Sparkles"), "Both uses sparkles")
   assert.ok(!sell.includes("charAt(0)"), "Sell tiles must not use letter tiles W / S / B")
   assert.ok(sell.includes("inAppChoiceSurfaceStyle"), "Sell tiles keep the thin colored border")

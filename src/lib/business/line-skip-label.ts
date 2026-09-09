@@ -12,7 +12,7 @@
  * Those are contracts shared with the frozen mobile app and must not move.
  *
  * Not yet adopted by `NAV_LINKS` in ./constants.ts, which still reads
- * "Line Skips" — pointing the sidebar here is a separate, deliberate rename of
+ * "Skip the Line Tickets" — pointing the sidebar here is a separate, deliberate rename of
  * an existing surface, not something LSK-19 changed on its way past.
  */
 export const LINE_SKIP_LABEL = "Skip the Line"

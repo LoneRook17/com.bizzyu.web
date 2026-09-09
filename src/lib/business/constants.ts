@@ -11,7 +11,7 @@ export const NAV_LINKS = [
   { label: 'Home', href: '/business', icon: 'home' },
   { label: 'Events', href: '/business/events', icon: 'calendar' },
   { label: 'Event Marketing', href: '/business/marketing', icon: 'megaphone' },
-  { label: 'Line Skips', href: '/business/line-skips', icon: 'bolt' },
+  { label: 'Skip the Line Tickets', href: '/business/line-skips', icon: 'bolt' },
   { label: 'Deals', href: '/business/deals', icon: 'tag' },
   { label: 'Analytics', href: '/business/analytics', icon: 'chart' },
   { label: 'Team', href: '/business/team', icon: 'users' },

@@ -102,7 +102,7 @@ test("non-400 failures keep the generic mode-specific retry line", () => {
 
 test("field copy is the plain, agreed wording", () => {
   assert.equal(CAMPUS_FIELD_LABEL, "Campus")
-  assert.equal(CAMPUS_FIELD_HELPER, "Events and line skips at this venue appear on this campus's feed.")
+  assert.equal(CAMPUS_FIELD_HELPER, "Events and skip the line tickets at this venue appear on this campus's feed.")
   assert.equal(SAME_AS_BUSINESS_LABEL, "Same as business (default)")
 })
 

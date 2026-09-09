@@ -55,7 +55,7 @@ type Item = {
  *   • Door Access    → not a nav item (D2-6): it is a TYPE inside Events/Home,
  *                      the pink Weekly Access rows. /business/door-access/:id
  *                      is still the series page those rows open.
- *   • Line skips     → D2-3. Legacy schedules stay reachable through a muted
+ *   • Skip the line tickets     → D2-3. Legacy schedules stay reachable through a muted
  *                      link inside the Events page's Weekly Access view until
  *                      F15 converts them. NOT nav — that is the whole point.
  *   • Promo codes    → moved down into GROW, unchanged otherwise.

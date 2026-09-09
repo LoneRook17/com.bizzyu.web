@@ -31,7 +31,7 @@ apply to business/venue users.
 ## Venues
 
 - A venue is a physical location; a business can have several. Every event, Weekly
-  Cover series, deal, and line skip belongs to one venue. Add/edit venues under
+  Cover series, deal, and skip the line ticket belongs to one venue. Add/edit venues under
   Settings → Your venues; the venue switcher at the top of the sidebar filters the
   dashboard.
 
@@ -79,18 +79,18 @@ apply to business/venue users.
   instantly. Weekly Cover does **not** use this code. Cover is camera Check In.
 - **Weekly Cover at the door**: any phone camera, tap Check In, no staff login.
   Use the redemption list to check names off. The in-app scanner refuses Cover.
-- **Line skips are scanned with the phone's regular camera**, NOT the in-app scanner:
+- **Skip the line tickets are scanned with the phone's regular camera**, NOT the in-app scanner:
   point the camera at the QR, tap the link, it shows valid or not.
 - **Tap-to-Pay door sales**: sell at the door with the phone as the card reader
   (Stripe must be connected; no extra hardware). Preset ticket types or custom
   amounts on the numpad; both are recorded in analytics.
 
-## Line skips (legacy)
+## Skip the line tickets (legacy)
 
-- Line skips are a **legacy product**. New line-skip schedules can no longer be
+- Skip the line tickets are a **legacy product**. New skip the line ticket schedules can no longer be
   created from the dashboard; the modern way to sell nightlife entry is a
   **Weekly Cover** series, with "Skip the Line" as an option on a night.
-- Venues that still have an existing line-skip schedule can keep managing it
+- Venues that still have an existing skip the line ticket schedule can keep managing it
   (edit a night's price/quantity/times, cancel a night, or turn the schedule
   off) through the legacy link inside the Events page's Weekly Cover view.
 - Existing schedules keep generating nights and selling until the venue turns
@@ -108,7 +108,7 @@ apply to business/venue users.
 
 - **All sales are final** — customers can't request individual refunds.
 - Refunds happen only when the business cancels an event, a Weekly Cover night, or a
-  line-skip night: every buyer is then refunded in full (price + fees) automatically
+  skip the line night: every buyer is then refunded in full (price + fees) automatically
   through Stripe, and the money is pulled back from the business's Stripe account.
 - Cancelling an event requires Bizzy admin approval when there is still money to refund.
   If the event only had free tickets, or every paid order was already refunded, there's
@@ -120,7 +120,7 @@ apply to business/venue users.
 ## Team
 
 - **Business team** (ongoing, dashboard access): Owner (everything incl. settings),
-  Manager (create/manage events, deals, line skips + analytics; no business
+  Manager (create/manage events, deals, skip the line tickets + analytics; no business
   settings), Staff (scan + Tap-to-Pay + basic event info), Promoter (share link +
   performance). Members can be global or venue-specific. Owners and managers manage the
   team; a manager can add members and remove or re-role non-owner members, but only the

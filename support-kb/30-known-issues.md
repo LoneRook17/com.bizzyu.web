@@ -10,9 +10,9 @@ flagging it. Collect the business name, the deal, and when it happened, and ask
 them to email support@bizzyu.com (or offer to have the team review it). The team
 will verify the listing with the business and update the app.
 
-## Bought a line skip on the website (not in the app)
+## Bought a skip the line ticket on the website (not in the app)
 
-Line skips bought through web checkout may **not appear in the app's Wallet** if
+Skip the line tickets bought through web checkout may **not appear in the app's Wallet** if
 the buyer didn't have an account at purchase time. The QR code in the
 **confirmation email** is the ticket — it works at the door exactly the same.
 If they can't find the email (check spam), escalate with the purchase email

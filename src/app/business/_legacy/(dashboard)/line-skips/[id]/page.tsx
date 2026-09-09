@@ -85,7 +85,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       const data = await apiClient.get<{ line_skip: LineSkipDetail; instances: LineSkipInstance[] }>(`/business/line-skips/${id}`)
       setLineSkip({ ...data.line_skip, instances: data.instances ?? data.line_skip.instances ?? [] })
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to load Line Skip")
+      setError(err instanceof ApiError ? err.message : "Failed to load Skip the Line Ticket")
     } finally {
       setLoading(false)
     }
@@ -121,7 +121,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
           blockingInstanceIds: body?.blocking_instance_ids,
         })
       } else {
-        setDeactivateError({ message: "Failed to deactivate Line Skip" })
+        setDeactivateError({ message: "Failed to deactivate Skip the Line Ticket" })
       }
       setDeactivating(false)
     }
@@ -155,9 +155,9 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
   if (error || !lineSkip) {
     return (
       <div className="text-center py-16">
-        <p className="text-sm text-red-500 mb-4">{error || "Line Skip not found"}</p>
+        <p className="text-sm text-red-500 mb-4">{error || "Skip the Line Ticket not found"}</p>
         <Link href="/business/line-skips" className="text-sm text-primary hover:underline">
-          Back to Line Skips
+          Back to Skip the Line Tickets
         </Link>
       </div>
     )
@@ -169,7 +169,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       <div className="flex items-start justify-between mb-6">
         <div>
           <Link href="/business/line-skips" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-            &larr; Back to Line Skips
+            &larr; Back to Skip the Line Tickets
           </Link>
           <h1 className="text-xl font-bold text-ink">{lineSkip.name}</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -243,7 +243,7 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
               <p className="text-lg font-semibold text-ink">{formatPrice(lineSkip.default_price_cents)}</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-xs text-gray-500">Line Skip Quantity</p>
+              <p className="text-xs text-gray-500">Skip the Line Ticket Quantity</p>
               <p className="text-lg font-semibold text-ink">{lineSkip.default_capacity ?? "Unlimited"}</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-white p-4">
@@ -434,12 +434,12 @@ export default function LineSkipDetailPage({ params }: { params: Promise<{ id: s
       {showDeactivateConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 className="text-lg font-bold text-ink mb-2">Deactivate this line skip?</h3>
+            <h3 className="text-lg font-bold text-ink mb-2">Deactivate this skip the line ticket?</h3>
             <p className="text-sm text-gray-600 mb-1">
               This stops new nights from being generated for <strong>{lineSkip.name}</strong> and cancels any future nights with no paid tickets.
             </p>
             <p className="text-xs text-gray-400 mb-4">
-              To deactivate a line skip with paid future tickets, cancel those nights individually first. Each individual cancellation goes through our refund policy.
+              To deactivate a skip the line ticket with paid future tickets, cancel those nights individually first. Each individual cancellation goes through our refund policy.
             </p>
             {deactivateError && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 mb-4">

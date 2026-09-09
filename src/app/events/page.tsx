@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   ...og({
     title: "Fill your bar. Keep every dollar.",
     description:
-      "Presale tickets, line skips, and cover at the door. Whatever you charge is what you keep. Then an auto-paid promoter army and SMS blasts fill the room.",
+      "Presale tickets, skip the line tickets, and cover at the door. Whatever you charge is what you keep. Then an auto-paid promoter army and SMS blasts fill the room.",
   }),
 };
 
@@ -36,7 +36,7 @@ const VENUE_CAPABILITIES = [
     desc: "Collect cover with the iPhone in your hand. Stripe processes it. No cash to count, no fakes to argue about.",
   },
   {
-    title: "Tickets, cover, and line skip",
+    title: "Tickets, cover, and skip the line ticket",
     desc: "One checkout for every door product. Keep 100% of what you sell.",
   },
   {
@@ -45,7 +45,7 @@ const VENUE_CAPABILITIES = [
   },
   {
     title: "Live night dashboard",
-    desc: "Headcount, revenue, line skips, promoter performance. On your phone, updating live as the night runs.",
+    desc: "Headcount, revenue, skip the line tickets, promoter performance. On your phone, updating live as the night runs.",
   },
 ];
 
@@ -53,7 +53,7 @@ const HOW_IT_WORKS = [
   {
     num: "1",
     title: "Book a 15-min call",
-    desc: "We learn how your venue currently handles ticketing, cover, line skip, and door staff.",
+    desc: "We learn how your venue currently handles ticketing, cover, skip the line ticket, and door staff.",
   },
   {
     num: "2",
@@ -74,7 +74,7 @@ const HOW_IT_WORKS = [
 
 const USE_CASES = [
   "Weekly cover nights",
-  "Line skip",
+  "Skip the line ticket",
   "DJ nights",
   "Artist appearances",
   "Greek life events",
@@ -195,7 +195,7 @@ function SMSMockup() {
           <p className="text-[9px] text-center text-zinc-600 uppercase tracking-wider">Now</p>
           <div className="max-w-[85%] bg-zinc-200 rounded-2xl rounded-bl-md px-3.5 py-2.5">
             <p className="text-[12px] text-black leading-snug">
-              🍻 DJ Lava TONIGHT @ McShane&apos;s. Line forming. Grab a line skip $15:
+              🍻 DJ Lava TONIGHT @ McShane&apos;s. Line forming. Grab a skip the line ticket $15:
               <br />
               <span className="text-blue-700 underline">bzy.app/m/r5d8</span>
             </p>
@@ -303,7 +303,7 @@ export default async function EventsPage() {
                     headline: the first sentence is "Keep Every Dollar", the
                     second is "Fill Your Bar". */}
                 <p className="text-lg md:text-xl text-white/70 mb-10 max-w-xl leading-relaxed">
-                  Whatever you charge for a presale ticket, a line skip, or cover at the door is
+                  Whatever you charge for a presale ticket, a skip the line ticket, or cover at the door is
                   exactly what you keep. Online or in your hand, Bizzy takes nothing. Then an
                   auto-paid promoter army and SMS blasts fill the room.
                 </p>
@@ -485,7 +485,7 @@ export default async function EventsPage() {
                 </span>
               </h3>
               <p className="text-lg text-white/70 leading-relaxed mb-8">
-                Every student who&apos;s attended a past event at your bar gets a text in 60 seconds. Personalized to your venue. One-tap to grab a line skip or ticket.{" "}
+                Every student who&apos;s attended a past event at your bar gets a text in 60 seconds. Personalized to your venue. One-tap to grab a skip the line ticket or ticket.{" "}
                 <span className="text-white font-semibold">Included. Unlimited.</span>
               </p>
 
@@ -544,7 +544,7 @@ export default async function EventsPage() {
               },
               {
                 title: "Post events within a day",
-                desc: "Publish a new event in minutes. Set ticket tiers, line skip, cover, and promoter commission terms. Go live the same day.",
+                desc: "Publish a new event in minutes. Set ticket tiers, skip the line ticket, cover, and promoter commission terms. Go live the same day.",
               },
             ].map((cap, i) => (
               <AnimatedSection key={cap.title} delay={i * 0.06}>
@@ -647,7 +647,7 @@ export default async function EventsPage() {
             <div className="text-center max-w-2xl mx-auto mb-10">
               <p className="text-primary text-xs font-bold uppercase tracking-[0.18em] mb-3">Every kind of night</p>
               <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight tracking-tight">
-                Cover, tickets, line skip, or RSVP.
+                Cover, tickets, skip the line ticket, or RSVP.
               </h2>
             </div>
           </AnimatedSection>

@@ -593,7 +593,7 @@ test("kind is read from an explicit field, then from the name", () => {
   assert.equal(tierKindFrom("skip-the-line", ""), "skip")
   assert.equal(tierKindFrom("cover", "Skip the Line"), "cover")
   assert.equal(tierKindFrom(null, "Skip the Line"), "skip")
-  assert.equal(tierKindFrom(null, "Line Skip"), "skip")
+  assert.equal(tierKindFrom(null, "Skip the Line Ticket"), "skip")
   assert.equal(tierKindFrom(null, "Cover"), "cover")
   assert.equal(tierKindFrom(undefined, undefined), "cover")
 })

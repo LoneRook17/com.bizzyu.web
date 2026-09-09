@@ -263,7 +263,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
       <div className="text-center py-16">
         <p className="text-sm text-red-500 mb-4">{error || "Analytics not available"}</p>
         <Link href="/business/line-skips" className="text-sm text-primary hover:underline">
-          Back to Line Skips
+          Back to Skip the Line Tickets
         </Link>
       </div>
     )
@@ -278,7 +278,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
       {/* Header */}
       <div className="mb-6">
         <Link href="/business/line-skips" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-          &larr; Back to Line Skips
+          &larr; Back to Skip the Line Tickets
         </Link>
         <h1 className="text-xl font-bold text-ink">Night Details</h1>
         <p className="text-sm text-gray-500 mt-1">Instance #{instanceId}</p>
@@ -296,7 +296,7 @@ export default function InstanceDetailPage({ params }: { params: Promise<{ insta
           <p className="text-lg font-semibold text-ink">{analytics.tickets_sold}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
-          <p className="text-xs text-gray-500">Line Skip Quantity</p>
+          <p className="text-xs text-gray-500">Skip the Line Ticket Quantity</p>
           {editingQuantity ? (
             <div className="mt-1">
               <div className="flex gap-2">

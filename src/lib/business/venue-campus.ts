@@ -30,7 +30,7 @@ export const SAME_AS_BUSINESS_VALUE = ""
 // Field copy — pinned here so the picker's wording is asserted at the source.
 export const CAMPUS_FIELD_LABEL = "Campus"
 export const CAMPUS_FIELD_HELPER =
-  "Events and line skips at this venue appear on this campus's feed."
+  "Events and skip the line tickets at this venue appear on this campus's feed."
 export const SAME_AS_BUSINESS_LABEL = "Same as business (default)"
 
 /**

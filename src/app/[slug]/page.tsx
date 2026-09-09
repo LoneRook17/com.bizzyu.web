@@ -135,7 +135,7 @@ export async function generateMetadata({
   ].filter(Boolean);
   const description = bits.length
     ? `${venue.venue.name}: ${bits.join(", ")} on Bizzy. Buy before you get there and walk in.`
-    : `${venue.venue.name} on Bizzy. Tickets, cover and line skips near ${venue.entry.campusFullName}.`;
+    : `${venue.venue.name} on Bizzy. Tickets, cover and skip the line tickets near ${venue.entry.campusFullName}.`;
 
   return {
     title,

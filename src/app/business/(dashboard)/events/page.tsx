@@ -380,7 +380,7 @@ export default function V2EventsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         {/* TYPE segment (D2-6). Only where there is a second type to switch to —
-            a business with line skips off would be choosing between "All" and
+            a business with skip the line tickets off would be choosing between "All" and
             one thing. */}
         {accessEnabled && (
           <Tabs value={effectiveType} onValueChange={handleTypeChange}>
@@ -511,7 +511,7 @@ export default function V2EventsPage() {
           <span>
             Older setup:{" "}
             <Link href="/business/line-skips" className="font-medium underline underline-offset-2 hover:text-neutral-700 dark:hover:text-neutral-200">
-              Line Skips
+              Skip the Line Tickets
             </Link>{" "}
             are still running and unchanged until they&apos;re converted.
           </span>

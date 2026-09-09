@@ -129,7 +129,7 @@ Ground-truth code lives in the sibling repos `com.bizzyu.services` (Node) and
 
 ### 50-scanners-door-counters.md — ✅ (header removed)
 - ✅ Ticket scanning (green/red); Staff role can scan (`RolePermissionsDialog.tsx:42`).
-- ✅ Line skips scanned with the phone's regular camera, not the in-app scanner.
+- ✅ Skip the line tickets scanned with the phone's regular camera, not the in-app scanner.
 - ✅ Door counters + per-staff tap breakdown; create/edit = owner/manager/co-host, taps =
   +staff/crew (`event_counters`/`event_counter_taps`, May-2026 schema).
 
@@ -147,7 +147,7 @@ Ground-truth code lives in the sibling repos `com.bizzyu.services` (Node) and
   manager, transfers ownership, and manages billing. Rewritten to match.
 
 ### 70-stripe-payouts.md — ❌ fixed (added venue section), ❓ on timing (header KEPT)
-- ✅ Must connect Stripe before paid events/line skips (`events.ts:958-964`; line-skip
+- ✅ Must connect Stripe before paid events/line skips (`events.ts:958-964`; skip the line ticket
   revenue routes to the business account, `lineSkipCheckout.ts`).
 - ✅ Revenue in Analytics = your revenue; fee on top; refunds only on cancel; promoter
   payouts via wallet (all cross-checked above).
@@ -157,7 +157,7 @@ Ground-truth code lives in the sibling repos `com.bizzyu.services` (Node) and
 - ❓ Payout timing (see issue 4) — the actual number of days is an open question. QUESTION 3.
 
 ### 80-line-skips-deals.md — ✅ (header removed)
-- ✅ Line skips include cover / guaranteed entry (product policy, consistent both sides).
+- ✅ Skip the line tickets include cover / guaranteed entry (product policy, consistent both sides).
 - ✅ Rolling schedule generates nights **2 weeks (14 days) ahead**
   (`services/src/migrations/003_line_skip_rolling_window.ts:24-36`).
 - ✅ Per-night edit/cancel; deals are free to create, claim frequency

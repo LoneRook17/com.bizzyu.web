@@ -12,7 +12,7 @@ import { og } from "@/lib/og";
 export const metadata: Metadata = {
   title: "For Businesses | Bizzy: 0% Fees, 25K+ Students",
   description:
-    "Two paths to reach 25,000+ college students. Bars & venues: tickets, line skip, promoter army, SMS blasts, plus 100+ influencer events brought to venues nationwide. Restaurants & retail: list exclusive deals free.",
+    "Two paths to reach 25,000+ college students. Bars & venues: tickets, skip the line ticket, promoter army, SMS blasts, plus 100+ influencer events brought to venues nationwide. Restaurants & retail: list exclusive deals free.",
   alternates: {
     canonical: "https://bizzyu.com/businesses",
   },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   ...og({
     title: "Two ways onto students' phones. Both free.",
     description:
-      "Bars and venues run tickets, line skips and cover at 0%. Restaurants and retail list a student deal in about five minutes. Bizzy takes nothing either way.",
+      "Bars and venues run tickets, skip the line tickets and cover at 0%. Restaurants and retail list a student deal in about five minutes. Bizzy takes nothing either way.",
   }),
 };
 
@@ -117,7 +117,7 @@ export default function BusinessesPage() {
                   Sell Tickets. Keep Every <span className="marker-sticker"><span>Dollar</span></span>.
                 </h2>
                 <p className="text-white/70 text-base md:text-lg leading-relaxed mb-7 max-w-md">
-                  Run cover, line skip, and event tickets through Bizzy with 0% platform fees.
+                  Run cover, skip the line ticket, and event tickets through Bizzy with 0% platform fees.
                 </p>
 
                 <ul className="space-y-3 mb-8">

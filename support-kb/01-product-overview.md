@@ -40,7 +40,7 @@ available to every student regardless of campus (see "National deals").
   and the Events tab. Not a named event and not a subscription. Guest copy
   says Cover or Weekly Cover, never "door access". Don't guess from a title
   that ends in Cover. See "Weekly Cover".
-- **Line skip** — a LEGACY skip-the-line pass for bars/nightlife (21+), sold for
+- **Skip the line ticket** — a LEGACY skip-the-line pass for bars/nightlife (21+), sold for
   specific nights. Includes cover — the customer doesn't pay again at the door.
   A few venues still sell them and purchased passes keep working, but venues
   are moving to Weekly Cover, where faster entry is a "Skip the Line" option
@@ -49,7 +49,7 @@ available to every student regardless of campus (see "National deals").
   event" on the Events tab). New hosts' events are reviewed by Bizzy before
   going live. See "Hosting events".
 - **Wallet (student)** — the app tab holding purchased tickets, Weekly Cover,
-  and line skips (Upcoming / Past / All) with their QR codes.
+  and skip the line tickets (Upcoming / Past / All) with their QR codes.
 - **Promoter** — a user who promotes an event with a personal tracking link and
   earns commission on tickets sold through it. Commission accrues to their in-app
   wallet, becomes available 2 days after that night's event, and they withdraw on

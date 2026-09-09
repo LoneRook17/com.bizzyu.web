@@ -190,7 +190,7 @@ export default function CreateLineSkipPage() {
       const data = await apiClient.post<{ line_skip: { id: number } }>("/business/line-skips", payload)
       router.push(`/business/line-skips/${data.line_skip.id}`)
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : "Failed to create Line Skip")
+      setServerError(err instanceof ApiError ? err.message : "Failed to create Skip the Line Ticket")
     } finally {
       setLoading(false)
     }
@@ -210,7 +210,7 @@ export default function CreateLineSkipPage() {
     return (
       <div className="max-w-2xl">
         <Link href="/business/line-skips" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-          &larr; Back to Line Skips
+          &larr; Back to Skip the Line Tickets
         </Link>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 mt-4">
           <div className="flex items-start gap-3">
@@ -220,7 +220,7 @@ export default function CreateLineSkipPage() {
             <div>
               <h2 className="text-lg font-semibold text-ink mb-1">Connect Your Stripe Account</h2>
               <p className="text-sm text-gray-600 mb-4">
-                Line Skips are paid products. You need to connect your Stripe account before you can start selling them.
+                Skip the Line Tickets are paid products. You need to connect your Stripe account before you can start selling them.
               </p>
               {stripeError && (
                 <p className="text-sm text-red-600 mb-3">{stripeError}</p>
@@ -254,9 +254,9 @@ export default function CreateLineSkipPage() {
       <HowLineSkipsWorkSection />
       <div className="max-w-2xl">
       <Link href="/business/line-skips" className="text-xs text-gray-500 hover:text-primary mb-2 inline-block">
-        &larr; Back to Line Skips
+        &larr; Back to Skip the Line Tickets
       </Link>
-      <h1 className="text-xl font-bold text-ink mb-6">Create Line Skip</h1>
+      <h1 className="text-xl font-bold text-ink mb-6">Create Skip the Line Ticket</h1>
 
       {serverError && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
@@ -410,7 +410,7 @@ export default function CreateLineSkipPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-ink mb-1">
-              Line Skip Quantity <span className="text-gray-400 font-normal">(optional)</span>
+              Skip the Line Ticket Quantity <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <input
               type="number"
@@ -442,7 +442,7 @@ export default function CreateLineSkipPage() {
                 ))}
               </div>
               <p className="text-xs text-gray-400">
-                Nights are generated on a rolling 2-week basis and added automatically as time passes. You can stop this line skip at any time.
+                Nights are generated on a rolling 2-week basis and added automatically as time passes. You can stop this skip the line ticket at any time.
               </p>
             </>
           )}
@@ -455,7 +455,7 @@ export default function CreateLineSkipPage() {
             disabled={loading}
             className="rounded-lg bg-gradient-to-br from-[#2ECB4E] to-[#05EB54] px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/25 hover:brightness-110 transition-all disabled:opacity-60 cursor-pointer"
           >
-            {loading ? "Creating..." : "Create Line Skip"}
+            {loading ? "Creating..." : "Create Skip the Line Ticket"}
           </button>
           <Link
             href="/business/line-skips"
