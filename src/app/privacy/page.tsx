@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <h1 className="text-4xl font-bold text-ink mb-2">Privacy Policy</h1>
         <p className="text-muted text-sm mb-2">BizzyU.com &amp; the Bizzy Mobile Application</p>
         <p className="text-muted text-sm mb-10">
-          <strong>Effective Date:</strong> August 24, 2026 | <strong>Last Updated:</strong> August 24, 2026 | <strong>Version:</strong> 1.3
+          <strong>Effective Date:</strong> August 24, 2026 | <strong>Last Updated:</strong> September 12, 2026 | <strong>Version:</strong> 1.3.1
         </p>
 
         <p className="text-muted leading-relaxed">
@@ -194,6 +194,7 @@ export default function PrivacyPage() {
           <li><strong>Third-party sources:</strong> As described in Section 1.3 above.</li>
           <li><strong>Device permissions:</strong> With your consent, we may access certain device features such as your camera (for scanning QR codes), location services (for nearby deals), and push notification settings.</li>
           <li><strong>Apple App Tracking Transparency (ATT):</strong> On iOS, the Platform requests permission via Apple&apos;s App Tracking Transparency framework before using your IDFA for cross-application tracking. If you decline, we do not access your IDFA for tracking, and certain personalization or attribution features may be limited.</li>
+          <li><strong>Android advertising ID and Google Play services:</strong> On Android, the Platform may access the Google Advertising ID (GAID) only as permitted by your device&apos;s &quot;Delete advertising ID&quot; / &quot;Opt out of Ads Personalization&quot; settings. The Android app also relies on Google Play services for push notifications (Firebase Cloud Messaging), in-app subscriptions (Google Play Billing), and Google Pay, each of which is governed by Google&apos;s own privacy terms in addition to this policy (see Section 4.2).</li>
         </ul>
 
         {/* ── 3. How We Use Your Information ── */}
@@ -504,7 +505,7 @@ export default function PrivacyPage() {
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Delete</h3>
         <p className="text-muted leading-relaxed">
-          Request the deletion of your personal information, subject to certain exceptions (e.g., legal obligations, tax recordkeeping, completing transactions, fraud prevention).
+          Request the deletion of your personal information, subject to certain exceptions (e.g., legal obligations, tax recordkeeping, completing transactions, fraud prevention). You can delete your Bizzy account yourself in the app (Profile &rarr; Settings &rarr; Delete Account) or ask us to do it for you; both paths, and what is retained afterwards, are described at <a href="https://bizzyu.com/account/delete" className="text-primary hover:underline">bizzyu.com/account/delete</a>.
         </p>
 
         <h3 className="text-lg font-semibold text-ink mt-6 mb-2">Right to Correct</h3>
@@ -898,6 +899,7 @@ export default function PrivacyPage() {
           This section lists material revisions to this Privacy Policy. Non-material changes (typographical corrections, formatting, or clarifications that do not alter your rights) may be made without notation.
         </p>
         <ul className="text-muted space-y-2 list-disc pl-6">
+          <li><strong>v1.3.1 &mdash; September 12, 2026:</strong> Android release: disclosed the Google Advertising ID setting and the Google Play services the Android app relies on (Firebase Cloud Messaging, Google Play Billing, Google Pay) (Section 2); linked the self-service account-deletion instructions at bizzyu.com/account/delete (Section 9).</li>
           <li><strong>v1.3 &mdash; August 24, 2026:</strong> Described the live checkout SMS control: the marketing box is presented already selected, may be unchecked, and is not required to complete a purchase (Section 16.3).</li>
           <li><strong>v1.2 &mdash; July 14, 2026:</strong> Disclosed collection of Door Code Operator names and operator session records from account-less door staff (Sections 19.5, 1.1); added scan and admission logs, per-tap door-counter records, the marketing send log, and Apple/Google Wallet device registrations to the collected-data categories and retention schedule (Sections 1.2, 19.1, 7); disclosed our AI support-assistant sub-processor (Sections 4.2, 20); clarified the follower relationship created on a Ticket purchase and per-business notification preferences (Section 17); added START re-subscribe and plain-language opt-out equivalents and disclosed guest-checkout verification messaging (Section 16.3); and noted per-venue connected accounts (Section 20).</li>
           <li><strong>v1.1 &mdash; May 17, 2026:</strong> Added OPTOUT and REVOKE to the list of recognized SMS opt-out keywords (Section 17); added this Revision History section.</li>
