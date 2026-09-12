@@ -103,5 +103,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.3,
     },
+    {
+      // Google Play / App Store account-deletion URL.
+      url: `${baseUrl}/account/delete`,
+      lastModified: new Date("2026-09-12"),
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
   ];
 }
