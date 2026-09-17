@@ -112,11 +112,31 @@ test("presetsOnModeSwitch: untouched defaults swap to the other mode's defaults"
   assert.deepEqual(presetsOnModeSwitch(["15", "18", "20"], "percent", "flat"), ["1", "2", "5"])
 })
 
-test("presetsOnModeSwitch: operator-entered values are kept (and re-validated by the form)", () => {
-  assert.deepEqual(presetsOnModeSwitch(["3", "6", "9"], "flat", "percent"), ["3", "6", "9"])
-  assert.deepEqual(presetsOnModeSwitch(["1", "2.50", "5"], "flat", "percent"), ["1", "2.50", "5"])
-  assert.equal(validateTippingDraft(pct(["1", "2.50", "5"])).presetErrors[1], "Whole numbers only")
+// REGRESSION: dollar presets used to ride across a mode switch unchanged, so
+// "10, 20, 30" flat became 10%/20%/30% percent without the operator noticing —
+// which then looked like "percent didn't save correctly" after reload.
+test("presetsOnModeSwitch: operator-entered values are REPLACED by the target mode's defaults", () => {
+  assert.deepEqual(presetsOnModeSwitch(["10", "20", "30"], "flat", "percent"), ["15", "18", "20"])
+  assert.deepEqual(presetsOnModeSwitch(["1", "2.50", "5"], "flat", "percent"), ["15", "18", "20"])
+  assert.deepEqual(presetsOnModeSwitch(["10", "20", "30", "40"], "flat", "percent"), ["15", "18", "20"])
+  assert.deepEqual(presetsOnModeSwitch(["5", "10", "25"], "percent", "flat"), ["1", "2", "5"])
+  assert.deepEqual(presetsOnModeSwitch(["", "", ""], "flat", "percent"), ["15", "18", "20"])
+  // The defaults are a valid draft in the new mode — Save is never blocked by the switch itself.
+  assert.deepEqual(validateTippingDraft(pct(presetsOnModeSwitch(["10", "20", "30"], "flat", "percent"))).config, {
+    enabled: true,
+    preset_mode: "percent",
+    presets: [15, 18, 20],
+    allow_custom: true,
+  })
+})
+
+test("presetsOnModeSwitch: same mode is a no-op; values typed AFTER a switch are kept and saved as-is", () => {
   assert.deepEqual(presetsOnModeSwitch(["1", "2", "5"], "flat", "flat"), ["1", "2", "5"])
+  assert.deepEqual(presetsOnModeSwitch(["3", "6", "9"], "percent", "percent"), ["3", "6", "9"])
+  // After switching to percent the operator edits the defaults; that draft is what gets PUT.
+  const afterSwitch = presetsOnModeSwitch(["10", "20", "30"], "flat", "percent")
+  afterSwitch[0] = "10"
+  assert.deepEqual(validateTippingDraft(pct(afterSwitch)).config?.presets, [10, 18, 20])
 })
 
 // --- dirty tracking -------------------------------------------------------

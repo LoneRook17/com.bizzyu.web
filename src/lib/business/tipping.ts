@@ -77,15 +77,16 @@ export function draftFromConfig(cfg: TippingConfig): TippingDraft {
 }
 
 /**
- * Presets to show after the operator flips flat ↔ percent. Untouched defaults
- * swap to the other mode's defaults; anything they typed is kept (and will
- * show per-field errors if it no longer fits — e.g. "2.50" in percent mode).
+ * Presets to show after the operator flips flat ↔ percent: ALWAYS the target
+ * mode's defaults (15/18/20 or 1/2/5). Dollar amounts and percentages are
+ * different units, so carrying "10, 20, 30" dollars across as 10%/20%/30%
+ * silently changed what the door would ask for — and read as "percent didn't
+ * save correctly" on DEV. Whatever the operator types after the switch is
+ * still validated and saved as-is. Same mode → untouched.
  */
 export function presetsOnModeSwitch(current: string[], from: TipPresetMode, to: TipPresetMode): string[] {
   if (from === to) return current
-  const fromDefaults = defaultPresetsFor(from).map((p) => formatPresetInput(from, p))
-  const untouched = current.length === fromDefaults.length && current.every((v, i) => v.trim() === fromDefaults[i])
-  return untouched ? defaultPresetsFor(to).map((p) => formatPresetInput(to, p)) : current
+  return defaultPresetsFor(to).map((p) => formatPresetInput(to, p))
 }
 
 export interface TippingValidation {
