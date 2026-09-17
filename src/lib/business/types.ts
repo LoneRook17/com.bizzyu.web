@@ -205,10 +205,18 @@ export interface EventListItem {
    * access_kind reading above rather than a type error.
    */
   product_kind?: 'weekly_cover' | 'event' | null
+  /** Sold count (paid, non-refunded). NOT a check-in number. */
   total_attendees: number
   total_revenue: number
+  /** Sold count. NOT a check-in number. */
   ticket_sales_count: number
   checkin_rate: number
+  /**
+   * Paid ticket instances that were actually redeemed at the door. Added by
+   * services (listEvents / getEventDetail sales); optional so an older payload
+   * reads as 0 checked in rather than a type error.
+   */
+  checked_in_count?: number | null
   moderation_reason?: string | null
   cancellation_status?: 'none' | 'pending' | 'approved' | 'denied'
   cancellation_reason?: string | null

@@ -566,11 +566,36 @@ test("checked-in only earns a cell once someone has actually checked in", () => 
   // doors haven't opened" — so it is absent, not zeroed.
   assert.ok(!upcoming.some((s) => s.label === "checked in"))
 
-  const ran = eventRowStats(ev(1, "2026-08-29 21:00:00", null, { total_attendees: 210 }), now)
+  const ran = eventRowStats(ev(1, "2026-08-29 21:00:00", null, { checked_in_count: 210 }), now)
   assert.deepEqual(
     ran.find((s) => s.label === "checked in"),
     { label: "checked in", value: "210" },
   )
+})
+
+test("checked-in reads checked_in_count only — never the sold counts", () => {
+  const now = new Date(2026, 8, 1)
+  // Sold-out and over, but services hasn't reported a redemption: the sold
+  // numbers must not masquerade as "checked in".
+  const soldNoField = eventRowStats(
+    ev(1, "2026-08-29 21:00:00", null, { total_attendees: 210, ticket_sales_count: 210 }),
+    now,
+  )
+  assert.ok(!soldNoField.some((s) => s.label === "checked in"))
+  assert.equal(soldNoField.find((s) => s.label === "sold")?.value, "210")
+
+  const soldZeroField = eventRowStats(
+    ev(1, "2026-08-29 21:00:00", null, { total_attendees: 210, ticket_sales_count: 210, checked_in_count: 0 }),
+    now,
+  )
+  assert.ok(!soldZeroField.some((s) => s.label === "checked in"))
+
+  const partial = eventRowStats(
+    ev(1, "2026-08-29 21:00:00", null, { total_attendees: 210, ticket_sales_count: 210, checked_in_count: 37 }),
+    now,
+  )
+  assert.deepEqual(partial.find((s) => s.label === "checked in"), { label: "checked in", value: "37" })
+  assert.equal(partial.find((s) => s.label === "sold")?.value, "210")
 })
 
 test("relative labels are whole calendar days, not rounded hours", () => {

@@ -784,6 +784,11 @@ export function relativeDayLabel(value: string | null | undefined, now: Date = n
 /**
  * An EVENT row's numbers: sold · revenue · when.
  *
+ * "Checked in" is `checked_in_count` (paid ticket instances that were actually
+ * redeemed) and nothing else. `total_attendees` / `ticket_sales_count` are SOLD
+ * counts, so they must never stand in for it — a payload without the field
+ * reads as zero checked in, not as "everyone who bought".
+ *
  * Attendees only earn a cell once there is a check-in to report. On an event
  * that hasn't happened it is a zero next to two live numbers, which reads as
  * "nobody is coming" rather than "the doors haven't opened".
@@ -792,8 +797,9 @@ export function eventRowStats(event: EventListItem, now: Date = new Date()): Row
   const stats: RowStat[] = [
     { label: "sold", value: (event.ticket_sales_count ?? 0).toLocaleString("en-US") },
   ]
-  if ((event.total_attendees ?? 0) > 0) {
-    stats.push({ label: "checked in", value: (event.total_attendees ?? 0).toLocaleString("en-US") })
+  const checkedIn = Number(event.checked_in_count ?? 0)
+  if (checkedIn > 0) {
+    stats.push({ label: "checked in", value: checkedIn.toLocaleString("en-US") })
   }
   stats.push({ label: "revenue", value: money(event.total_revenue) })
   stats.push({
