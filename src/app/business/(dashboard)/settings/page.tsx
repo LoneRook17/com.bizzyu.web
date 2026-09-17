@@ -7,6 +7,7 @@ import {
   Building2,
   CheckCircle2,
   CreditCard,
+  HandCoins,
   ImageIcon,
   KeyRound,
   LayoutGrid,
@@ -39,11 +40,13 @@ import {
 import VenueManagementSection from "@/components/business/v2/settings/VenueManagementSection"
 import VenuePageSection from "@/components/business/v2/settings/VenuePageSection"
 import DashboardPreferences, { AppearanceSettings } from "@/components/business/v2/settings/DashboardPreferences"
+import TippingSettings from "@/components/business/v2/settings/TippingSettings"
 
 const TAB_ITEMS = [
   { value: "profile", label: "Profile", icon: User },
   { value: "preferences", label: "Preferences", icon: SlidersHorizontal },
   { value: "payments", label: "Payments", icon: CreditCard },
+  { value: "tipping", label: "Tipping", icon: HandCoins },
   { value: "venues", label: "Venues", icon: MapPin },
   { value: "security", label: "Security", icon: ShieldCheck },
 ] as const
@@ -301,6 +304,17 @@ function SettingsContent() {
             />
             <VenuePayoutAccountsSection />
           </div>
+        </TabsContent>
+
+        {/* --- Tipping (Slice 1: settings only; the door reads this in Slice 2) --- */}
+        <TabsContent value="tipping">
+          <SettingsCard
+            icon={HandCoins}
+            title="Tipping"
+            description="Choose whether guests are asked to tip at the door and which amounts they see. Changes apply to future door payments once tipping goes live."
+          >
+            <TippingSettings disabled={!canEdit} />
+          </SettingsCard>
         </TabsContent>
 
         {/* --- Venues --- */}
