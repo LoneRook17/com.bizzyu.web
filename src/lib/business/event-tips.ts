@@ -7,8 +7,8 @@
 //
 // The field is absent on services deploys that predate Slice 3, so every
 // reader goes through eventTips() and treats missing / null / NaN / negative
-// as 0. At 0 the Tips tile is hidden, so a business with tipping off sees the
-// same analytics as before.
+// as 0. The Tips tile always renders, showing $0.00 when there are none, with
+// TIPS_INFO_NOTE under the amount.
 //
 // No imports on purpose, so `node --test` can load this file on its own.
 
@@ -19,7 +19,12 @@ type RevenueWithTips = {
 
 export const TIPS_TILE_TITLE = "Tips"
 
-export const TIPS_TILE_CAPTION = "Customer tips. Not included in Revenue."
+/** Info note under the Tips amount. Shared by every analytics view. */
+export const TIPS_INFO_NOTE =
+  "Tips are not included in Revenue. They are transferred to your business. Paying out workers from tips is your responsibility, however you choose to do it."
+
+/** Revenue caption when the event has tips: the Stripe payout also carries them, so Revenue alone no longer matches it. */
+export const REVENUE_CAPTION_WITH_TIPS = "Your take-home from sales. Tips are shown separately."
 
 function safeUsd(value: unknown): number {
   const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value
@@ -32,8 +37,8 @@ export function eventTips(revenue: RevenueWithTips): number {
   return safeUsd(revenue?.tips)
 }
 
-/** The Tips tile renders only when there are tips to show. */
-export function showTipsTile(revenue: RevenueWithTips): boolean {
+/** True when the event has tips. Picks the Revenue caption only, the Tips tile itself always renders. */
+export function hasTips(revenue: RevenueWithTips): boolean {
   return eventTips(revenue) > 0
 }
 

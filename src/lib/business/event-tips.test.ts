@@ -1,10 +1,10 @@
 // Tipping Slice 3: event analytics shows Tips separate from Revenue.
 //
 // `revenue.tips` is absent on services deploys that predate Slice 3, so the
-// reader must coerce missing / null / NaN to 0 and the Tips tile must hide at
-// 0 (tip-off businesses see an unchanged page). The source pins keep every
-// analytics view reading tips through the helper, and keep tips out of the
-// Revenue figure.
+// reader must coerce missing / null / NaN to 0. The Tips tile always renders
+// ($0.00 when there are none) with the shared info note under the amount. The
+// source pins keep every analytics view reading tips through the helper, and
+// keep tips out of the Revenue figure.
 //
 // Runnable with the Node built-in test runner: `npm test`.
 
@@ -13,10 +13,11 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
-  TIPS_TILE_CAPTION,
+  REVENUE_CAPTION_WITH_TIPS,
+  TIPS_INFO_NOTE,
   TIPS_TILE_TITLE,
   eventTips,
-  showTipsTile,
+  hasTips,
   takeHomeWithTips,
 } from "./event-tips.ts"
 
@@ -56,16 +57,16 @@ test("numeric string tips (mysql DECIMAL) are coerced", () => {
   assert.equal(eventTips({ tips: "12.50" }), 12.5)
 })
 
-test("Tips tile hides at 0 and when the field is missing", () => {
-  assert.equal(showTipsTile({}), false)
-  assert.equal(showTipsTile(undefined), false)
-  assert.equal(showTipsTile({ tips: 0 }), false)
-  assert.equal(showTipsTile({ tips: NaN }), false)
+test("hasTips is false at 0 and when the field is missing", () => {
+  assert.equal(hasTips({}), false)
+  assert.equal(hasTips(undefined), false)
+  assert.equal(hasTips({ tips: 0 }), false)
+  assert.equal(hasTips({ tips: NaN }), false)
 })
 
-test("Tips tile shows when there are tips", () => {
-  assert.equal(showTipsTile({ tips: 0.01 }), true)
-  assert.equal(showTipsTile({ tips: 1.5 }), true)
+test("hasTips is true when there are tips", () => {
+  assert.equal(hasTips({ tips: 0.01 }), true)
+  assert.equal(hasTips({ tips: 1.5 }), true)
 })
 
 test("take-home incl. tips comes only from the API, null when absent", () => {
@@ -79,13 +80,32 @@ test("take-home incl. tips comes only from the API, null when absent", () => {
 test("tips copy never calls tips revenue", () => {
   assert.equal(TIPS_TILE_TITLE, "Tips")
   assert.doesNotMatch(TIPS_TILE_TITLE, /revenue/i)
-  assert.match(TIPS_TILE_CAPTION, /not included in revenue/i)
+  assert.match(TIPS_INFO_NOTE, /not included in revenue/i)
+})
+
+test("info note covers revenue, transfer and worker payout, with no em dashes", () => {
+  assert.match(TIPS_INFO_NOTE, /not included in revenue/i)
+  assert.match(TIPS_INFO_NOTE, /transferred to your business/i)
+  assert.match(TIPS_INFO_NOTE, /paying out workers from tips is your responsibility/i)
+  assert.doesNotMatch(TIPS_INFO_NOTE, /[\u2013\u2014]/)
+  assert.doesNotMatch(REVENUE_CAPTION_WITH_TIPS, /[\u2013\u2014]/)
+})
+
+test("Revenue caption with tips is door-only and does not claim to match the payout", () => {
+  assert.doesNotMatch(REVENUE_CAPTION_WITH_TIPS, /matches stripe payout/i)
+  assert.match(REVENUE_CAPTION_WITH_TIPS, /tips are shown separately/i)
 })
 
 for (const rel of VIEWS) {
-  test(`${rel} renders Tips through the helper, gated on showTipsTile`, () => {
+  test(`${rel} always renders Tips through the helper, with the info note`, () => {
     const src = readFileSync(join(SRC, rel), "utf8")
-    assert.ok(src.includes("showTipsTile(data.revenue)"), "Tips tile must be gated on showTipsTile")
+    assert.ok(!src.includes("showTipsTile"), "Tips tile must not be hidden at zero")
+    assert.ok(!/hasTips\(data\.revenue\) && \(/.test(src), "Tips tile must not be gated on hasTips")
+    assert.ok(src.includes("{TIPS_INFO_NOTE}"), "Tips tile must show the shared info note")
+    assert.ok(
+      src.includes("hasTips(data.revenue) ? REVENUE_CAPTION_WITH_TIPS"),
+      "Revenue caption must not claim to match the payout when there are tips",
+    )
     assert.ok(src.includes("eventTips(data.revenue)"), "Tips amount must come from eventTips")
     assert.ok(src.includes("TIPS_TILE_TITLE"), "Tips tile must use the shared title")
     assert.ok(!/revenue\??\.tips/.test(src), "views must not read revenue.tips directly")
