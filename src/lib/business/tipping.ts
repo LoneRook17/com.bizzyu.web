@@ -181,5 +181,21 @@ export function tippingErrorMessage(status: number, serverMessage?: string): str
   }
 }
 
+/**
+ * Maps a GET failure onto operator-facing copy. 403 means the viewer's role
+ * can't manage tipping (the settings page hides the tab for them; this is the
+ * belt-and-braces copy if the form mounts anyway) — not something a refresh fixes.
+ */
+export function tippingLoadErrorMessage(status: number): string {
+  switch (status) {
+    case 403:
+      return "Only owners and managers can change tipping settings."
+    case 503:
+      return "Tipping settings aren't available on this environment yet."
+    default:
+      return "Couldn't load tipping settings. Please refresh and try again."
+  }
+}
+
 /** Fixed copy: "No tip" is always on and never stored — the door shows it regardless. */
 export const NO_TIP_NOTE = "Guests always see a No tip option. It can't be turned off."

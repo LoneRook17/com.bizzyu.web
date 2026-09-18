@@ -41,20 +41,18 @@ import VenueManagementSection from "@/components/business/v2/settings/VenueManag
 import VenuePageSection from "@/components/business/v2/settings/VenuePageSection"
 import DashboardPreferences, { AppearanceSettings } from "@/components/business/v2/settings/DashboardPreferences"
 import TippingSettings from "@/components/business/v2/settings/TippingSettings"
+import { resolveSettingsTab, visibleSettingsTabs, type SettingsTab } from "@/lib/business/settings-tabs"
 
-const TAB_ITEMS = [
-  { value: "profile", label: "Profile", icon: User },
-  { value: "preferences", label: "Preferences", icon: SlidersHorizontal },
-  { value: "payments", label: "Payments", icon: CreditCard },
-  { value: "tipping", label: "Tipping", icon: HandCoins },
-  { value: "venues", label: "Venues", icon: MapPin },
-  { value: "security", label: "Security", icon: ShieldCheck },
-] as const
-
-type SettingsTab = (typeof TAB_ITEMS)[number]["value"]
-
-function isSettingsTab(value: string | null): value is SettingsTab {
-  return TAB_ITEMS.some((t) => t.value === value)
+// Display metadata only. Which of these a role actually sees comes from
+// visibleSettingsTabs() — Tipping is owner/manager only (its API 403s for
+// everyone else), so staff must never get the tab, not a disabled one.
+const TAB_META: Record<SettingsTab, { label: string; icon: React.ElementType }> = {
+  profile: { label: "Profile", icon: User },
+  preferences: { label: "Preferences", icon: SlidersHorizontal },
+  payments: { label: "Payments", icon: CreditCard },
+  tipping: { label: "Tipping", icon: HandCoins },
+  venues: { label: "Venues", icon: MapPin },
+  security: { label: "Security", icon: ShieldCheck },
 }
 
 /** Consistent card shell: tinted icon + title + description, content below. */
@@ -101,12 +99,13 @@ function SettingsContent() {
   const stripeReturnIsAccountRow = !!searchParams.get("account_id")
 
   // Deep links pick the starting tab: ?stripe=return|refresh → Payments,
-  // ?action=add-venue → Venues, ?tab=<name> → that tab.
+  // ?action=add-venue → Venues, ?tab=<name> → that tab. A tab this role can't
+  // see (staff + ?tab=tipping) resolves to Profile instead of mounting a form
+  // whose fetch is guaranteed to 403.
   const [tab, setTab] = useState<SettingsTab>(() => {
     if (stripeParam === "return" || stripeParam === "refresh") return "payments"
     if (searchParams.get("action") === "add-venue") return "venues"
-    const requested = searchParams.get("tab")
-    return isSettingsTab(requested) ? requested : "profile"
+    return resolveSettingsTab(searchParams.get("tab"), role)
   })
 
   const [profile, setProfile] = useState<BusinessProfile | null>(null)
@@ -116,6 +115,7 @@ function SettingsContent() {
   const [escrowRefreshToken, setEscrowRefreshToken] = useState(0)
 
   const canEdit = role === "owner" || role === "manager"
+  const tabItems = visibleSettingsTabs(role)
   // Deliberately narrower than canEdit: businesses.email is the login
   // credential (recon B1), so managers must not move it. HF-1's 403 backs this.
   const canChangeEmail = canChangeBusinessEmail(role)
@@ -164,8 +164,8 @@ function SettingsContent() {
   const handleLogoUploaded = () => { fetchProfile(); refreshProfile() }
 
   const handleTabChange = (value: string) => {
-    if (!isSettingsTab(value)) return
-    setTab(value)
+    if (!tabItems.includes(value as SettingsTab)) return
+    setTab(value as SettingsTab)
     router.replace(`/business/settings?tab=${value}`, { scroll: false })
   }
 
@@ -232,11 +232,14 @@ function SettingsContent() {
       <Tabs value={tab} onValueChange={handleTabChange}>
         <div className="-mx-1 overflow-x-auto px-1 pb-1">
           <TabsList className="w-max">
-            {TAB_ITEMS.map(({ value, label, icon: Icon }) => (
-              <TabsTrigger key={value} value={value} className="gap-1.5">
-                <Icon className="size-4" /> {label}
-              </TabsTrigger>
-            ))}
+            {tabItems.map((value) => {
+              const { label, icon: Icon } = TAB_META[value]
+              return (
+                <TabsTrigger key={value} value={value} className="gap-1.5">
+                  <Icon className="size-4" /> {label}
+                </TabsTrigger>
+              )
+            })}
           </TabsList>
         </div>
 
@@ -306,16 +309,20 @@ function SettingsContent() {
           </div>
         </TabsContent>
 
-        {/* --- Tipping (Slice 1: settings only; the door reads this in Slice 2) --- */}
-        <TabsContent value="tipping">
-          <SettingsCard
-            icon={HandCoins}
-            title="Tipping"
-            description="Choose whether guests are asked to tip at the door and which amounts they see. Changes apply to future door payments once tipping goes live."
-          >
-            <TippingSettings disabled={!canEdit} />
-          </SettingsCard>
-        </TabsContent>
+        {/* --- Tipping (Slice 1: settings only; the door reads this in Slice 2).
+            Owner/manager only — the trigger is filtered out above for other
+            roles, and the content is not rendered so the form never fetches. --- */}
+        {tabItems.includes("tipping") && (
+          <TabsContent value="tipping">
+            <SettingsCard
+              icon={HandCoins}
+              title="Tipping"
+              description="Choose whether guests are asked to tip at the door and which amounts they see. Changes apply to future door payments once tipping goes live."
+            >
+              <TippingSettings disabled={!canEdit} />
+            </SettingsCard>
+          </TabsContent>
+        )}
 
         {/* --- Venues --- */}
         <TabsContent value="venues">

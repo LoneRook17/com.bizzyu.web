@@ -15,6 +15,7 @@ import {
   isTippingDirty,
   presetsOnModeSwitch,
   tippingErrorMessage,
+  tippingLoadErrorMessage,
   validateTippingDraft,
   type TipPresetMode,
   type TippingConfig,
@@ -90,8 +91,8 @@ export default function TippingSettings({ disabled }: { disabled?: boolean }) {
       const data = await apiClient.get<TippingResponse>("/business/tipping")
       setSaved(data.tipping)
       setDraft(draftFromConfig(data.tipping))
-    } catch {
-      setLoadError("Couldn't load tipping settings. Please refresh and try again.")
+    } catch (e) {
+      setLoadError(tippingLoadErrorMessage(e instanceof ApiError ? e.status : 0))
     }
   }, [])
 
@@ -99,7 +100,16 @@ export default function TippingSettings({ disabled }: { disabled?: boolean }) {
     load()
   }, [load])
 
-  if (loadError) return <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
+  if (loadError) {
+    // A 403 is a role fact, not a failure — the settings page hides this tab
+    // for those roles, but if it mounts anyway say so calmly, not in red.
+    const calm = loadError === tippingLoadErrorMessage(403)
+    return (
+      <p className={cn("text-sm", calm ? "text-neutral-500 dark:text-neutral-400" : "text-red-600 dark:text-red-400")}>
+        {loadError}
+      </p>
+    )
+  }
   if (!saved || !draft) {
     return (
       <div className="space-y-3">

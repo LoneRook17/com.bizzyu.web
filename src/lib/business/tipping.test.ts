@@ -11,6 +11,7 @@ import {
   isTippingDirty,
   presetsOnModeSwitch,
   tippingErrorMessage,
+  tippingLoadErrorMessage,
   validateTippingDraft,
   type TippingDraft,
 } from "./tipping.ts"
@@ -159,4 +160,13 @@ test("tippingErrorMessage: 400 shows the server's message, 403/503 fixed, else g
   assert.match(tippingErrorMessage(403), /owners and managers/)
   assert.match(tippingErrorMessage(503), /available on this environment yet/)
   assert.match(tippingErrorMessage(500, "boom"), /Couldn't save/)
+})
+
+// --- load errors ----------------------------------------------------------
+
+test("tippingLoadErrorMessage: 403 is a calm role message, not a refresh prompt", () => {
+  assert.equal(tippingLoadErrorMessage(403), "Only owners and managers can change tipping settings.")
+  assert.equal(tippingLoadErrorMessage(503), "Tipping settings aren't available on this environment yet.")
+  assert.match(tippingLoadErrorMessage(500), /refresh/i)
+  assert.match(tippingLoadErrorMessage(0), /refresh/i)
 })
