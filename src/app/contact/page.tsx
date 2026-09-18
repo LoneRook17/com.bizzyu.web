@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import SectionContainer from "@/components/ui/SectionContainer";
@@ -214,6 +215,13 @@ export default function ContactPage() {
             >
               Get Started Free
             </a>
+            <p className="mt-6 text-white/80 text-sm">
+              National brand with a student offer?{" "}
+              <Link href="/brands" className="text-white underline hover:no-underline">
+                See the brand partner program
+              </Link>
+              .
+            </p>
           </AnimatedSection>
         </SectionContainer>
       </section>

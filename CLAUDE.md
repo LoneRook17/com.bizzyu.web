@@ -63,12 +63,17 @@ src/
 │   │   ├── StepProgress.tsx # Progress indicator
 │   │   ├── DealCardPreview.tsx    # Live preview of deal card
 │   │   └── MobilePreviewSheet.tsx # Bottom sheet preview on mobile
+│   ├── brands/
+│   │   └── BrandApplicationForm.tsx # /brands application form (inline errors, UTM capture, Turnstile)
 │   ├── students/
 │   │   └── TrendingDeals.tsx # Fetches and displays trending deals
 │   └── seo/
 │       └── JsonLd.tsx       # JSON-LD structured data script tag
 └── lib/
     ├── constants.ts         # App Store URL, social links, nav links, FAQs, campuses
+    ├── brands/              # /brands: copy.ts (page copy, STAT_PLACEHOLDER), validate.ts (options + validation, shared client/server), sheet.ts (Google Sheets append)
+    ├── ratelimit.ts         # createRateLimiter() for public form endpoints
+    ├── analytics.ts         # track(): fires to Vercel Analytics / gtag / dataLayer if present
     ├── types.ts             # TypeScript interfaces (Submission, FormData, BusinessInfo, DealInfo)
     └── submissions.ts       # File-based submission CRUD (reads/writes data/submissions.json)
 ```
@@ -85,6 +90,7 @@ Uses **Next.js App Router** (not Pages Router). All routes are in `src/app/`.
 | `/` | `page.tsx` | Student landing page (hero, features, deals, FAQ, CTA) |
 | `/events` | `events/page.tsx` | Bar/events landing page (Tap to Pay, ticketing, 0% fees) |
 | `/businesses` | `businesses/page.tsx` | Business partner landing page |
+| `/brands` | `brands/page.tsx` | Brand partner program: national brands apply to list a student offer in National Deals |
 | `/signup` | `signup/page.tsx` | Multi-step deal submission form |
 | `/about` | `about/page.tsx` | About Bizzy |
 | `/contact` | `contact/page.tsx` | General contact form |
@@ -98,6 +104,7 @@ Uses **Next.js App Router** (not Pages Router). All routes are in `src/app/`.
 |--------|-------|---------|-------------|
 | POST | `/api/contact` | `api/contact/route.ts` | Sends contact form email via Resend |
 | POST | `/api/events-contact` | `api/events-contact/route.ts` | Sends events contact email via Resend |
+| POST | `/api/brands` | `api/brands/route.ts` | Brand application: rate limit + Turnstile + honeypot, validates (`lib/brands/validate.ts`), emails Partnerships@ via Resend, appends to a Google Sheet when `GOOGLE_SHEETS_*` is set |
 | POST | `/api/submissions` | `api/submissions/route.ts` | Creates deal submission: sends email, uploads images to S3, forwards to admin API |
 | GET | `/api/submissions` | `api/submissions/[...]/route.ts` | Lists all submissions (file-based) |
 | GET/PATCH | `/api/submissions/[id]` | `api/submissions/[id]/route.ts` | Get/update single submission |
@@ -150,6 +157,18 @@ AWS_BUCKET=bizzy-dev         # default
 
 # Forwards deal submissions to Laravel admin backend
 ADMIN_API_URL=http://127.0.0.1:8001
+
+# Cloudflare Turnstile (public forms: contact, request-school, brands, ...)
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+
+# /brands application form (see src/app/api/brands/route.ts). All optional.
+BRANDS_NOTIFY_TO=              # comma-separated; defaults to Partnerships@BizzyU.com
+GOOGLE_SHEETS_ID=              # sheet id from the URL; unset = email only
+GOOGLE_SERVICE_ACCOUNT_EMAIL=  # service account with Editor access on that sheet
+GOOGLE_SERVICE_ACCOUNT_KEY=    # private_key from the service account JSON
+GOOGLE_SHEETS_TAB=Applications # optional tab name
+IP_HASH_SALT=                  # salts the ip_hash column; any random string
 ```
 
 ---

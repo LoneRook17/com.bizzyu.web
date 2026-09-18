@@ -44,7 +44,7 @@ export function venueSlug(name: string): string {
  * cost of forgetting is a venue page that silently never renders.
  */
 const RESERVED_SLUGS = new Set([
-  "about", "accept-invite", "account", "admin", "api", "business", "businesses",
+  "about", "accept-invite", "account", "admin", "api", "brands", "business", "businesses",
   "checkin", "checkout", "contact", "deal", "event", "events", "lineskip", "ls",
   "post-a-deal", "premium", "privacy", "promote", "promoter", "robots",
   "setup-password", "sitemap", "sms-opt-in-proof", "street-interviews",

@@ -102,7 +102,6 @@ export default function SignupPage() {
     if (!form.phone.trim()) errs.phone = "Phone number is required"
     else if (form.phone.replace(/\D/g, "").length < 10) errs.phone = "Enter a valid phone number"
     if (!form.address.trim()) errs.address = "Business address is required"
-    if (!form.description.trim()) errs.description = "Business description is required"
     if (!form.campus_id) errs.campus_id = "Please select a campus"
     if (!form.password) errs.password = "Password is required"
     else if (form.password.length < 8) errs.password = "Password must be at least 8 characters"
@@ -134,7 +133,7 @@ export default function SignupPage() {
           ? (/^https?:\/\//i.test(form.website) ? form.website : `https://${form.website}`)
           : undefined,
         instagram: form.instagram || undefined,
-        description: form.description,
+        description: form.description.trim() || undefined,
         "cf-turnstile-response": turnstileToken,
         website_url: honeypot,
       })
@@ -228,7 +227,7 @@ export default function SignupPage() {
 
         <div className="mb-4">
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            Business Description<span className="text-red-500 ml-0.5">*</span>
+            Business Description <span className="ml-1 text-xs font-normal text-gray-500">(optional)</span>
           </label>
           <textarea
             id="description"

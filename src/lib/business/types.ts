@@ -205,10 +205,18 @@ export interface EventListItem {
    * access_kind reading above rather than a type error.
    */
   product_kind?: 'weekly_cover' | 'event' | null
+  /** Sold count (paid, non-refunded). NOT a check-in number. */
   total_attendees: number
   total_revenue: number
+  /** Sold count. NOT a check-in number. */
   ticket_sales_count: number
   checkin_rate: number
+  /**
+   * Paid ticket instances that were actually redeemed at the door. Added by
+   * services (listEvents / getEventDetail sales); optional so an older payload
+   * reads as 0 checked in rather than a type error.
+   */
+  checked_in_count?: number | null
   moderation_reason?: string | null
   cancellation_status?: 'none' | 'pending' | 'approved' | 'denied'
   cancellation_reason?: string | null
@@ -459,7 +467,42 @@ export interface EventAnalytics {
     // Business take-home from promoter-attributed sales specifically. Drives
     // the "Of the $X above, $Y was promoter-generated" callout.
     promoter_attributed_take_home_cents: number
+    // Tipping Slice 3. Customer tips in USD (e.g. 1.5). NOT part of `revenue`
+    // above, which is door-only. Absent on services deploys that predate
+    // Slice 3, so read it through eventTips() (lib/business/event-tips.ts),
+    // which treats missing / null / NaN as 0.
+    tips?: number
+    // `revenue` + `tips`, computed by the API. Optional secondary caption
+    // only. Never shown in place of Revenue.
+    take_home_with_tips?: number
   }
+  // Tips visibility (computed by the API): tipping is on for the business, or
+  // this event has tip history. Gate ALL Tips UI on it through tipsVisible()
+  // (lib/business/event-tips.ts), which also covers older services deploys.
+  tips_visible?: boolean
+  tipping_enabled?: boolean
+  // Per-worker tip breakdown with each tip transaction, same attribution as
+  // Door Performance. Read through tipsByWorker().
+  tips_by_worker?: TipsByWorkerRow[]
+}
+
+export interface TipTransaction {
+  order_id: number
+  tip_usd: number
+  door_usd?: number
+  tip_status?: string | null
+  refund_status?: string | null
+  created_at: string | null
+}
+
+export interface TipsByWorkerRow {
+  staff_key: string
+  staff_user_id: number | null
+  scanner_session_id?: number | null
+  staff_name: string | null
+  scanner_label: string | null
+  tips_total: number
+  transactions: TipTransaction[]
 }
 
 // Per-event promoters (matches Node `GET /events/:id/promoters`). Used by the
@@ -482,6 +525,8 @@ export interface PromotersResponse {
 }
 
 export interface PerScannerRow {
+  // Attribution key, matches TipsByWorkerRow.staff_key. Absent on older deploys.
+  staff_key?: string
   staff_user_id: number | null
   staff_name: string | null
   scanner_label: string | null
@@ -497,12 +542,19 @@ export interface PerScannerRow {
   sold_count?: number
   sold_revenue?: number
   total_revenue?: number
+  // Tips (USD) on this person's door sales (Tipping Slice 3). Its own column,
+  // never part of sold_revenue / total_revenue. Absent on older service
+  // deploys - read through scannerTips().
+  tips?: number
   first_scan_at: string | null
   last_scan_at: string | null
 }
 
 export interface PerScannerResponse {
   rows: PerScannerRow[]
+  // Same flag as EventAnalytics.tips_visible. Absent on older service deploys,
+  // read through doorTipsVisible().
+  tips_visible?: boolean
 }
 
 export interface DealAnalytics {
