@@ -2,6 +2,7 @@
 
 import type { EventAnalytics } from "@/lib/business/types"
 import { promoterDisplayName } from "@/lib/business/promoter-display-name"
+import { TIPS_TILE_CAPTION, TIPS_TILE_TITLE, eventTips, showTipsTile, takeHomeWithTips } from "@/lib/business/event-tips"
 import { usd, cn } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 
@@ -30,6 +31,7 @@ export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
   const channelTotal = data.doorSales.preSales + data.doorSales.doorSales
   const checkPct = data.checkIn.percent
   const promoterTakeHome = data.revenue?.promoter_attributed_take_home_cents ?? 0
+  const withTips = takeHomeWithTips(data.revenue)
 
   return (
     <div className="flex flex-col gap-5">
@@ -41,6 +43,20 @@ export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
           <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">Your take-home: matches Stripe payout.</p>
         </CardContent>
       </Card>
+
+      {/* tips: separate from Revenue, hidden when there are none */}
+      {showTipsTile(data.revenue) && (
+        <Card>
+          <CardHeader><CardTitle>{TIPS_TILE_TITLE}</CardTitle></CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{usd(eventTips(data.revenue))}</p>
+            <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">{TIPS_TILE_CAPTION}</p>
+            {withTips !== null && (
+              <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">Take-home incl. tips: {usd(withTips)}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         {/* ticket access */}
