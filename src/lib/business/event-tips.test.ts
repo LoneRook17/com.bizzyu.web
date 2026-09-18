@@ -13,11 +13,14 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
+  DOOR_TIPS_COLUMN_TITLE,
+  DOOR_TIPS_HINT,
   REVENUE_CAPTION_WITH_TIPS,
   TIPS_INFO_NOTE,
   TIPS_TILE_TITLE,
   eventTips,
   hasTips,
+  scannerTips,
   takeHomeWithTips,
 } from "./event-tips.ts"
 
@@ -115,5 +118,40 @@ for (const rel of VIEWS) {
     const src = readFileSync(join(SRC, rel), "utf8")
     assert.ok(src.includes("data.revenue?.revenue ?? 0"), "Revenue tile must still read revenue.revenue")
     assert.ok(!/\+\s*eventTips\(|eventTips\([^)]*\)\s*\+/.test(src), "tips must never be summed on the web")
+  })
+}
+
+// Door Performance: tips break down per scanner / staff, the same way door
+// sales are attributed. `tips` is absent on older services deploys.
+
+test("scannerTips reads a row's tips and coerces missing / junk to 0", () => {
+  assert.equal(scannerTips({ tips: 1.5 }), 1.5)
+  assert.equal(scannerTips({ tips: "1.50" }), 1.5)
+  assert.equal(scannerTips({}), 0)
+  assert.equal(scannerTips({ tips: null }), 0)
+  assert.equal(scannerTips({ tips: NaN }), 0)
+  assert.equal(scannerTips({ tips: -2 }), 0)
+  assert.equal(scannerTips(null), 0)
+  assert.equal(scannerTips(undefined), 0)
+})
+
+test("Door Performance tips copy", () => {
+  assert.equal(DOOR_TIPS_COLUMN_TITLE, "Tips")
+  assert.ok(DOOR_TIPS_HINT.includes("not included in sales"))
+})
+
+const DOOR_CARDS = [
+  "components/business/v2/events/DoorPerformanceCard.tsx",
+  "components/business/dashboard/DoorPerformanceCard.tsx",
+]
+
+for (const rel of DOOR_CARDS) {
+  test(`${rel} has a sortable Tips column that never folds into sales / revenue`, () => {
+    const src = readFileSync(join(SRC, rel), "utf8")
+    assert.ok(src.includes('clickHeader("tips")'), "Tips column must be sortable")
+    assert.ok(src.includes("{DOOR_TIPS_COLUMN_TITLE}"), "Tips column must use the shared title")
+    assert.ok(src.includes("(scannerTips(r))"), "Tips cell must read through scannerTips ($0.00 when missing)")
+    assert.ok(!/\br\.tips\b/.test(src), "cards must not read row.tips directly")
+    assert.ok(!/\+\s*scannerTips\(|scannerTips\([^)]*\)\s*\+/.test(src), "tips must never be summed into sales / revenue")
   })
 }

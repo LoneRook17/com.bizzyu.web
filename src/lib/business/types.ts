@@ -513,6 +513,10 @@ export interface PerScannerRow {
   sold_count?: number
   sold_revenue?: number
   total_revenue?: number
+  // Tips (USD) on this person's door sales (Tipping Slice 3). Its own column,
+  // never part of sold_revenue / total_revenue. Absent on older service
+  // deploys - read through scannerTips().
+  tips?: number
   first_scan_at: string | null
   last_scan_at: string | null
 }

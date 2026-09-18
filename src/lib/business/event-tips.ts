@@ -37,6 +37,17 @@ export function eventTips(revenue: RevenueWithTips): number {
   return safeUsd(revenue?.tips)
 }
 
+/** Header of the per-scanner Tips column on Door Performance. */
+export const DOOR_TIPS_COLUMN_TITLE = "Tips"
+
+/** Short hint under the Door Performance title. */
+export const DOOR_TIPS_HINT = "Tips are shown separately and are not included in sales."
+
+/** One Door Performance row's tips in USD. Missing, null, NaN or negative reads as 0. */
+export function scannerTips(row: { tips?: unknown } | null | undefined): number {
+  return safeUsd(row?.tips)
+}
+
 /** True when the event has tips. Picks the Revenue caption only, the Tips tile itself always renders. */
 export function hasTips(revenue: RevenueWithTips): boolean {
   return eventTips(revenue) > 0
