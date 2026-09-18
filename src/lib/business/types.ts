@@ -476,6 +476,33 @@ export interface EventAnalytics {
     // only. Never shown in place of Revenue.
     take_home_with_tips?: number
   }
+  // Tips visibility (computed by the API): tipping is on for the business, or
+  // this event has tip history. Gate ALL Tips UI on it through tipsVisible()
+  // (lib/business/event-tips.ts), which also covers older services deploys.
+  tips_visible?: boolean
+  tipping_enabled?: boolean
+  // Per-worker tip breakdown with each tip transaction, same attribution as
+  // Door Performance. Read through tipsByWorker().
+  tips_by_worker?: TipsByWorkerRow[]
+}
+
+export interface TipTransaction {
+  order_id: number
+  tip_usd: number
+  door_usd?: number
+  tip_status?: string | null
+  refund_status?: string | null
+  created_at: string | null
+}
+
+export interface TipsByWorkerRow {
+  staff_key: string
+  staff_user_id: number | null
+  scanner_session_id?: number | null
+  staff_name: string | null
+  scanner_label: string | null
+  tips_total: number
+  transactions: TipTransaction[]
 }
 
 // Per-event promoters (matches Node `GET /events/:id/promoters`). Used by the
@@ -498,6 +525,8 @@ export interface PromotersResponse {
 }
 
 export interface PerScannerRow {
+  // Attribution key, matches TipsByWorkerRow.staff_key. Absent on older deploys.
+  staff_key?: string
   staff_user_id: number | null
   staff_name: string | null
   scanner_label: string | null
@@ -523,6 +552,9 @@ export interface PerScannerRow {
 
 export interface PerScannerResponse {
   rows: PerScannerRow[]
+  // Same flag as EventAnalytics.tips_visible. Absent on older service deploys,
+  // read through doorTipsVisible().
+  tips_visible?: boolean
 }
 
 export interface DealAnalytics {

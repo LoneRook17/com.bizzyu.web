@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react"
 import { BarChart3 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import type { EventAnalytics, PerScannerResponse, PerScannerRow } from "@/lib/business/types"
+import { doorTipsVisible } from "@/lib/business/event-tips"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { ManageSubheader } from "@/components/business/v2/events/ManageSubheader"
@@ -14,6 +15,7 @@ export default function V2EventAnalyticsPage({ params }: { params: Promise<{ id:
   const { id } = use(params)
   const [data, setData] = useState<EventAnalytics | null>(null)
   const [perScanner, setPerScanner] = useState<PerScannerRow[] | null>(null)
+  const [perScannerTipsVisible, setPerScannerTipsVisible] = useState<boolean | undefined>(undefined)
   const [perScannerError, setPerScannerError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -29,6 +31,7 @@ export default function V2EventAnalyticsPage({ params }: { params: Promise<{ id:
       .get<PerScannerResponse>(`/business/insights/events/${id}/per-scanner`)
       .then((res) => {
         setPerScanner(res.rows ?? [])
+        setPerScannerTipsVisible(res.tips_visible)
         setPerScannerError(null)
       })
       .catch((err) => {
@@ -57,7 +60,7 @@ export default function V2EventAnalyticsPage({ params }: { params: Promise<{ id:
       ) : data ? (
         <div className="flex flex-col gap-5">
           <EventAnalyticsView data={data} />
-          {perScanner !== null && <DoorPerformanceCard rows={perScanner} error={perScannerError} />}
+          {perScanner !== null && <DoorPerformanceCard rows={perScanner} error={perScannerError} showTips={doorTipsVisible(perScannerTipsVisible, data, perScanner)} />}
         </div>
       ) : (
         <EmptyState icon={BarChart3} title="No analytics yet" description="Data appears once tickets are sold and scanned." />
