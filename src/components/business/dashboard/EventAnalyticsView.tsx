@@ -2,7 +2,8 @@
 
 import type { EventAnalytics } from "@/lib/business/types"
 import { promoterDisplayName } from "@/lib/business/promoter-display-name"
-import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTips, hasTips, takeHomeWithTips } from "@/lib/business/event-tips"
+import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTips, hasTips, takeHomeWithTips, tipsVisible } from "@/lib/business/event-tips"
+import { TipsByWorker } from "@/components/business/v2/events/TipsByWorker"
 
 function formatCurrency(val: number) {
   return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -30,15 +31,18 @@ export default function EventAnalyticsView({ data }: { data: EventAnalytics }) {
         <p className="text-xs text-gray-500 mt-1">{hasTips(data.revenue) ? REVENUE_CAPTION_WITH_TIPS : "Your take-home, matches Stripe payout."}</p>
       </div>
 
-      {/* Tips - separate from Revenue, always shown */}
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <h3 className="text-sm font-semibold text-ink mb-4">{TIPS_TILE_TITLE}</h3>
-        <p className="text-2xl font-bold text-ink">{formatCurrency(eventTips(data.revenue))}</p>
-        <p className="text-xs text-gray-500 mt-1">{TIPS_INFO_NOTE}</p>
-        {hasTips(data.revenue) && withTips !== null && (
-          <p className="text-xs text-gray-500 mt-1">Take-home incl. tips: {formatCurrency(withTips)}</p>
-        )}
-      </div>
+      {/* Tips - separate from Revenue. Only when tipping is on or the event has tip history */}
+      {tipsVisible(data) && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-ink mb-4">{TIPS_TILE_TITLE}</h3>
+          <p className="text-2xl font-bold text-ink">{formatCurrency(eventTips(data.revenue))}</p>
+          <p className="text-xs text-gray-500 mt-1">{TIPS_INFO_NOTE}</p>
+          {hasTips(data.revenue) && withTips !== null && (
+            <p className="text-xs text-gray-500 mt-1">Take-home incl. tips: {formatCurrency(withTips)}</p>
+          )}
+          <TipsByWorker data={data} tone="legacy" />
+        </div>
+      )}
 
       {/* Ticket Access + Check-in */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

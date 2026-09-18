@@ -6,11 +6,13 @@ import { apiClient, ApiError } from "@/lib/business/api-client"
 import EventAnalyticsView from "@/components/business/dashboard/EventAnalyticsView"
 import DoorPerformanceCard from "@/components/business/dashboard/DoorPerformanceCard"
 import type { EventAnalytics, PerScannerResponse, PerScannerRow } from "@/lib/business/types"
+import { doorTipsVisible } from "@/lib/business/event-tips"
 
 export default function EventAnalyticsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [data, setData] = useState<EventAnalytics | null>(null)
   const [perScanner, setPerScanner] = useState<PerScannerRow[] | null>(null)
+  const [perScannerTipsVisible, setPerScannerTipsVisible] = useState<boolean | undefined>(undefined)
   const [perScannerError, setPerScannerError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -26,6 +28,7 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
       .get<PerScannerResponse>(`/business/insights/events/${id}/per-scanner`)
       .then((res) => {
         setPerScanner(res.rows ?? [])
+        setPerScannerTipsVisible(res.tips_visible)
         setPerScannerError(null)
       })
       .catch((err) => {
@@ -61,7 +64,7 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
         <div className="space-y-6">
           <EventAnalyticsView data={data} />
           {perScanner !== null && (
-            <DoorPerformanceCard rows={perScanner} error={perScannerError} />
+            <DoorPerformanceCard rows={perScanner} error={perScannerError} showTips={doorTipsVisible(perScannerTipsVisible, data, perScanner)} />
           )}
         </div>
       ) : (

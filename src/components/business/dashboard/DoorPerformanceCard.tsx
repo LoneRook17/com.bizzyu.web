@@ -41,12 +41,16 @@ function staffLabel(row: PerScannerRow) {
   return row.staff_name
 }
 
+// showTips: the Tips column + hint render only when tips are visible for this
+// event (tipping on, or the event has tip history) - see doorTipsVisible().
 export default function DoorPerformanceCard({
   rows,
   error,
+  showTips = false,
 }: {
   rows: PerScannerRow[]
   error?: string | null
+  showTips?: boolean
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
@@ -108,8 +112,8 @@ export default function DoorPerformanceCard({
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <h3 className="text-sm font-semibold text-ink">Door Performance</h3>
-      <p className="text-xs text-gray-500 mt-0.5 mb-3">{DOOR_TIPS_HINT}</p>
+      <h3 className={`text-sm font-semibold text-ink ${showTips ? "" : "mb-3"}`}>Door Performance</h3>
+      {showTips && <p className="text-xs text-gray-500 mt-0.5 mb-3">{DOOR_TIPS_HINT}</p>}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -121,7 +125,7 @@ export default function DoorPerformanceCard({
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("sold_count")}>Sold{arrow("sold_count")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("sold_revenue")}>Sales ${arrow("sold_revenue")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("revenue")}>Revenue{arrow("revenue")}</th>
-              <th className={`${cellHeader} text-right`} onClick={() => clickHeader("tips")}>{DOOR_TIPS_COLUMN_TITLE}{arrow("tips")}</th>
+              {showTips && <th className={`${cellHeader} text-right`} onClick={() => clickHeader("tips")}>{DOOR_TIPS_COLUMN_TITLE}{arrow("tips")}</th>}
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("first_scan_at")}>First scan{arrow("first_scan_at")}</th>
               <th className={`${cellHeader} text-right`} onClick={() => clickHeader("last_scan_at")}>Last scan{arrow("last_scan_at")}</th>
             </tr>
@@ -136,7 +140,7 @@ export default function DoorPerformanceCard({
                 <td className="py-2 text-right text-gray-600">{r.sold_count ?? 0}</td>
                 <td className="py-2 text-right text-gray-600">{formatCurrency(r.sold_revenue ?? 0)}</td>
                 <td className="py-2 text-right font-medium text-ink">{formatCurrency(totalRevenueOf(r))}</td>
-                <td className="py-2 text-right text-gray-600">{formatCurrency(scannerTips(r))}</td>
+                {showTips && <td className="py-2 text-right text-gray-600">{formatCurrency(scannerTips(r))}</td>}
                 <td className="py-2 text-right text-gray-500 whitespace-nowrap">{formatTime(r.first_scan_at)}</td>
                 <td className="py-2 text-right text-gray-500 whitespace-nowrap">{formatTime(r.last_scan_at)}</td>
               </tr>
