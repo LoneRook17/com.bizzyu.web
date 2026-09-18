@@ -59,7 +59,7 @@ export default function V2EventAnalyticsPage({ params }: { params: Promise<{ id:
         <EmptyState icon={BarChart3} title={error} />
       ) : data ? (
         <div className="flex flex-col gap-5">
-          <EventAnalyticsView data={data} />
+          <EventAnalyticsView data={data} perScanner={perScanner} />
           {perScanner !== null && <DoorPerformanceCard rows={perScanner} error={perScannerError} showTips={doorTipsVisible(perScannerTipsVisible, data, perScanner)} />}
         </div>
       ) : (

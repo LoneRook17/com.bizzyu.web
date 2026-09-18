@@ -1,8 +1,8 @@
 "use client"
 
-import type { EventAnalytics } from "@/lib/business/types"
+import type { EventAnalytics, PerScannerRow } from "@/lib/business/types"
 import { promoterDisplayName } from "@/lib/business/promoter-display-name"
-import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTips, hasTips, takeHomeWithTips, tipsVisible } from "@/lib/business/event-tips"
+import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTipsAmount, eventTipsVisible, hasTips, takeHomeWithTips } from "@/lib/business/event-tips"
 import { TipsByWorker } from "@/components/business/v2/events/TipsByWorker"
 import { usd, cn } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
@@ -27,7 +27,7 @@ function LegendDot({ className, children }: { className: string; children: React
   )
 }
 
-export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
+export function EventAnalyticsView({ data, perScanner }: { data: EventAnalytics; perScanner?: PerScannerRow[] | null }) {
   const ticketTotal = data.ticketAccess.paid + data.ticketAccess.free + data.ticketAccess.guest
   const channelTotal = data.doorSales.preSales + data.doorSales.doorSales
   const checkPct = data.checkIn.percent
@@ -46,11 +46,11 @@ export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
       </Card>
 
       {/* tips: separate from Revenue. Only when tipping is on or the event has tip history */}
-      {tipsVisible(data) && (
+      {eventTipsVisible(data, perScanner) && (
         <Card>
           <CardHeader><CardTitle>{TIPS_TILE_TITLE}</CardTitle></CardHeader>
           <CardContent className="pt-0">
-            <p className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{usd(eventTips(data.revenue))}</p>
+            <p className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{usd(eventTipsAmount(data, perScanner))}</p>
             <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">{TIPS_INFO_NOTE}</p>
             {hasTips(data.revenue) && withTips !== null && (
               <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">Take-home incl. tips: {usd(withTips)}</p>

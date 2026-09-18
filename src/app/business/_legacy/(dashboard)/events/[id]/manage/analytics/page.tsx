@@ -62,7 +62,7 @@ export default function EventAnalyticsPage({ params }: { params: Promise<{ id: s
         </div>
       ) : data ? (
         <div className="space-y-6">
-          <EventAnalyticsView data={data} />
+          <EventAnalyticsView data={data} perScanner={perScanner} />
           {perScanner !== null && (
             <DoorPerformanceCard rows={perScanner} error={perScannerError} showTips={doorTipsVisible(perScannerTipsVisible, data, perScanner)} />
           )}

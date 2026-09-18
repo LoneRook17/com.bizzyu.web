@@ -22,6 +22,8 @@ import {
   TIPS_TILE_TITLE,
   doorTipsVisible,
   eventTips,
+  eventTipsAmount,
+  eventTipsVisible,
   hasTips,
   scannerTips,
   takeHomeWithTips,
@@ -37,6 +39,15 @@ const VIEWS = [
   "components/business/v2/events/EventAnalyticsView.tsx",
   "components/business/dashboard/EventAnalyticsView.tsx",
   "components/business/v2/analytics/EventsOverview.tsx",
+]
+
+// Every surface that renders an analytics view must hand it the per-scanner
+// rows, so the Tips tile gets the same scanner OR as the app.
+const VIEW_HOSTS = [
+  "app/business/(dashboard)/events/[id]/manage/analytics/page.tsx",
+  "app/business/_legacy/(dashboard)/events/[id]/manage/analytics/page.tsx",
+  "components/business/v2/analytics/EventsOverview.tsx",
+  "components/business/dashboard/EventsOverview.tsx",
 ]
 
 test("reads tips in USD from the revenue object", () => {
@@ -107,9 +118,10 @@ test("Revenue caption with tips is door-only and does not claim to match the pay
 })
 
 for (const rel of VIEWS) {
-  test(`${rel} renders Tips through the helpers, gated on tipsVisible, with the info note`, () => {
+  test(`${rel} renders Tips through the helpers, gated on eventTipsVisible, with the info note`, () => {
     const src = readFileSync(join(SRC, rel), "utf8")
-    assert.ok(src.includes("{tipsVisible(data) && ("), "Tips tile must be gated on tipsVisible(data)")
+    assert.ok(src.includes("{eventTipsVisible(data, perScanner) && ("), "Tips tile must be gated on eventTipsVisible (flags OR scanner tips, same as the app)")
+    assert.ok(!src.includes("{tipsVisible(data) && ("), "Tips tile must not gate on the flags alone")
     assert.ok(!/hasTips\(data\.revenue\) && \(\s*<(Card|div)/.test(src), "Tips tile must not be gated on hasTips (tip-on at $0 still shows)")
     assert.ok(/<TipsByWorker data=\{data\}/.test(src), "Tips tile must carry the Tips by worker breakdown")
     assert.ok(!/tips_visible|tipping_enabled|tips_by_worker/.test(src), "views must not read the raw visibility / breakdown fields")
@@ -118,7 +130,7 @@ for (const rel of VIEWS) {
       src.includes("hasTips(data.revenue) ? REVENUE_CAPTION_WITH_TIPS"),
       "Revenue caption must not claim to match the payout when there are tips",
     )
-    assert.ok(src.includes("eventTips(data.revenue)"), "Tips amount must come from eventTips")
+    assert.ok(src.includes("eventTipsAmount(data, perScanner)"), "Tips amount must come from eventTipsAmount")
     assert.ok(src.includes("TIPS_TILE_TITLE"), "Tips tile must use the shared title")
     assert.ok(!/revenue\??\.tips/.test(src), "views must not read revenue.tips directly")
   })
@@ -197,9 +209,50 @@ test("tipsVisible fallback for a services deploy without tips_visible", () => {
   assert.equal(tipsVisible(undefined), false)
 })
 
-test("tipsVisible never hides tips that exist, and ignores non-boolean flags", () => {
+test("tipsVisible never hides tips that exist", () => {
   assert.equal(tipsVisible({ tips_visible: false, revenue: { tips: 2 } }), true)
-  assert.equal(tipsVisible({ tips_visible: "true", tipping_enabled: 1, revenue: {} }), false)
+  assert.equal(tipsVisible({ tips_visible: 0, tipping_enabled: "0", revenue: { tips: "2.00" } }), true)
+})
+
+test("tipsVisible accepts boolean-ish flags: true, 1, \"true\", \"1\"", () => {
+  for (const on of [true, 1, "true", "1", " TRUE "]) {
+    assert.equal(tipsVisible({ tips_visible: on, revenue: {} }), true, `tips_visible=${JSON.stringify(on)}`)
+    assert.equal(tipsVisible({ tipping_enabled: on, revenue: {} }), true, `tipping_enabled=${JSON.stringify(on)}`)
+  }
+  for (const off of [false, 0, "false", "0", "", "yes", 2, null, undefined, {}, []]) {
+    assert.equal(tipsVisible({ tips_visible: off, tipping_enabled: off, revenue: {} }), false, `flag=${JSON.stringify(off)}`)
+  }
+})
+
+// Same rule as the Flutter app:
+// `_showTips => analytics.tipsVisible || perScanner.any(displayTips > 0)`.
+test("eventTipsVisible: flags off but a scanner row has tips stays visible", () => {
+  const off = { tips_visible: false, tipping_enabled: false, revenue: { tips: 0 } }
+  assert.equal(eventTipsVisible(off, [{ tips: 0 }, { tips: 2 }]), true)
+  assert.equal(eventTipsVisible(off, [{ tips: "2.00" }]), true)
+  assert.equal(eventTipsVisible(null, [{ tips: 2 }]), true)
+  assert.equal(eventTipsVisible(off, [{ tips: 0 }, {}, null]), false)
+  assert.equal(eventTipsVisible(off, []), false)
+  assert.equal(eventTipsVisible(off, null), false)
+  assert.equal(eventTipsVisible(off), false)
+})
+
+test("eventTipsVisible: flags, tip history, or a Tips by worker total", () => {
+  assert.equal(eventTipsVisible({ tips_visible: 1, revenue: {} }), true)
+  assert.equal(eventTipsVisible({ tipping_enabled: "true", revenue: {} }), true)
+  assert.equal(eventTipsVisible({ tips_visible: false, revenue: { tips: 2 } }), true)
+  assert.equal(eventTipsVisible({ tips_visible: false, revenue: {}, tips_by_worker: [{ staff_key: "u1", tips_total: 2 }] }), true)
+  assert.equal(eventTipsVisible({ tips_visible: false, revenue: {}, tips_by_worker: [{ staff_key: "u1", tips_total: 0 }] }), false)
+  assert.equal(eventTipsVisible({ tips_visible: false, revenue: {}, tips_by_worker: "junk" }), false)
+  assert.equal(eventTipsVisible(undefined, undefined), false)
+})
+
+test("eventTipsAmount: revenue.tips first, then Tips by worker, then scanner rows", () => {
+  assert.equal(eventTipsAmount({ revenue: { tips: 2 } }, [{ tips: 5 }]), 2)
+  assert.equal(eventTipsAmount({ revenue: {}, tips_by_worker: [{ tips_total: 1.5 }, { tips_total: 0.5 }] }, [{ tips: 5 }]), 2)
+  assert.equal(eventTipsAmount({ revenue: { tips: 0 } }, [{ tips: 1.25 }, { tips: 0.75 }, {}, null]), 2)
+  assert.equal(eventTipsAmount({ revenue: {} }), 0)
+  assert.equal(eventTipsAmount(null, null), 0)
 })
 
 test("doorTipsVisible: per-scanner flag, analytics flag, or any row with tips", () => {
@@ -209,6 +262,9 @@ test("doorTipsVisible: per-scanner flag, analytics flag, or any row with tips", 
   assert.equal(doorTipsVisible(false, { tips_visible: false, revenue: { tips: 0 } }, [{ tips: 0 }, {}]), false)
   assert.equal(doorTipsVisible(undefined, null, null), false)
   assert.equal(doorTipsVisible(undefined, undefined, undefined), false)
+  assert.equal(doorTipsVisible(1, null, []), true)
+  assert.equal(doorTipsVisible("true", null, []), true)
+  assert.equal(doorTipsVisible(undefined, { tipping_enabled: "1" }, []), true)
 })
 
 // Tips by worker: one collapsed row per worker, expanding lists each tip.
@@ -284,5 +340,13 @@ for (const rel of [
     const src = readFileSync(join(SRC, rel), "utf8")
     assert.ok(src.includes("showTips={doorTipsVisible(perScannerTipsVisible, data, perScanner)}"))
     assert.ok(src.includes("setPerScannerTipsVisible(res.tips_visible)"))
+  })
+}
+
+for (const rel of VIEW_HOSTS) {
+  test(`${rel} passes the per-scanner rows into the analytics view`, () => {
+    const src = readFileSync(join(SRC, rel), "utf8")
+    assert.ok(/<(EventAnalyticsView|EventDetail) data=\{(data|detail)\} perScanner=\{perScanner\} \/>/.test(src))
+    assert.ok(src.includes("/per-scanner`"), "must fetch the per-scanner rows")
   })
 }
