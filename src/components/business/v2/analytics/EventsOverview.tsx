@@ -7,6 +7,7 @@ import { ACCESS_ACCENT, EVENT_ACCENT, isWeeklyCoverProduct } from "@/lib/busines
 import { sortAnalyticsEvents } from "@/lib/business/analytics-list"
 import type { EventsOverview, EventOverviewItem, EventAnalytics } from "@/lib/business/types"
 import { promoterDisplayName } from "@/lib/business/promoter-display-name"
+import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTips, hasTips, takeHomeWithTips } from "@/lib/business/event-tips"
 import { apiClient } from "@/lib/business/api-client"
 import { usd } from "@/lib/v2/utils"
 import { cn } from "@/lib/v2/utils"
@@ -55,13 +56,23 @@ function EventDetail({ data }: { data: EventAnalytics }) {
   const ticketTotal = data.ticketAccess.paid + data.ticketAccess.free + data.ticketAccess.guest
   const tierTotal = data.tierBreakdown.reduce((s, t) => s + t.revenue, 0)
   const promoterTakeHome = (data.revenue?.promoter_attributed_take_home_cents ?? 0) / 100
+  const withTips = takeHomeWithTips(data.revenue)
 
   return (
     <div className="space-y-5">
       <Card className="p-5">
         <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Revenue</h4>
         <p className="text-2xl font-semibold text-green-600 dark:text-green-400">{usd(data.revenue?.revenue ?? 0)}</p>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Your take-home, matches Stripe payout.</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{hasTips(data.revenue) ? REVENUE_CAPTION_WITH_TIPS : "Your take-home, matches Stripe payout."}</p>
+      </Card>
+
+      <Card className="p-5">
+        <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{TIPS_TILE_TITLE}</h4>
+        <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{usd(eventTips(data.revenue))}</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{TIPS_INFO_NOTE}</p>
+        {hasTips(data.revenue) && withTips !== null && (
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Take-home incl. tips: {usd(withTips)}</p>
+        )}
       </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

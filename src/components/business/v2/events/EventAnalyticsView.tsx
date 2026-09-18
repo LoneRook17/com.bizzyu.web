@@ -2,6 +2,7 @@
 
 import type { EventAnalytics } from "@/lib/business/types"
 import { promoterDisplayName } from "@/lib/business/promoter-display-name"
+import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTips, hasTips, takeHomeWithTips } from "@/lib/business/event-tips"
 import { usd, cn } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 
@@ -30,6 +31,7 @@ export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
   const channelTotal = data.doorSales.preSales + data.doorSales.doorSales
   const checkPct = data.checkIn.percent
   const promoterTakeHome = data.revenue?.promoter_attributed_take_home_cents ?? 0
+  const withTips = takeHomeWithTips(data.revenue)
 
   return (
     <div className="flex flex-col gap-5">
@@ -38,7 +40,19 @@ export function EventAnalyticsView({ data }: { data: EventAnalytics }) {
         <CardHeader><CardTitle>Revenue</CardTitle></CardHeader>
         <CardContent className="pt-0">
           <p className="text-3xl font-semibold tracking-tight text-[#05EB54]">{usd(data.revenue?.revenue ?? 0)}</p>
-          <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">Your take-home: matches Stripe payout.</p>
+          <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">{hasTips(data.revenue) ? REVENUE_CAPTION_WITH_TIPS : "Your take-home: matches Stripe payout."}</p>
+        </CardContent>
+      </Card>
+
+      {/* tips: separate from Revenue, always shown */}
+      <Card>
+        <CardHeader><CardTitle>{TIPS_TILE_TITLE}</CardTitle></CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{usd(eventTips(data.revenue))}</p>
+          <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">{TIPS_INFO_NOTE}</p>
+          {hasTips(data.revenue) && withTips !== null && (
+            <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">Take-home incl. tips: {usd(withTips)}</p>
+          )}
         </CardContent>
       </Card>
 

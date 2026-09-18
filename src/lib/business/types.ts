@@ -467,6 +467,14 @@ export interface EventAnalytics {
     // Business take-home from promoter-attributed sales specifically. Drives
     // the "Of the $X above, $Y was promoter-generated" callout.
     promoter_attributed_take_home_cents: number
+    // Tipping Slice 3. Customer tips in USD (e.g. 1.5). NOT part of `revenue`
+    // above, which is door-only. Absent on services deploys that predate
+    // Slice 3, so read it through eventTips() (lib/business/event-tips.ts),
+    // which treats missing / null / NaN as 0.
+    tips?: number
+    // `revenue` + `tips`, computed by the API. Optional secondary caption
+    // only. Never shown in place of Revenue.
+    take_home_with_tips?: number
   }
 }
 
@@ -505,6 +513,10 @@ export interface PerScannerRow {
   sold_count?: number
   sold_revenue?: number
   total_revenue?: number
+  // Tips (USD) on this person's door sales (Tipping Slice 3). Its own column,
+  // never part of sold_revenue / total_revenue. Absent on older service
+  // deploys - read through scannerTips().
+  tips?: number
   first_scan_at: string | null
   last_scan_at: string | null
 }
