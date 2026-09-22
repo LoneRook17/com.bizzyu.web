@@ -1,7 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Check, Loader2, Minus, Plus } from "lucide-react"
+import { Check, Loader2, Lock, Minus, Plus } from "lucide-react"
+import Link from "next/link"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input } from "@/components/business/v2/ui/input"
@@ -14,6 +15,7 @@ import {
   draftFromConfig,
   isTippingDirty,
   presetsOnModeSwitch,
+  tippingConnectLock,
   tippingErrorMessage,
   tippingLoadErrorMessage,
   validateTippingDraft,
@@ -77,9 +79,28 @@ function Switch({
  * GET/PUT /business/tipping. The door does not read this until Slice 2 —
  * card chrome is provided by the settings page.
  */
-export default function TippingSettings({ disabled }: { disabled?: boolean }) {
+export default function TippingSettings({
+  disabled,
+  onGoToPayments,
+  refreshKey,
+}: {
+  disabled?: boolean
+  /**
+   * Stripe Connect lock CTA. The Payments tab lives on the same settings page,
+   * so the parent switches tabs in place; without it the overlay falls back to
+   * a plain link to the same path.
+   */
+  onGoToPayments?: () => void
+  /**
+   * Re-read /business/tipping when this changes (e.g. the profile's Connect
+   * flag after a Stripe return) so the lock clears without a redeploy or a
+   * hard refresh. Every mount reloads anyway.
+   */
+  refreshKey?: string | number | boolean | null
+}) {
   const [saved, setSaved] = useState<TippingConfig | null>(null)
   const [draft, setDraft] = useState<TippingDraft | null>(null)
+  const [response, setResponse] = useState<TippingResponse | null>(null)
   const [loadError, setLoadError] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
@@ -89,6 +110,7 @@ export default function TippingSettings({ disabled }: { disabled?: boolean }) {
     setLoadError("")
     try {
       const data = await apiClient.get<TippingResponse>("/business/tipping")
+      setResponse(data)
       setSaved(data.tipping)
       setDraft(draftFromConfig(data.tipping))
     } catch (e) {
@@ -98,7 +120,12 @@ export default function TippingSettings({ disabled }: { disabled?: boolean }) {
 
   useEffect(() => {
     load()
-  }, [load])
+  }, [load, refreshKey])
+
+  // Product lock: no usable Stripe Connect ⇒ the WHOLE section is locked, not
+  // just the toggle. The API enforces the same rule (PUT → 409), and the door
+  // fails tip money closed — this overlay is the explanation, not the gate.
+  const lock = tippingConnectLock(response)
 
   if (loadError) {
     // A 403 is a role fact, not a failure — the settings page hides this tab
@@ -122,7 +149,7 @@ export default function TippingSettings({ disabled }: { disabled?: boolean }) {
 
   const validation = validateTippingDraft(draft)
   const dirty = isTippingDirty(saved, draft)
-  const canSave = !disabled && !saving && dirty && validation.config !== null
+  const canSave = !disabled && !lock.locked && !saving && dirty && validation.config !== null
   const unit = draft.preset_mode === "flat" ? "$" : "%"
 
   const update = (patch: Partial<TippingDraft>) => {
@@ -177,7 +204,37 @@ export default function TippingSettings({ disabled }: { disabled?: boolean }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="relative">
+      {lock.locked && (
+        <div
+          role="region"
+          aria-label={lock.title}
+          data-testid="tipping-connect-lock"
+          className="absolute inset-0 z-10 -m-2 flex items-start justify-center rounded-xl bg-white/85 p-4 backdrop-blur-[2px] dark:bg-neutral-950/85"
+        >
+          <div className="mt-6 w-full max-w-md rounded-xl border border-neutral-200 bg-white p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="flex items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+                <Lock className="size-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{lock.title}</p>
+                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{lock.body}</p>
+                {onGoToPayments ? (
+                  <Button type="button" size="sm" className="mt-3" onClick={onGoToPayments}>
+                    {lock.cta}
+                  </Button>
+                ) : (
+                  <Button asChild size="sm" className="mt-3">
+                    <Link href={lock.setupPath}>{lock.cta}</Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    <div className={cn("flex flex-col gap-6", lock.locked && "pointer-events-none select-none opacity-60")} aria-hidden={lock.locked || undefined} {...(lock.locked ? { inert: true } : {})}>
       <Switch
         label="Ask guests for a tip"
         description="When on, the door shows tip buttons before payment. Off means guests are never asked."
@@ -324,6 +381,7 @@ export default function TippingSettings({ disabled }: { disabled?: boolean }) {
           <p className="text-xs text-neutral-500 dark:text-neutral-400">Only owners and managers can change tipping settings.</p>
         )}
       </div>
+    </div>
     </div>
   )
 }

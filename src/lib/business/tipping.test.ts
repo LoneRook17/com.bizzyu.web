@@ -12,7 +12,10 @@ import {
   presetsOnModeSwitch,
   tippingErrorMessage,
   tippingLoadErrorMessage,
+  tippingConnectLock,
   validateTippingDraft,
+  TIPPING_CONNECT_SETUP_PATH,
+  TIPPING_LOCK_TITLE,
   type TippingDraft,
 } from "./tipping.ts"
 
@@ -169,4 +172,45 @@ test("tippingLoadErrorMessage: 403 is a calm role message, not a refresh prompt"
   assert.equal(tippingLoadErrorMessage(503), "Tipping settings aren't available on this environment yet.")
   assert.match(tippingLoadErrorMessage(500), /refresh/i)
   assert.match(tippingLoadErrorMessage(0), /refresh/i)
+})
+
+// ── Stripe Connect lock (product rule, Sep 2026) ──────────────────────────
+const cfg = { ...DEFAULT_TIPPING_CONFIG }
+
+test("connect lock: connect_ready=false locks the section and points at the existing Payments tab", () => {
+  const lock = tippingConnectLock({ tipping: cfg, connect_ready: false, connect_reason: "no_account" })
+  assert.equal(lock.locked, true)
+  assert.equal(lock.reason, "no_account")
+  assert.equal(lock.setupPath, TIPPING_CONNECT_SETUP_PATH)
+  assert.equal(lock.setupPath, "/business/settings?tab=payments")
+  assert.equal(lock.title, TIPPING_LOCK_TITLE)
+  assert.match(lock.body, /Stripe account/)
+  assert.match(lock.body, /Payments/)
+  assert.match(lock.cta, /Payments/)
+})
+
+test("connect lock: connect_ready=true and a missing key (older API) both leave the form usable", () => {
+  assert.equal(tippingConnectLock({ tipping: cfg, connect_ready: true, connect_reason: "ready" }).locked, false)
+  assert.equal(tippingConnectLock({ tipping: cfg }).locked, false)
+  assert.equal(tippingConnectLock(null).locked, false)
+  assert.equal(tippingConnectLock({ tipping: cfg }).body, "")
+})
+
+test("connect lock: server-provided setup path wins; not_onboarded and lookup_failed get their own copy", () => {
+  const nb = tippingConnectLock({ tipping: cfg, connect_ready: false, connect_reason: "not_onboarded", connect_setup_path: "/business/settings?tab=payments&x=1" })
+  assert.equal(nb.setupPath, "/business/settings?tab=payments&x=1")
+  assert.match(nb.body, /charges and payouts/)
+  const lf = tippingConnectLock({ tipping: cfg, connect_ready: false, connect_reason: "lookup_failed" })
+  assert.match(lf.body, /couldn't confirm/i)
+})
+
+test("connect lock: a row already enabled without Connect still locks, and says no tips are collected", () => {
+  const lock = tippingConnectLock({ tipping: { ...cfg, enabled: true }, connect_ready: false, connect_reason: "no_account" })
+  assert.equal(lock.locked, true)
+  assert.match(lock.body, /no tips can be collected/)
+})
+
+test("save error 409 = Connect lock copy (server message preferred, fallback names Payments)", () => {
+  assert.equal(tippingErrorMessage(409, "Connect a Stripe account before turning on tipping."), "Connect a Stripe account before turning on tipping.")
+  assert.match(tippingErrorMessage(409), /Settings → Payments/)
 })

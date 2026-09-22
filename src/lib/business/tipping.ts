@@ -26,6 +26,62 @@ export interface TippingConfig {
 export interface TippingResponse {
   tipping: TippingConfig
   configured: boolean
+  /** Platform tip-money master switch (additive; absent on older APIs). */
+  tip_money_master_enabled?: boolean
+  /**
+   * Stripe Connect lock (product rule, Sep 2026): tipping needs a usable
+   * Connect account — the same "Connect ready" signal door money uses.
+   * `false` ⇒ the whole Tipping section renders LOCKED. Absent (older API)
+   * ⇒ not locked, so a stale dashboard never blocks a ready business.
+   */
+  connect_ready?: boolean
+  connect_reason?: "ready" | "no_account" | "not_onboarded" | "lookup_failed"
+  /** Where the overlay's CTA sends the owner — the existing Payments tab. */
+  connect_setup_path?: string
+}
+
+/** The existing Connect / payouts setup surface in the business portal. */
+export const TIPPING_CONNECT_SETUP_PATH = "/business/settings?tab=payments"
+
+export interface TippingConnectLock {
+  locked: boolean
+  reason: NonNullable<TippingResponse["connect_reason"]> | null
+  setupPath: string
+  title: string
+  body: string
+  cta: string
+}
+
+export const TIPPING_LOCK_TITLE = "Connect Stripe to use tipping"
+export const TIPPING_LOCK_CTA = "Go to Payments to connect Stripe"
+
+/**
+ * Locked iff the API says Connect is NOT ready. Exactly `false` locks; `true`
+ * or a missing key (older API) leaves the form usable. A row that was somehow
+ * enabled before the lock shows the same overlay — the server fails the tip
+ * money closed and refuses further tip config until Connect is live.
+ */
+export function tippingConnectLock(res: Pick<TippingResponse, "connect_ready" | "connect_reason" | "connect_setup_path" | "tipping"> | null | undefined): TippingConnectLock {
+  const locked = res?.connect_ready === false
+  const reason = locked ? (res?.connect_reason ?? "no_account") : null
+  const wasEnabled = !!res?.tipping?.enabled
+  const body = !locked
+    ? ""
+    : reason === "not_onboarded"
+      ? "Your Stripe account isn't finished yet. Tipping unlocks as soon as Stripe enables charges and payouts on it — the same account your door money is paid to."
+      : reason === "lookup_failed"
+        ? "We couldn't confirm your Stripe account just now. Tipping stays locked until it can be confirmed — refresh in a moment, or check Payments."
+        : wasEnabled
+          ? "Tipping is switched on, but no tips can be collected until this business has a Stripe account. Connect one in Payments — the account your door money is paid to — and tipping unlocks on its own."
+          : "Tips are paid straight to your Stripe account with your door money, so you need one connected first. Connect it in Payments and tipping unlocks on its own — no need to come back here and turn anything on."
+  return {
+    locked,
+    reason,
+    setupPath: res?.connect_setup_path || TIPPING_CONNECT_SETUP_PATH,
+    title: TIPPING_LOCK_TITLE,
+    body,
+    cta: TIPPING_LOCK_CTA,
+  }
 }
 
 /** What the form edits: presets stay strings until validation. */
@@ -174,6 +230,9 @@ export function tippingErrorMessage(status: number, serverMessage?: string): str
       return serverMessage?.trim() || "Those tip amounts can't be saved. Check them and try again."
     case 403:
       return "Only owners and managers can change tipping settings."
+    case 409:
+      // Stripe Connect lock — the server refused enabling without Connect.
+      return serverMessage?.trim() || "Connect a Stripe account before turning on tipping. Go to Settings → Payments to connect Stripe."
     case 503:
       return "Tipping settings aren't available on this environment yet."
     default:

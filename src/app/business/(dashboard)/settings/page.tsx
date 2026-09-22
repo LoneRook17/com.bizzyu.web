@@ -319,7 +319,11 @@ function SettingsContent() {
               title="Tipping"
               description="Choose whether guests are asked to tip at the door and which amounts they see. Changes apply to future door payments once tipping goes live."
             >
-              <TippingSettings disabled={!canEdit} />
+              <TippingSettings
+                disabled={!canEdit}
+                onGoToPayments={() => handleTabChange("payments")}
+                refreshKey={`${profile.stripe_connect_onboarded ? 1 : 0}:${profile.stripe_reconnect_required ? 1 : 0}`}
+              />
             </SettingsCard>
           </TabsContent>
         )}
