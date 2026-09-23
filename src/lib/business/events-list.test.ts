@@ -547,6 +547,21 @@ test("series stats sum the nights actually on the page", () => {
 
 // ── D2-C: the at-a-glance numbers ───────────────────────────────────────────
 
+test("a list row never rounds revenue to a dollar the event did not earn (prod 1693: $0.50 door sale read as $1)", () => {
+  const now = new Date("2026-09-23T12:00:00-04:00")
+  const stats = eventRowStats(
+    ev(1693, "2026-09-23 21:00:00", null, { ticket_sales_count: 1, total_revenue: 0.5 }),
+    now,
+  )
+  assert.deepEqual(stats.map((s) => [s.label, s.value])[1], ["revenue", "$0.50"])
+  // Whole amounts still read as whole dollars at a glance.
+  const whole = eventRowStats(
+    ev(1, "2026-09-23 21:00:00", null, { ticket_sales_count: 10, total_revenue: 100 }),
+    now,
+  )
+  assert.equal(whole[1].value, "$100")
+})
+
 test("an event row leads with sold, revenue and when", () => {
   const now = new Date(2026, 8, 1, 12, 0, 0) // Sep 1 2026, midday local
   const stats = eventRowStats(
@@ -555,7 +570,7 @@ test("an event row leads with sold, revenue and when", () => {
   )
   assert.deepEqual(
     stats.map((s) => [s.label, s.value]),
-    [["sold", "1,234"], ["revenue", "$8,210"], ["in 3 days", "Sep 4"]],
+    [["sold", "1,234"], ["revenue", "$8,210.40"], ["in 3 days", "Sep 4"]],
   )
 })
 
