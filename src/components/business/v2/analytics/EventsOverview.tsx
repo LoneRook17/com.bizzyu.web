@@ -5,8 +5,10 @@ import Link from "next/link"
 import { ChevronDown, CalendarDays, Maximize2 } from "lucide-react"
 import { ACCESS_ACCENT, EVENT_ACCENT, isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { sortAnalyticsEvents } from "@/lib/business/analytics-list"
-import type { EventsOverview, EventOverviewItem, EventAnalytics } from "@/lib/business/types"
+import type { EventsOverview, EventOverviewItem, EventAnalytics, PerScannerResponse, PerScannerRow } from "@/lib/business/types"
 import { promoterDisplayName } from "@/lib/business/promoter-display-name"
+import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTipsAmount, eventTipsVisible, hasTips, takeHomeWithTips } from "@/lib/business/event-tips"
+import { TipsByWorker } from "@/components/business/v2/events/TipsByWorker"
 import { apiClient } from "@/lib/business/api-client"
 import { usd } from "@/lib/v2/utils"
 import { cn } from "@/lib/v2/utils"
@@ -51,18 +53,31 @@ function LegendDot({ color, children }: { color: string; children: React.ReactNo
   )
 }
 
-function EventDetail({ data }: { data: EventAnalytics }) {
+function EventDetail({ data, perScanner }: { data: EventAnalytics; perScanner?: PerScannerRow[] | null }) {
   const ticketTotal = data.ticketAccess.paid + data.ticketAccess.free + data.ticketAccess.guest
   const tierTotal = data.tierBreakdown.reduce((s, t) => s + t.revenue, 0)
   const promoterTakeHome = (data.revenue?.promoter_attributed_take_home_cents ?? 0) / 100
+  const withTips = takeHomeWithTips(data.revenue)
 
   return (
     <div className="space-y-5">
       <Card className="p-5">
         <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">Revenue</h4>
         <p className="text-2xl font-semibold text-green-600 dark:text-green-400">{usd(data.revenue?.revenue ?? 0)}</p>
-        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Your take-home, matches Stripe payout.</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{hasTips(data.revenue) ? REVENUE_CAPTION_WITH_TIPS : "Your take-home, matches Stripe payout."}</p>
       </Card>
+
+      {eventTipsVisible(data, perScanner) && (
+        <Card className="p-5">
+          <h4 className="mb-3 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{TIPS_TILE_TITLE}</h4>
+          <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{usd(eventTipsAmount(data, perScanner))}</p>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{TIPS_INFO_NOTE}</p>
+          {hasTips(data.revenue) && withTips !== null && (
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Take-home incl. tips: {usd(withTips)}</p>
+          )}
+          <TipsByWorker data={data} />
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card className="p-5">
@@ -189,6 +204,7 @@ function EventCard({
 }) {
   const [detail, setDetail] = useState<EventAnalytics | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [perScanner, setPerScanner] = useState<PerScannerRow[] | null>(null)
 
   const handleToggle = () => {
     if (!isExpanded && !detail) {
@@ -198,6 +214,11 @@ function EventCard({
         .then(setDetail)
         .catch(() => setDetail(null))
         .finally(() => setDetailLoading(false))
+      // Per-scanner rows only feed Tips visibility (same OR as the app). Never blocks the detail.
+      apiClient
+        .get<PerScannerResponse>(`/business/insights/events/${event.event_id}/per-scanner`)
+        .then((res) => setPerScanner(res.rows ?? []))
+        .catch(() => setPerScanner(null))
     }
     onToggle()
   }
@@ -260,7 +281,7 @@ function EventCard({
               <Skeleton className="h-24 w-full rounded-lg" />
             </div>
           ) : detail ? (
-            <EventDetail data={detail} />
+            <EventDetail data={detail} perScanner={perScanner} />
           ) : (
             <p className="py-4 text-center text-sm text-neutral-400 dark:text-neutral-500">Unable to load detail.</p>
           )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { EventsOverview, EventOverviewItem, EventAnalytics } from "@/lib/business/types"
+import type { EventsOverview, EventOverviewItem, EventAnalytics, PerScannerResponse, PerScannerRow } from "@/lib/business/types"
 import { apiClient } from "@/lib/business/api-client"
 import EventAnalyticsView from "./EventAnalyticsView"
 import CollapsibleSection from "./CollapsibleSection"
@@ -79,6 +79,7 @@ function EventCard({
 }) {
   const [detail, setDetail] = useState<EventAnalytics | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [perScanner, setPerScanner] = useState<PerScannerRow[] | null>(null)
 
   const handleToggle = () => {
     if (!isExpanded && !detail) {
@@ -88,6 +89,11 @@ function EventCard({
         .then(setDetail)
         .catch((err) => { console.error("Failed to load event detail:", err); setDetail(null) })
         .finally(() => setDetailLoading(false))
+      // Per-scanner rows only feed Tips visibility (same OR as the app). Never blocks the detail.
+      apiClient
+        .get<PerScannerResponse>(`/business/insights/events/${event.event_id}/per-scanner`)
+        .then((res) => setPerScanner(res.rows ?? []))
+        .catch(() => setPerScanner(null))
     }
     onToggle()
   }
@@ -182,7 +188,7 @@ function EventCard({
               <div className="h-24 bg-gray-200 rounded" />
             </div>
           ) : detail ? (
-            <EventAnalyticsView data={detail} />
+            <EventAnalyticsView data={detail} perScanner={perScanner} />
           ) : (
             <p className="text-sm text-gray-400 text-center py-4">Unable to load detail.</p>
           )}
