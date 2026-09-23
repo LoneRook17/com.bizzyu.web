@@ -858,7 +858,11 @@ export function seriesRowNumbers(
 function money(n: number | string | null | undefined): string {
   const v = typeof n === "string" ? Number(n) : n
   if (v == null || !Number.isFinite(v)) return "$0"
-  // Whole dollars on a list row: cents are noise at a glance and the detail
-  // page is one click away.
-  return `$${Math.round(v).toLocaleString("en-US")}`
+  // Whole dollars when the amount IS whole; cents otherwise. Rounding a list
+  // row to whole dollars read one $0.50 custom door sale as "$1" (prod event
+  // 1693, 2026-09-23) next to an analytics page saying $0.50 — a number that
+  // is not the true value is a bug on a money column, glance or not.
+  const cents = Math.round(v * 100)
+  if (cents % 100 === 0) return `$${(cents / 100).toLocaleString("en-US")}`
+  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
