@@ -1,13 +1,12 @@
 [
   {
-    "relation": [
-      "delegate_permission/common.handle_all_urls"
-    ],
+    "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.bizzy.bizzy",
+      "package_name": "com.bizzyu.app",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_PLAY_APP_SIGNING_SHA256"
+        "B1:CB:52:07:E9:C3:85:BD:75:90:79:E9:C5:80:60:67:3B:FA:7C:F1:B4:33:0E:47:79:17:3B:EF:B1:CC:CE:84",
+        "3A:A2:8D:6B:B9:F1:CF:A8:2D:7B:63:5D:6B:41:B7:2E:3C:2E:46:0C:62:B2:38:7D:BC:92:B4:03:85:02:55:2A"
       ]
     }
   }
