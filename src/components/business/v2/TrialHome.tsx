@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { CheckCircle2, Circle, CircleDot, Eye, Plus, ArrowRight, PartyPopper, Lock } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
+import { trialFirstOfferLocked } from "@/lib/business/deal-venue"
 import { useVenue } from "@/lib/business/venue-context"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
@@ -133,9 +134,9 @@ export default function TrialHome() {
         </div>
       </Card>
 
-      {/* optional: first deal/event - get a head start, not required.
-          Deals and events both require a venue, so the CTA stays locked until one exists. */}
-      <Card className={cn("overflow-hidden", !hasVenue && "opacity-80")}>
+      {/* optional: first deal/event. Events stay locked without a venue.
+          Deals (and hybrid's deal CTA) open New Deal with zero venues. */}
+      <Card className={cn("overflow-hidden", trialFirstOfferLocked(mode, venues.length) && "opacity-80")}>
         <div className="flex items-center gap-3.5 px-6 py-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -143,18 +144,20 @@ export default function TrialHome() {
               <Badge variant="neutral" size="sm">Optional</Badge>
             </div>
             <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">
-              {hasVenue
-                ? `Get a head start, ${heroQueueNote.charAt(0).toLowerCase() + heroQueueNote.slice(1)}`
-                : "Needs a venue first. Deals and events are always attached to a location."}
+              {trialFirstOfferLocked(mode, venues.length)
+                ? "Needs a venue first. Events are attached to a location."
+                : hasVenue
+                  ? `Get a head start, ${heroQueueNote.charAt(0).toLowerCase() + heroQueueNote.slice(1)}`
+                  : "Takes about 2 minutes. A deal uses your business address, so you can list one before you add a venue."}
             </p>
           </div>
-          {hasVenue ? (
+          {trialFirstOfferLocked(mode, venues.length) ? (
             <Button variant="secondary" asChild>
-              <Link href={hero.cta.href}><Plus /> {hero.cta.label}</Link>
+              <Link href="/business/settings?action=add-venue"><Lock className="size-3.5" /> Add venue first</Link>
             </Button>
           ) : (
             <Button variant="secondary" asChild>
-              <Link href="/business/settings?action=add-venue"><Lock className="size-3.5" /> Add venue first</Link>
+              <Link href={hero.cta.href}><Plus /> {hero.cta.label}</Link>
             </Button>
           )}
         </div>

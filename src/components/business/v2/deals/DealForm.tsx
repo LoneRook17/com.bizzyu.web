@@ -7,6 +7,7 @@ import { ArrowLeft, Heart, ImageIcon, Info, Loader2 } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { REDEMPTION_OPTIONS } from "@/lib/business/constants"
 import { useAuth } from "@/lib/business/auth-context"
+import { dealSubmitVenueId, dealVenueError, showDealVenuePicker } from "@/lib/business/deal-venue"
 import { useVenue } from "@/lib/business/venue-context"
 import { cn } from "@/lib/v2/utils"
 import type { DealFormData } from "@/lib/business/types"
@@ -29,7 +30,7 @@ type DayWindow = { enabled: boolean; start: string; end: string }
 export default function DealForm({ initialData, dealId }: DealFormProps) {
   const router = useRouter()
   const { business, isPending } = useAuth()
-  const { venues, selectedVenue, setSelectedVenue } = useVenue()
+  const { venues, selectedVenue, setSelectedVenue, isLoading: venuesLoading } = useVenue()
   const isEditing = !!dealId
 
   const [form, setForm] = useState<DealFormData>({
@@ -76,9 +77,18 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
     setServerError("")
   }
 
+  const venueInput = {
+    isEditing,
+    venueIds: venues.map((v) => v.id),
+    selectedVenueId: selectedVenue?.id ?? null,
+  }
+
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
-    if (!selectedVenue) errs.venue = "Please select a venue"
+    // 0 venues: omit venue_id. 1 venue: attached in the payload. 2+: picker required.
+    // Edit never re-gates, so a venueless deal stays editable.
+    const venueError = dealVenueError(venueInput)
+    if (venueError) errs.venue = venueError
     if (!form.deal_title.trim()) errs.deal_title = "Deal title is required"
     if (!form.description.trim()) errs.description = "Description is required"
     if (!form.total_saving.trim()) errs.total_saving = "Estimated savings is required"
@@ -110,6 +120,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
           )
         : []
 
+      const venueId = dealSubmitVenueId(venueInput)
       const payload = {
         deal_title: form.deal_title,
         description: form.description,
@@ -118,7 +129,9 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
         start_date: form.start_date || undefined,
         expired_date: form.expired_date || undefined,
         total_saving: savingsNum,
-        venue_id: selectedVenue?.id,
+        // Omit the key entirely when there is no venue. JSON.stringify drops
+        // undefined, but an explicit spread keeps a null from being sent.
+        ...(venueId == null ? {} : { venue_id: venueId }),
         availability_windows,
       }
 
@@ -247,8 +260,8 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                   </p>
                 </div>
 
-                {/* Venue */}
-                {!isEditing && venues.length > 0 && (
+                {/* Venue — only when there is a real choice. One venue is attached automatically. */}
+                {showDealVenuePicker(venueInput) && (
                   <div className="space-y-1.5">
                     <Label htmlFor="venue_select">
                       Venue <span className="text-[#05EB54]">*</span>
@@ -504,7 +517,7 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
                 {isPending && (
                   <Badge variant="warning">Trial: saved as a draft until approved</Badge>
                 )}
-                <Button type="submit" size="lg" disabled={loading} className="w-full sm:w-auto">
+                <Button type="submit" size="lg" disabled={loading || venuesLoading} className="w-full sm:w-auto">
                   {loading && <Loader2 className="size-4 animate-spin" />}
                   {isEditing ? "Save changes" : "Create deal"}
                 </Button>
