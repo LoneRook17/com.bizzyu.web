@@ -17,16 +17,12 @@ export function normalizeOrigin(raw: string | undefined | null): string {
   return (raw ?? "").trim().replace(/\/+$/, "")
 }
 
-/** Warning when the forward host is missing or not the TrustHosts allowlist. */
-export function adminApiUrlWarning(adminApiUrl: string | undefined | null): string | null {
-  const origin = normalizeOrigin(adminApiUrl)
-  if (!origin) {
-    return "ADMIN_API_URL is unset. /post-a-deal cannot save the deal to Laravel."
-  }
-  if (origin !== TRUSTED_DEAL_SUBMISSIONS_ORIGIN) {
-    return `ADMIN_API_URL is ${origin}, not ${TRUSTED_DEAL_SUBMISSIONS_ORIGIN}. Laravel TrustHosts returns 404 Bad hostname provided for any other host.`
-  }
-  return null
+/**
+ * Where this route POSTs the deal. Always the trusted prod origin unless
+ * DEAL_SUBMISSIONS_API_URL is set. The shared admin-host env var is not consulted.
+ */
+export function dealSubmissionsForwardOrigin(override?: string | null): string {
+  return normalizeOrigin(override) || TRUSTED_DEAL_SUBMISSIONS_ORIGIN
 }
 
 export function submissionEmailSubject(

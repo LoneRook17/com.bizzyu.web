@@ -5,9 +5,8 @@ import { formatAvailability } from "@/lib/types";
 import {
   DEAL_SUBMISSIONS_FORWARD_HEADERS,
   FORWARD_SAVE_ERROR,
-  adminApiUrlWarning,
+  dealSubmissionsForwardOrigin,
   forwardFailureLog,
-  normalizeOrigin,
   submissionEmailSubject,
 } from "@/lib/deal-submission-forward";
 import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
@@ -78,15 +77,11 @@ export async function POST(request: Request) {
 
     // Save to Laravel before emailing, so a failed forward can change the
     // subject. The notification still goes out either way.
-    const adminApiUrl = process.env.ADMIN_API_URL;
-    const hostWarning = adminApiUrlWarning(adminApiUrl);
-    if (hostWarning) console.warn(hostWarning);
-
-    const origin = normalizeOrigin(adminApiUrl);
-    let forwardFailed = !origin;
-    if (!origin) {
-      console.error("Deal submission forward failed", forwardFailureLog(0, "ADMIN_API_URL is unset"));
-    } else {
+    // Host is https://bizzy-deals.com unless DEAL_SUBMISSIONS_API_URL is set.
+    // The shared admin-host env var is not read here. TrustHosts 404s any other host.
+    const origin = dealSubmissionsForwardOrigin(process.env.DEAL_SUBMISSIONS_API_URL);
+    let forwardFailed = false;
+    {
       let dealImageUrl = "";
       let logoUrl = "";
 

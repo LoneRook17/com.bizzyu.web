@@ -6,26 +6,24 @@ import { fileURLToPath } from "node:url"
 import {
   TRUSTED_DEAL_SUBMISSIONS_ORIGIN,
   DEAL_SUBMISSIONS_FORWARD_HEADERS,
-  adminApiUrlWarning,
+  dealSubmissionsForwardOrigin,
   forwardFailureLog,
-  normalizeOrigin,
   submissionEmailSubject,
 } from "./deal-submission-forward.ts"
 
-test("trusted origin is https://bizzy-deals.com with no trailing slash", () => {
-  assert.equal(normalizeOrigin("https://bizzy-deals.com/"), TRUSTED_DEAL_SUBMISSIONS_ORIGIN)
-  assert.equal(adminApiUrlWarning("https://bizzy-deals.com"), null)
-  assert.equal(adminApiUrlWarning("https://bizzy-deals.com/"), null)
+test("forward origin defaults to https://bizzy-deals.com", () => {
+  assert.equal(dealSubmissionsForwardOrigin(undefined), TRUSTED_DEAL_SUBMISSIONS_ORIGIN)
+  assert.equal(dealSubmissionsForwardOrigin(null), "https://bizzy-deals.com")
+  assert.equal(dealSubmissionsForwardOrigin(""), "https://bizzy-deals.com")
+  assert.equal(dealSubmissionsForwardOrigin("   "), "https://bizzy-deals.com")
+  assert.equal(dealSubmissionsForwardOrigin("https://bizzy-deals.com/"), "https://bizzy-deals.com")
 })
 
-test("unset or non-trusted ADMIN_API_URL warns", () => {
-  assert.match(adminApiUrlWarning(undefined) ?? "", /unset/)
-  assert.match(adminApiUrlWarning("") ?? "", /unset/)
-  assert.match(adminApiUrlWarning("   ") ?? "", /unset/)
-  const wrong = adminApiUrlWarning("http://3.80.143.224")
-  assert.match(wrong ?? "", /not https:\/\/bizzy-deals.com/)
-  assert.match(wrong ?? "", /Bad hostname/)
-  assert.match(adminApiUrlWarning("http://bizzy-deals.com") ?? "", /not https:\/\/bizzy-deals.com/)
+test("DEAL_SUBMISSIONS_API_URL overrides the trusted origin when set", () => {
+  assert.equal(
+    dealSubmissionsForwardOrigin("http://127.0.0.1:8001/"),
+    "http://127.0.0.1:8001",
+  )
 })
 
 test("failed save is flagged in the email subject", () => {
@@ -53,5 +51,7 @@ test("the submissions route does not treat a failed forward as 201", () => {
   assert.match(src, /status: 502/)
   assert.match(src, /DEAL_SUBMISSIONS_FORWARD_HEADERS/)
   assert.match(src, /submissionEmailSubject\(forwardFailed/)
-  assert.match(src, /adminApiUrlWarning/)
+  assert.match(src, /dealSubmissionsForwardOrigin\(process\.env\.DEAL_SUBMISSIONS_API_URL\)/)
+  assert.equal(src.includes("process.env.ADMIN_API_URL"), false)
+  assert.equal(src.includes("ADMIN_API_URL"), false)
 })
