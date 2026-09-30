@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { formatAvailability } from "@/lib/types";
+import { dealSubmissionsApiOrigin } from "@/lib/deal-submissions-api";
 import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
@@ -122,44 +123,46 @@ export async function POST(request: Request) {
       console.error("Resend error:", emailError);
     }
 
-    // Upload images to S3, then forward submission to admin backend
-    const adminApiUrl = process.env.ADMIN_API_URL;
-    if (adminApiUrl) {
-      let dealImageUrl = "";
-      let logoUrl = "";
+    // Upload images to S3, then forward to Laravel POST /api/deal-submissions.
+    // Host is DEAL_SUBMISSIONS_API_URL, or https://bizzy-deals.com when unset.
+    // ADMIN_API_URL is not read: that Vercel var is shared config and must
+    // stay as-is. A missing host used to skip this whole block; the trusted
+    // default means the forward still runs.
+    const dealSubmissionsOrigin = dealSubmissionsApiOrigin(process.env.DEAL_SUBMISSIONS_API_URL)
+    let dealImageUrl = "";
+    let logoUrl = "";
 
-      // Try S3 upload, but don't let it block the forward
-      try {
-        if (media?.dealImageUrl?.startsWith("data:")) {
-          dealImageUrl = await uploadBase64ToS3(media.dealImageUrl, "deal-submissions/images");
-        } else if (media?.dealImageUrl) {
-          dealImageUrl = media.dealImageUrl;
-        }
-      } catch (s3Error) {
-        console.error("S3 image upload failed:", s3Error);
+    // Try S3 upload, but don't let it block the forward
+    try {
+      if (media?.dealImageUrl?.startsWith("data:")) {
+        dealImageUrl = await uploadBase64ToS3(media.dealImageUrl, "deal-submissions/images");
+      } else if (media?.dealImageUrl) {
+        dealImageUrl = media.dealImageUrl;
       }
+    } catch (s3Error) {
+      console.error("S3 image upload failed:", s3Error);
+    }
 
-      try {
-        if (media?.logoUrl?.startsWith("data:")) {
-          logoUrl = await uploadBase64ToS3(media.logoUrl, "deal-submissions/logos");
-        } else if (media?.logoUrl) {
-          logoUrl = media.logoUrl;
-        }
-      } catch (s3Error) {
-        console.error("S3 logo upload failed:", s3Error);
+    try {
+      if (media?.logoUrl?.startsWith("data:")) {
+        logoUrl = await uploadBase64ToS3(media.logoUrl, "deal-submissions/logos");
+      } else if (media?.logoUrl) {
+        logoUrl = media.logoUrl;
       }
+    } catch (s3Error) {
+      console.error("S3 logo upload failed:", s3Error);
+    }
 
-      // Always forward to admin, even without images
-      try {
-        const forwardRes = await fetch(`${adminApiUrl}/api/deal-submissions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business, deal, media: { dealImageUrl, logoUrl } }),
-        });
-        console.log("Forward status:", forwardRes.status);
-      } catch (forwardError) {
-        console.error("Failed to forward to admin API:", forwardError);
-      }
+    // Always forward, even without images
+    try {
+      const forwardRes = await fetch(`${dealSubmissionsOrigin}/api/deal-submissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business, deal, media: { dealImageUrl, logoUrl } }),
+      });
+      console.log("Forward status:", forwardRes.status);
+    } catch (forwardError) {
+      console.error("Failed to forward to admin API:", forwardError);
     }
 
     return NextResponse.json({ id: submissionId, status: "submitted" }, { status: 201 });
