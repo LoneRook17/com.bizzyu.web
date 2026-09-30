@@ -4,7 +4,7 @@
 
 Marketing and business signup website for Bizzy (bizzyu.com). Built with **Next.js 16** (App Router), **React 19**, **Tailwind CSS v4**, and **TypeScript**. Deployed on **Vercel**.
 
-This is a mostly static marketing site with a few server-side API routes for contact forms and deal submissions. It does **not** connect to the shared MySQL database directly — it calls the Laravel admin API (`ADMIN_API_URL`) to forward deal submissions.
+This is a mostly static marketing site with a few server-side API routes for contact forms and deal submissions. It does **not** connect to the shared MySQL database directly — `/api/submissions` forwards `/post-a-deal` submissions to Laravel `POST /api/deal-submissions` on `DEAL_SUBMISSIONS_API_URL` (default `https://bizzy-deals.com`). It does not read `ADMIN_API_URL`.
 
 ---
 
@@ -133,7 +133,7 @@ Uses **Next.js App Router** (not Pages Router). All routes are in `src/app/`.
 
 ### API Calls
 - **Outbound**: `trending-deals` route fetches from `https://bizzy-deals.com/api/home_deals` (production Laravel API)
-- **Submissions**: POST to `/api/submissions` → emails via Resend, uploads to S3, forwards to `ADMIN_API_URL`
+- **Submissions**: POST to `/api/submissions` → emails via Resend, uploads to S3, forwards to `DEAL_SUBMISSIONS_API_URL` (default `https://bizzy-deals.com`). Does not read `ADMIN_API_URL`.
 - **Contact forms**: POST to `/api/contact` or `/api/events-contact` → emails via Resend
 - No authentication on API routes (public forms)
 
@@ -155,8 +155,9 @@ AWS_SECRET_ACCESS_KEY=
 AWS_REGION=us-east-1        # default
 AWS_BUCKET=bizzy-dev         # default
 
-# Forwards deal submissions to Laravel admin backend
-ADMIN_API_URL=http://127.0.0.1:8001
+# Forwards /post-a-deal submissions to Laravel POST /api/deal-submissions.
+# Unset → https://bizzy-deals.com. Does not read ADMIN_API_URL.
+DEAL_SUBMISSIONS_API_URL=
 
 # Cloudflare Turnstile (public forms: contact, request-school, brands, ...)
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
