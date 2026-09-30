@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { formatAvailability } from "@/lib/types";
+import {
+  DEAL_SUBMISSIONS_FORWARD_HEADERS,
+  FORWARD_SAVE_ERROR,
+  adminApiUrlWarning,
+  forwardFailureLog,
+  normalizeOrigin,
+  submissionEmailSubject,
+} from "@/lib/deal-submission-forward";
 import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
@@ -68,18 +76,81 @@ export async function POST(request: Request) {
       }
     }
 
-    // Send notification email
-    const { error: emailError } = await getResend().emails.send({
+    // Save to Laravel before emailing, so a failed forward can change the
+    // subject. The notification still goes out either way.
+    const adminApiUrl = process.env.ADMIN_API_URL;
+    const hostWarning = adminApiUrlWarning(adminApiUrl);
+    if (hostWarning) console.warn(hostWarning);
+
+    const origin = normalizeOrigin(adminApiUrl);
+    let forwardFailed = !origin;
+    if (!origin) {
+      console.error("Deal submission forward failed", forwardFailureLog(0, "ADMIN_API_URL is unset"));
+    } else {
+      let dealImageUrl = "";
+      let logoUrl = "";
+
+      // Try S3 upload, but don't let it block the forward
+      try {
+        if (media?.dealImageUrl?.startsWith("data:")) {
+          dealImageUrl = await uploadBase64ToS3(media.dealImageUrl, "deal-submissions/images");
+        } else if (media?.dealImageUrl) {
+          dealImageUrl = media.dealImageUrl;
+        }
+      } catch (s3Error) {
+        console.error("S3 image upload failed:", s3Error);
+      }
+
+      try {
+        if (media?.logoUrl?.startsWith("data:")) {
+          logoUrl = await uploadBase64ToS3(media.logoUrl, "deal-submissions/logos");
+        } else if (media?.logoUrl) {
+          logoUrl = media.logoUrl;
+        }
+      } catch (s3Error) {
+        console.error("S3 logo upload failed:", s3Error);
+      }
+
+      try {
+        const forwardRes = await fetch(`${origin}/api/deal-submissions`, {
+          method: "POST",
+          headers: DEAL_SUBMISSIONS_FORWARD_HEADERS,
+          body: JSON.stringify({ business, deal, media: { dealImageUrl, logoUrl } }),
+        });
+        if (!forwardRes.ok) {
+          forwardFailed = true;
+          const text = await forwardRes.text();
+          console.error("Deal submission forward failed", forwardFailureLog(forwardRes.status, text));
+        } else {
+          console.log("Forward status:", forwardRes.status);
+        }
+      } catch (forwardError) {
+        forwardFailed = true;
+        const message = forwardError instanceof Error ? forwardError.message : "Forward request failed";
+        console.error("Deal submission forward failed", forwardFailureLog(0, message));
+      }
+    }
+
+    const emailHeading = forwardFailed ? "Deal submission was NOT saved" : "New Deal Submission";
+    const emailBanner = forwardFailed
+      ? `<p style="margin: 0 0 16px; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px;">This deal was not saved to the admin API. The business saw an error on the form. The forward status and body are in the server log.</p>`
+      : "";
+
+    // Notification email. A mail failure must not hide a successful save, and
+    // a failed save must still notify the team.
+    try {
+      const { error: emailError } = await getResend().emails.send({
       from: "Bizzy <support@no-reply.bizzyu.com>",
       to: ["Partnerships@BizzyU.com", "EvanMilionis@gmail.com"],
-      subject: `New Deal Submission: ${deal.title}: ${business.businessName}`,
+      subject: submissionEmailSubject(forwardFailed, deal.title, business.businessName),
       attachments,
       html: `
         <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #05EB54, #10b981); padding: 24px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 22px;">New Deal Submission</h1>
+            <h1 style="color: white; margin: 0; font-size: 22px;">${emailHeading}</h1>
           </div>
           <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+            ${emailBanner}
             <h2 style="color: #111; margin: 0 0 16px;">Business Info</h2>
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 6px 0; color: #6b7280; width: 140px;">Business Name</td><td style="padding: 6px 0; font-weight: 600;">${business.businessName}</td></tr>
@@ -118,48 +189,15 @@ export async function POST(request: Request) {
       `,
     });
 
-    if (emailError) {
-      console.error("Resend error:", emailError);
+      if (emailError) {
+        console.error("Resend error:", emailError);
+      }
+    } catch (emailErr) {
+      console.error("Resend error:", emailErr);
     }
 
-    // Upload images to S3, then forward submission to admin backend
-    const adminApiUrl = process.env.ADMIN_API_URL;
-    if (adminApiUrl) {
-      let dealImageUrl = "";
-      let logoUrl = "";
-
-      // Try S3 upload, but don't let it block the forward
-      try {
-        if (media?.dealImageUrl?.startsWith("data:")) {
-          dealImageUrl = await uploadBase64ToS3(media.dealImageUrl, "deal-submissions/images");
-        } else if (media?.dealImageUrl) {
-          dealImageUrl = media.dealImageUrl;
-        }
-      } catch (s3Error) {
-        console.error("S3 image upload failed:", s3Error);
-      }
-
-      try {
-        if (media?.logoUrl?.startsWith("data:")) {
-          logoUrl = await uploadBase64ToS3(media.logoUrl, "deal-submissions/logos");
-        } else if (media?.logoUrl) {
-          logoUrl = media.logoUrl;
-        }
-      } catch (s3Error) {
-        console.error("S3 logo upload failed:", s3Error);
-      }
-
-      // Always forward to admin, even without images
-      try {
-        const forwardRes = await fetch(`${adminApiUrl}/api/deal-submissions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ business, deal, media: { dealImageUrl, logoUrl } }),
-        });
-        console.log("Forward status:", forwardRes.status);
-      } catch (forwardError) {
-        console.error("Failed to forward to admin API:", forwardError);
-      }
+    if (forwardFailed) {
+      return NextResponse.json({ error: FORWARD_SAVE_ERROR }, { status: 502 });
     }
 
     return NextResponse.json({ id: submissionId, status: "submitted" }, { status: 201 });
