@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import type { MediaInfo } from "@/lib/types";
+import { IMAGE_STILL_TOO_LARGE, compressImageFile } from "@/lib/compress-image";
 
 interface StepMediaProps {
   data: MediaInfo;
@@ -27,17 +28,23 @@ function ImageUpload({
   aspect: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        onUpload(reader.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    setError("");
+    setBusy(true);
+    try {
+      onUpload(await compressImageFile(file));
+    } catch (err) {
+      onClear();
+      setError(err instanceof Error ? err.message : IMAGE_STILL_TOO_LARGE);
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
   };
 
   return (
@@ -80,9 +87,13 @@ function ImageUpload({
         ref={inputRef}
         type="file"
         accept="image/*"
-        onChange={handleFile}
+        onChange={(e) => {
+          void handleFile(e);
+        }}
         className="hidden"
       />
+      {busy && <p className="mt-2 text-xs text-muted">Preparing image…</p>}
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );
 }

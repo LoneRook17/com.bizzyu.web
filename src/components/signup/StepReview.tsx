@@ -51,8 +51,12 @@ export default function StepReview({
     setError("");
     try {
       await onSubmit();
-    } catch {
-      setError("Something went wrong. Please try again or email us at Partnerships@BizzyU.com.");
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Something went wrong. Please try again or email us at Partnerships@BizzyU.com.",
+      );
       setSubmitting(false);
     }
   };

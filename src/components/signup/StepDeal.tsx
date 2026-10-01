@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import type { DealAvailability, DealInfo, MediaInfo } from "@/lib/types";
 import { DAY_OPTIONS, REDEMPTION_OPTIONS, formatAvailability } from "@/lib/types";
+import { IMAGE_STILL_TOO_LARGE, compressImageFile } from "@/lib/compress-image";
 
 interface StepDealProps {
   data: DealInfo;
@@ -27,6 +28,24 @@ export default function StepDeal({
 }: StepDealProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
+
+  const onPickImage = async (file: File | undefined) => {
+    if (!file) return;
+    setImageError("");
+    setImageBusy(true);
+    try {
+      const dataUrl = await compressImageFile(file);
+      onMediaChange({ ...mediaData, dealImageUrl: dataUrl });
+    } catch (err) {
+      onMediaChange({ ...mediaData, dealImageUrl: "" });
+      setImageError(err instanceof Error ? err.message : IMAGE_STILL_TOO_LARGE);
+    } finally {
+      setImageBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const update = (field: keyof DealInfo, value: string) =>
     onChange({ ...data, [field]: value });
@@ -337,18 +356,16 @@ export default function StepDeal({
           type="file"
           accept="image/*"
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              if (typeof reader.result === "string") {
-                onMediaChange({ ...mediaData, dealImageUrl: reader.result });
-              }
-            };
-            reader.readAsDataURL(file);
+            void onPickImage(e.target.files?.[0]);
           }}
           className="hidden"
         />
+        {imageBusy && (
+          <p className="mt-2 text-xs text-muted">Preparing image…</p>
+        )}
+        {imageError && (
+          <p className="mt-2 text-xs text-red-600">{imageError}</p>
+        )}
       </div>
 
       <div className="flex gap-3 mt-2">
@@ -362,10 +379,10 @@ export default function StepDeal({
         )}
         <button
           onClick={onNext}
-          disabled={!canContinue}
+          disabled={!canContinue || imageBusy}
           className={`${onBack ? "flex-1" : "w-full"} py-3.5 bg-primary text-ink font-semibold rounded-full hover:brightness-110 transition-all shadow-lg shadow-primary/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer`}
         >
-          Continue
+          {imageBusy ? "Preparing image…" : "Continue"}
         </button>
       </div>
     </div>
