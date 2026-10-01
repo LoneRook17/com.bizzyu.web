@@ -125,6 +125,39 @@ test("WC night manage: no door code, Scan tile stays, redemption list is view-on
   assert.ok(src.includes("Open redemption list"), "WC header CTA stays the redemption list")
 })
 
+test("WC Access extras hide the door check-in blurb; the manage page keeps its tools", () => {
+  // Luke lock (2026-10-01, parity with Flutter #228): create and Edit program
+  // share DoorAccessWizard -> WcDoorStep, so hiding it once covers both.
+  const door = read("src/components/business/v2/door-access/WcDoorStep.tsx")
+  assert.ok(!door.includes("At the door"), "no At the door heading on the WC extras step")
+  assert.ok(!door.includes("Guests scan with any phone camera"), "no camera blurb on the WC extras step")
+  assert.ok(!door.includes("How does door check-in work?"), "the check-in info tip went with the heading")
+  assert.ok(!/phone camera/i.test(door), "no camera copy left behind on the WC extras step")
+  assert.ok(door.includes(">Promoter<"), "Promoter block stays")
+  assert.ok(door.includes("Enable promoter program"), "promoter toggle stays")
+  assert.ok(door.includes("<WcPromoCodesDraft"), "Promo codes stay")
+
+  const review = read("src/components/business/v2/door-access/WcReviewStep.tsx")
+  assert.ok(!review.includes("At the door"), "Look it over drops the door sentence")
+  assert.ok(!/phone camera/i.test(review), "Look it over drops the camera sentence")
+  assert.ok(review.includes("Promoter on."), "promoter summary stays on Look it over")
+  assert.ok(review.includes("Promoter off."), "promoter summary stays on Look it over")
+
+  const wizard = read("src/components/business/v2/door-access/DoorAccessWizard.tsx")
+  assert.ok(wizard.includes("<WcDoorStep"), "the wizard still mounts the extras step")
+  for (const page of [
+    "src/app/business/(dashboard)/door-access/new/page.tsx",
+    "src/app/business/(dashboard)/door-access/[id]/edit/page.tsx",
+  ]) {
+    assert.ok(read(page).includes("<DoorAccessWizard"), `${page} goes through the shared wizard`)
+  }
+
+  // Out of scope and must survive: the operational check-in tools on a night.
+  const manage = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
+  assert.ok(manage.includes('title="At the door"'), "manage page keeps its At the door section")
+  assert.ok(manage.includes("Guests scan with any phone camera"), "manage page keeps the camera reminder")
+})
+
 test("WC night manage is pink end to end — never Bizzy green", () => {
   const src = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
   assert.ok(src.includes("WeeklyCoverAccent"), "the WC subtree gets the access accent provider")
