@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { NationalDeal } from "@/lib/brands/nationalDeals";
 
 /**
@@ -14,7 +15,10 @@ export default function BrandLogoStrip({ deals, limit = 24 }: { deals: NationalD
   return (
     <section className="bg-white border-y border-gray-100 overflow-hidden py-8 md:py-10" aria-label="Brands already on Bizzy">
       <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-primary-dark mb-6 px-6">
-        {logos.length}+ brands students already claim on Bizzy
+        {logos.length}+ brands students already claim on Bizzy.{" "}
+        <Link href="/deals" className="underline underline-offset-4 hover:text-ink transition-colors">
+          See the full list
+        </Link>
       </p>
       <div className="relative">
         <div className="absolute left-0 top-0 bottom-0 w-20 md:w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
