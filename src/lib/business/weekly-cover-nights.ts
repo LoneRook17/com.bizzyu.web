@@ -215,8 +215,21 @@ export function defaultTierName(kind: NightTierKind): string {
   return kind === "skip" ? "Skip the Line" : "Cover"
 }
 
-/** `{Venue} {Day} Cover` / `{Venue} {Day} Skip the Line` when both are known. */
-export function defaultTierNameForNight(
+/**
+ * Placeholder for a blank tier name field. Hint text only, never the stored
+ * value: a blank name saves as `defaultTierName(kind)`.
+ */
+export function wcTicketNamePlaceholder(kind: NightTierKind): string {
+  return kind === "skip" ? "Skip the Line name" : "Cover name"
+}
+
+/**
+ * The pre-lock stamp shape, `{Venue} {Day} Cover` / `{Venue} {Day} Skip the
+ * Line`. READ-SIDE ONLY (naming lock, Luke 2026-10-01): it exists so
+ * `looksLikeDefaultTierName` can recognise what the old seed wrote as system
+ * text. Nothing writes a name through this any more.
+ */
+export function legacyDefaultTierNameForNight(
   kind: NightTierKind,
   opts?: { venueName?: string; dayName?: string },
 ): string {
@@ -229,14 +242,33 @@ export function defaultTierNameForNight(
   return suffix
 }
 
+const WEEKDAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+/**
+ * System text, not something a host typed: blank, the plain kind default, or
+ * a legacy stamp (`{Day} Cover`, `{Venue} {Day} Cover`, `{Venue} Cover`).
+ * Any weekday counts, so a copied "… Thursday Cover" is still system text on a
+ * Friday. The venue-only shape needs `venueName`, otherwise a host-typed
+ * "Ladies Night Cover" would be swallowed.
+ */
 export function looksLikeDefaultTierName(
   name: string | null | undefined,
   kind: NightTierKind,
+  opts?: { venueName?: string },
 ): boolean {
-  const trimmed = String(name ?? "").trim()
-  if (trimmed === "") return true
-  if (trimmed === defaultTierName(kind)) return true
-  return trimmed.endsWith(` ${defaultTierName(kind)}`)
+  const lowered = String(name ?? "").trim().toLowerCase()
+  if (lowered === "") return true
+  const product = defaultTierName(kind).toLowerCase()
+  if (lowered === product || lowered === "weekly cover") return true
+  for (const day of WEEKDAY_NAMES) {
+    if (lowered === `${day} ${product}`) return true
+    if (lowered.endsWith(` ${day} ${product}`)) return true
+  }
+  const venue = (opts?.venueName ?? "").trim()
+  if (venue !== "") {
+    return lowered === legacyDefaultTierNameForNight(kind, { venueName: venue }).toLowerCase()
+  }
+  return false
 }
 
 /** Look it over suffix — same meaning, compact next to price / qty. */
@@ -356,13 +388,14 @@ export function setTierCustomDescription(tier: NightTierDraft, on: boolean): Nig
   return { ...tier, custom_description: true }
 }
 
-export function emptyTier(
-  kind: NightTierKind,
-  opts?: { venueName?: string; dayName?: string },
-): NightTierDraft {
+/**
+ * A new tier. The name starts BLANK (naming lock): the field shows a
+ * placeholder and a blank name saves as plain `Cover` / `Skip the Line`.
+ */
+export function emptyTier(kind: NightTierKind): NightTierDraft {
   return {
     kind,
-    name: defaultTierNameForNight(kind, opts),
+    name: "",
     description: "",
     priceInput: "",
     quantityInput: "0",
@@ -401,13 +434,8 @@ export function seedNightDraft(opts: {
   endTime: string
   is21Plus?: boolean
   inheritedFlyerUrl?: string
-  venueName?: string
-  dayName?: string
 }): NightDraft {
-  const tiers = seedTiersForProducts(opts.products ?? "cover").map((tier) => ({
-    ...tier,
-    name: defaultTierNameForNight(tier.kind, { venueName: opts.venueName, dayName: opts.dayName }),
-  }))
+  const tiers = seedTiersForProducts(opts.products ?? "cover")
   return {
     startTime: opts.startTime,
     endTime: opts.endTime,
@@ -428,23 +456,20 @@ export function cloneNightDraft(draft: NightDraft): NightDraft {
 }
 
 /**
- * Copy one weekday's setup onto another, re-deriving day-specific NAMES so
- * "Thursday Cover" becomes "Friday Cover". Prices, hours, surge, 21+ and any
- * host-written description come across untouched (O1: descriptions are never
- * regenerated); artwork does not — a flyer is chosen for a night, not
- * inherited sideways from one.
+ * Copy one weekday's setup onto another. Prices, hours, surge, 21+, a
+ * host-typed name and any host-written description come across untouched
+ * (O1: descriptions are never regenerated). System-text names go BLANK so a
+ * legacy "… Thursday Cover" never lands on a Friday and nothing re-stamps
+ * venue or day (naming lock): blank saves as plain Cover / Skip the Line.
+ * Artwork does not come across — a flyer is chosen for a night, not inherited
+ * sideways from one.
  */
-export function copyNightToDay(
-  source: NightDraft,
-  opts: { venueName?: string; dayName?: string }
-): NightDraft {
+export function copyNightToDay(source: NightDraft, opts?: { venueName?: string }): NightDraft {
   const next = cloneNightDraft(source)
   next.flyerImageUrl = ""
   next.flyerRemoved = false
   for (const tier of next.tiers) {
-    if (looksLikeDefaultTierName(tier.name, tier.kind)) {
-      tier.name = defaultTierNameForNight(tier.kind, opts)
-    }
+    if (looksLikeDefaultTierName(tier.name, tier.kind, opts)) tier.name = ""
   }
   return next
 }
@@ -518,7 +543,9 @@ export function tierToWire(tier: NightTierDraft): NightTierWire {
   const description = tierHasCustomDescription(tier) ? tier.description.trim() : ""
   return {
     tier_key: resolveTierKey(tier.kind, tier.tier_key),
-    name: tier.name.trim() || defaultTierNameForNight(tier.kind),
+    // Naming lock: a typed name goes out trimmed as-is; blank is the plain kind
+    // default. Never venue, never weekday, nothing appended.
+    name: tier.name.trim() || defaultTierName(tier.kind),
     description: description === "" ? null : description,
     price_usd: price,
     quantity: parseCount(tier.quantityInput),

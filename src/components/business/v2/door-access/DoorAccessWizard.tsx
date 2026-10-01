@@ -624,7 +624,6 @@ export function DoorAccessWizard({
               defaultStartTime=""
               defaultEndTime=""
               programIs21Plus={false}
-              venueName={scopedVenueName}
               inheritedFlyerUrl={currentVenue?.photo_url || ""}
             />
           </CardContent>
