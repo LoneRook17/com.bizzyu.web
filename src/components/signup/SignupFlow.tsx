@@ -35,7 +35,14 @@ export default function SignupFlow({ universities }: SignupFlowProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...formData, turnstileToken, website_url: honeypot }),
     });
-    if (!res.ok) throw new Error("Submission failed");
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      const message =
+        data && typeof data.error === "string" && data.error
+          ? data.error
+          : "Submission failed";
+      throw new Error(message);
+    }
     setSubmitted(true);
     setStep(4);
   };
