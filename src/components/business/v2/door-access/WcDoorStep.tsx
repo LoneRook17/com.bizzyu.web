@@ -12,9 +12,13 @@ import { Input } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 
 /**
- * Flutter extras step: At the door, promoter toggle, program-scoped promo
- * codes. Scan Window lives on the weekday ticket step. Less body text; (i)
- * for leftover help.
+ * Flutter extras step: promoter toggle and program-scoped promo codes. Scan
+ * Window lives on the weekday ticket step. Less body text; (i) for leftover
+ * help.
+ *
+ * Luke lock (2026-10-01): no check-in blurb on this step, for create and Edit
+ * program alike (both mount this through DoorAccessWizard). Check-in tools
+ * live on the night manage page. Do not re-add the camera line here.
  */
 export function WcDoorStep({
   promotionEnabled,
@@ -48,20 +52,6 @@ export function WcDoorStep({
   const showPromoterExtras = promoterExtrasVisible(promotionEnabled, promoToggleDisabled)
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-            At the door
-          </h2>
-          <AccessInfoTip label="How does door check-in work?">
-            Any phone camera opens the pass. Staff do not need the Bizzy scanner app or a login.
-          </AccessInfoTip>
-        </div>
-        <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
-          Guests scan with any phone camera and tap Check In.
-        </p>
-      </div>
-
       <div>
         <div className="flex items-center gap-1.5">
           <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Promoter</h3>

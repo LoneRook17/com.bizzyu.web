@@ -15,6 +15,7 @@ import {
   tierHasCustomDescription,
   trimMoney,
   validateNightDraft,
+  wcTicketNamePlaceholder,
   type NightDraft,
   type NightTierDraft,
   type NightTierKind,
@@ -35,6 +36,10 @@ import { ImageUpload } from "@/components/business/v2/events/ImageUpload"
  * same-night / next-morning. Custom description is off by default; on fills
  * the default template into What they get. Persist path is still
  * weekday_edits.tiers[].description.
+ *
+ * Naming lock (Luke 2026-10-01): every tier has a Name field. A new tier
+ * starts blank with a placeholder; blank saves as plain Cover / Skip the
+ * Line, a typed name saves trimmed as-is. Nothing seeds venue or weekday.
  */
 
 const OFFSET_OPTIONS = [
@@ -68,7 +73,6 @@ export function NightEditorDialog({
   title,
   subtitle,
   initial,
-  venueName,
   dayName,
   saveLabel,
   showClosedToggle = false,
@@ -80,7 +84,6 @@ export function NightEditorDialog({
   title: string
   subtitle: string
   initial: NightDraft
-  venueName?: string
   dayName?: string
   saveLabel: string
   showClosedToggle?: boolean
@@ -114,7 +117,7 @@ export function NightEditorDialog({
     })
 
   const addTier = (kind: NightTierKind) =>
-    setDraft((d) => ({ ...d, tiers: [...d.tiers, emptyTier(kind, { venueName, dayName })] }))
+    setDraft((d) => ({ ...d, tiers: [...d.tiers, emptyTier(kind)] }))
 
   const removeTier = (index: number) =>
     setDraft((d) => ({ ...d, tiers: d.tiers.filter((_, i) => i !== index) }))
@@ -206,7 +209,11 @@ export function NightEditorDialog({
     // Per-ticket 21+: the night flag follows the ALL rule (every enabled tier
     // 21+), never the old ANY rollup. An explicit night-level 21+ still wins.
     const is21 = draft.is21Plus || allEnabledTiers21Plus(draft.tiers)
-    onSave({ ...cloneNightDraft(draft), is21Plus: is21 })
+    // Naming lock: a typed name is kept trimmed as-is; whitespace-only is
+    // blank, which saves as plain Cover / Skip the Line.
+    const saved = cloneNightDraft(draft)
+    saved.tiers = saved.tiers.map((tier) => ({ ...tier, name: tier.name.trim() }))
+    onSave({ ...saved, is21Plus: is21 })
     onOpenChange(false)
   }
 
@@ -262,12 +269,25 @@ export function NightEditorDialog({
                           <button
                             type="button"
                             onClick={() => removeTier(i)}
-                            aria-label={`Remove ${tier.name || defaultTierName(tier.kind)}`}
+                            aria-label={`Remove ${tier.name.trim() || defaultTierName(tier.kind)}`}
                             className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-red-950/40 hover:text-red-400"
                           >
                             <Trash2 className="size-3.5" />
                           </button>
                         )}
+                      </div>
+
+                      <div className="mb-3">
+                        <Label htmlFor={`wc-tier-name-${i}`} className="mb-1 block text-xs text-neutral-400">
+                          Name
+                        </Label>
+                        <Input
+                          id={`wc-tier-name-${i}`}
+                          value={tier.name}
+                          placeholder={wcTicketNamePlaceholder(tier.kind)}
+                          autoComplete="off"
+                          onChange={(e) => patchTier(i, { name: e.target.value })}
+                        />
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">

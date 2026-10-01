@@ -29,6 +29,8 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import {
   allEnabledTiers21Plus,
   allProgramTiers21Plus,
@@ -39,7 +41,9 @@ import {
   copyNightToDay,
   dateEditsToWire,
   daysQuestion,
-  defaultTierNameForNight,
+  defaultTierName,
+  legacyDefaultTierNameForNight,
+  looksLikeDefaultTierName,
   reviewFormatLabel,
   setTierCustomDescription,
   tierHasCustomDescription,
@@ -75,6 +79,7 @@ import {
   tierToWire,
   trimMoney,
   validateNightDraft,
+  wcTicketNamePlaceholder,
   weekdayDraftFromWire,
   weekdayEditsFromNights,
   weekdayEditsToWire,
@@ -178,7 +183,7 @@ test("Look it over flyer follows the selected weekday", () => {
 
 test("copying a weekday onto another does not carry its artwork", () => {
   const source = night({ flyerImageUrl: "https://cdn/friday.jpg", tiers: [tier({ priceInput: "20" })] })
-  const copied = copyNightToDay(source, { venueName: "The Bar", dayName: "Saturday" })
+  const copied = copyNightToDay(source, { venueName: "The Bar" })
   assert.equal(copied.flyerImageUrl, "")
   assert.equal(copied.flyerRemoved, false)
   // Prices DO come across — that is the point of Copy.
@@ -186,7 +191,7 @@ test("copying a weekday onto another does not carry its artwork", () => {
   assert.equal(copied.tiers[0].description, "", "custom description stays off when the source had none")
 })
 
-test("copying a weekday carries a custom description verbatim and re-derives default names", () => {
+test("copying a weekday carries a custom description verbatim and never re-stamps venue or day", () => {
   const source = night({
     tiers: [
       tier({
@@ -197,10 +202,37 @@ test("copying a weekday carries a custom description verbatim and re-derives def
       }),
     ],
   })
-  const copied = copyNightToDay(source, { venueName: "The Bar", dayName: "Saturday" })
-  assert.equal(copied.tiers[0].name, "The Bar Saturday Cover")
+  const copied = copyNightToDay(source, { venueName: "The Bar" })
+  // Naming lock: a legacy "… Friday Cover" must not land on Saturday, and
+  // nothing writes "The Bar Saturday Cover" in its place. Blank = Cover.
+  assert.equal(copied.tiers[0].name, "")
+  assert.equal(tierToWire(copied.tiers[0]).name, "Cover")
   assert.equal(copied.tiers[0].description, "Free shot before midnight", "O1: host text is never regenerated")
   assert.equal(copied.tiers[0].custom_description, true)
+})
+
+test("copying a weekday keeps a host-typed name and blanks only system text", () => {
+  const source = night({
+    tiers: [
+      tier({ name: "Ladies Night Cover", priceInput: "5" }),
+      tier({ name: "Cover", priceInput: "10" }),
+      tier({ kind: "skip", name: "Old Venue Thursday Skip the Line", priceInput: "25" }),
+      tier({ kind: "skip", name: "Front Door", priceInput: "30" }),
+    ],
+  })
+  const copied = copyNightToDay(source, { venueName: "The Bar" })
+  assert.deepEqual(
+    copied.tiers.map((t) => t.name),
+    ["Ladies Night Cover", "", "", "Front Door"],
+  )
+  assert.deepEqual(
+    copied.tiers.map((t) => tierToWire(t).name),
+    ["Ladies Night Cover", "Cover", "Skip the Line", "Front Door"],
+  )
+  for (const t of copied.tiers) {
+    const wire = tierToWire(t).name
+    assert.ok(!/The Bar|Friday|Saturday/.test(wire), `copy invented a venue/day name: ${wire}`)
+  }
 })
 
 // ── 2. Surge, both directions ───────────────────────────────────────────────
@@ -629,8 +661,6 @@ test("toggling Cover included flips the flag and NEVER touches the description",
     products: "skip",
     startTime: "21:00",
     endTime: "02:00",
-    venueName: "The Bar",
-    dayName: "Friday",
   })
   assert.equal(seeded.tiers[0].includes_cover, true)
   assert.equal(seeded.tiers[0].description, "", "fresh create leaves Custom description off")
@@ -654,12 +684,10 @@ test("toggling Cover included flips the flag and NEVER touches the description",
 })
 
 test("create payload carries the host's description or null — never canned copy", () => {
-  const venue = { venueName: "The Bar", dayName: "Friday" }
   const onNight = seedNightDraft({
     products: "both",
     startTime: "21:00",
     endTime: "02:00",
-    ...venue,
   })
   const skipOn = onNight.tiers.find((t) => t.kind === "skip")
   assert.ok(skipOn)
@@ -1079,23 +1107,81 @@ test("weekdayDraftFromWire keeps the weekday poster when it matches the program 
   assert.equal(draft.flyerImageUrl, "https://cdn/thursday.jpg")
 })
 
-test("default ticket names are {Venue} {Day} Cover / Skip the Line", () => {
-  assert.equal(defaultTierNameForNight("cover", { venueName: "The Bar", dayName: "Friday" }), "The Bar Friday Cover")
-  assert.equal(
-    defaultTierNameForNight("skip", { venueName: "The Bar", dayName: "Friday" }),
-    "The Bar Friday Skip the Line",
-  )
-  const seeded = seedNightDraft({
-    products: "both",
-    startTime: "21:00",
-    endTime: "02:00",
-    venueName: "The Bar",
-    dayName: "Friday",
-  })
+// ── Naming lock (Luke 2026-10-01, parity with Flutter #228) ─────────────────
+
+test("naming lock: new tiers start blank and save as plain Cover / Skip the Line", () => {
+  assert.equal(defaultTierName("cover"), "Cover")
+  assert.equal(defaultTierName("skip"), "Skip the Line")
+  assert.equal(wcTicketNamePlaceholder("cover"), "Cover name")
+  assert.equal(wcTicketNamePlaceholder("skip"), "Skip the Line name")
+
+  assert.equal(emptyTier("cover").name, "", "Add another Cover opens a blank name")
+  assert.equal(emptyTier("skip").name, "")
+  assert.deepEqual(seedTiersForProducts("both").map((t) => t.name), ["", ""])
+
+  const seeded = seedNightDraft({ products: "both", startTime: "21:00", endTime: "02:00" })
+  assert.deepEqual(seeded.tiers.map((t) => t.name), ["", ""], "no {Venue} {Day} seed")
   assert.deepEqual(
-    seeded.tiers.map((t) => t.name),
-    ["The Bar Friday Cover", "The Bar Friday Skip the Line"],
+    seeded.tiers.map((t) => tierToWire(t).name),
+    ["Cover", "Skip the Line"],
+    "blank on save is the plain kind default",
   )
+  assert.equal(tierToWire(tier({ name: "   " })).name, "Cover", "whitespace is blank")
+
+  const tickets = templateTicketsFromNights({
+    daysOfWeek: [5],
+    weekdayEdits: { 5: seeded },
+    fallbackTiers: seedTiersForProducts("both"),
+  })
+  assert.deepEqual(tickets.map((t) => t.name), ["Cover", "Skip the Line"], "template tickets get the lock names")
+})
+
+test("naming lock: a typed name saves trimmed as-is, nothing prefixed or appended", () => {
+  assert.equal(tierToWire(tier({ name: "  Ladies Night  " })).name, "Ladies Night")
+  assert.equal(tierToWire(tier({ kind: "skip", name: "Front Door" })).name, "Front Door", "no Skip the Line suffix")
+  assert.equal(
+    tierToWire(tier({ name: "The Bar Friday Cover" })).name,
+    "The Bar Friday Cover",
+    "a stored legacy name round-trips untouched: no rename of live rows from this client",
+  )
+  assert.equal(tierFromWire({ kind: "cover", name: "The Bar Friday Cover" }).name, "The Bar Friday Cover")
+})
+
+test("naming lock: legacy {Venue} {Day} shapes are read-side recognition only", () => {
+  assert.equal(
+    legacyDefaultTierNameForNight("cover", { venueName: "The Bar", dayName: "Friday" }),
+    "The Bar Friday Cover",
+  )
+  for (const name of ["", "  ", "Cover", "cover", "Weekly Cover", "Friday Cover", "The Bar Friday Cover", "Old Venue Monday Cover"]) {
+    assert.equal(looksLikeDefaultTierName(name, "cover"), true, `"${name}" is system text`)
+  }
+  assert.equal(looksLikeDefaultTierName("The Bar Thursday Skip the Line", "skip"), true)
+  assert.equal(looksLikeDefaultTierName("Skip the Line", "skip"), true)
+  // Venue-only legacy stamp needs the venue to be known.
+  assert.equal(looksLikeDefaultTierName("The Bar Cover", "cover", { venueName: "The Bar" }), true)
+  assert.equal(looksLikeDefaultTierName("The Bar Cover", "cover"), false)
+  // Host-typed names are never swallowed.
+  for (const name of ["Ladies Night Cover", "Ladies Night", "Early Bird", "Cover Charge"]) {
+    assert.equal(looksLikeDefaultTierName(name, "cover", { venueName: "The Bar" }), false, `"${name}" is host text`)
+  }
+  assert.equal(looksLikeDefaultTierName("Front Door", "skip"), false)
+})
+
+test("naming lock: WC editors never invent a venue/day ticket name", () => {
+  const dir = "../../components/business/v2/door-access/"
+  const read = (file: string) => readFileSync(fileURLToPath(new URL(dir + file, import.meta.url)), "utf8")
+  const lib = readFileSync(fileURLToPath(new URL("./weekly-cover-nights.ts", import.meta.url)), "utf8")
+  assert.ok(!/\bdefaultTierNameForNight\b/.test(lib), "the venue/day writer is gone from the lib")
+  for (const file of ["NightEditorDialog.tsx", "WcDatesStep.tsx", "WcNightsStep.tsx", "DoorAccessWizard.tsx"]) {
+    const src = read(file)
+    assert.ok(!/defaultTierNameForNight/i.test(src), `${file} must not build a venue/day ticket name`)
+  }
+  const dates = read("WcDatesStep.tsx")
+  assert.ok(!dates.includes("looksLikeDefaultTierName"), "game days do not rewrite names on seed")
+  const editor = read("NightEditorDialog.tsx")
+  assert.ok(editor.includes("wcTicketNamePlaceholder(tier.kind)"), "every tier has a Name field with the lock placeholder")
+  assert.ok(editor.includes("patchTier(i, { name: e.target.value })"), "the Name field writes the typed name as-is")
+  assert.ok(editor.includes("emptyTier(kind)"), "Add another Cover opens a blank name")
 })
 
 test("create derives {Venue} Cover and never asks for a typed name", () => {
