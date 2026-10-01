@@ -61,17 +61,12 @@ export function WcNightsStep({
       startTime: "",
       endTime: "",
       inheritedFlyerUrl,
-      venueName,
-      dayName: isoDayFull(day),
     })
 
   const copyFrom = (source: number, target: number) => {
     onChange({
       ...weekdayEdits,
-      [target]: copyNightToDay(weekdayEdits[source], {
-        venueName,
-        dayName: isoDayFull(target),
-      }),
+      [target]: copyNightToDay(weekdayEdits[source], { venueName }),
     })
   }
 
@@ -190,7 +185,6 @@ export function WcNightsStep({
           title={`${isoDayFull(editing)} Prices`}
           subtitle={`Every ${isoDayFull(editing)} gets these prices and hours.`}
           initial={seedFor(editing)}
-          venueName={venueName}
           dayName={isoDayFull(editing)}
           saveLabel={`Save ${isoDayFull(editing)}`}
           onSave={(next) => onChange({ ...weekdayEdits, [editing]: next })}

@@ -5,10 +5,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import {
   cloneNightDraft,
-  defaultTierNameForNight,
   fmtGameDay,
   isoWeekdayOfDate,
-  looksLikeDefaultTierName,
   nightPriceSummary,
   scheduledDates,
   seedNightDraft,
@@ -43,7 +41,6 @@ export function WcDatesStep({
   defaultStartTime,
   defaultEndTime,
   programIs21Plus,
-  venueName,
   inheritedFlyerUrl,
 }: {
   daysOfWeek: number[]
@@ -56,7 +53,6 @@ export function WcDatesStep({
   defaultStartTime: string
   defaultEndTime: string
   programIs21Plus: boolean
-  venueName?: string
   inheritedFlyerUrl?: string
 }) {
   const [editing, setEditing] = useState<string | null>(null)
@@ -101,27 +97,16 @@ export function WcDatesStep({
     const weekday = isoWeekdayOfDate(date)
     // Seed from that weekday's own setup, so the host only changes what differs.
     const fromWeekday = weekday == null ? undefined : weekdayEdits[weekday]
-    if (fromWeekday) {
-      // W13: a Saturday game day seeded from the Friday template must not keep
-      // "… Friday Cover" — re-derive default-looking names for THIS date's day.
-      // Host-typed names come across untouched.
-      const next = cloneNightDraft(fromWeekday)
-      const dayName = weekday == null ? undefined : isoDayFull(weekday)
-      for (const tier of next.tiers) {
-        if (looksLikeDefaultTierName(tier.name, tier.kind)) {
-          tier.name = defaultTierNameForNight(tier.kind, { venueName, dayName })
-        }
-      }
-      return next
-    }
+    // Naming lock: the date is always seeded from its OWN weekday, so names
+    // come across exactly as that weekday holds them (blank stays blank, a
+    // typed name stays typed). Nothing is re-stamped with venue or day.
+    if (fromWeekday) return cloneNightDraft(fromWeekday)
     return seedNightDraft({
       products,
       startTime: defaultStartTime || "",
       endTime: defaultEndTime || "",
       is21Plus: programIs21Plus,
       inheritedFlyerUrl,
-      venueName,
-      dayName: weekday == null ? undefined : isoDayFull(weekday),
     })
   }
 
@@ -253,7 +238,6 @@ export function WcDatesStep({
             isoWeekdayOfDate(editing) == null ? "night" : isoDayFull(isoWeekdayOfDate(editing)!)
           } keeps its weekly price.`}
           initial={seedFor(editing)}
-          venueName={venueName}
           dayName={isoWeekdayOfDate(editing) == null ? undefined : isoDayFull(isoWeekdayOfDate(editing)!)}
           saveLabel="Save this date"
           showClosedToggle

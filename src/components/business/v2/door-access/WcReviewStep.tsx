@@ -5,6 +5,7 @@ import { Image as ImageIcon } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ACCESS_ACCENT, ACCESS_INK, fmtTime, usdPrice } from "@/lib/business/door-access"
 import {
+  defaultTierName,
   derivedNight21Plus,
   nightPriceSummary,
   reviewFlyerUrlForDay,
@@ -137,7 +138,7 @@ export function WcReviewStep({
                     style={{ borderColor: `${ACCESS_ACCENT}40`, backgroundColor: `${ACCESS_ACCENT}10` }}
                   >
                     <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: ACCESS_ACCENT }}>
-                      {tier.name || (tier.kind === "skip" ? "Skip the Line" : "Cover")}
+                      {tier.name.trim() || defaultTierName(tier.kind)}
                     </p>
                     <p className="mt-1 text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                       {usdPrice(Number.parseFloat(tier.priceInput) || 0)}
@@ -175,7 +176,7 @@ export function WcReviewStep({
       ) : null}
 
       <p className="text-[13px] text-neutral-600 dark:text-neutral-400">
-        {promotionEnabled ? `Promoter on. ${commissionSummary}` : "Promoter off."} At the door: any phone camera, tap Check In.
+        {promotionEnabled ? `Promoter on. ${commissionSummary}` : "Promoter off."}
       </p>
     </div>
   )
