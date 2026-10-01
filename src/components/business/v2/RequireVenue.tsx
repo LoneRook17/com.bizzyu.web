@@ -8,9 +8,9 @@ import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 
 /**
- * Deals, events, and line skips are always attached to a venue - creation is
- * impossible without one. Wrap create pages in this guard so venueless
- * businesses get a clear next step instead of a dead-end form.
+ * Events, line skips, door access, and recurring series are attached to a
+ * venue. Deals are not — a shop with no venue can still create one, so do not
+ * wrap the deal form in this guard.
  */
 export default function RequireVenue({ children }: { children: React.ReactNode }) {
   const { venues, isLoading } = useVenue()
@@ -29,7 +29,7 @@ export default function RequireVenue({ children }: { children: React.ReactNode }
       <EmptyState
         icon={MapPin}
         title="Add your venue first"
-        description="Deals and events are always attached to a location. Set up your venue and you'll be back here in a minute."
+        description="Events and line skips need a location. Set up your venue and you'll be back here in a minute."
         action={
           <Button asChild>
             <Link href="/business/settings?action=add-venue">Set up venue</Link>
