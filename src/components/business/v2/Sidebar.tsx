@@ -7,11 +7,12 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Home, CalendarDays, Tag, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X, Banknote,
+  Sun, Moon, TicketPercent, Menu, X, Banknote, Building2, Loader2,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { canAccessPayouts } from "@/lib/business/payouts-access"
+import { showBusinessSwitcher } from "@/lib/business/business-switcher"
 import { useTheme } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
@@ -93,7 +94,9 @@ function initials(s?: string) {
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, business, isPending, logout } = useAuth()
+  const { user, business, availableBusinesses, isPending, logout, switchBusiness } = useAuth()
+  // business_id of the switch in flight, null when idle
+  const [switching, setSwitching] = useState<number | null>(null)
   const { venues, selectedVenue, selectedVenueId, isAllVenues, setSelectedVenue } = useVenue()
   const { resolvedTheme, setTheme } = useTheme()
   const { config } = useDashboardMode()
@@ -120,6 +123,48 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-8 w-auto" />
       </Link>
+
+      {/* business switcher - only for a user who belongs to more than one business */}
+      {showBusinessSwitcher(availableBusinesses) && (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Switch business"
+            className="mt-1 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-neutral-100 data-[state=open]:bg-neutral-100 dark:hover:bg-neutral-800/60 dark:data-[state=open]:bg-neutral-800/60"
+          >
+            <Building2 className="size-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
+            <span className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              {business?.name ?? "Select business"}
+            </span>
+            <ChevronsUpDown className="size-3 shrink-0 text-neutral-400" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[232px]">
+            <DropdownMenuLabel>Businesses</DropdownMenuLabel>
+            {availableBusinesses.map((b) => (
+              <DropdownMenuItem
+                key={b.business_id}
+                disabled={switching !== null}
+                onSelect={async (event) => {
+                  if (b.is_current || switching !== null) return
+                  // Keep the menu open so the spinner on this row stays visible
+                  // until the page navigates.
+                  event.preventDefault()
+                  setSwitching(b.business_id)
+                  try {
+                    await switchBusiness(b.business_id)
+                  } catch {
+                    // Refused or failed: still on the current business.
+                    setSwitching(null)
+                  }
+                }}
+              >
+                {switching === b.business_id ? <Loader2 className="animate-spin" /> : <Building2 />}
+                <span className="truncate">{b.name}</span>
+                {b.is_current && <Check className="ml-auto size-4 text-[#05EB54]" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       {/* venue switcher */}
       <DropdownMenu>

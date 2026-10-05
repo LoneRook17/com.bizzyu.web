@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { apiClient } from "./api-client"
 import { clearBizSession } from "./cookies"
 import { safeNextPath } from "./login-redirect"
-import type { BusinessUser, Business, AuthState, MeResponse } from "./types"
+import { performBusinessSwitch, readAvailableBusinesses } from "./business-switcher"
+import type { BusinessUser, Business, BusinessSummary, AuthState, MeResponse } from "./types"
 
 interface AuthContextValue extends AuthState {
   /**
@@ -18,6 +19,12 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>
   refreshProfile: () => Promise<void>
   applyBusinessPatch: (patch: Partial<Business>) => void
+  /**
+   * Switch the dashboard session to another business in `availableBusinesses`.
+   * On success the page hard-navigates to /business. On failure it rejects and
+   * the current session is untouched, so the caller only has to reset its UI.
+   */
+  switchBusiness: (businessId: number) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -32,6 +39,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter()
   const [user, setUser] = useState<BusinessUser | null>(null)
   const [business, setBusiness] = useState<Business | null>(null)
+  const [availableBusinesses, setAvailableBusinesses] = useState<BusinessSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const isAuthenticated = !!user
@@ -44,6 +52,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
       const data = await apiClient.get<MeResponse>("/business/auth/me")
       setUser(data.user)
       setBusiness(data.business)
+      setAvailableBusinesses(readAvailableBusinesses(data.available_businesses))
     } catch {
       // Access token may be expired - try refreshing before giving up
       try {
@@ -51,9 +60,11 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
         const data = await apiClient.get<MeResponse>("/business/auth/me")
         setUser(data.user)
         setBusiness(data.business)
+        setAvailableBusinesses(readAvailableBusinesses(data.available_businesses))
       } catch {
         setUser(null)
         setBusiness(null)
+        setAvailableBusinesses([])
         // Cooper (May 2026): use multi-variant clear so stale biz_session
         // cookies (set with different domain/path by older deployments) are
         // actually removed - otherwise middleware keeps the user "logged in"
@@ -89,6 +100,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     }
     setUser(null)
     setBusiness(null)
+    setAvailableBusinesses([])
     // Cooper (May 2026): see clearBizSession in lib/business/cookies.ts.
     clearBizSession()
     // Hard navigation so middleware re-evaluates cookie state from a fresh request.
@@ -103,11 +115,24 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     setBusiness((prev) => (prev ? { ...prev, ...patch } : prev))
   }
 
+  // Fail closed: a refused switch rejects before anything local changes. The
+  // hard navigation (not router.push) is what resets every provider and drops
+  // a ?venue_id that belonged to the business being left.
+  const switchBusiness = (businessId: number) =>
+    performBusinessSwitch(businessId, {
+      post: (path, body) => apiClient.post(path, body),
+      storage: typeof window !== "undefined" ? window.localStorage : null,
+      navigate: (path) => {
+        window.location.href = path
+      },
+    })
+
   return (
     <AuthContext.Provider
       value={{
         user,
         business,
+        availableBusinesses,
         isLoading,
         isAuthenticated,
         isPending,
@@ -115,6 +140,7 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
         logout,
         refreshProfile,
         applyBusinessPatch,
+        switchBusiness,
       }}
     >
       {children}

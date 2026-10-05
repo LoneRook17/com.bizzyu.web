@@ -76,6 +76,9 @@ export interface BusinessStripeAccount {
 export interface AuthState {
   user: BusinessUser | null
   business: Business | null
+  /** Businesses this user may open the dashboard as. Empty on a services
+   *  build without the switcher; the switcher renders only for more than one. */
+  availableBusinesses: BusinessSummary[]
   isLoading: boolean
   isAuthenticated: boolean
   isPending: boolean
@@ -145,9 +148,22 @@ export interface LoginResponse {
   tokens: { accessToken: string; refreshToken: string }
 }
 
+/** One entry of the dashboard business switcher (`/me.available_businesses`). */
+export interface BusinessSummary {
+  business_id: number
+  name: string
+  logo_url: string | null
+  /** The caller's role in THAT business. Promoter-only memberships are never listed. */
+  role: "owner" | "manager" | "staff"
+  status?: string
+  is_current: boolean
+}
+
 export interface MeResponse {
   user: BusinessUser
   business: Business
+  /** Optional: absent on a services build that predates the switcher. */
+  available_businesses?: BusinessSummary[]
 }
 
 // Event types
