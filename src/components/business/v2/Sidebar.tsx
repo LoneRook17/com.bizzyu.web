@@ -5,13 +5,14 @@ import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
-  Home, CalendarDays, Tag, Megaphone, BarChart3, Users, Settings,
+  Home, CalendarDays, GlassWater, Tag, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
   Sun, Moon, TicketPercent, Menu, X, Banknote, Building2, Loader2,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { canAccessPayouts } from "@/lib/business/payouts-access"
+import { isKnightBusiness } from "@/lib/business/knight"
 import { showBusinessSwitcher } from "@/lib/business/business-switcher"
 import { useTheme } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
@@ -29,7 +30,7 @@ type Feature = "showDeals" | "showEvents" | "showLineSkips" | "showRecurring"
 // on showLineSkips. They are simply no longer NAV features (D2-6).
 type BusinessRole = "owner" | "manager" | "staff" | "promoter"
 
-type NavContext = { role?: BusinessRole; canViewPayouts?: boolean }
+type NavContext = { role?: BusinessRole; canViewPayouts?: boolean; businessId?: number | null }
 
 type Item = {
   label: string
@@ -65,6 +66,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
   { items: [
     { label: "Home", href: "/business", icon: Home },
     { label: "Events", href: "/business/events", icon: CalendarDays, feature: "showEvents" },
+    { label: "Drinks", href: "/business/drinks", icon: GlassWater, show: (ctx) => isKnightBusiness(ctx.businessId != null ? { business_id: ctx.businessId } : null) },
     { label: "Deals", href: "/business/deals", icon: Tag, feature: "showDeals" },
   ] },
   { label: "Grow", items: [
@@ -105,7 +107,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const venueName = isAllVenues ? "All venues" : selectedVenue?.name ?? business?.name ?? "Select venue"
 
   const role = user?.business_role
-  const navContext: NavContext = { role, canViewPayouts: user?.can_view_payouts }
+  const navContext: NavContext = { role, canViewPayouts: user?.can_view_payouts, businessId: business?.business_id ?? null }
   const visibleGroups = GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
