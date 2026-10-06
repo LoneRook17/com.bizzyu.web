@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { apiClient } from "@/lib/business/api-client"
+import { isKnightBusiness } from "@/lib/business/knight"
+import FeaturedOnKnightSection from "@/components/business/v2/events/FeaturedOnKnightSection"
 import { EVENT_TABS } from "@/lib/business/constants"
 import type { EventListItem, BusinessProfile, RecurringSeriesListItem } from "@/lib/business/types"
 import {
@@ -89,7 +91,7 @@ import {
  * event row → its manage page. Nothing was rebuilt; the entry points moved.
  */
 export default function V2EventsPage() {
-  const { user, isPending } = useAuth()
+  const { user, business, isPending } = useAuth()
   const router = useRouter()
   const { venues, isAllVenues, selectedVenue, selectedVenueId, setSelectedVenue } = useVenue()
   const venueParam = useVenueParam()
@@ -350,6 +352,10 @@ export default function V2EventsPage() {
           ) : undefined
         }
       />
+
+      {/* Knight Library only: the Featured rail at the top of the Knight app's
+          Home (business_featured_events). Other businesses never mount this. */}
+      {isKnightBusiness(business) && <FeaturedOnKnightSection />}
 
       {/* Stripe Connect prompt */}
       {canCreate && !stripeOnboarded && !stripeBannerDismissed && (
