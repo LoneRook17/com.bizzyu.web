@@ -32,6 +32,15 @@ export type VipFloorPlanTable = {
   sort_order: number
 }
 
+export type VipFloorFeature = {
+  type: "bar" | "dj" | "stage" | "dance_floor" | "entrance" | "restroom" | "zone" | "other"
+  label: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 export type VipFloorPlan = {
   id: number
   venue_id: number | null
@@ -39,6 +48,7 @@ export type VipFloorPlan = {
   image_url: string | null
   image_width: number
   image_height: number
+  features?: VipFloorFeature[]
   tables: VipFloorPlanTable[]
 }
 

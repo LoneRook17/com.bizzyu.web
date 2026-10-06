@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { ImagePlus, Loader2, Pencil, Plus, Trash2, Wine } from "lucide-react"
+import { ImagePlus, LayoutGrid, Loader2, Pencil, Plus, Trash2, Wine } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import {
@@ -31,7 +31,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/b
 /**
  * VIP Tables — the venue's catalog: packages (what a table is sold as) and
  * the bottle menu (what a buyer picks from). Tables themselves live on the
- * floor map Bizzy builds; which tables sell on which night is set per event
+ * floor map (laid out in the map editor); which tables sell on which night is set per event
  * (Manage → VIP Tables).
  */
 
@@ -165,6 +165,27 @@ export default function VipTablesPage() {
   const [plan, setPlan] = useState<VipFloorPlan | null>(null)
   const [packages, setPackages] = useState<VipPackage[]>([])
   const [bottles, setBottles] = useState<VipBottle[]>([])
+  const [openingEditor, setOpeningEditor] = useState(false)
+
+  // The editor is its own page (shared with Bizzy admins). Open the tab first,
+  // inside the click, so a popup blocker lets it through; then point it at the
+  // editor once the one-business pass comes back.
+  const openMapEditor = useCallback(async () => {
+    const tab = window.open("", "_blank")
+    setOpeningEditor(true)
+    try {
+      const res = await apiClient.post<{ url: string }>(`${VIP_API}/map-editor-session`, {
+        venue_id: plan?.venue_id ?? undefined,
+      })
+      if (tab) tab.location.href = res.url
+      else window.location.href = res.url
+    } catch (err) {
+      tab?.close()
+      setLoadError(errorMessage(err, "Could not open the map editor. Try again."))
+    } finally {
+      setOpeningEditor(false)
+    }
+  }, [plan?.venue_id])
 
   const load = useCallback(async () => {
     setLoadError(null)
@@ -359,20 +380,27 @@ export default function VipTablesPage() {
       />
       {loadError && <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>}
 
-      {/* Floor map: read-only here, Bizzy builds and edits it. */}
+      {/* Floor map: laid out in the map editor; table photos are added here. */}
       <Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Floor map</h3>
             <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
               {plan
-                ? `${plan.tables.length} table${plan.tables.length === 1 ? "" : "s"} on the map. Add a photo of each table: buyers see it when they tap the table. To change the layout, send Bizzy the new floor plan.`
-                : "Bizzy has not built your floor map yet. Send a floor plan or photos and a list of tables with guest limits."}
+                ? `${plan.tables.length} table${plan.tables.length === 1 ? "" : "s"} on the map. Add a photo of each table: buyers see it when they tap the table.`
+                : "No floor map yet. Open the editor to lay out your tables, the bar, the DJ and the door."}
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canEdit && (
+              <Button size="sm" onClick={openMapEditor} disabled={openingEditor}>
+                {openingEditor ? <Loader2 className="animate-spin" /> : <LayoutGrid />} {plan ? "Edit floor map" : "Build floor map"}
+              </Button>
+            )}
           <Badge variant={settings.fee_is_default ? "neutral" : "info"}>
             Table fee {settings.fee_percentage}%{settings.fee_flat_usd ? ` + $${settings.fee_flat_usd}` : ""}
           </Badge>
+          </div>
         </div>
         {plan && plan.tables.length > 0 && (
           <ul className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
