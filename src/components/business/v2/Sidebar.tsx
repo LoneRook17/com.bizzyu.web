@@ -7,7 +7,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
   Home, CalendarDays, Tag, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
-  Sun, Moon, TicketPercent, Menu, X, Banknote,
+  Sun, Moon, TicketPercent, Menu, X, Banknote, Wine,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
@@ -70,6 +70,10 @@ const GROUPS: { label?: string; items: Item[] }[] = [
     { label: "Marketing", href: "/business/marketing", icon: Megaphone, lockWhenPending: true },
     { label: "Analytics", href: "/business/analytics", icon: BarChart3, lockWhenPending: true },
     { label: "Universal promo codes", href: "/business/promo-codes", icon: TicketPercent, feature: "showEvents" },
+    // VIP tables + bottle service: packages and the bottle menu. Per-event
+    // listing lives on the event Manage page. The page itself explains when
+    // Bizzy has not switched tables on for the business yet.
+    { label: "VIP Tables", href: "/business/vip-tables", icon: Wine, feature: "showEvents", lockWhenPending: true },
     // PAYOUTS-PER-PERSON-ACCESS: owner OR a member the owner has granted
     // (/me → can_view_payouts). Same predicate the /business/payouts route guard
     // uses, so the tab and the screen can never disagree.
