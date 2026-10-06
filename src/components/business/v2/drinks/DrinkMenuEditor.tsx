@@ -137,7 +137,7 @@ export default function DrinkMenuEditor() {
                 <Button
                   type="button"
                   size="sm"
-                  variant="neutral"
+                  variant="secondary"
                   disabled={busy}
                   onClick={() =>
                     void run(() =>
@@ -206,7 +206,7 @@ export default function DrinkMenuEditor() {
                     <Button
                       type="button"
                       size="sm"
-                      variant="neutral"
+                      variant="secondary"
                       disabled={busy}
                       onClick={() =>
                         void run(() =>
@@ -335,7 +335,7 @@ function ItemEditForm({
       <input className="rounded-md border px-3 py-1.5 text-sm" value={name} onChange={(e) => setName(e.target.value)} disabled={disabled} required maxLength={120} />
       <input className="rounded-md border px-3 py-1.5 text-sm" value={ingredients} onChange={(e) => setIngredients(e.target.value)} disabled={disabled} maxLength={512} />
       <input className="rounded-md border px-3 py-1.5 text-sm" value={price} onChange={(e) => setPrice(e.target.value)} disabled={disabled} maxLength={32} placeholder={section.price_label} />
-      <Button type="submit" size="sm" variant="neutral" disabled={disabled}>Save</Button>
+      <Button type="submit" size="sm" variant="secondary" disabled={disabled}>Save</Button>
     </form>
   )
 }
