@@ -7,7 +7,7 @@ import { isKnightBusiness } from "@/lib/business/knight"
 import DrinkMenuEditor from "@/components/business/v2/drinks/DrinkMenuEditor"
 
 /**
- * Knight-only Drinks tab. Other businesses never see the nav item; this page
+ * Knight-only Lib Menu tab. Other businesses never see the nav item; this page
  * also redirects Home if somehow reached.
  */
 export default function BusinessDrinksPage() {
