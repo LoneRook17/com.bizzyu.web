@@ -1,10 +1,17 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
+import { after } from "next/server"
+import { headers } from "next/headers"
 import {
   loadVenuePublicEventIdSet,
   weeklyCoverSaleOpenForPayloads,
 } from "@/lib/checkout/weekly-cover-sale"
+import {
+  buildCheckoutTarget,
+  logPromoterClick,
+  refFromSearchParams,
+} from "@/lib/checkout/forward-query"
 import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
@@ -97,10 +104,17 @@ export default async function PublicEventPage({ params, searchParams }: PageProp
     )
   }
 
-  const refRaw = sp?.ref
-  const ref = Array.isArray(refRaw) ? refRaw[0] : refRaw
-  redirect(
-    `${LARAVEL_CHECKOUT_BASE_URL}/checkout/${event.event_id}` +
-      (ref ? `?ref=${encodeURIComponent(ref)}` : ""),
-  )
+  // Log the ?ref click (promoter OR tracking link) AFTER the response flushes,
+  // same seam as /event/:id/checkout. Read the UA during render — headers()
+  // isn't available inside after(). Must stay AFTER the fail-closed WC check
+  // above so an ended night never logs a click or reaches Laravel.
+  const ref = refFromSearchParams(sp)
+  if (ref) {
+    const userAgent = (await headers()).get("user-agent")
+    after(() => logPromoterClick(ref, userAgent))
+  }
+
+  // Forward the FULL query string (ref + anything else, e.g. ticket_id or
+  // campaign tags), not just ?ref — previously extra params were dropped here.
+  redirect(buildCheckoutTarget(LARAVEL_CHECKOUT_BASE_URL, event.event_id, sp))
 }

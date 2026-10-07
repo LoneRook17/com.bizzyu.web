@@ -2,6 +2,11 @@ import { Metadata } from "next"
 import { after } from "next/server"
 import { headers } from "next/headers"
 import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
+import {
+  buildCheckoutTarget,
+  logPromoterClick,
+  refFromSearchParams,
+} from "@/lib/checkout/forward-query"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -43,35 +48,8 @@ const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 // Link-preview scrapers fetch this URL (for OG tags) when a link is pasted into
 // a chat — logging those would inflate the count, so we skip known bot/preview
 // user-agents and only count real navigations.
-const CLICK_BOT_UA =
-  /bot|crawler|spider|facebookexternalhit|facebot|slackbot|whatsapp|telegram|discord|twitterbot|linkedinbot|pinterest|embedly|iframely|applebot|bingbot|googlebot|skypeuripreview|vkshare|redditbot|preview/i
-
-async function logPromoterClick(ref: string, userAgent: string | null): Promise<void> {
-  // Only the promoter tracking-code shape (mirrors the services /p/:code param
-  // guard). Other ?ref values (e.g. an event-share user id) are left for the
-  // endpoint to 404 → harmless no-op, matching the app's ?ref handler.
-  if (!/^[A-Za-z0-9-]{1,64}$/.test(ref)) return
-  if (userAgent && CLICK_BOT_UA.test(userAgent)) return
-  try {
-    const ctl = new AbortController()
-    const timer = setTimeout(() => ctl.abort(), 2000)
-    try {
-      // POST (not the GET redirect) logs the click and returns JSON without a
-      // 302; a NULL idempotency token always logs (one real load = one click).
-      // Forward the visitor UA so the click row reflects the real client.
-      await fetch(`${API_URL}/p/${encodeURIComponent(ref)}`, {
-        method: "POST",
-        headers: userAgent ? { "user-agent": userAgent } : undefined,
-        cache: "no-store",
-        signal: ctl.signal,
-      })
-    } finally {
-      clearTimeout(timer)
-    }
-  } catch {
-    // Click logging is best-effort — never let it break the checkout redirect.
-  }
-}
+// The click-logging + query-forwarding helpers live in
+// src/lib/checkout/forward-query.ts (shared with /event/:id, unit-tested).
 
 async function getEventPreview(eventId: string): Promise<EventPreview | null> {
   try {
@@ -106,19 +84,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
-function buildQueryString(sp: Record<string, string | string[] | undefined>): string {
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(sp)) {
-    if (value === undefined) continue
-    if (Array.isArray(value)) {
-      for (const v of value) params.append(key, v)
-    } else {
-      params.set(key, value)
-    }
-  }
-  return params.toString()
-}
-
 export default async function EventCheckoutRedirect({ params, searchParams }: PageProps) {
   const { id } = await params
   const sp = await searchParams
@@ -126,15 +91,13 @@ export default async function EventCheckoutRedirect({ params, searchParams }: Pa
   // Log the promoter click (if this visit carries a ?ref code) AFTER the
   // response flushes, so it adds zero latency to the redirect. Read the UA
   // during render — headers() isn't available inside after().
-  const refRaw = sp.ref
-  const ref = Array.isArray(refRaw) ? refRaw[0] : refRaw
+  const ref = refFromSearchParams(sp)
   if (ref) {
     const userAgent = (await headers()).get("user-agent")
     after(() => logPromoterClick(ref, userAgent))
   }
 
-  const qs = buildQueryString(sp)
-  const target = `${laravelCheckoutBaseUrl()}/checkout/${id}${qs ? `?${qs}` : ""}`
+  const target = buildCheckoutTarget(laravelCheckoutBaseUrl(), id, sp)
   return (
     <>
       <meta httpEquiv="refresh" content={`0;url=${target}`} />
