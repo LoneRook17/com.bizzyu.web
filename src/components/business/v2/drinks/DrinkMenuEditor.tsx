@@ -6,6 +6,7 @@ import { apiClient } from "@/lib/business/api-client"
 import {
   effectivePrice,
   moveRow,
+  normalizePrice,
   type DrinkMenuItem,
   type DrinkMenuPayload,
   type DrinkMenuSection,
@@ -14,12 +15,16 @@ import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Button } from "@/components/business/v2/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/business/v2/ui/card"
 import { Badge } from "@/components/business/v2/ui/badge"
-import { Input, Select } from "@/components/business/v2/ui/input"
+import { Input } from "@/components/business/v2/ui/input"
 import { Label } from "@/components/business/v2/ui/label"
 import { cn } from "@/lib/v2/utils"
 
 /**
- * Knight-only drink menu editor. Talks to services `/business/drink-menu`.
+ * Knight-only Lib Menu editor. Talks to services `/business/drink-menu`.
+ *
+ * Sections carry only a title (price_label / kind stay in the API and DB,
+ * untouched by this form); item prices are normalized by `normalizePrice`
+ * on save ("5" → "$5"), and old rows are formatted the same way on display.
  *
  * View-first: each section/item shows a clean summary. Tap Edit to expand
  * fields in place — no always-on duplicate preview + form.
@@ -40,7 +45,7 @@ export default function DrinkMenuEditor() {
       const data = await apiClient.get<DrinkMenuPayload>("/business/drink-menu")
       setSections(data.sections ?? [])
     } catch (e: any) {
-      setError(e?.message || "Failed to load drink menu")
+      setError(e?.message || "Failed to load Lib Menu")
     } finally {
       setLoading(false)
     }
@@ -101,7 +106,7 @@ export default function DrinkMenuEditor() {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-sm text-neutral-500">
-        <Loader2 className="size-4 animate-spin" /> Loading drink menu…
+        <Loader2 className="size-4 animate-spin" /> Loading Lib Menu…
       </div>
     )
   }
@@ -109,8 +114,8 @@ export default function DrinkMenuEditor() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Drinks"
-        description="Knight Library chalkboard — active rows show in the app; hidden stay off the sheet."
+        title="Lib Menu"
+        description="Knight Library menu — active rows show in the app; hidden stay off the sheet."
       />
 
       {error && (
@@ -122,7 +127,7 @@ export default function DrinkMenuEditor() {
       {sections.length === 0 && !addingSection && (
         <Card>
           <CardContent className="py-10 text-center text-sm text-neutral-500">
-            No sections yet. Add a shot or bucket section below — or seed from Laravel admin on DEV.
+            No sections yet. Add a section below — or seed from Laravel admin on DEV.
           </CardContent>
         </Card>
       )}
@@ -140,12 +145,6 @@ export default function DrinkMenuEditor() {
                   <h2 className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
                     {section.title}
                   </h2>
-                  <Badge variant="neutral" size="sm">
-                    {section.price_label}
-                  </Badge>
-                  <Badge variant="outline" size="sm" className="capitalize">
-                    {section.kind}
-                  </Badge>
                   {!section.is_active && (
                     <Badge variant="warning" size="sm">
                       Hidden
@@ -153,7 +152,7 @@ export default function DrinkMenuEditor() {
                   )}
                 </div>
                 <p className="text-xs text-neutral-500">
-                  {section.items.length} drink{section.items.length === 1 ? "" : "s"}
+                  {section.items.length} item{section.items.length === 1 ? "" : "s"}
                   {section.items.filter((i) => i.is_active).length !== section.items.length
                     ? ` · ${section.items.filter((i) => i.is_active).length} visible`
                     : ""}
@@ -219,7 +218,7 @@ export default function DrinkMenuEditor() {
                   variant="ghost"
                   disabled={busy}
                   onClick={() => {
-                    if (!confirm("Remove this section and all its drinks?")) return
+                    if (!confirm("Remove this section and all its items?")) return
                     void run(() => apiClient.delete(`/business/drink-menu/sections/${section.id}`))
                   }}
                   aria-label="Delete section"
@@ -246,7 +245,7 @@ export default function DrinkMenuEditor() {
 
             <CardContent className="space-y-2 py-4">
               {section.items.length === 0 && (
-                <p className="py-4 text-center text-sm text-neutral-500">No drinks in this section yet.</p>
+                <p className="py-4 text-center text-sm text-neutral-500">No items in this section yet.</p>
               )}
 
               <ul className="space-y-2">
@@ -277,7 +276,7 @@ export default function DrinkMenuEditor() {
                             )}
                           </div>
                           <p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">
-                            {item.ingredients?.trim() || "No ingredients listed"}
+                            {item.ingredients?.trim() || "No description"}
                           </p>
                         </div>
                         <div className="flex items-center gap-0.5">
@@ -341,12 +340,12 @@ export default function DrinkMenuEditor() {
                             variant="ghost"
                             disabled={busy}
                             onClick={() => {
-                              if (!confirm("Remove this drink?")) return
+                              if (!confirm("Remove this item?")) return
                               void run(() =>
                                 apiClient.delete(`/business/drink-menu/items/${item.id}`),
                               )
                             }}
-                            aria-label="Delete drink"
+                            aria-label="Delete item"
                           >
                             <Trash2 className="size-4 text-red-500" />
                           </Button>
@@ -376,7 +375,7 @@ export default function DrinkMenuEditor() {
               {addingItemForSection === section.id ? (
                 <div className="mt-3 rounded-xl border border-dashed border-neutral-300 bg-neutral-50/60 p-4 dark:border-neutral-700 dark:bg-neutral-950/40">
                   <h3 className="mb-3 text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-                    New drink
+                    New item
                   </h3>
                   <AddItemForm
                     disabled={busy}
@@ -402,7 +401,7 @@ export default function DrinkMenuEditor() {
                     setEditingSectionId(null)
                   }}
                 >
-                  <Plus className="size-4" /> Add drink
+                  <Plus className="size-4" /> Add item
                 </Button>
               )}
             </CardContent>
@@ -451,24 +450,20 @@ function SectionEditForm({
 }: {
   section: DrinkMenuSection
   disabled: boolean
-  onSave: (body: { title: string; price_label: string; kind: string }) => void
+  onSave: (body: { title: string }) => void
   onCancel: () => void
 }) {
   const [title, setTitle] = useState(section.title)
-  const [priceLabel, setPriceLabel] = useState(section.price_label)
-  const [kind, setKind] = useState(section.kind)
   useEffect(() => {
     setTitle(section.title)
-    setPriceLabel(section.price_label)
-    setKind(section.kind)
-  }, [section.title, section.price_label, section.kind])
+  }, [section.title])
 
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault()
-        onSave({ title, price_label: priceLabel, kind })
+        onSave({ title })
       }}
     >
       <div className={fieldGrid}>
@@ -482,30 +477,6 @@ function SectionEditForm({
             required
             maxLength={120}
           />
-        </div>
-        <div className={fieldStack}>
-          <Label htmlFor={`sec-price-${section.id}`}>Price label</Label>
-          <Input
-            id={`sec-price-${section.id}`}
-            value={priceLabel}
-            onChange={(e) => setPriceLabel(e.target.value)}
-            disabled={disabled}
-            required
-            maxLength={32}
-          />
-        </div>
-        <div className={fieldStack}>
-          <Label htmlFor={`sec-kind-${section.id}`}>Kind</Label>
-          <Select
-            id={`sec-kind-${section.id}`}
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="shot">shot</option>
-            <option value="bucket">bucket</option>
-            <option value="custom">custom</option>
-          </Select>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -547,7 +518,7 @@ function ItemEditForm({
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault()
-        onSave({ name, ingredients, price })
+        onSave({ name, ingredients, price: normalizePrice(price) })
       }}
     >
       <div className="grid gap-3 sm:grid-cols-[1.2fr_2fr_0.8fr]">
@@ -563,7 +534,7 @@ function ItemEditForm({
           />
         </div>
         <div className={fieldStack}>
-          <Label htmlFor={`item-ing-${item.id}`}>Ingredients</Label>
+          <Label htmlFor={`item-ing-${item.id}`}>Description</Label>
           <Input
             id={`item-ing-${item.id}`}
             value={ingredients}
@@ -580,13 +551,13 @@ function ItemEditForm({
             onChange={(e) => setPrice(e.target.value)}
             disabled={disabled}
             maxLength={32}
-            placeholder={section.price_label}
+            placeholder={normalizePrice(section.price_label) || "e.g. 5 or CUSTOM"}
           />
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" size="sm" disabled={disabled}>
-          Save drink
+          Save item
         </Button>
         <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={onCancel}>
           Cancel
@@ -616,7 +587,7 @@ function AddItemForm({
       onSubmit={(e) => {
         e.preventDefault()
         if (!name.trim()) return
-        onAdd({ name, ingredients, price })
+        onAdd({ name, ingredients, price: normalizePrice(price) })
         setName("")
         setIngredients("")
         setPrice("")
@@ -627,7 +598,7 @@ function AddItemForm({
           <Label htmlFor="add-item-name">Name</Label>
           <Input
             id="add-item-name"
-            placeholder="Drink name"
+            placeholder="Item name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={disabled}
@@ -636,10 +607,10 @@ function AddItemForm({
           />
         </div>
         <div className={fieldStack}>
-          <Label htmlFor="add-item-ing">Ingredients</Label>
+          <Label htmlFor="add-item-ing">Description</Label>
           <Input
             id="add-item-ing"
-            placeholder="Ingredients"
+            placeholder="Description"
             value={ingredients}
             onChange={(e) => setIngredients(e.target.value)}
             disabled={disabled}
@@ -650,7 +621,7 @@ function AddItemForm({
           <Label htmlFor="add-item-price">Price</Label>
           <Input
             id="add-item-price"
-            placeholder={placeholderPrice}
+            placeholder={normalizePrice(placeholderPrice) || "e.g. 5 or CUSTOM"}
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             disabled={disabled}
@@ -660,7 +631,7 @@ function AddItemForm({
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" size="sm" disabled={disabled}>
-          <Plus className="size-4" /> Add drink
+          <Plus className="size-4" /> Add item
         </Button>
         <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={onCancel}>
           Cancel
@@ -676,19 +647,17 @@ function AddSectionForm({
   onCancel,
 }: {
   disabled: boolean
-  onAdd: (body: { title: string; price_label: string; kind: string }) => void
+  onAdd: (body: { title: string }) => void
   onCancel: () => void
 }) {
   const [title, setTitle] = useState("")
-  const [priceLabel, setPriceLabel] = useState("$4")
-  const [kind, setKind] = useState("shot")
   return (
     <form
       className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault()
         if (!title.trim()) return
-        onAdd({ title, price_label: priceLabel, kind })
+        onAdd({ title })
         setTitle("")
       }}
     >
@@ -704,30 +673,6 @@ function AddSectionForm({
             required
             maxLength={120}
           />
-        </div>
-        <div className={fieldStack}>
-          <Label htmlFor="add-sec-price">Price label</Label>
-          <Input
-            id="add-sec-price"
-            value={priceLabel}
-            onChange={(e) => setPriceLabel(e.target.value)}
-            disabled={disabled}
-            required
-            maxLength={32}
-          />
-        </div>
-        <div className={fieldStack}>
-          <Label htmlFor="add-sec-kind">Kind</Label>
-          <Select
-            id="add-sec-kind"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            disabled={disabled}
-          >
-            <option value="shot">shot</option>
-            <option value="bucket">bucket</option>
-            <option value="custom">custom</option>
-          </Select>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

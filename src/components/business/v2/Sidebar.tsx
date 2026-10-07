@@ -5,7 +5,7 @@ import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import {
-  Home, CalendarDays, GlassWater, Tag, Megaphone, BarChart3, Users, Settings,
+  Home, CalendarDays, BookOpen, Tag, Megaphone, BarChart3, Users, Settings,
   Search, ChevronsUpDown, Lock, LogOut, Check, Plus, MapPin, LifeBuoy,
   Sun, Moon, TicketPercent, Menu, X, Banknote,
 } from "lucide-react"
@@ -65,7 +65,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
   { items: [
     { label: "Home", href: "/business", icon: Home },
     { label: "Events", href: "/business/events", icon: CalendarDays, feature: "showEvents" },
-    { label: "Drinks", href: "/business/drinks", icon: GlassWater, show: (ctx) => isKnightBusiness(ctx.businessId != null ? { business_id: ctx.businessId } : null) },
+    { label: "Lib Menu", href: "/business/drinks", icon: BookOpen, show: (ctx) => isKnightBusiness(ctx.businessId != null ? { business_id: ctx.businessId } : null) },
     { label: "Deals", href: "/business/deals", icon: Tag, feature: "showDeals" },
   ] },
   { label: "Grow", items: [
