@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Camera, ListChecks, Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
+  Camera, Link2, ListChecks, Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
@@ -272,6 +272,10 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   const promoteTiles: Tile[] = [
     { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit && seriesActive },
     { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Referral links and what they earn", show: true },
+    // Wave 2B — host tracking links (W1 services). Owners/managers only: the
+    // services gate is requireBusinessRole(owner, manager), so staff would
+    // land on a 403. Sits right after Promoters: same attribution, no payout.
+    { href: `${base}/tracking-links`, icon: Link2, title: "Tracking links", subtitle: "Flyer and bio links, with clicks and sales", show: canEdit },
     { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
   ]
 
