@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { formatEventWhen } from "@/lib/event-time";
 import SectionContainer from "@/components/ui/SectionContainer";
 import StaggerGrid from "@/components/ui/gsap/StaggerGrid";
 import SplitHeading from "@/components/ui/gsap/SplitHeading";
@@ -17,21 +18,6 @@ import type { Campus } from "@/lib/campus";
  */
 export default function CampusEvents({ campus }: { campus: Campus }) {
   if (campus.events.length === 0) return null;
-
-  const fmt = (raw: string) => {
-    // "2026-08-21 21:00:00" is not ISO-8601; Safari returns Invalid Date for it.
-    const d = new Date(raw.replace(" ", "T"));
-    if (Number.isNaN(d.getTime())) return "";
-    // Fixed zone: server and browser must agree or React logs a hydration
-    // mismatch, and the venues are US college towns.
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      timeZone: "America/New_York",
-    }).format(d);
-  };
 
   return (
     <section className="relative overflow-hidden bg-ink text-white" id="events">
@@ -54,7 +40,9 @@ export default function CampusEvents({ campus }: { campus: Campus }) {
         {/* /event/:id: app-claimed in AASA, so an iPhone opens the app and
             everyone else 307s to the checkout. */}
         <StaggerGrid className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-          {campus.events.map((e) => (
+          {campus.events.map((e) => {
+            const when = formatEventWhen(e.startsAt, e.timeZone)
+            return (
             <Link
               key={e.id}
               href={`/event/${e.id}`}
@@ -88,14 +76,15 @@ export default function CampusEvents({ campus }: { campus: Campus }) {
                 {e.venue && (
                   <p className="text-white/50 text-[11px] mt-1 truncate">{e.venue}</p>
                 )}
-                {fmt(e.startsAt) && (
+                {when && (
                   <p className="text-primary text-[11px] font-semibold mt-auto pt-2">
-                    {fmt(e.startsAt)}
+                    {when}
                   </p>
                 )}
               </div>
             </Link>
-          ))}
+            )
+          })}
         </StaggerGrid>
       </SectionContainer>
     </section>
