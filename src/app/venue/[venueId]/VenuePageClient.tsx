@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
 import { ACCESS, EVENT_FILL } from "@/lib/checkout/surfaces"
+import { KNIGHT_THEME, type VenueBrand } from "@/lib/knight-venue-theme"
 import {
   eventCalendarDate,
   eventFromPrice,
@@ -38,6 +39,14 @@ interface VenuePageClientProps {
   venueId: string
   initialData: VenueData | null
   checkoutBaseUrl: string
+  /**
+   * Knight Library's venue with the app-only toggle ON wears the Knight
+   * chrome (lib/knight-venue-theme); the server page resolves it. Default
+   * (and every other venue): the Bizzy page, markup unchanged.
+   */
+  brand?: VenueBrand
+  /** Knight only: the App Store link behind "Open in Knight Library"; null hides the button. */
+  appStoreUrl?: string | null
 }
 
 function localDateKey(d: Date): string {
@@ -134,18 +143,64 @@ function rowPriceLabel(event: VenueEvent): string {
 }
 
 /** WC pink vs event green — the two shared accent tokens, nothing else. */
-function nightRowTheme(cover: boolean) {
+function nightRowTheme(cover: boolean, knight = false) {
+  // Knight: gold for every night, as the Knight checkout does (CheckoutAccent).
+  if (knight) return { fill: KNIGHT_THEME.accent, price: "text-[#D1AD63]" }
   return {
     fill: cover ? ACCESS : EVENT_FILL,
     price: cover ? "text-access" : "text-[#05EB54]",
   }
 }
 
+/**
+ * The blade's CSS, verbatim, for the Bizzy page. The Knight page is the same
+ * sheet with the Bizzy ground / green swapped for Knight black / gold
+ * (lib/knight-venue-theme tokens), nothing else.
+ */
+const BIZZY_PAGE_CSS = `
+        .landing-title { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, ui-sans-serif, sans-serif; }
+        .bg-blur-flyer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #0a0a0f; }
+        .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(64px); opacity: 0.45; transform: scale(1.55); }
+        .bg-blur-flyer-veil { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.18), rgba(10,10,15,0.82)); }
+        .venue-hero { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: #111; }
+        .venue-hero img { width: 100%; height: 100%; object-fit: cover; }
+        .venue-hero-fade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 45%, rgba(0,0,0,0.4) 72%, rgba(0,0,0,0.8) 100%); }
+        .venue-hero-name { position: absolute; left: 14px; right: 14px; bottom: 14px; margin: 0; color: #fff; font-size: 26px; font-weight: 800; font-style: italic; line-height: 1.1; letter-spacing: -0.03em; text-transform: uppercase; text-shadow: 0 1px 10px rgba(0,0,0,0.6); }
+        .venue-hero-initials { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 800; color: rgba(255,255,255,0.35); }
+        .action-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.14); color: #fff; font-size: 13px; font-weight: 800; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .action-btn:hover { background: rgba(255,255,255,0.2); }
+        .night-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; border: 1px solid #2A2A33; background: #18181F; }
+        .night-row.tonight { border-color: rgba(5, 235, 84, 0.55); box-shadow: 0 0 22px rgba(5, 235, 84, 0.45), 0 0 40px rgba(5, 235, 84, 0.18); }
+        .night-thumb { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: #111; flex-shrink: 0; }
+        .night-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .day-tonight { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: #05EB54; line-height: 1.1; }
+        @media (min-width: 1024px) {
+          .venue-shell { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); align-items: start; gap: 3.5rem; max-width: 72rem; }
+          .venue-identity { position: sticky; top: 6rem; }
+          .venue-hero-name { font-size: 36px; }
+          .venue-nights { margin-top: 0; }
+          .day-tonight { font-size: 26px; }
+        }
+      `
+
+function pageCss(knight: boolean): string {
+  if (!knight) return BIZZY_PAGE_CSS
+  return BIZZY_PAGE_CSS.split("#0a0a0f").join(KNIGHT_THEME.bg)
+    .split("rgba(10,10,15,").join(`rgba(${KNIGHT_THEME.veilRgb},`)
+    .split("#2A2A33").join(KNIGHT_THEME.rowBorder)
+    .split("#18181F").join(KNIGHT_THEME.rowBg)
+    .split("rgba(5, 235, 84,").join(`rgba(${KNIGHT_THEME.accentRgb},`)
+    .split("#05EB54").join(KNIGHT_THEME.accent)
+}
+
 export default function VenuePageClient({
   venueId,
   initialData,
   checkoutBaseUrl,
+  brand = "bizzy",
+  appStoreUrl = null,
 }: VenuePageClientProps) {
+  const knight = brand === "knight"
   const [data, setData] = useState<VenueData | null>(initialData)
   const [todayKey, setTodayKey] = useState<string | null>(null)
   const inFlight = useRef(false)
@@ -176,13 +231,25 @@ export default function VenuePageClient({
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-gray-100 antialiased">
+      <div
+        className={
+          knight
+            ? "flex min-h-screen items-center justify-center bg-[#050505] text-gray-100 antialiased"
+            : "flex min-h-screen items-center justify-center bg-[#0a0a0f] text-gray-100 antialiased"
+        }
+      >
         <div className="text-center">
           <h1 className="mb-2 text-2xl font-bold">Venue Not Found</h1>
           <p className="text-white/50">This venue doesn&apos;t exist or is no longer available.</p>
-          <a href="https://bizzyu.com" className="mt-4 inline-block font-medium text-[#05EB54] hover:underline">
-            Back to Bizzy
-          </a>
+          {knight ? (
+            <a href={KNIGHT_THEME.siteUrl} className="mt-4 inline-block font-medium text-[#D1AD63] hover:underline">
+              Back to Knight Library
+            </a>
+          ) : (
+            <a href="https://bizzyu.com" className="mt-4 inline-block font-medium text-[#05EB54] hover:underline">
+              Back to Bizzy
+            </a>
+          )}
         </div>
       </div>
     )
@@ -207,37 +274,19 @@ export default function VenuePageClient({
 
   return (
     <div
-      className="relative min-h-screen bg-[#0a0a0f] text-gray-100 antialiased"
+      className={
+        knight
+          ? "relative min-h-screen bg-[#050505] text-gray-100 antialiased"
+          : "relative min-h-screen bg-[#0a0a0f] text-gray-100 antialiased"
+      }
       style={{
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, ui-sans-serif, sans-serif',
+        fontFamily: knight
+          ? KNIGHT_THEME.fontStack
+          : '-apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, ui-sans-serif, sans-serif',
       }}
+      data-brand={knight ? "knight" : undefined}
     >
-      <style>{`
-        .landing-title { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, ui-sans-serif, sans-serif; }
-        .bg-blur-flyer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: #0a0a0f; }
-        .bg-blur-flyer img { width: 100%; height: 100%; object-fit: cover; filter: blur(64px); opacity: 0.45; transform: scale(1.55); }
-        .bg-blur-flyer-veil { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.18), rgba(10,10,15,0.82)); }
-        .venue-hero { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: #111; }
-        .venue-hero img { width: 100%; height: 100%; object-fit: cover; }
-        .venue-hero-fade { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 45%, rgba(0,0,0,0.4) 72%, rgba(0,0,0,0.8) 100%); }
-        .venue-hero-name { position: absolute; left: 14px; right: 14px; bottom: 14px; margin: 0; color: #fff; font-size: 26px; font-weight: 800; font-style: italic; line-height: 1.1; letter-spacing: -0.03em; text-transform: uppercase; text-shadow: 0 1px 10px rgba(0,0,0,0.6); }
-        .venue-hero-initials { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 800; color: rgba(255,255,255,0.35); }
-        .action-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 48px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.14); color: #fff; font-size: 13px; font-weight: 800; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-        .action-btn:hover { background: rgba(255,255,255,0.2); }
-        .night-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; border: 1px solid #2A2A33; background: #18181F; }
-        .night-row.tonight { border-color: rgba(5, 235, 84, 0.55); box-shadow: 0 0 22px rgba(5, 235, 84, 0.45), 0 0 40px rgba(5, 235, 84, 0.18); }
-        .night-thumb { width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: #111; flex-shrink: 0; }
-        .night-thumb img { width: 100%; height: 100%; object-fit: cover; }
-        .day-tonight { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; color: #05EB54; line-height: 1.1; }
-        @media (min-width: 1024px) {
-          .venue-shell { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); align-items: start; gap: 3.5rem; max-width: 72rem; }
-          .venue-identity { position: sticky; top: 6rem; }
-          .venue-hero-name { font-size: 36px; }
-          .venue-nights { margin-top: 0; }
-          .day-tonight { font-size: 26px; }
-        }
-      `}</style>
+      <style>{pageCss(knight)}</style>
 
       {wash && (
         <div className="bg-blur-flyer" aria-hidden>
@@ -247,25 +296,57 @@ export default function VenuePageClient({
       )}
 
       <div className="relative z-10 min-h-screen">
-        <header className="sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0f]/70 backdrop-blur-xl">
+        <header
+          className={
+            knight
+              ? "sticky top-0 z-40 border-b border-white/5 bg-[#050505]/70 backdrop-blur-xl"
+              : "sticky top-0 z-40 border-b border-white/5 bg-[#0a0a0f]/70 backdrop-blur-xl"
+          }
+        >
           <div className="mx-auto max-w-6xl px-4 py-3">
             <div className="flex items-center justify-between">
-              <a href="https://bizzyu.com" className="flex items-center">
-                <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-10 w-auto" />
-              </a>
+              {knight ? (
+                <a href={KNIGHT_THEME.siteUrl} className="flex items-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- same plain <img> as the Bizzy logo beside it */}
+                  <img src={KNIGHT_THEME.logo} alt="Knight Library" className="h-10 w-auto" />
+                </a>
+              ) : (
+                <a href="https://bizzyu.com" className="flex items-center">
+                  <img src="/images/bizzy-logo.png" alt="Bizzy" className="h-10 w-auto" />
+                </a>
+              )}
               {/* Luke (2026-08-30): two chips only — logo left, open-in-app
                   right. The deep link's App Store fallback covers phones
                   without the app. */}
-              <a
-                href={`bizzy://venue/${venue.id}`}
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition hover:opacity-90"
-                style={{ backgroundColor: EVENT_FILL }}
-              >
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                </svg>
-                Open in Bizzy app
-              </a>
+              {/* Knight (2026-10-08): "Open in Knight Library" goes to the
+                  Knight App Store page from env; unset → no button at all
+                  (never a link to Bizzy). The Smart App Banner is off too. */}
+              {knight ? (
+                appStoreUrl && (
+                  <a
+                    href={appStoreUrl}
+                    data-brand="knight"
+                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition hover:opacity-90"
+                    style={{ backgroundColor: KNIGHT_THEME.accent }}
+                  >
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                    </svg>
+                    Open in Knight Library
+                  </a>
+                )
+              ) : (
+                <a
+                  href={`bizzy://venue/${venue.id}`}
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition hover:opacity-90"
+                  style={{ backgroundColor: EVENT_FILL }}
+                >
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                  </svg>
+                  Open in Bizzy app
+                </a>
+              )}
             </div>
           </div>
         </header>
@@ -324,6 +405,7 @@ export default function VenuePageClient({
                         venue={venue}
                         checkoutBaseUrl={checkoutBaseUrl}
                         tonight={isTonight}
+                        knight={knight}
                       />
                     ))}
                   </div>
@@ -346,14 +428,16 @@ function UpcomingRow({
   venue,
   checkoutBaseUrl,
   tonight,
+  knight = false,
 }: {
   event: VenueEvent
   venue: VenueData["venue"]
   checkoutBaseUrl: string
   tonight: boolean
+  knight?: boolean
 }) {
   const cover = isVenueWeeklyCoverNight(event)
-  const theme = nightRowTheme(cover)
+  const theme = nightRowTheme(cover, knight)
   const image = resolveVenueEventImageUrl(event, venue)
   const price = rowPriceLabel(event)
   const timeLine = nightTimeLine(event)
@@ -370,7 +454,11 @@ function UpcomingRow({
         {cover && (
           <p
             className="mb-1 inline-block rounded-lg px-2 py-[3px] text-[11px] font-extrabold uppercase tracking-[0.6px] text-access"
-            style={{ background: "rgba(255, 62, 209, 0.16)" }}
+            style={
+              knight
+                ? { background: "rgba(209, 173, 99, 0.16)", color: KNIGHT_THEME.accent }
+                : { background: "rgba(255, 62, 209, 0.16)" }
+            }
           >
             {WEEKLY_ACCESS_TYPE_LABEL}
           </p>

@@ -67,6 +67,12 @@ export interface VenueData {
     photo_url?: string | null
     website: string | null
     instagram: string | null
+    /**
+     * Knight Library's venue only (services stamps it from the admin
+     * "Knight app-only tickets" toggle); absent on every other venue.
+     * Drives the Knight-themed page, see lib/knight-venue-theme.
+     */
+    knight_app_only_tickets?: boolean
   }
   business: {
     business_id: number

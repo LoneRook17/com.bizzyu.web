@@ -1,7 +1,8 @@
 import { Metadata } from "next"
 import { WEEKLY_ACCESS_SECTION_LABEL } from "@/lib/business/door-access"
 import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
-import { fetchVenuePublicData } from "@/lib/venuePublic"
+import { KNIGHT_THEME, knightAppStoreUrl, resolveVenueBrand } from "@/lib/knight-venue-theme"
+import { fetchVenuePublicData, type VenueData } from "@/lib/venuePublic"
 import VenuePageClient from "./VenuePageClient"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
@@ -26,28 +27,45 @@ async function getVenueData(venueId: string) {
   return fetchVenuePublicData(venueId, API_URL, CHECKOUT_BASE_URL)
 }
 
+// Knight Library's venue with the app-only toggle ON wears the Knight chrome
+// (lib/knight-venue-theme). Everything else is the Bizzy page, unchanged.
+function brandFor(venueId: string, data: VenueData | null) {
+  return resolveVenueBrand({
+    venueId: data?.venue?.id ?? venueId,
+    businessId: data?.business?.business_id,
+    knightAppOnlyTickets: data?.venue?.knight_app_only_tickets,
+  })
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { venueId } = await params
   const data = await getVenueData(venueId)
   const venueName = data?.venue?.name || "Venue"
+  const brand = brandFor(venueId, data)
+  const brandName = brand === "knight" ? KNIGHT_THEME.name : "Bizzy"
   // §8 — the fallback description follows what the page actually shows now.
   const description =
     data?.venue?.description ||
-    `Check out events, ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, and deals at ${venueName} on Bizzy.`
+    `Check out events, ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, and deals at ${venueName} on ${brandName}.`
 
   return {
-    title: `${venueName} | Bizzy`,
+    title: `${venueName} | ${brandName}`,
     description,
     // iOS Safari Smart App Banner - "Open" deep-links straight to this venue
     // in the app (the app routes /venue/:id universal links); "Get" goes to
     // the App Store. app-argument uses the canonical prod domain so the app
     // can route it regardless of which deployment served the page.
-    itunes: {
-      appId: "6683306360",
-      appArgument: `https://bizzyu.com/venue/${venueId}`,
-    },
+    // Bizzy only: the Knight page never advertises the Bizzy App Store.
+    ...(brand === "bizzy"
+      ? {
+          itunes: {
+            appId: "6683306360",
+            appArgument: `https://bizzyu.com/venue/${venueId}`,
+          },
+        }
+      : {}),
     openGraph: {
-      title: `${venueName} | Bizzy`,
+      title: `${venueName} | ${brandName}`,
       description,
       // /ui/venues/venue/:id returns the venue photo as `venuePhotoUrl`
       // (camelCase - see venues.ts:462). Reading snake_case silently
@@ -69,12 +87,15 @@ export default async function VenuePage({ params, searchParams }: PageProps) {
   // consumed; the value is deliberately unused.
   await searchParams
   const data = await getVenueData(venueId)
+  const brand = brandFor(venueId, data)
 
   return (
     <VenuePageClient
       venueId={venueId}
       initialData={data}
       checkoutBaseUrl={CHECKOUT_BASE_URL}
+      brand={brand}
+      appStoreUrl={brand === "knight" ? knightAppStoreUrl() : null}
     />
   )
 }
