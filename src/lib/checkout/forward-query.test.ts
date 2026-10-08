@@ -37,6 +37,59 @@ test("buildCheckoutTarget: no query → bare checkout URL (no trailing ?)", () =
   assert.equal(buildCheckoutTarget(BASE, 123, {}), `${BASE}/checkout/123`)
 })
 
+test("HOST LOCK: target origin is exactly the Laravel base, path /checkout/:id, never /cover", () => {
+  for (const base of [BASE, "https://bizzy-deals.com", "https://dev.bizzy-deals.com/"]) {
+    const target = buildCheckoutTarget(base.replace(/\/$/, ""), 42, { ref: "KNIGHT-FLYER" })
+    const u = new URL(target)
+    assert.equal(u.origin, new URL(base).origin, "origin must be the Laravel base passed in")
+    assert.equal(u.pathname, "/checkout/42", "path is Laravel /checkout/:id")
+    assert.ok(!target.includes("/cover"), "Weekly Cover must not go to /cover")
+  }
+})
+
+// Query-param parity (2026-10-08): every param a public landing can receive
+// must reach Laravel /checkout/:id untouched. On main, /event/:id forwarded
+// ONLY ?ref and dropped the rest; /event/:id/checkout forwarded everything.
+// Both now share this builder, so pin every known param by name.
+test("buildCheckoutTarget: every known landing param survives the hop, repeats preserved", () => {
+  const incoming = {
+    ref: "KNIGHT-FLYER", // promoter / tracking code → Laravel session CHECKOUT_REF
+    ticket_id: "679", // preselected tier → Laravel preselectedBuyableTicketId()
+    promo: "FALL10",
+    promo_code: "FALL10",
+    qty: "2",
+    quantity: "2",
+    tier: "vip",
+    night: "2026-10-10",
+    source: "flyer",
+    utm_source: "instagram",
+    utm_medium: "story",
+    utm_campaign: "knight-launch",
+    utm_content: "a",
+    utm_term: "b",
+    success: "1",
+    session_id: "cs_test_123",
+    payment_intent: "pi_123",
+    redirect_status: "succeeded",
+    tag: ["a", "b"], // repeated keys stay repeated
+  }
+  const u = new URL(buildCheckoutTarget(BASE, 9, incoming))
+  for (const [key, value] of Object.entries(incoming)) {
+    if (Array.isArray(value)) {
+      assert.deepEqual(u.searchParams.getAll(key), value, `${key} repeats preserved`)
+    } else {
+      assert.equal(u.searchParams.get(key), value, `${key} forwarded`)
+    }
+  }
+  assert.equal(u.searchParams.has("clk"), false, "no click token → no clk added")
+})
+
+test("buildCheckoutTarget: an incoming ?clk= passes through untouched when this hop logs nothing", () => {
+  const u = new URL(buildCheckoutTarget(BASE, 9, { clk: "upstream0123456789", ticket_id: "1" }, null))
+  assert.equal(u.searchParams.get("clk"), "upstream0123456789")
+  assert.equal(u.searchParams.get("ticket_id"), "1")
+})
+
 test("buildCheckoutTarget: ref is URL-encoded, never dropped", () => {
   const target = buildCheckoutTarget(BASE, 5, { ref: "a b&c" })
   assert.equal(new URL(target).searchParams.get("ref"), "a b&c")

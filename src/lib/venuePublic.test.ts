@@ -983,13 +983,44 @@ test("direct /event/:id fail-closes ended WC instead of a Laravel bounce", () =>
 })
 
 test("event checkout landing sends every night to Laravel /checkout/:id, not /cover", () => {
+  // HOST LOCK (Luke 2026-08-30): named events and Weekly Cover share LARAVEL
+  // /checkout/:id. #164 lifted the URL construction out of the page into
+  // buildCheckoutTarget() (src/lib/checkout/forward-query.ts), so the pin now
+  // proves the lock on the builder AND that both public landings use it with
+  // the env-resolved Laravel origin — never a hardcoded host, never /cover.
+  const builder = readFileSync(join(process.cwd(), "src/lib/checkout/forward-query.ts"), "utf8")
+  assert.ok(
+    builder.includes("${laravelBase}/checkout/${eventId}"),
+    "buildCheckoutTarget must emit LARAVEL /checkout/:id (HOST LOCK)",
+  )
+  assert.ok(!builder.includes("/cover"), "builder must never target /cover")
+  assert.ok(!builder.includes("bizzy-deals.com"), "builder takes the origin as an argument, never hardcodes it")
+
   const src = readFileSync(join(process.cwd(), "src/app/event/[id]/checkout/page.tsx"), "utf8")
   assert.ok(
-    src.includes("${laravelCheckoutBaseUrl()}/checkout/${id}"),
-    "named events and Weekly Cover share LARAVEL /checkout/:id (HOST LOCK)",
+    /import\s*\{[^}]*\bbuildCheckoutTarget\b[^}]*\}\s*from\s*"@\/lib\/checkout\/forward-query"/.test(src),
+    "landing must import buildCheckoutTarget from forward-query",
   )
+  assert.ok(
+    src.includes("buildCheckoutTarget(laravelCheckoutBaseUrl(), id, sp, clickToken)"),
+    "landing must build its target with laravelCheckoutBaseUrl() + the full query (HOST LOCK)",
+  )
+  assert.ok(!src.includes("/checkout/${id}"), "landing must not hand-roll a second checkout URL")
   assert.ok(!src.includes("weeklyCoverCheckoutPath"), "door nights must not open /cover")
   assert.ok(!src.includes("/cover/"), "landing must not send Weekly Cover to /cover")
+
+  // /event/:id (server redirect) shares the same builder and the same lock.
+  const page = readFileSync(join(process.cwd(), "src/app/event/[id]/page.tsx"), "utf8")
+  assert.ok(
+    /import\s*\{[^}]*\bbuildCheckoutTarget\b[^}]*\}\s*from\s*"@\/lib\/checkout\/forward-query"/.test(page),
+    "/event/:id must import buildCheckoutTarget from forward-query",
+  )
+  assert.ok(page.includes("const LARAVEL_CHECKOUT_BASE_URL = laravelCheckoutBaseUrl()"), "/event/:id origin comes from env")
+  assert.ok(
+    page.includes("redirect(buildCheckoutTarget(LARAVEL_CHECKOUT_BASE_URL, event.event_id, sp, clickToken))"),
+    "/event/:id must 302 to the builder's Laravel target with the full query (HOST LOCK)",
+  )
+  assert.ok(!page.includes("/cover/"), "/event/:id must not send Weekly Cover to /cover")
 })
 
 test("legacy /cover/:id redirects to Laravel event checkout", () => {
