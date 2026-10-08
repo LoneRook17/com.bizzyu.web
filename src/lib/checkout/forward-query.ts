@@ -44,13 +44,29 @@ export function refFromSearchParams(sp: SearchParams | undefined | null): string
   return Array.isArray(raw) ? raw[0] : raw
 }
 
-/** Laravel checkout URL for an event, carrying every incoming query param. */
+/**
+ * Mint a click idempotency token (32 hex chars; matches the services
+ * `^[A-Za-z0-9_-]{8,64}$` guard). ONE WRITER PER HOP: this landing logs the
+ * click with the token, then forwards it to Laravel checkout as `?clk=` so
+ * Laravel's own click writer INSERT IGNOREs it — one chain, one row.
+ */
+export function mintClickToken(): string {
+  return crypto.randomUUID().replace(/-/g, "")
+}
+
+/**
+ * Laravel checkout URL for an event, carrying every incoming query param,
+ * plus `clk=<token>` when this hop logged a click under that token.
+ */
 export function buildCheckoutTarget(
   laravelBase: string,
   eventId: string | number,
   sp: SearchParams | undefined | null,
+  clickToken?: string | null,
 ): string {
-  const qs = buildQueryString(sp)
+  const params = new URLSearchParams(buildQueryString(sp))
+  if (clickToken) params.set("clk", clickToken)
+  const qs = params.toString()
   return `${laravelBase}/checkout/${eventId}${qs ? `?${qs}` : ""}`
 }
 
@@ -72,6 +88,7 @@ export function shouldLogClick(ref: string | undefined, userAgent: string | null
 export async function logPromoterClick(
   ref: string | undefined,
   userAgent: string | null,
+  clickToken: string | null = null,
   fetchImpl: typeof fetch = fetch,
   apiUrl: string = API_URL,
 ): Promise<boolean> {
@@ -82,7 +99,13 @@ export async function logPromoterClick(
     try {
       await fetchImpl(`${apiUrl}/p/${encodeURIComponent(ref)}`, {
         method: "POST",
-        headers: userAgent ? { "user-agent": userAgent } : undefined,
+        headers: {
+          "content-type": "application/json",
+          ...(userAgent ? { "user-agent": userAgent } : {}),
+        },
+        // The token travels on to Laravel as ?clk= (buildCheckoutTarget) so
+        // the second hop dedups instead of logging a second row.
+        body: JSON.stringify(clickToken ? { idempotency_token: clickToken } : {}),
         cache: "no-store",
         signal: ctl.signal,
       })

@@ -4,6 +4,7 @@ import {
   buildCheckoutTarget,
   buildQueryString,
   logPromoterClick,
+  mintClickToken,
   refFromSearchParams,
   shouldLogClick,
 } from "./forward-query.ts"
@@ -41,6 +42,23 @@ test("buildCheckoutTarget: ref is URL-encoded, never dropped", () => {
   assert.equal(new URL(target).searchParams.get("ref"), "a b&c")
 })
 
+test("buildCheckoutTarget: clk token rides along with the forwarded query", () => {
+  const target = buildCheckoutTarget(BASE, 7, { ref: "KNIGHT-FLYER", x: "1" }, "abcdef0123456789abcdef0123456789")
+  const u = new URL(target)
+  assert.equal(u.pathname, "/checkout/7")
+  assert.equal(u.searchParams.get("ref"), "KNIGHT-FLYER")
+  assert.equal(u.searchParams.get("x"), "1")
+  assert.equal(u.searchParams.get("clk"), "abcdef0123456789abcdef0123456789")
+  // No token → no clk param at all (direct / ref-less loads stay byte-identical).
+  assert.equal(new URL(buildCheckoutTarget(BASE, 7, { x: "1" }, null)).searchParams.has("clk"), false)
+})
+
+test("mintClickToken: matches the services idempotency-token guard, unique per call", () => {
+  const t = mintClickToken()
+  assert.match(t, /^[A-Za-z0-9_-]{8,64}$/)
+  assert.notEqual(mintClickToken(), t)
+})
+
 test("refFromSearchParams: first value of a repeated ref wins", () => {
   assert.equal(refFromSearchParams({ ref: ["FIRST", "SECOND"] }), "FIRST")
   assert.equal(refFromSearchParams({ ref: "ONLY" }), "ONLY")
@@ -64,12 +82,24 @@ test("logPromoterClick: POSTs once to /p/:code with the visitor UA", async () =>
     calls.push({ url: String(url), init })
     return new Response("{}", { status: 200 })
   }) as typeof fetch
-  const logged = await logPromoterClick("KNIGHT-FLYER", "Mozilla/5.0 (iPhone)", fakeFetch, "http://api")
+  const logged = await logPromoterClick("KNIGHT-FLYER", "Mozilla/5.0 (iPhone)", "tok_0123456789abcdef", fakeFetch, "http://api")
   assert.equal(logged, true)
   assert.equal(calls.length, 1)
   assert.equal(calls[0].url, "http://api/p/KNIGHT-FLYER")
   assert.equal(calls[0].init?.method, "POST")
-  assert.deepEqual(calls[0].init?.headers, { "user-agent": "Mozilla/5.0 (iPhone)" })
+  assert.deepEqual(calls[0].init?.headers, { "content-type": "application/json", "user-agent": "Mozilla/5.0 (iPhone)" })
+  // The SAME token the redirect forwards as ?clk= — that is the whole dedup.
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { idempotency_token: "tok_0123456789abcdef" })
+})
+
+test("logPromoterClick: no token → empty JSON body (NULL-token semantics on the API)", async () => {
+  const calls: Array<{ init: RequestInit | undefined }> = []
+  const fakeFetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ init })
+    return new Response("{}", { status: 200 })
+  }) as typeof fetch
+  await logPromoterClick("KNIGHT-FLYER", "Mozilla/5.0", null, fakeFetch, "http://api")
+  assert.deepEqual(JSON.parse(String(calls[0].init?.body)), {})
 })
 
 test("logPromoterClick: bot UA never hits the endpoint", async () => {
@@ -78,7 +108,7 @@ test("logPromoterClick: bot UA never hits the endpoint", async () => {
     hits++
     return new Response("{}", { status: 200 })
   }) as typeof fetch
-  const logged = await logPromoterClick("KNIGHT-FLYER", "Discordbot/2.0", fakeFetch, "http://api")
+  const logged = await logPromoterClick("KNIGHT-FLYER", "Discordbot/2.0", "tok_0123456789abcdef", fakeFetch, "http://api")
   assert.equal(logged, false)
   assert.equal(hits, 0)
 })
@@ -87,6 +117,6 @@ test("logPromoterClick: network failure is swallowed", async () => {
   const fakeFetch = (async () => {
     throw new Error("boom")
   }) as typeof fetch
-  const logged = await logPromoterClick("KNIGHT-FLYER", "Mozilla/5.0", fakeFetch, "http://api")
+  const logged = await logPromoterClick("KNIGHT-FLYER", "Mozilla/5.0", "tok_0123456789abcdef", fakeFetch, "http://api")
   assert.equal(logged, false)
 })
