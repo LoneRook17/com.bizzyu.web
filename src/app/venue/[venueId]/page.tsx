@@ -49,7 +49,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     `Check out events, ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()}, and deals at ${venueName} on ${brandName}.`
 
   return {
-    title: `${venueName} | ${brandName}`,
+    // Knight: absolute, so the root layout's "%s | Bizzy" template does not
+    // append a Bizzy suffix. Bizzy: the string the page has always set.
+    title: brand === "knight" ? { absolute: `${venueName} | ${brandName}` } : `${venueName} | ${brandName}`,
     description,
     // iOS Safari Smart App Banner - "Open" deep-links straight to this venue
     // in the app (the app routes /venue/:id universal links); "Get" goes to
