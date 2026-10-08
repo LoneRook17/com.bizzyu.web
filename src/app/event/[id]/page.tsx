@@ -10,6 +10,7 @@ import {
 import {
   buildCheckoutTarget,
   logPromoterClick,
+  mintClickToken,
   refFromSearchParams,
 } from "@/lib/checkout/forward-query"
 import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
@@ -109,12 +110,14 @@ export default async function PublicEventPage({ params, searchParams }: PageProp
   // isn't available inside after(). Must stay AFTER the fail-closed WC check
   // above so an ended night never logs a click or reaches Laravel.
   const ref = refFromSearchParams(sp)
+  const clickToken = ref ? mintClickToken() : null
   if (ref) {
     const userAgent = (await headers()).get("user-agent")
-    after(() => logPromoterClick(ref, userAgent))
+    after(() => logPromoterClick(ref, userAgent, clickToken))
   }
 
   // Forward the FULL query string (ref + anything else, e.g. ticket_id or
   // campaign tags), not just ?ref — previously extra params were dropped here.
-  redirect(buildCheckoutTarget(LARAVEL_CHECKOUT_BASE_URL, event.event_id, sp))
+  // ?clk= carries the token this hop logged with so Laravel dedups it.
+  redirect(buildCheckoutTarget(LARAVEL_CHECKOUT_BASE_URL, event.event_id, sp, clickToken))
 }

@@ -5,6 +5,7 @@ import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
 import {
   buildCheckoutTarget,
   logPromoterClick,
+  mintClickToken,
   refFromSearchParams,
 } from "@/lib/checkout/forward-query"
 
@@ -92,12 +93,14 @@ export default async function EventCheckoutRedirect({ params, searchParams }: Pa
   // response flushes, so it adds zero latency to the redirect. Read the UA
   // during render — headers() isn't available inside after().
   const ref = refFromSearchParams(sp)
+  const clickToken = ref ? mintClickToken() : null
   if (ref) {
     const userAgent = (await headers()).get("user-agent")
-    after(() => logPromoterClick(ref, userAgent))
+    after(() => logPromoterClick(ref, userAgent, clickToken))
   }
 
-  const target = buildCheckoutTarget(laravelCheckoutBaseUrl(), id, sp)
+  // ?clk= carries the token this hop logged with so Laravel's writer dedups.
+  const target = buildCheckoutTarget(laravelCheckoutBaseUrl(), id, sp, clickToken)
   return (
     <>
       <meta httpEquiv="refresh" content={`0;url=${target}`} />
