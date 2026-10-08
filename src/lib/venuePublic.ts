@@ -51,6 +51,8 @@ export interface VenueEvent {
   recurring_series_id?: number | null
   /** Explicit series activity when the public payload sends it. */
   series_is_active?: boolean | null
+  /** IANA zone the start/end strings are already in. Absent on the venue payload. */
+  timezone?: string | null
   tickets: VenueAccessTier[]
   /** Program template tiers when the night row itself has no tickets. */
   template_tickets?: VenueAccessTier[]
@@ -153,6 +155,7 @@ export function toVenueEvent(row: Record<string, unknown>): VenueEvent | null {
     venue_id: row.venue_id == null ? null : Number(row.venue_id),
     recurring_series_id: seriesId != null && Number.isFinite(seriesId) ? seriesId : null,
     series_is_active: readSeriesActiveFromPublicEvent(row),
+    timezone: typeof row.timezone === "string" && row.timezone.trim() ? row.timezone.trim() : null,
     tickets: parseVenueAccessTiers(row.tickets ?? row.ticket_tiers ?? row.tiers),
     template_tickets: parseVenueAccessTiers(
       row.template_tickets ?? row.program_tickets ?? row.program_template_tickets ?? row.tiers,
