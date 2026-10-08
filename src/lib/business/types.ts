@@ -524,6 +524,34 @@ export interface PromotersResponse {
   promoters: PromoterDetail[]
 }
 
+// Host tracking links (Tracking Links W1, services routes/trackingLinks.ts).
+// Shape recorded verbatim from DEV `GET /business/events/2177/tracking-links`
+// on 2026-10-07. `code` (and so `share_url`) is immutable; rename = `label`,
+// archive = `archived_at` set. Archived rows stay in the list (ordered last)
+// and keep redirecting + counting.
+export interface HostTrackingLink {
+  id: number
+  event_id: number
+  code: string
+  label: string | null
+  share_url: string
+  archived_at: string | null
+  created_at: string | null
+  clicks: number
+  orders: number
+  tickets: number
+  revenue_cents: number
+}
+
+export interface TrackingLinksResponse {
+  links: HostTrackingLink[]
+}
+
+/** POST / PATCH both answer `{ link }`. PATCH takes `label` and/or `archived`. */
+export interface TrackingLinkResponse {
+  link: HostTrackingLink
+}
+
 export interface PerScannerRow {
   // Attribution key, matches TipsByWorkerRow.staff_key. Absent on older deploys.
   staff_key?: string

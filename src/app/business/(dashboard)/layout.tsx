@@ -11,6 +11,7 @@ import { CommandPaletteProvider } from "@/components/business/v2/CommandPalette"
 import OnboardingMode from "@/components/business/v2/OnboardingMode"
 import LiveAfterApprove from "@/components/business/v2/LiveAfterApprove"
 import SupportBubble from "@/components/support/SupportBubble"
+import Toaster from "@/components/business/dashboard/Toast"
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { isLoading } = useAuth()
@@ -50,6 +51,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             </main>
           </div>
           <SupportBubble />
+          {/* The dashboard-wide toast host (showToast). Renders nothing until a
+              page fires one; the legacy DashboardShell mounted the same one. */}
+          <Toaster />
         </div>
       </CommandPaletteProvider>
     </VenueProvider>
