@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 
 import { getApiBaseUrl } from "@/lib/api-url"
+import { formatEventDateTime } from "@/lib/event-time"
 import {
   checkinRedeemPath,
   checkinRedeemStatusLabel,
@@ -385,7 +386,9 @@ export default function CheckinClient({ uuid }: { uuid: string }) {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-white/50">Date</span>
-                <span className="text-sm text-white/80">{formatDate(ticket.start_date_time)}</span>
+                <span className="text-sm text-white/80">
+                  {formatEventDateTime(ticket.start_date_time, ticket.event_timezone)}
+                </span>
               </div>
             </div>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { getApiBaseUrl } from "@/lib/api-url"
+import { formatEventClock } from "@/lib/event-time"
 import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
 import { ACCESS, EVENT_FILL } from "@/lib/checkout/surfaces"
 import { KNIGHT_VENUE_APP_LINK, scheduleAppStoreFallback } from "@/lib/knight-app-link"
@@ -71,19 +72,16 @@ function formatDayHeader(key: string): string {
 }
 
 /** Blade: strtolower(g:ia) — "9:00pm", joined " - " with the end time. */
-function formatClockLower(dateStr: string): string {
-  const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return ""
-  return d
-    .toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-    .replace(/\s/g, "")
-    .toLowerCase()
+function formatClockLower(dateStr: string, timeZone?: string | null): string {
+  const clock = formatEventClock(dateStr, timeZone)
+  if (!clock) return ""
+  return clock.replace(/\s/g, "").toLowerCase()
 }
 
 function nightTimeLine(event: VenueEvent): string {
-  const start = formatClockLower(event.start_date_time)
+  const start = formatClockLower(event.start_date_time, event.timezone)
   if (!start) return ""
-  const end = formatClockLower(event.end_date_time)
+  const end = formatClockLower(event.end_date_time, event.timezone)
   return end ? `${start} - ${end}` : start
 }
 
