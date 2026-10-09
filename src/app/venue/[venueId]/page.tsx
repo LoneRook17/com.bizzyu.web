@@ -57,15 +57,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     // in the app (the app routes /venue/:id universal links); "Get" goes to
     // the App Store. app-argument uses the canonical prod domain so the app
     // can route it regardless of which deployment served the page.
-    // Bizzy only: the Knight page never advertises the Bizzy App Store.
-    ...(brand === "bizzy"
-      ? {
-          itunes: {
+    // Bizzy only. The Knight page never advertises the Bizzy App Store:
+    // `null` also opts out of the root layout's site-wide itunes banner.
+    itunes:
+      brand === "knight"
+        ? null
+        : {
             appId: "6683306360",
             appArgument: `https://bizzyu.com/venue/${venueId}`,
           },
-        }
-      : {}),
     openGraph: {
       title: `${venueName} | ${brandName}`,
       description,
