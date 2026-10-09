@@ -76,5 +76,8 @@ test("venue page: the Bizzy chrome strings are intact and the Knight button neve
   assert.ok(!knightButton.includes("bizzy"), "Knight button must not link to Bizzy")
   const page = readFileSync(new URL("../app/venue/[venueId]/page.tsx", import.meta.url), "utf8")
   assert.ok(page.includes("resolveVenueBrand("))
-  assert.ok(page.includes('brand === "bizzy"'), "the iOS Smart App Banner (Bizzy App Store) is Bizzy-only")
+  assert.ok(
+    /itunes:\s*brand === "knight"\s*\?\s*null/.test(page),
+    "the iOS Smart App Banner (Bizzy App Store) is Bizzy-only; Knight opts out of the layout banner with null",
+  )
 })
