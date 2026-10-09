@@ -7,6 +7,11 @@
     "with FIRST-MATCH-WINS semantics, so the '/' exclude must stay ABOVE the claims.",
     "It matches ONLY the exact root path (any query string — omitting the '?' key means the",
     "query is not considered); every deeper path (/event/*, /p/*, ...) still opens the app.",
+    "WHY the /venue/331 and /venue/990227 excludes (2026-10-08): 331 is the Knight Library venue on prod",
+    "(990227 on DEV; inert on prod). Its QR is https://knightlibrary.app/v, which the Knight app claims and",
+    "which 302s here without the app. A tapped-then-redirected universal link would otherwise bounce the",
+    "Knight-themed page into the Bizzy app, so Bizzy must not claim exactly that page. Static on purpose:",
+    "the AASA cannot follow the admin app-only toggle. Every other /venue/* still opens Bizzy.",
     "WHY the wholesale /business + /business/* exclude: the ENTIRE /business space is the",
     "web-only operator portal — /business/login, /business/signup, /business/forgot-password,",
     "/business/verify-email, /business/accept-invite and the whole dashboard (analytics,",
@@ -44,6 +49,8 @@
           { "/": "/business/*", "exclude": true },
           { "/": "/promote/*" },
           { "/": "/p/*" },
+          { "/": "/venue/331", "exclude": true },
+          { "/": "/venue/990227", "exclude": true },
           { "/": "/venue/*" },
           { "/": "/deal/*" }
         ]

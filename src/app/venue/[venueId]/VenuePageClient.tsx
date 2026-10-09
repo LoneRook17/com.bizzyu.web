@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
 import { ACCESS, EVENT_FILL } from "@/lib/checkout/surfaces"
+import { KNIGHT_VENUE_APP_LINK, scheduleAppStoreFallback } from "@/lib/knight-app-link"
 import { KNIGHT_THEME, type VenueBrand } from "@/lib/knight-venue-theme"
 import {
   eventCalendarDate,
@@ -318,13 +319,17 @@ export default function VenuePageClient({
               {/* Luke (2026-08-30): two chips only — logo left, open-in-app
                   right. The deep link's App Store fallback covers phones
                   without the app. */}
-              {/* Knight (2026-10-08): "Open in Knight Library" goes to the
-                  Knight App Store page from env; unset → no button at all
-                  (never a link to Bizzy). The Smart App Banner is off too. */}
+              {/* Knight (2026-10-08): "Open in Knight Library" IS the venue
+                  QR link, https://knightlibrary.app/v - a universal link the
+                  Knight app claims, so an installed app opens; without it the
+                  tap falls back to the Knight App Store page from env after a
+                  beat. Env unset → no button (never a link to Bizzy, never
+                  bizzy://). The Smart App Banner is off too. */}
               {knight ? (
                 appStoreUrl && (
                   <a
-                    href={appStoreUrl}
+                    href={KNIGHT_VENUE_APP_LINK}
+                    onClick={() => scheduleAppStoreFallback(appStoreUrl)}
                     data-brand="knight"
                     className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition hover:opacity-90"
                     style={{ backgroundColor: KNIGHT_THEME.accent }}

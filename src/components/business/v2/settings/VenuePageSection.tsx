@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { QRCodeCanvas } from "qrcode.react"
 import { Check, Copy, Download, ExternalLink } from "lucide-react"
 import { useVenue } from "@/lib/business/venue-context"
 import { useAuth } from "@/lib/business/auth-context"
+import { getApiBaseUrl } from "@/lib/api-url"
+import { isKnightVenueId, venueQrFileName, venueShareUrl } from "@/lib/business/knight-venue-link"
 import type { Venue } from "@/lib/business/types"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
@@ -14,9 +16,39 @@ function venueUrl(id: number) {
   return `${origin}/venue/${id}`
 }
 
+/**
+ * Knight Library only (2026-10-08): the Knight venue's card links to
+ * https://knightlibrary.app/v (QR, Copy link, Open page) while the admin
+ * "Knight app-only tickets" toggle is ON, read from the public venue payload.
+ * No other venue ever asks; their cards are untouched.
+ */
+function useKnightAppOnly(venueId: number): boolean {
+  const knight = isKnightVenueId(venueId)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    if (!knight) return
+    let cancelled = false
+    fetch(`${getApiBaseUrl()}/ui/venues/venue/${venueId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled) setOn(d?.venue?.knight_app_only_tickets === true)
+      })
+      .catch(() => {
+        /* keep the normal link */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [knight, venueId])
+  return knight && on
+}
+
 function VenueQrCard({ venue }: { venue: Venue }) {
   const [copied, setCopied] = useState(false)
-  const url = venueUrl(venue.id)
+  const knightAppOnly = useKnightAppOnly(venue.id)
+  const url = knightAppOnly
+    ? venueShareUrl({ venueId: venue.id, origin: "", knightAppOnlyTickets: true })
+    : venueUrl(venue.id)
 
   const copy = async () => {
     try {
@@ -33,12 +65,14 @@ function VenueQrCard({ venue }: { venue: Venue }) {
     if (!canvas) return
     const a = document.createElement("a")
     a.href = canvas.toDataURL("image/png")
-    a.download = `${venue.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-bizzy-qr.png`
+    a.download = knightAppOnly
+      ? venueQrFileName(venue.name, true)
+      : `${venue.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-bizzy-qr.png`
     a.click()
   }
 
   return (
-    <Card>
+    <Card data-brand={knightAppOnly ? "knight" : undefined}>
       <CardContent className="flex items-center gap-4 py-4">
         {/* Rendered at 512px for a print-quality download, displayed small */}
         <div className="shrink-0 rounded-lg border border-neutral-200 bg-white p-1.5 dark:border-neutral-800">
