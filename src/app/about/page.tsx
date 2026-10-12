@@ -121,7 +121,7 @@ export default function AboutPage() {
                   real bridge between them.
                 </p>
                 <p className="text-ink font-medium">
-                  So I decided to build one.
+                  So in February 2024, I decided to build one.
                 </p>
                 <p className="text-ink font-medium">
                   That became Bizzy.
@@ -144,8 +144,9 @@ export default function AboutPage() {
                   the company forward myself.
                 </p>
                 <p>
-                  Within a few weeks, Bizzy had thousands of users. That is when
-                  I called Evan.
+                  I got the app built, brought on local restaurants, and grew
+                  Bizzy to its first 5,000 students. Then, at the end of January
+                  2025, Evan reached out.
                 </p>
                 <p>
                   We go back. Evangelos Milionis is about four years ahead of me,
@@ -157,7 +158,9 @@ export default function AboutPage() {
                   chats and paper lists.
                 </p>
                 <p>
-                  He believed in the vision early and invested $20,000. With his
+                  He believed in the vision, put in some money, and joined the
+                  team as cofounder to lead venue partnerships and scale events
+                  and ticketing. With his
                   experience in the college bar and events market, we saw what
                   Bizzy could become: not just a deals app, but the platform
                   students use to unlock campus life.
@@ -200,7 +203,7 @@ export default function AboutPage() {
                 headliners into campus venues across the country.
               </p>
               <p>
-                He went on to acquire Backroads Brewhouse &amp; Sports in Fort
+                He went on to acquire Backroads Brewhouse & Sports in Fort
                 Myers, Florida, a live-music and sports bar catering primarily
                 to the nearby FGCU college crowd, where he serves as
                 owner-operator. He also founded and runs multiple SaaS
@@ -209,8 +212,8 @@ export default function AboutPage() {
               <p>
                 Bizzy founder Cooper Aiello brought him into the company as his
                 cofounder following its initial launch to lead venue
-                partnerships and scale the platform&apos;s footprint across the
-                bar and nightlife industry through the events &amp; ticketing
+                partnerships and scale the platform's footprint across the
+                bar and nightlife industry through the events & ticketing
                 function.
               </p>
             </div>
@@ -325,7 +328,7 @@ export default function AboutPage() {
         <AnimatedSection>
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold text-ink mb-6">
-              Where we&apos;re going
+              Where we're going
             </h2>
             <div className="space-y-4 text-muted text-lg leading-relaxed">
               <p>
@@ -353,7 +356,7 @@ export default function AboutPage() {
               Be part of the movement
             </h2>
             <p className="text-white/80 text-lg mb-8 max-w-lg mx-auto">
-              Whether you&apos;re a student or a business, Bizzy is built for you.
+              Whether you're a student or a business, Bizzy is built for you.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button href={APP_STORE_URL} variant="white" size="lg" external>
