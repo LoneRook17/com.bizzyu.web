@@ -181,6 +181,13 @@ export default function RootLayout({
       <head>
         <JsonLd data={organizationJsonLd} />
         <JsonLd data={appJsonLd} />
+        {/* impact.com site verification (Uber affiliate program). A raw tag,
+            not the metadata API: impact's snippet uses `value=`, and the
+            metadata API would render `content=`. LEAVE THIS IN. */}
+        <meta
+          name="impact-site-verification"
+          {...{ value: "06a34421-aeb7-43c0-95a7-acb66a7a3964" }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${fredoka.variable} ${firaSans.variable} antialiased`}
