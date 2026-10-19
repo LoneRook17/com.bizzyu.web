@@ -475,6 +475,12 @@ export interface EventAnalytics {
     // `revenue` + `tips`, computed by the API. Optional secondary caption
     // only. Never shown in place of Revenue.
     take_home_with_tips?: number
+    // Sales tax (Update ALPHA). Integer cents of tax-INCLUDED pricing carved
+    // out of the face price; `revenue` above is already net of it. Rendered as
+    // "$X of revenue withheld for sales tax" directly above Tips, only when
+    // > 0 (tax on top / untaxed venues report 0). Absent on older services
+    // deploys, so read it through taxWithheldCents() (lib/business/event-tax.ts).
+    tax_withheld_cents?: number
   }
   // Tips visibility (computed by the API): tipping is on for the business, or
   // this event has tip history. Gate ALL Tips UI on it through tipsVisible()
