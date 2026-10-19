@@ -8,6 +8,8 @@ interface RawEvent {
   venue_name: string | null;
   flyer_image_url: string | null;
   start_date_time: string | null;
+  /** IANA zone the wall clock is already in. Omitted on older payloads. */
+  timezone?: string | null;
   university_id: number | null;
   university_name: string | null;
   status: string | null;
@@ -21,8 +23,10 @@ export interface CampusEvent {
   name: string;
   /** As the venue typed it. Often "VENUE ANNOUNCED SOON" on tour dates. */
   venue: string | null;
-  /** "2026-08-21 21:00:00". NOT ISO-8601, so never hand it straight to Date(). */
+  /** "2026-08-21 21:00:00". Wall clock in `timeZone`, not an absolute instant. */
   startsAt: string;
+  /** IANA zone for `startsAt`. Null when the payload omits it. */
+  timeZone: string | null;
   flyer: string | null;
   /** Cheapest ticket, or null for free/RSVP nights. */
   price: number | null;
@@ -62,6 +66,7 @@ export async function fetchAllEvents(): Promise<CampusEvent[]> {
       name: e.name as string,
       venue: e.venue_name || null,
       startsAt: e.start_date_time || "",
+      timeZone: typeof e.timezone === "string" && e.timezone.trim() ? e.timezone.trim() : null,
       flyer: e.flyer_image_url || null,
       price: e.lowest_price != null ? Number(e.lowest_price) : null,
       is21Plus: e.is_21_plus === 1,

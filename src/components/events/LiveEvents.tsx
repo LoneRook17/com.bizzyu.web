@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { formatEventWhen } from "@/lib/event-time";
 import type { CampusEvent } from "@/lib/events";
 
 interface LiveEventsProps {
@@ -40,19 +41,6 @@ export default function LiveEvents({
   const shown = events.slice(0, limit);
   if (shown.length === 0) return null;
 
-  const fmt = (iso: string) => {
-    // "2026-07-15 21:00:00" is not ISO-8601; Safari returns Invalid Date for it.
-    const d = new Date(iso.replace(" ", "T"));
-    if (Number.isNaN(d.getTime())) return "";
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      timeZone: "America/New_York",
-    }).format(d);
-  };
-
   return (
     <section className="relative overflow-hidden bg-ink border-t border-white/10">
       <div className="absolute -right-40 top-0 w-[32rem] h-[32rem] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
@@ -66,7 +54,9 @@ export default function LiveEvents({
         </div>
 
         <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-          {shown.map((e) => (
+          {shown.map((e) => {
+            const when = formatEventWhen(e.startsAt, e.timeZone)
+            return (
             <li key={e.id} className="flex">
               {/* /event/:id, NOT the checkout URL directly. That path is
                   app-claimed in the AASA file, so an iPhone with Bizzy opens
@@ -103,15 +93,16 @@ export default function LiveEvents({
                     {e.name}
                   </p>
                   {e.venue && <p className="text-white/50 text-[11px] mt-1 truncate">{e.venue}</p>}
-                  {fmt(e.startsAt) && (
+                  {when && (
                     <p className="text-primary text-[11px] font-semibold mt-auto pt-2">
-                      {fmt(e.startsAt)}
+                      {when}
                     </p>
                   )}
                 </div>
               </Link>
             </li>
-          ))}
+            )
+          })}
         </ul>
       </div>
     </section>
