@@ -104,6 +104,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.3,
     },
     {
+      url: `${baseUrl}/affiliate-disclosure`,
+      lastModified: new Date("2026-10-19"),
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
       // Google Play / App Store account-deletion URL.
       url: `${baseUrl}/account/delete`,
       lastModified: new Date("2026-09-12"),

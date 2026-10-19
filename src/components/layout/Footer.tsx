@@ -113,6 +113,9 @@ export default function Footer() {
             <Link href="/terms" className="hover:text-primary transition-colors">
               Terms of Service
             </Link>
+            <Link href="/affiliate-disclosure" className="hover:text-primary transition-colors">
+              Affiliate Disclosure
+            </Link>
           </div>
         </div>
       </div>
