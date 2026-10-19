@@ -4,6 +4,7 @@ import type { EventAnalytics, PerScannerRow } from "@/lib/business/types"
 import { promoterDisplayName } from "@/lib/business/promoter-display-name"
 import { REVENUE_CAPTION_WITH_TIPS, TIPS_INFO_NOTE, TIPS_TILE_TITLE, eventTipsAmount, eventTipsVisible, hasTips, takeHomeWithTips } from "@/lib/business/event-tips"
 import { TipsByWorker } from "@/components/business/v2/events/TipsByWorker"
+import { hasTaxWithheld, taxWithheldLabel } from "@/lib/business/event-tax"
 import { usd, cn } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
 
@@ -42,6 +43,12 @@ export function EventAnalyticsView({ data, perScanner }: { data: EventAnalytics;
         <CardContent className="pt-0">
           <p className="text-3xl font-semibold tracking-tight text-[#05EB54]">{usd(data.revenue?.revenue ?? 0)}</p>
           <p className="mt-1 text-[13px] text-neutral-500 dark:text-neutral-400">{hasTips(data.revenue) ? REVENUE_CAPTION_WITH_TIPS : "Your take-home: matches Stripe payout."}</p>
+          {/* sales tax withheld (tax-included pricing only): Revenue is already net of it. Directly above Tips. */}
+          {hasTaxWithheld(data.revenue) && (
+            <p data-testid="analytics-tax-withheld-row" className="mt-3 border-t border-neutral-200 pt-3 text-sm font-medium text-neutral-700 dark:border-neutral-800 dark:text-neutral-300">
+              {taxWithheldLabel(data.revenue, usd)}
+            </p>
+          )}
         </CardContent>
       </Card>
 
