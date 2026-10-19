@@ -65,6 +65,18 @@ test("eventMatchesVenue compares numeric ids, including string venue_id", () => 
   assert.equal(eventMatchesVenue({ venue_id: null }, "990198"), false)
 })
 
+test("toVenueEvent keeps the night timezone when the payload sends one", () => {
+  const row = toVenueEvent({
+    event_id: 2002,
+    name: "The Homecoming Kick Off Party",
+    start_date_time: "2026-10-08 21:00:00",
+    timezone: "America/Chicago",
+  })
+  assert.ok(row)
+  assert.equal(row.timezone, "America/Chicago")
+  assert.equal(toVenueEvent({ event_id: 1, name: "No zone" })?.timezone, null)
+})
+
 test("toVenueEvent aliases weekly_cover to door_access like Flutter readAccessKind", () => {
   const row = toVenueEvent({
     event_id: 621,
