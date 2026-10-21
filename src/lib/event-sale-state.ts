@@ -4,11 +4,19 @@
  * The decision lives on the server (services utils/eventSaleGuard; core
  * App\Services\EventSaleGuard): every online purchase path refuses an ended
  * or unpublished event with a coded error before any Stripe object exists,
- * and GET /ui/events/:id now carries `has_ended` + `sale_refusal` from that
- * same zone math. This module reads those fields first and only derives the
- * state itself for an older payload (status + end_date_time + timezone), so
- * the web can fail closed at /event/:id and /event/:id/checkout and keep
- * ended rows off the venue board without re-deriving money logic.
+ * and GET /ui/events/:id now carries `has_ended` + `sale_refusal` +
+ * `sales_close_at_utc` from that same zone math. This module reads those
+ * fields first and only derives the state itself for an older payload (status
+ * + end_date_time + timezone), so the web can fail closed at /event/:id and
+ * /event/:id/checkout and keep ended rows off the venue board without
+ * re-deriving money logic.
+ *
+ * ONLINE GRACE. Online sales stay open ONLINE_SALE_GRACE_HOURS (5h) past the
+ * listed end (the nightlife tail: hosts write "2am", the room pays covers
+ * until 4–5am). So `has_ended` (the real end) must NEVER by itself hide the
+ * buy controls: the sale gate is the server's `sale_refusal` (an explicit
+ * null = still selling), then `sales_close_at_utc`, then the local derivation
+ * with the same grace. eventHasEnded stays the real end for display only.
  *
  * The prod bug this closes on the web side: a two-day-old promoter link
  * bounced straight to a Laravel checkout that still sold (SALVAJE 2074).
@@ -31,6 +39,8 @@ export interface EventSaleClosed {
 
 const SELLABLE_STATUSES = new Set(["published", "approved", "active"])
 const FALLBACK_END_HOURS = 12
+/** Online sales stay open this long after the LISTED end (twin of services ONLINE_SALE_GRACE_HOURS). */
+export const ONLINE_SALE_GRACE_HOURS = 5
 const NAIVE =
   /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/
 const HAS_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/i
@@ -110,6 +120,8 @@ export interface SaleStateInput {
   /** Server-derived (services GET /ui/events/:id). Wins when present. */
   has_ended?: boolean | null
   sale_refusal?: { code?: string | null; message?: string | null } | null
+  /** Server-derived: the instant online sales close (listed end + grace). */
+  sales_close_at_utc?: string | null
 }
 
 /** The instant the event ends (end, else start + 12h, overnight end read as next day). */
@@ -132,18 +144,44 @@ export function eventHasEnded(event: SaleStateInput, now: Date = new Date()): bo
 }
 
 /**
+ * The instant ONLINE sales close: the server's `sales_close_at_utc` when the
+ * payload carries it, else the listed end + ONLINE_SALE_GRACE_HOURS (a missing
+ * listed end keeps the start + 12h fallback with no grace on top).
+ */
+export function eventSalesCloseInstant(event: SaleStateInput): Date | null {
+  const server = String(event.sales_close_at_utc ?? "").trim()
+  if (server) {
+    const d = new Date(server)
+    if (!Number.isNaN(d.getTime())) return d
+  }
+  const end = eventEndInstant(event)
+  if (!end) return null
+  const listedEnd = wallClockToInstant(event.end_date_time, event.timezone ?? null)
+  return listedEnd ? new Date(end.getTime() + ONLINE_SALE_GRACE_HOURS * 3600 * 1000) : end
+}
+
+/** True once online sales have closed (the real end + grace), never from `has_ended` alone. */
+export function eventSalesClosed(event: SaleStateInput, now: Date = new Date()): boolean {
+  const close = eventSalesCloseInstant(event)
+  return close != null && now.getTime() >= close.getTime()
+}
+
+/**
  * null when the event is selling; otherwise the closed state to render.
- * Server verdict first; a missing `status` on an old payload is NOT a refusal
- * (the server decides at purchase time either way).
+ * Server verdict first (a code closes; an explicit null means the server
+ * judged it still selling — inside the grace `has_ended` is true while this
+ * is null, and the sale goes ahead); a missing `status` on an old payload is
+ * NOT a refusal (the server decides at purchase time either way).
  */
 export function eventSaleState(event: SaleStateInput | null | undefined, now: Date = new Date()): EventSaleClosed | null {
   if (!event) return null
   const server = event.sale_refusal
   if (server && server.code) return saleClosedCopy(server.code, server.message)
+  if (server === null) return null
   const cancellation = String(event.cancellation_status ?? "none").toLowerCase()
   if (cancellation === "processing" || cancellation === "approved") return saleClosedCopy("event_cancelled")
   const status = String(event.status ?? "").trim().toLowerCase()
   if (status && !SELLABLE_STATUSES.has(status)) return saleClosedCopy("event_not_published")
-  if (eventHasEnded(event, now)) return saleClosedCopy("event_ended")
+  if (eventSalesClosed(event, now)) return saleClosedCopy("event_ended")
   return null
 }

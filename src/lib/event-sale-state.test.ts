@@ -1,9 +1,12 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
+  ONLINE_SALE_GRACE_HOURS,
   eventEndInstant,
   eventHasEnded,
   eventSaleState,
+  eventSalesCloseInstant,
+  eventSalesClosed,
   saleClosedCopy,
   wallClockToInstant,
 } from "./event-sale-state.ts"
@@ -45,6 +48,31 @@ test("a Los Angeles event is judged in its own zone", () => {
   const la = { ...salvaje, timezone: "America/Los_Angeles", start_date_time: "2026-10-21 06:00:00", end_date_time: "2026-10-21 09:00:00" }
   assert.equal(eventHasEnded(la, et("2026-10-21 11:30:00")), false) // 08:30 PT
   assert.equal(eventHasEnded(la, et("2026-10-21 12:30:00")), true) // 09:30 PT
+})
+
+test("online grace: sales close at the listed end + 5h, never at has_ended alone", () => {
+  assert.equal(ONLINE_SALE_GRACE_HOURS, 5)
+  assert.equal(eventSalesCloseInstant(salvaje)!.toISOString(), "2026-10-18T11:00:00.000Z")
+  // end − 2h, end + 1h (the 3am cover), end + 4h59m: selling; end + 5h00m / 5h01m: closed.
+  assert.equal(eventSaleState(salvaje, et("2026-10-18 00:00:00")), null)
+  assert.equal(eventHasEnded(salvaje, et("2026-10-18 03:00:00")), true)
+  assert.equal(eventSalesClosed(salvaje, et("2026-10-18 03:00:00")), false)
+  assert.equal(eventSaleState(salvaje, et("2026-10-18 03:00:00")), null)
+  assert.equal(eventSaleState(salvaje, et("2026-10-18 06:59:00")), null)
+  assert.equal(eventSaleState(salvaje, et("2026-10-18 07:00:00"))?.code, "event_ended")
+  assert.equal(eventSaleState(salvaje, et("2026-10-18 07:01:00"))?.code, "event_ended")
+  // A missing listed end keeps start + 12h with no grace on top.
+  const noEnd = { ...salvaje, end_date_time: null }
+  assert.equal(eventSalesCloseInstant(noEnd)!.toISOString(), eventEndInstant(noEnd)!.toISOString())
+  assert.equal(eventSaleState(noEnd, et("2026-10-18 09:59:00")), null)
+  assert.equal(eventSaleState(noEnd, et("2026-10-18 10:00:00"))?.code, "event_ended")
+  // The server's sales_close_at_utc wins over the local derivation.
+  const srv = { ...salvaje, sales_close_at_utc: "2026-10-18T08:00:00.000Z" }
+  assert.equal(eventSaleState(srv, et("2026-10-18 03:30:00")), null) // 07:30Z
+  assert.equal(eventSaleState(srv, et("2026-10-18 04:30:00"))?.code, "event_ended") // 08:30Z
+  // Inside the grace a server payload says has_ended:true with sale_refusal:null → selling.
+  assert.equal(eventSaleState({ ...salvaje, has_ended: true, sale_refusal: null, sales_close_at_utc: "2026-10-18T11:00:00.000Z" }, et("2026-10-18 03:00:00")), null)
+  assert.equal(eventSaleState({ ...salvaje, has_ended: true, sale_refusal: null }, et("2026-10-18 03:00:00")), null)
 })
 
 test("eventSaleState: the server verdict wins, else status, cancellation, then end", () => {
