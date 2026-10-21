@@ -18,8 +18,8 @@ const SPEED_MD = 330;
  *
  * Photo-led on purpose: most live venues have a room photo and only a third
  * have a business logo, so a logo strip would render two thirds empty. A photo
- * of a packed room is also the better argument on a nightlife page. Where a
- * logo exists it rides on the photo as a badge.
+ * of a packed room is also the better argument on a nightlife page. No logo
+ * badge or event-count pill on top: the photo and name carry the card.
  *
  * The heading names what these rooms are rather than counting them. A count
  * reads as small while the list is short and dates itself the moment a venue is
@@ -113,20 +113,6 @@ export default function VenueCarousel({ venues }: VenueCarouselProps) {
                   )}
                   {/* Scrim so the name stays legible over any photo. */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-
-                  {v.logo && (
-                    <div className="absolute top-2.5 left-2.5 w-9 h-9 rounded-lg bg-white/95 p-1 shadow-lg">
-                      <div className="relative w-full h-full">
-                        <Image src={v.logo} alt="" fill sizes="36px" className="object-contain" />
-                      </div>
-                    </div>
-                  )}
-
-                  {v.upcomingEvents > 0 && (
-                    <span className="absolute top-2.5 right-2.5 bg-primary text-ink text-[10px] font-bold rounded-full px-2 py-0.5">
-                      {v.upcomingEvents} upcoming
-                    </span>
-                  )}
 
                   <div className="absolute inset-x-0 bottom-0 p-3">
                     <p className="text-white font-bold text-sm leading-tight truncate">{v.name}</p>

@@ -6,16 +6,14 @@ import Button from "@/components/ui/Button";
 import SavingsCalculator from "@/components/events/SavingsCalculator";
 import StickyDemoCTA from "@/components/events/StickyDemoCTA";
 import VenueCarousel from "@/components/events/VenueCarousel";
-import LiveEvents from "@/components/events/LiveEvents";
 import AutoLoopVideo from "@/components/ui/AutoLoopVideo";
 import BizzyMark from "@/components/ui/BizzyMark";
 import { EVENTS_FAQ, CALENDLY_DEMO_URL } from "@/lib/constants";
 import { fetchVenues, venuesWithPhotos } from "@/lib/venues";
-import { fetchAllEvents } from "@/lib/events";
 import { og } from "@/lib/og";
 
 export const metadata: Metadata = {
-  title: "Fill Your Bar. Keep Every Dollar. | Bizzy for College Venues",
+  title: "Fill Your Bar. Your Bar, Your Money. | Bizzy for College Venues",
   description:
     "Bizzy gives college bars an unfair advantage: 0% platform fees, an auto-paid promoter army, SMS blasts to past attendees, and geofenced push to every nearby student. Book a 15-min demo.",
   alternates: {
@@ -24,7 +22,7 @@ export const metadata: Metadata = {
   // Card carries the page's own hero line, so the tap lands on the sentence it
   // promised.
   ...og({
-    title: "Fill your bar. Keep every dollar.",
+    title: "Fill your bar. Your bar, your money.",
     description:
       "Presale tickets, skip the line tickets, and cover at the door. Whatever you charge is what you keep. Then an auto-paid promoter army and SMS blasts fill the room.",
   }),
@@ -256,16 +254,13 @@ function PromoterMockup() {
 export default async function EventsPage() {
   // Every venue Bizzy runs, with its next event, straight from the app's own
   // public endpoint. A marketing page must never 500 because an API blipped,
-  // so failure degrades to no carousel and no events section.
+  // so failure degrades to no carousel.
   let venues: Awaited<ReturnType<typeof fetchVenues>> = [];
-  let events: Awaited<ReturnType<typeof fetchAllEvents>> = [];
-  // Independent: the carousel needs venues, the events grid needs events, and
-  // one failing must not blank the other. Events no longer come through venues.
-  const [v, e] = await Promise.allSettled([fetchVenues(), fetchAllEvents()]);
-  if (v.status === "fulfilled") venues = v.value;
-  else console.warn("[events] venue fetch failed", v.reason);
-  if (e.status === "fulfilled") events = e.value;
-  else console.warn("[events] events fetch failed", e.reason);
+  try {
+    venues = await fetchVenues();
+  } catch (err) {
+    console.warn("[events] venue fetch failed", err);
+  }
 
   return (
     <>
@@ -289,18 +284,15 @@ export default async function EventsPage() {
                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-[0.95] tracking-tight mb-6 text-white">
                   Fill Your Bar.
                   <br />
-                  {/* The sticker moves to "Every Dollar": that is the promise
-                      now, and it says the same thing as 100% in words a room
-                      full of cash understands. */}
                   <span className="font-display-italic font-normal text-white">
-                    Keep <span className="marker-sticker"><span>Every Dollar</span></span>.
+                    Your Bar, Your Money.
                   </span>
                 </h1>
 
                 {/* "0% platform fees" is a claim an owner has to take on
                     faith. Naming the three things they actually sell, and the
                     two places they sell them, is checkable, and it mirrors the
-                    headline: the first sentence is "Keep Every Dollar", the
+                    headline: the first sentence is "Your Money", the
                     second is "Fill Your Bar". */}
                 <p className="text-lg md:text-xl text-white/70 mb-10 max-w-xl leading-relaxed">
                   Whatever you charge for a presale ticket, a skip the line ticket, or cover at the door is
@@ -388,9 +380,6 @@ export default async function EventsPage() {
           nightlife page included every café and burrito shop. This is the
           actual bars, with photos of the actual rooms. */}
       <VenueCarousel venues={venuesWithPhotos(venues)} />
-
-      {/* ─── 4. Real events, running right now ─────────────── */}
-      <LiveEvents events={events} />
 
       {/* ─── 5. FILL THE BAR (Promoter + SMS + Push) ───────── */}
       <section id="fill-the-bar" className="relative overflow-hidden bg-ink text-white">
