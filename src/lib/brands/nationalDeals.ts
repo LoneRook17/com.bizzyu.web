@@ -16,20 +16,25 @@ export interface NationalDeal {
   id: number;
   brand: string;
   title: string;
+  description: string;
   category: string;
   imageUrl: string;
   offerLabel: string;
   verified: boolean;
+  /** "YYYY-MM-DD" of the last verification sweep, or "" */
+  lastVerifiedAt: string;
 }
 
 interface RawNationalDeal {
   id: number;
   brand: string | null;
   title: string | null;
+  description: string | null;
   category: string | null;
   image_url: string | null;
   offer_label: string | null;
   verified_on_official_site: boolean | number | string | null;
+  last_verified_at: string | null;
 }
 
 /* Household names first, so the shelf and the strip read instantly. Anything
@@ -101,36 +106,59 @@ async function fetchRaw(): Promise<NationalDeal[]> {
   const json = (await res.json()) as { data?: { deals?: RawNationalDeal[] } };
   const deals = json.data?.deals ?? [];
 
-  const seenLogo = new Set<string>();
   const out: NationalDeal[] = [];
   for (const d of deals) {
     if (isTestRow(d)) continue;
-    // One row per logo: Amazon Prime and Amazon Music share a mark, and the
-    // strip is a set of brands, not a catalogue of plans.
-    const logoKey = (d.image_url ?? "").split("/").pop() ?? "";
-    if (seenLogo.has(logoKey)) continue;
-    seenLogo.add(logoKey);
     out.push({
       id: d.id,
       brand: (d.brand ?? "").trim(),
       title: (d.title ?? "").trim(),
+      description: (d.description ?? "").trim(),
       category: (d.category ?? "").trim(),
       imageUrl: d.image_url ?? "",
       offerLabel: (d.offer_label ?? "").trim(),
       verified: truthy(d.verified_on_official_site),
+      lastVerifiedAt: (d.last_verified_at ?? "").slice(0, 10),
     });
   }
-  return out.sort((a, b) => rank(a.brand) - rank(b.brand));
+  // Stable: household names first, then the feed's own order.
+  return out
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => rank(a.d.brand) - rank(b.d.brand) || a.i - b.i)
+    .map((x) => x.d);
 }
 
 const cached = unstable_cache(fetchRaw, ["national-deals-feed"], { revalidate: 1800 });
 
-/** Sorted, deduped, test rows removed. [] when the feed is unreachable. */
-export async function fetchNationalDeals(): Promise<NationalDeal[]> {
+/** Every live deal, sorted, test rows removed. [] when the feed is unreachable. */
+export async function fetchAllNationalDeals(): Promise<NationalDeal[]> {
   try {
     return await cached();
   } catch (err) {
     console.warn("[brands] national_deals fetch failed", err);
     return [];
   }
+}
+
+/**
+ * One row per logo, for brand proof (the /brands hero shelf and strip).
+ * Amazon Prime and Amazon Music share a mark, and a strip is a set of brands,
+ * not a catalogue of plans.
+ */
+export async function fetchNationalDeals(): Promise<NationalDeal[]> {
+  const all = await fetchAllNationalDeals();
+  const seen = new Set<string>();
+  return all.filter((d) => {
+    const key = d.imageUrl.split("/").pop() ?? "";
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** Distinct categories in feed order of first appearance. */
+export function categoriesOf(deals: NationalDeal[]): string[] {
+  const out: string[] = [];
+  for (const d of deals) if (d.category && !out.includes(d.category)) out.push(d.category);
+  return out.sort((a, b) => a.localeCompare(b));
 }
