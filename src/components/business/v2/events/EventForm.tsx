@@ -41,7 +41,8 @@ import { splitDateTimeLocal } from "@/lib/business/datetime-value"
 import { artworkTemplateForSave, resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
 import { StockAlertsFields } from "./StockAlertsFields"
 import { TicketTierForm } from "./TicketTierForm"
-import { tierSurgeToWire, tierWithSurgeDrafts, validateTierSurge } from "@/lib/business/event-tier-surge"
+import { tierWithSurgeDrafts, validateTierSurge } from "@/lib/business/event-tier-surge"
+import { ticketTierToWire } from "@/lib/business/ticket-tier-wire"
 
 interface EventFormProps {
   initialData?: Partial<EventFormData>
@@ -410,23 +411,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       }
 
       if (form.type === "Ticketed") {
-        payload.tickets = form.tickets.map((t) => ({
-          ...(t.ticket_id ? { ticket_id: t.ticket_id } : {}),
-          name: t.name,
-          description: t.description,
-          price_usd: t.price_usd,
-          quantity: t.quantity || null,
-          max_per_person: t.max_per_person || undefined,
-          ticket_type: t.ticket_type,
-          valid_from: t.valid_from || null,
-          valid_until: t.valid_until || null,
-          // Only when the tier states one — omission keeps the API stamping
-          // the event's own 21+ flag onto the tier.
-          ...(t.is_21_plus !== undefined ? { is_21_plus: !!t.is_21_plus } : {}),
-          // Both keys always — surge off must travel as an explicit clear;
-          // omission would leave a stored ladder in place.
-          ...tierSurgeToWire(t),
-        }))
+        // The SAME per-tier body Manage Tickets sends (ticket-tier-wire.ts):
+        // quantity 0 = unlimited (never null — the update path turned null
+        // into capacity 100), max_per_person null = no cap, is_21_plus and
+        // is_hidden only when the tier states them (a served hidden tier is
+        // echoed hidden, never unhidden by omission), the surge pair always.
+        payload.tickets = form.tickets.map((t) => ticketTierToWire(t))
       }
 
       if (form.promotion_enabled) {
