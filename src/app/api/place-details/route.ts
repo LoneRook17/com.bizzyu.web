@@ -1,29 +1,12 @@
 import { NextResponse } from "next/server"
+import { getPlacesProxy } from "@/lib/places/proxy"
+import { getClientIp } from "@/lib/verifyTurnstile"
 
+// Public GET used after a prediction is picked. Rate limit, place_id
+// validation, caching and the Google call live in lib/places/proxy.ts
+// (audit W7 A01).
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const placeId = searchParams.get("place_id")
-
-  if (!placeId) {
-    return NextResponse.json({ lat: null, lng: null })
-  }
-
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ lat: null, lng: null })
-  }
-
-  try {
-    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=geometry&key=${apiKey}`
-    const res = await fetch(url)
-    const data = await res.json()
-
-    const location = data.result?.geometry?.location
-    return NextResponse.json({
-      lat: location?.lat ?? null,
-      lng: location?.lng ?? null,
-    })
-  } catch {
-    return NextResponse.json({ lat: null, lng: null })
-  }
+  const result = await getPlacesProxy().details(searchParams.get("place_id"), getClientIp(request))
+  return NextResponse.json(result.body, { status: result.status })
 }
