@@ -174,7 +174,13 @@ test("EventForm hydrates drafts, validates ladders, and spreads the wire keys", 
   const src = read("../../components/business/v2/events/EventForm.tsx")
   assert.ok(src.includes("tierWithSurgeDrafts"), "served rows must be normalized to drafts")
   assert.ok(src.includes("validateTierSurge"), "ticket step must validate ladders client-side")
-  assert.ok(src.includes("...tierSurgeToWire(t)"), "tier payload must always carry both surge keys")
+  // The tier payload is built by the shared helper (ticket-tier-wire.ts, audit
+  // W3 F15), which spreads tierSurgeToWire — so both surge keys still always
+  // travel; they just travel the same way Manage Tickets sends them.
+  assert.ok(src.includes("form.tickets.map((t) => ticketTierToWire(t))"), "tier payload must go through the shared wire helper")
+  const wire = read("./ticket-tier-wire.ts")
+  assert.ok(wire.includes("tierSurgeToWire("), "the shared helper must build the surge pair with tierSurgeToWire")
+  assert.ok(wire.includes("...surge,"), "the shared helper must spread both surge keys onto every tier")
 })
 
 test("TicketTierForm always shows the surge checkbox — never gated on a price", () => {
