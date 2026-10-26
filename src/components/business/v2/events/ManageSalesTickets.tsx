@@ -8,10 +8,10 @@ import { persistMaxPerPerson } from "@/lib/business/ticket-limits"
 import {
   nextSurgeStep,
   seededSurgeStep,
-  tierSurgeToWire,
   tierWithSurgeDrafts,
   validateTierSurge,
 } from "@/lib/business/event-tier-surge"
+import { ticketTierToWire } from "@/lib/business/ticket-tier-wire"
 import type { EventDetail, TicketTier } from "@/lib/business/types"
 import { cn, usd } from "@/lib/v2/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/business/v2/ui/card"
@@ -177,23 +177,29 @@ function formAsTier(editing: TicketFormState): TicketTier {
   }
 }
 
+/**
+ * The per-tier wire body. ONE contract shared with the Full Edit form
+ * (ticket-tier-wire.ts): quantity 0 = unlimited, max_per_person null = no cap
+ * (`persistMaxPerPerson`), is_21_plus only when stated — omission keeps the
+ * stored flag (update) or inherits the event's own toggle (create) — and both
+ * surge keys always, so surge off travels as an explicit clear. Hide/unhide is
+ * its own PUT here, so this form never states `is_hidden`.
+ */
 function ticketSaveBody(editing: TicketFormState) {
-  return {
-    name: editing.name.trim(),
-    description: editing.description.trim() || null,
+  return ticketTierToWire({
+    name: editing.name,
+    description: editing.description,
     ticket_type: editing.ticket_type,
-    price_usd: editing.ticket_type === "paid" ? parseFloat(editing.price_usd) || 0 : 0,
-    quantity: parseInt(editing.quantity) || 0,
+    price_usd: editing.price_usd,
+    quantity: editing.quantity,
     max_per_person: persistMaxPerPerson(editing.max_per_person),
-    valid_from: editing.valid_from || null,
-    valid_until: editing.valid_until || null,
-    // Only when stated — omission keeps the stored flag (update) or inherits
-    // the event's own toggle (create).
-    ...(editing.is_21_plus === undefined ? {} : { is_21_plus: !!editing.is_21_plus }),
-    // Both surge keys always — surge off must travel as an explicit clear,
-    // same contract as the event-create tier card.
-    ...tierSurgeToWire(formAsTier(editing)),
-  }
+    valid_from: editing.valid_from,
+    valid_until: editing.valid_until,
+    is_21_plus: editing.is_21_plus,
+    surge_enabled: editing.surge_enabled,
+    surge: editing.surge,
+    surge_base_price_usd: editing.surge_base_price_usd ?? null,
+  })
 }
 
 /**
