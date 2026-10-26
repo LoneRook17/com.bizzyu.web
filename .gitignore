@@ -46,3 +46,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .worktrees/
+
+# real payouts exports (buyer emails, order + payment-intent ids) — never commit one;
+# proof captures keep RESULT.json / screenshots only (audit wave 1, F01)
+proof_*/bizzy-payouts-*.csv
