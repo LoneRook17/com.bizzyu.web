@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { Resend } from "resend";
 import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
+import { escapeHtml } from "@/lib/html-escape";
 import { createRateLimiter } from "@/lib/ratelimit";
 import { PARTNERSHIPS_EMAIL } from "@/lib/constants";
 import {
@@ -205,10 +206,3 @@ function notificationHtml(app: BrandApplication, createdAt: Date): string {
   `;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}

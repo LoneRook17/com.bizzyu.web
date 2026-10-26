@@ -137,13 +137,13 @@ export default function DealForm({ initialData, dealId }: DealFormProps) {
         void fetch("/api/admin-notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          // Audit F29: business + creator come from the server session, the
+          // venue from its id; identity strings in the body are ignored.
           body: JSON.stringify({
             type: "deal",
             title: form.deal_title,
-            business: business?.name,
-            venue: selectedVenue?.name,
+            venue_id: selectedVenue?.id,
             id: data.deal_id,
-            createdBy: business?.email,
             details: {
               "Description": form.description,
               "Estimated savings": `$${savingsNum}`,

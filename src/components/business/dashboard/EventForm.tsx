@@ -321,13 +321,13 @@ export default function EventForm({ initialData, eventId, stripeOnboarded = true
         void fetch("/api/admin-notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          // Audit F29: business + creator come from the server session, the
+          // venue from its id; identity strings in the body are ignored.
           body: JSON.stringify({
             type: "event",
             title: form.name,
-            business: business?.name,
-            venue: form.venue_name,
+            venue_id: selectedVenue?.id,
             id: data.event_id,
-            createdBy: business?.email,
             details: {
               "Type": form.type,
               "Venue address": form.venue_address,

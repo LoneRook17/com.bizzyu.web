@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { formatAvailability } from "@/lib/types";
 import {
   DEAL_SUBMISSIONS_FORWARD_HEADERS,
   FORWARD_SAVE_ERROR,
@@ -10,6 +9,8 @@ import {
   submissionEmailSubject,
 } from "@/lib/deal-submission-forward";
 import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
+import { parseSubmission } from "@/lib/public-forms/validate";
+import { buildSubmissionEmail } from "@/lib/public-forms/emails";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
 
@@ -42,29 +43,39 @@ async function uploadBase64ToS3(base64: string, folder: string): Promise<string>
   return `https://${bucket}.s3.amazonaws.com/${key}`;
 }
 
+/**
+ * Deal submission from the public signup flow → Laravel + Partnerships email.
+ *
+ * Audit F30: the body is reduced to the known business / deal / media keys
+ * (lib/public-forms/validate.ts — trimmed, capped, email checked → 422,
+ * unknown keys dropped) BEFORE it is forwarded to Laravel or rendered, and
+ * every field in the email is HTML-escaped (lib/public-forms/emails.ts).
+ * Turnstile + honeypot unchanged.
+ */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { business, deal, media, turnstileToken, website_url } = body;
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    }
 
-    const check = await verifyTurnstile(turnstileToken, website_url, getClientIp(request));
+    const check = await verifyTurnstile(body.turnstileToken, body.website_url, getClientIp(request));
     if (!check.ok) {
       return NextResponse.json({ error: "Verification failed" }, { status: 422 });
     }
 
-    if (!business?.businessName || !business?.email || !deal?.title) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    const parsed = parseSubmission(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status });
     }
+    const { business, deal, media } = parsed.data;
 
     const submissionId = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const submittedAt = new Date().toLocaleString();
 
     // Parse base64 image into attachment if provided
     const attachments: { filename: string; content: Buffer }[] = [];
-    if (media?.dealImageUrl?.startsWith("data:")) {
+    if (media.dealImageUrl.startsWith("data:")) {
       const match = media.dealImageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
       if (match) {
         const ext = match[1] === "jpeg" ? "jpg" : match[1];
@@ -87,9 +98,9 @@ export async function POST(request: Request) {
 
       // Try S3 upload, but don't let it block the forward
       try {
-        if (media?.dealImageUrl?.startsWith("data:")) {
+        if (media.dealImageUrl.startsWith("data:")) {
           dealImageUrl = await uploadBase64ToS3(media.dealImageUrl, "deal-submissions/images");
-        } else if (media?.dealImageUrl) {
+        } else if (media.dealImageUrl) {
           dealImageUrl = media.dealImageUrl;
         }
       } catch (s3Error) {
@@ -97,9 +108,9 @@ export async function POST(request: Request) {
       }
 
       try {
-        if (media?.logoUrl?.startsWith("data:")) {
+        if (media.logoUrl.startsWith("data:")) {
           logoUrl = await uploadBase64ToS3(media.logoUrl, "deal-submissions/logos");
-        } else if (media?.logoUrl) {
+        } else if (media.logoUrl) {
           logoUrl = media.logoUrl;
         }
       } catch (s3Error) {
@@ -126,63 +137,22 @@ export async function POST(request: Request) {
       }
     }
 
-    const emailHeading = forwardFailed ? "Deal submission was NOT saved" : "New Deal Submission";
-    const emailBanner = forwardFailed
-      ? `<p style="margin: 0 0 16px; padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; font-size: 14px;">This deal was not saved to the admin API. The business saw an error on the form. The forward status and body are in the server log.</p>`
-      : "";
-
     // Notification email. A mail failure must not hide a successful save, and
     // a failed save must still notify the team.
     try {
       const { error: emailError } = await getResend().emails.send({
-      from: "Bizzy <support@no-reply.bizzyu.com>",
-      to: ["Partnerships@BizzyU.com", "EvanMilionis@gmail.com"],
-      subject: submissionEmailSubject(forwardFailed, deal.title, business.businessName),
-      attachments,
-      html: `
-        <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #05EB54, #10b981); padding: 24px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 22px;">${emailHeading}</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-            ${emailBanner}
-            <h2 style="color: #111; margin: 0 0 16px;">Business Info</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 6px 0; color: #6b7280; width: 140px;">Business Name</td><td style="padding: 6px 0; font-weight: 600;">${business.businessName}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Contact Name</td><td style="padding: 6px 0;">${business.contactName || "—"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Email</td><td style="padding: 6px 0;"><a href="mailto:${business.email}">${business.email}</a></td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Phone</td><td style="padding: 6px 0;">${business.phone || "—"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Address</td><td style="padding: 6px 0;">${business.address || "—"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Campus</td><td style="padding: 6px 0;">${business.campus || "—"}</td></tr>
-            </table>
-
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-
-            <h2 style="color: #111; margin: 0 0 16px;">Deal Details</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 6px 0; color: #6b7280; width: 140px;">Deal Title</td><td style="padding: 6px 0; font-weight: 600;">${deal.title}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Description</td><td style="padding: 6px 0;">${deal.description || "—"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Estimated Savings</td><td style="padding: 6px 0; color: #05EB54; font-weight: 700;">${deal.estimatedSavings || "—"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Redemption</td><td style="padding: 6px 0;">${deal.redemptionFrequency || "—"}${deal.limitedSupplyCount ? ` (${deal.limitedSupplyCount} available)` : ""}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Available</td><td style="padding: 6px 0; font-weight: 600;">${formatAvailability(deal.availability) || "All day"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">Start Date</td><td style="padding: 6px 0;">${deal.startDate || "Immediately"}</td></tr>
-              <tr><td style="padding: 6px 0; color: #6b7280;">End Date</td><td style="padding: 6px 0;">${deal.endDate || "Ongoing"}</td></tr>
-            </table>
-
-            ${attachments.length > 0 ? `
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-            <p style="color: #6b7280; font-size: 13px; font-style: italic;">Deal image attached.</p>
-            ` : ""}
-
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-            <p style="color: #6b7280; font-size: 13px; margin: 0;">
-              Submission ID: ${submissionId}<br/>
-              Submitted: ${submittedAt}
-            </p>
-          </div>
-        </div>
-      `,
-    });
+        from: "Bizzy <support@no-reply.bizzyu.com>",
+        to: ["Partnerships@BizzyU.com", "EvanMilionis@gmail.com"],
+        subject: submissionEmailSubject(forwardFailed, deal.title, business.businessName),
+        attachments,
+        ...buildSubmissionEmail({
+          data: parsed.data,
+          forwardFailed,
+          hasAttachment: attachments.length > 0,
+          submissionId,
+          submittedAt,
+        }),
+      });
 
       if (emailError) {
         console.error("Resend error:", emailError);

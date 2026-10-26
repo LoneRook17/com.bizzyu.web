@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
+import { escapeHtml } from "@/lib/html-escape";
 import { CATALOG_API_GAP_NOTE, isValidRequestSchoolPayload } from "@/lib/request-school";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
@@ -65,10 +66,3 @@ export async function POST(request: Request) {
   }
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}

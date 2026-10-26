@@ -1,7 +1,26 @@
-import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { createRateLimiter } from "@/lib/ratelimit";
+import { fetchBusinessSession, fetchBusinessVenue } from "@/lib/business/server-session";
+import { handleAdminNotify } from "@/lib/admin-notify/handler";
 
-const getResend = () => new Resend(process.env.RESEND_API_KEY!);
+export const runtime = "nodejs";
+
+/**
+ * "A business just created a deal / event" email to the admins.
+ *
+ * Audit F29: this used to be a public, unauthenticated, unlimited endpoint
+ * that trusted `business` / `createdBy` / `university` from the body. It now
+ * requires the dashboard's own business session (biz_token cookie, verified
+ * against GET /business/auth/me), takes the business + creator from that
+ * session, resolves the venue by id from the caller's own venue list, drops
+ * identity-looking keys from `details`, and rate limits per IP and per
+ * business. The whole flow lives in lib/admin-notify/handler.ts so it is unit
+ * tested with a fake session and a captured send; this file only wires the
+ * real dependencies.
+ *
+ * Rate limits are per serverless instance (see lib/ratelimit.ts); a shared
+ * store (Upstash / Vercel WAF) is the prod-grade follow-up.
+ */
 
 const ADMIN_RECIPIENTS = [
   "cooper.aiello@gmail.com",
@@ -9,93 +28,25 @@ const ADMIN_RECIPIENTS = [
   "admin@bizzy.university",
 ];
 
-interface NotifyPayload {
-  type: "deal" | "event";
-  title: string;
-  business?: string;
-  venue?: string;
-  university?: string;
-  createdBy?: string; // email of the user who created it
-  id?: number | string;
-  details?: Record<string, string | number | boolean | null | undefined>;
-}
+// A real business creates a handful of deals/events a day. Thirty per IP and
+// ten per business inside ten minutes is a script.
+const ipLimit = createRateLimiter({ burstWindowMs: 10 * 60 * 1000, burstMax: 30, dailyMax: 200 });
+const businessLimit = createRateLimiter({ burstWindowMs: 10 * 60 * 1000, burstMax: 10, dailyMax: 60 });
 
 export async function POST(request: Request) {
-  try {
-    const body = (await request.json()) as NotifyPayload;
-    const { type, title, business, venue, university, createdBy, id, details } =
-      body;
-
-    if (!type || !title) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const label = type === "deal" ? "Deal" : "Event";
-    const submittedAt = new Date().toLocaleString();
-
-    const detailRows = details
-      ? Object.entries(details)
-          .filter(([, v]) => v !== undefined && v !== null && v !== "")
-          .map(
-            ([k, v]) =>
-              `<tr><td style="padding: 6px 0; color: #6b7280; width: 140px;">${escapeHtml(
-                k
-              )}</td><td style="padding: 6px 0;">${escapeHtml(String(v))}</td></tr>`
-          )
-          .join("")
-      : "";
-
-    const { error: emailError } = await getResend().emails.send({
-      from: "Bizzy <support@no-reply.bizzyu.com>",
-      to: ADMIN_RECIPIENTS,
-      subject: `New ${label}: ${title}${business ? ` - ${business}` : ""}`,
-      html: `
-        <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #05EB54, #10b981); padding: 24px; border-radius: 12px 12px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 22px;">New ${label} Created</h1>
-          </div>
-          <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 6px 0; color: #6b7280; width: 140px;">${label}</td><td style="padding: 6px 0; font-weight: 600;">${escapeHtml(title)}</td></tr>
-              ${business ? `<tr><td style="padding: 6px 0; color: #6b7280;">Business</td><td style="padding: 6px 0;">${escapeHtml(business)}</td></tr>` : ""}
-              ${venue ? `<tr><td style="padding: 6px 0; color: #6b7280;">Venue</td><td style="padding: 6px 0;">${escapeHtml(venue)}</td></tr>` : ""}
-              ${university ? `<tr><td style="padding: 6px 0; color: #6b7280;">Campus</td><td style="padding: 6px 0;">${escapeHtml(university)}</td></tr>` : ""}
-              ${createdBy ? `<tr><td style="padding: 6px 0; color: #6b7280;">Created by</td><td style="padding: 6px 0;"><a href="mailto:${escapeHtml(createdBy)}">${escapeHtml(createdBy)}</a></td></tr>` : ""}
-              ${id ? `<tr><td style="padding: 6px 0; color: #6b7280;">ID</td><td style="padding: 6px 0;">${escapeHtml(String(id))}</td></tr>` : ""}
-              ${detailRows}
-              <tr><td style="padding: 6px 0; color: #6b7280;">Submitted</td><td style="padding: 6px 0;">${submittedAt}</td></tr>
-            </table>
-          </div>
-        </div>
-      `,
-    });
-
-    if (emailError) {
-      console.error("Admin notify Resend error:", emailError);
-      return NextResponse.json(
-        { error: "Failed to send notification" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ status: "sent" }, { status: 201 });
-  } catch (error) {
-    console.error("Admin notify error:", error);
-    return NextResponse.json(
-      { error: "Failed to send notification" },
-      { status: 500 }
-    );
-  }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return handleAdminNotify(request, {
+    resolveSession: fetchBusinessSession,
+    lookupVenue: fetchBusinessVenue,
+    ipLimit,
+    businessLimit,
+    sendEmail: async ({ subject, html }) => {
+      const { error } = await new Resend(process.env.RESEND_API_KEY!).emails.send({
+        from: "Bizzy <support@no-reply.bizzyu.com>",
+        to: ADMIN_RECIPIENTS,
+        subject,
+        html,
+      });
+      return { error };
+    },
+  });
 }

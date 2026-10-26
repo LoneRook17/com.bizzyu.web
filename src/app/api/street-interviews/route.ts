@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { verifyTurnstile, getClientIp } from "@/lib/verifyTurnstile";
+import { escapeHtml } from "@/lib/html-escape";
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY!);
-
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 
 export async function POST(request: Request) {
   try {

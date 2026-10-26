@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { apiClient } from "./api-client"
 import { clearBizSession } from "./cookies"
 import { safeNextPath } from "./login-redirect"
+import { runLogout } from "./logout-flow"
+import { showToast } from "@/components/business/dashboard/Toast"
 import type { BusinessUser, Business, AuthState, MeResponse } from "./types"
 
 interface AuthContextValue extends AuthState {
@@ -81,18 +83,26 @@ export function BusinessAuthProvider({ children }: { children: React.ReactNode }
     router.push(safeNextPath(destination))
   }
 
+  // Audit F38: a failed server logout is retried once and then SURFACED; the
+  // user stays signed in rather than being shown a logged-out UI over live
+  // httpOnly session cookies. See lib/business/logout-flow.ts for why that is
+  // the only honest outcome.
   const logout = async () => {
-    try {
-      await apiClient.authPost("/business/auth/logout")
-    } catch {
-      // Clear local state regardless
-    }
-    setUser(null)
-    setBusiness(null)
-    // Cooper (May 2026): see clearBizSession in lib/business/cookies.ts.
-    clearBizSession()
-    // Hard navigation so middleware re-evaluates cookie state from a fresh request.
-    window.location.href = "/business/login"
+    await runLogout({
+      serverLogout: () => apiClient.authPost("/business/auth/logout"),
+      // Cooper (May 2026): see clearBizSession in lib/business/cookies.ts.
+      clearBizSession,
+      clearState: () => {
+        setUser(null)
+        setBusiness(null)
+      },
+      // Hard navigation so middleware re-evaluates cookie state from a fresh request.
+      navigate: () => {
+        window.location.href = "/business/login"
+      },
+      notify: (message) => showToast(message, "error"),
+      report: (error) => console.error("Business logout failed on the server:", error),
+    })
   }
 
   const refreshProfile = async () => {
