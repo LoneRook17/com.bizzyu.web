@@ -23,9 +23,10 @@ export default function SignupFlow({ universities }: SignupFlowProps) {
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
 
-  // /api/submissions rejects with 422 unless both of these are supplied, and
-  // only fails open when TURNSTILE_SECRET_KEY is unset (it is set in prod).
-  // Without them every submission dies silently and the deal never reaches us.
+  // /api/submissions rejects with 422 unless both of these are supplied. The
+  // server fails CLOSED when TURNSTILE_SECRET_KEY is unset (only NODE_ENV=test
+  // or TURNSTILE_FAIL_OPEN=1 lets a submission through without a token), so
+  // without them every submission dies and the deal never reaches us.
   const [turnstileToken, setTurnstileToken] = useState("");
   const [honeypot, setHoneypot] = useState("");
 
