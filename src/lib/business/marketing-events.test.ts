@@ -115,10 +115,20 @@ test("WC nights stripped from the events API still appear via the program next n
 })
 
 test("Marketing Events tab merges WC nights instead of empty-stating", () => {
-  const src = readFileSync(
+  const loader = readFileSync(
+    join(process.cwd(), "src/lib/business/marketing-upcoming-load.ts"),
+    "utf8",
+  )
+  assert.ok(loader.includes("marketingUpcomingRows"), "the loader must merge green events and WC nights")
+  assert.ok(loader.includes("loadProgramsUpcomingNights"), "the loader must load WC series nights")
+  const tab = readFileSync(
     join(process.cwd(), "src/components/business/v2/marketing/EventsTab.tsx"),
     "utf8",
   )
-  assert.ok(src.includes("marketingUpcomingRows"), "Events tab must merge green events and WC nights")
-  assert.ok(src.includes("loadProgramsUpcomingNights"), "Events tab must load WC series nights")
+  assert.ok(tab.includes("loadMarketingUpcomingRows"), "Events tab must use the shared loader")
+  const composer = readFileSync(
+    join(process.cwd(), "src/components/business/v2/marketing/BlastComposer.tsx"),
+    "utf8",
+  )
+  assert.ok(composer.includes("loadMarketingUpcomingRows"), "the Add event link picker must offer the same rows")
 })

@@ -3,17 +3,10 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { CalendarDays, Megaphone } from "lucide-react"
-import { apiClient, ApiError } from "@/lib/business/api-client"
-import type { EventListItem } from "@/lib/business/types"
-import {
-  ACCESS_ACCENT,
-  EVENT_ACCENT,
-  fetchDoorAccessProgramsSafe,
-  loadProgramsUpcomingNights,
-} from "@/lib/business/door-access"
-import { marketingUpcomingRows, type MarketingEventRow } from "@/lib/business/marketing-events"
-import { marketingNightsFromSeries } from "@/lib/business/wc-upcoming"
-import { easternToday } from "@/lib/business/door-access"
+import { ApiError } from "@/lib/business/api-client"
+import { ACCESS_ACCENT, EVENT_ACCENT } from "@/lib/business/door-access"
+import type { MarketingEventRow } from "@/lib/business/marketing-events"
+import { loadMarketingUpcomingRows } from "@/lib/business/marketing-upcoming-load"
 import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
@@ -23,7 +16,9 @@ import { EmptyState } from "@/components/business/v2/ui/empty-state"
  * Marketing → Events sub-tab.
  *
  * Upcoming green events AND upcoming Weekly Cover nights. A venue that only
- * has live WC nights must not empty-state.
+ * has live WC nights must not empty-state. The list comes from
+ * loadMarketingUpcomingRows, the same loader the blast composer's
+ * `Add event link` picker uses, so both offer the same rows.
  */
 interface Props {
   venueId: number | null
@@ -63,23 +58,11 @@ export default function EventsTab({ venueId }: Props) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    const params = new URLSearchParams({ tab: "upcoming", limit: "50" })
-    if (venueId != null) params.set("venue_id", String(venueId))
     void (async () => {
       try {
-        const [eventsRes, programs] = await Promise.all([
-          apiClient.get<{ events: EventListItem[]; total: number }>(`/business/events?${params.toString()}`),
-          fetchDoorAccessProgramsSafe(venueId),
-        ])
-        const loaded = await loadProgramsUpcomingNights(programs.filter((p) => p.is_active))
+        const next = await loadMarketingUpcomingRows(venueId)
         if (cancelled) return
-        setRows(
-          marketingUpcomingRows({
-            events: eventsRes.events ?? [],
-            programs,
-            nights: marketingNightsFromSeries(loaded, easternToday()),
-          }),
-        )
+        setRows(next)
         setLoading(false)
       } catch (err: unknown) {
         if (cancelled) return

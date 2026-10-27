@@ -151,6 +151,12 @@ export default function FollowingTab({ venueId, venueIds, venueLabel }: Props) {
         channel={composerChannel ?? "sms"}
         audience={audience}
         audienceLabel={`Followers of ${venueLabel} · ~${total} recipient${total === 1 ? "" : "s"}`}
+        cohort="followers"
+        quotaScope="venue"
+        // `Add event link` picker scope: the selected venue, or the only
+        // venue when "All venues" is a single-venue business (null = every
+        // venue). A multi-venue "All venues" never gets here (mustPickVenue).
+        linkVenueId={venueId ?? (venueIds.length === 1 ? venueIds[0] : null)}
         onSent={() => {
           setComposerChannel(null)
           load()

@@ -86,11 +86,27 @@ export interface BlastAudienceBody {
   all_followers?: boolean
   venue_id?: number
   venue_ids?: number[]
+  /**
+   * Per-event Announce: that event's ticket holders. The shared composer
+   * carries it so its copy says "ticket holders" and `Add event link` is one
+   * tap; the per-event wire itself rides the preview/send overrides.
+   */
+  event_id?: number
+}
+
+export interface BlastCooldown {
+  allowed: boolean
+  retry_after_seconds?: number
+  resets_at?: string
 }
 
 export interface AudiencePreviewResponse {
   recipients_count: number
   breakdown_by_channel: { phone_reachable: number; push_reachable: number }
+  /** Weekly pool state for the venue/account: 1 text blast … */
+  sms_cooldown?: BlastCooldown
+  /** … and a shared pool of 2 announcements (per-event + venue-wide + auto publish push). */
+  announcement_cooldown?: BlastCooldown
 }
 
 export interface SendBlastResponse {
