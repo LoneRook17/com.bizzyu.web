@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react"
-import { CalendarDays, Check, ChevronDown, Info, Link2, Loader2, Megaphone, MessageSquare } from "lucide-react"
+import { CalendarDays, Check, ChevronDown, Info, Link2, Loader2, Megaphone, MessageSquare, X } from "lucide-react"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { Button } from "@/components/business/v2/ui/button"
 import { Textarea } from "@/components/business/v2/ui/input"
@@ -19,15 +19,19 @@ import { loadMarketingUpcomingRows } from "@/lib/business/marketing-upcoming-loa
 import type { MarketingEventRow } from "@/lib/business/marketing-events"
 import {
   EMOJI_HINT,
+  LINK_EVENT_LABEL,
   LINK_NO_ROOM_HINT,
   SMS_SUFFIX,
+  blastSendBody,
   canReview,
   channelLabel,
   charLimitFor,
   cohortNoun,
+  compositionIdentity,
   composerTransition,
   cooldownNote,
   insertMarketingLink,
+  linkEventInfoCopy,
   linkableMarketingRows,
   marketingEventLinkUrl,
   marketingLength,
@@ -37,6 +41,8 @@ import {
   reviewButtonLabel,
   sanitizeMarketingInput,
   sentLine,
+  showsAddEventLink,
+  showsLinkEventControl,
   type Cohort,
   type ComposerStage,
 } from "@/lib/business/marketing-compose"
@@ -63,9 +69,18 @@ import type {
  *
  * Venue blasts hit `/business/marketing/blasts` with a client idempotency
  * key; the per-event Announce rides in through `previewOverride` /
- * `sendOverride` (same flow, its own wire). `Add event link` inserts the
- * PROD public event page — one tap for `eventLinkId`, a picker of that
- * venue's upcoming events + Weekly Cover nights for `linkVenueId`.
+ * `sendOverride` (same flow, its own wire).
+ *
+ * TEXTS: `Add event link` inserts the PROD public event page — one tap for
+ * `eventLinkId`, a picker of that venue's upcoming events + Weekly Cover
+ * nights for `linkVenueId`.
+ *
+ * ANNOUNCEMENTS (2026-10-27): no URL insert — a push is tapped, not read.
+ * A per-event announce shows nothing extra (the push already opens its
+ * event). A venue-wide one (`linkVenueId` given, no `event_id` audience)
+ * shows "Open an event when tapped": the same picker, but the pick rides
+ * as `link_event_id` on the send and never touches the message. Chip + ×
+ * to clear, (i) explains the tap, review says "Opens: …". Optional.
  */
 
 /** What a send resolved to. The per-event wire answers `recipient_count`. */
@@ -84,11 +99,12 @@ export interface BlastComposerProps {
   cohort?: Cohort
   /** Whose weekly pool the review card says this uses. Default "venue". */
   quotaScope?: "venue" | "account"
-  /** Event-scoped composer: `Add event link` inserts THIS event's page in one tap. */
+  /** Event-scoped TEXT composer: `Add event link` inserts THIS event's page in one tap. Ignored on announcements. */
   eventLinkId?: number | null
   /**
-   * Venue-wide composer: scope of the `Add event link` picker (null = every
-   * venue). Leave undefined (with no eventLinkId) to hide the control.
+   * Venue-wide composer: scope of the event picker (null = every venue) —
+   * `Add event link` on a text, "Open an event when tapped" on an
+   * announcement. Leave undefined (with no eventLinkId) to hide both.
    */
   linkVenueId?: number | null
   /** A different preview wire answering in the blast preview shape. */
@@ -122,6 +138,10 @@ export default function BlastComposer({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [linkRows, setLinkRows] = useState<MarketingEventRow[] | null>(null)
   const [linkRowsLoading, setLinkRowsLoading] = useState(false)
+  // Announcements: the event the push opens when tapped (`link_event_id`).
+  // Never inserted into the message.
+  const [linkedEvent, setLinkedEvent] = useState<{ id: number; title: string } | null>(null)
+  const [linkInfoOpen, setLinkInfoOpen] = useState(false)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pendingCursor = useRef<number | null>(null)
@@ -158,6 +178,9 @@ export default function BlastComposer({
     setError(null)
     setCooldownSeconds(0)
     setPickerOpen(false)
+    // A new audience (venue) or channel: the pick belonged to the old one.
+    setLinkedEvent(null)
+    setLinkInfoOpen(false)
     if (session == null || seenSession == null) {
       setStage("compose")
       setMessage("")
@@ -235,7 +258,10 @@ export default function BlastComposer({
   const len = marketingLength(message)
   const left = limit - len
   const reviewable = canReview({ text: message, limit, previewLoading, reachable, locked: locked || onCooldown })
-  const showLinkControl = eventLinkId != null || linkVenueId !== undefined
+  const linkInput = { channel, audience, eventLinkId, linkVenueId }
+  const showLinkControl = showsAddEventLink(linkInput)
+  const showLinkEventControl = showsLinkEventControl(linkInput)
+  const linkEventIdForSend = showLinkEventControl ? (linkedEvent?.id ?? null) : null
   const label = channelLabel(channel)
   const reviewing = stage !== "compose" && stage !== "sent"
 
@@ -263,14 +289,8 @@ export default function BlastComposer({
     setMessage(out.text)
   }
 
-  const onAddLink = async () => {
-    if (locked) return
-    if (eventLinkId != null) {
-      insertLink(eventLinkId)
-      return
-    }
+  const ensureLinkRows = async () => {
     if (linkVenueId === undefined) return
-    setPickerOpen((o) => !o)
     if (linkRows == null && !linkRowsLoading) {
       setLinkRowsLoading(true)
       try {
@@ -281,6 +301,34 @@ export default function BlastComposer({
         setLinkRowsLoading(false)
       }
     }
+  }
+
+  const onAddLink = async () => {
+    if (locked) return
+    if (eventLinkId != null) {
+      insertLink(eventLinkId)
+      return
+    }
+    if (linkVenueId === undefined) return
+    setPickerOpen((o) => !o)
+    await ensureLinkRows()
+  }
+
+  // Announcements: pick the event the push opens. Nothing goes into the body.
+  const onPickLinkEvent = async () => {
+    if (locked) return
+    setPickerOpen((o) => !o)
+    await ensureLinkRows()
+  }
+  const linkEvent = (row: { eventId: number; name: string }) => {
+    setPickerOpen(false)
+    setLinkedEvent({ id: row.eventId, title: row.name })
+    setStage((s) => composerTransition(s, "edit"))
+  }
+  const clearLinkEvent = () => {
+    if (locked) return
+    setLinkedEvent(null)
+    setStage((s) => composerTransition(s, "edit"))
   }
 
   const toReview = () => {
@@ -298,19 +346,20 @@ export default function BlastComposer({
     if (stage !== "review" || locked || onCooldown) return
     const trimmed = message.trim()
     if (!trimmed) return
-    const key = idemKey.current && idemKey.current.message === trimmed ? idemKey.current.key : newIdempotencyKey()
-    idemKey.current = { key, message: trimmed }
+    // The composition is the words AND the tap target: a retry of the same
+    // reuses the key, a different linked event is a new send.
+    const identity = compositionIdentity(trimmed, linkEventIdForSend)
+    const key = idemKey.current && idemKey.current.message === identity ? idemKey.current.key : newIdempotencyKey()
+    idemKey.current = { key, message: identity }
     setError(null)
     setStage((s) => composerTransition(s, "send"))
     try {
       const res = sendRef.current
         ? await sendRef.current(trimmed, key)
-        : await apiClient.post<SendBlastResponse>("/business/marketing/blasts", {
-            channel,
-            message: trimmed,
-            audience,
-            idempotency_key: key,
-          })
+        : await apiClient.post<SendBlastResponse>(
+            "/business/marketing/blasts",
+            blastSendBody({ channel, message: trimmed, audience, idempotencyKey: key, linkEventId: linkEventIdForSend }),
+          )
       idemKey.current = null
       setSentResult(res)
       setStage((s) => composerTransition(s, "sent"))
@@ -355,6 +404,7 @@ export default function BlastComposer({
                 who={`${confirmCount} ${cohortNoun(cohort, confirmCount)}`}
                 message={message.trim()}
                 quota={quotaNote(channel, quotaScope)}
+                opens={linkEventIdForSend != null ? linkedEvent?.title ?? null : null}
               />
             ) : (
               <>
@@ -434,8 +484,65 @@ export default function BlastComposer({
                         {eventLinkId == null && <ChevronDown className={cn("transition-transform", pickerOpen && "rotate-180")} />}
                       </Button>
                       {eventLinkId == null && pickerOpen && (
-                        <LinkPicker rows={linkRows} loading={linkRowsLoading} onPick={insertLink} />
+                        <LinkPicker rows={linkRows} loading={linkRowsLoading} onPick={(row) => insertLink(row.eventId)} />
                       )}
+                    </div>
+                  )}
+
+                  {showLinkEventControl && (
+                    <div className="mt-2" data-testid="blast-link-event">
+                      <div className="flex items-center gap-1">
+                        {linkedEvent ? (
+                          <span
+                            data-testid="blast-link-event-chip"
+                            className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#05EB54]/50 bg-[#05EB54]/10 py-1 pl-3 pr-1 text-[13px] font-semibold text-neutral-900 dark:text-neutral-100"
+                          >
+                            <CalendarDays className="size-3.5 shrink-0 text-[#05EB54]" />
+                            <button type="button" onClick={onPickLinkEvent} disabled={locked} className="truncate">
+                              Opens: {linkedEvent.title}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearLinkEvent}
+                              disabled={locked}
+                              aria-label="Clear linked event"
+                              data-testid="blast-link-event-clear"
+                              className="flex size-6 shrink-0 items-center justify-center rounded-full hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </span>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={onPickLinkEvent}
+                            disabled={locked}
+                            aria-expanded={pickerOpen}
+                            className="rounded-full"
+                          >
+                            <CalendarDays /> {LINK_EVENT_LABEL}
+                            <ChevronDown className={cn("transition-transform", pickerOpen && "rotate-180")} />
+                          </Button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setLinkInfoOpen((o) => !o)}
+                          aria-label="What a tap opens"
+                          aria-expanded={linkInfoOpen}
+                          data-testid="blast-link-event-info"
+                          className="flex size-7 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                        >
+                          <Info className="size-4" />
+                        </button>
+                      </div>
+                      {linkInfoOpen && (
+                        <p className="mt-1.5 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400" data-testid="blast-link-event-info-copy">
+                          {linkEventInfoCopy(quotaScope)}
+                        </p>
+                      )}
+                      {pickerOpen && <LinkPicker rows={linkRows} loading={linkRowsLoading} onPick={linkEvent} />}
                     </div>
                   )}
                 </div>
@@ -496,8 +603,20 @@ function Note({ tone, children }: { tone: "warn" | "error"; children: ReactNode 
   )
 }
 
-/** The frozen "exactly this, to exactly them" card. */
-function ReviewCard({ channel, who, message, quota }: { channel: BlastChannel; who: string; message: string; quota: string }) {
+/** The frozen "exactly this, to exactly them" card. `opens` = the announcement's tap target, when picked. */
+function ReviewCard({
+  channel,
+  who,
+  message,
+  quota,
+  opens = null,
+}: {
+  channel: BlastChannel
+  who: string
+  message: string
+  quota: string
+  opens?: string | null
+}) {
   const isSms = channel === "sms"
   const Icon = isSms ? MessageSquare : Megaphone
   return (
@@ -515,6 +634,11 @@ function ReviewCard({ channel, who, message, quota }: { channel: BlastChannel; w
           {message}
         </p>
         {isSms && <p className="mt-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">{SMS_SUFFIX.trim()}</p>}
+        {opens && (
+          <p className="mt-2.5 flex items-center gap-1.5 text-[13px] font-semibold text-neutral-900 dark:text-neutral-100" data-testid="blast-review-opens">
+            <CalendarDays className="size-3.5 text-neutral-500 dark:text-neutral-400" /> Opens: {opens}
+          </p>
+        )}
       </div>
       <p className="flex items-start gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
         <Info className="mt-px size-3.5 shrink-0" />
@@ -558,7 +682,9 @@ function formatRowDate(iso: string): string {
 /**
  * The venue-wide picker: that venue's upcoming named events + Weekly Cover
  * nights (the same list Marketing → Events paints). Inline under the button
- * rather than a second dialog, so nothing fights the first one.
+ * rather than a second dialog, so nothing fights the first one. Shared by
+ * the text URL insert and the announcement tap target — only what the
+ * caller does with the row differs.
  */
 function LinkPicker({
   rows,
@@ -567,7 +693,7 @@ function LinkPicker({
 }: {
   rows: MarketingEventRow[] | null
   loading: boolean
-  onPick: (eventId: number) => void
+  onPick: (row: MarketingEventRow & { eventId: number }) => void
 }) {
   const options = rows ? linkableMarketingRows(rows) : []
   return (
@@ -593,7 +719,7 @@ function LinkPicker({
                 type="button"
                 role="option"
                 aria-selected={false}
-                onClick={() => onPick(row.eventId)}
+                onClick={() => onPick(row)}
                 className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800"
               >
                 <span className="min-w-0">

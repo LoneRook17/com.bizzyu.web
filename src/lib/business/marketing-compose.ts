@@ -9,12 +9,15 @@
  *     UCS-2: 70-char segments and a double bill); a short hint says why;
  *   • a staged flow — compose → review → sending → sent — so a blast can
  *     never go out from the textarea in one click, and never twice;
- *   • `Add event link` drops the PROD public event page into the message.
+ *   • TEXTS: `Add event link` drops the PROD public event page into the
+ *     message; ANNOUNCEMENTS never insert a URL — a venue-wide one may pick
+ *     the event the push OPENS (`link_event_id`), a per-event one already
+ *     opens its event.
  *
  * Pure functions only; the React components render them.
  */
 
-import type { BlastChannel } from "@/components/business/dashboard/marketing/types"
+import type { BlastAudienceBody, BlastChannel } from "@/components/business/dashboard/marketing/types"
 
 export const SMS_MAX = 160
 export const ANNOUNCEMENT_MAX = 280
@@ -121,6 +124,79 @@ function clamp(n: number, lo: number, hi: number): number {
 /** A row the venue-wide link picker can offer: it needs a public page (an id). */
 export function linkableMarketingRows<T extends { eventId: number | null }>(rows: T[]): Array<T & { eventId: number }> {
   return rows.filter((r): r is T & { eventId: number } => r.eventId != null)
+}
+
+// ─── Announcements: a tap target, never a URL (2026-10-27) ───────────────
+//
+// A push is tapped, not read. `Add event link` (a URL inserted into the
+// body) is a TEXT thing; on channel 'announcement' the composer never shows
+// it. A per-event announce already opens its event on tap (the server sets
+// `deep_link`). A venue-wide announce may instead carry `link_event_id` —
+// the event the push OPENS — which rides the send and never touches the
+// message. Twin of the app's BlastComposerSheet.
+
+export const LINK_EVENT_LABEL = "Open an event when tapped"
+export const LINK_EVENT_INFO_VENUE =
+  "When someone taps this announcement, Bizzy opens the event you pick. If you don't pick one, it opens your venue page."
+export const LINK_EVENT_INFO_ACCOUNT =
+  "When someone taps this announcement, Bizzy opens the event you pick. If you don't pick one, the tap may not open a specific page."
+
+/** The (i) copy: a business announcement falls back to the venue page, a solo host's to nothing in particular. */
+export function linkEventInfoCopy(scope: "venue" | "account"): string {
+  return scope === "account" ? LINK_EVENT_INFO_ACCOUNT : LINK_EVENT_INFO_VENUE
+}
+
+export interface LinkControlInput {
+  channel: BlastChannel
+  /** The composer's audience; `event_id` set = a per-event composer. */
+  audience: Pick<BlastAudienceBody, "event_id" | "all_followers" | "venue_id" | "venue_ids" | "user_ids">
+  /** Event-scoped `Add event link` target (texts only). */
+  eventLinkId: number | null
+  /** Venue-wide picker scope; `undefined` = no venue-wide picker at all. */
+  linkVenueId: number | null | undefined
+}
+
+/** TEXTS only: the URL insert, one tap for an event or a picker for a venue. */
+export function showsAddEventLink(input: LinkControlInput): boolean {
+  if (input.channel !== "sms") return false
+  return input.eventLinkId != null || input.linkVenueId !== undefined
+}
+
+/** ANNOUNCEMENTS, venue-wide / solo-host only: the deep-link event picker. Per-event: nothing. */
+export function showsLinkEventControl(input: LinkControlInput): boolean {
+  if (input.channel !== "announcement") return false
+  if (input.audience.event_id != null) return false
+  return input.linkVenueId !== undefined
+}
+
+/**
+ * What one composition IS, for the idempotency key: the trimmed words AND
+ * the tap target. The same words re-sent to open a different event is a new
+ * send, never a dedupe of the earlier one.
+ */
+export function compositionIdentity(message: string, linkEventId: number | null): string {
+  return `${message.trim()}|${linkEventId ?? ""}`
+}
+
+export interface BlastSendBodyInput {
+  channel: BlastChannel
+  message: string
+  audience: unknown
+  idempotencyKey: string
+  /** Announcement tap target. Omitted from the body (not null) when unset or on a text. */
+  linkEventId?: number | null
+}
+
+/** The POST /business/marketing/blasts body. `link_event_id` is present only when it means something. */
+export function blastSendBody(input: BlastSendBodyInput): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    channel: input.channel,
+    message: input.message,
+    audience: input.audience,
+    idempotency_key: input.idempotencyKey,
+  }
+  if (input.channel === "announcement" && input.linkEventId != null) body.link_event_id = input.linkEventId
+  return body
 }
 
 // ─── Stages ──────────────────────────────────────────────────────────────

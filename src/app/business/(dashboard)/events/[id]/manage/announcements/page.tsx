@@ -164,7 +164,8 @@ export default function V2AnnouncementsPage({ params }: { params: Promise<{ id: 
         audienceLabel={`${eventName ?? "Event"} ticket holders`}
         cohort="ticket holders"
         quotaScope="venue"
-        eventLinkId={Number.isFinite(eventId) ? eventId : null}
+        // No `Add event link` (2026-10-27): the push already opens this event
+        // on tap, and a URL in a push body is noise. No event picker either.
         previewOverride={previewOverride}
         sendOverride={sendOverride}
         onSent={(r) => {

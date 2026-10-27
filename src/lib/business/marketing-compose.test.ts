@@ -4,8 +4,16 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   ANNOUNCEMENT_MAX,
+  LINK_EVENT_INFO_ACCOUNT,
+  LINK_EVENT_INFO_VENUE,
+  LINK_EVENT_LABEL,
   SMS_MAX,
+  blastSendBody,
   canReview,
+  compositionIdentity,
+  linkEventInfoCopy,
+  showsAddEventLink,
+  showsLinkEventControl,
   charLimitFor,
   composerTransition,
   cooldownNote,
@@ -180,6 +188,60 @@ test("the reset countdown reads like the app's", () => {
   )
 })
 
+// ─── announcements: a tap target, never a URL ────────────────────────────
+
+test("Add event link is a TEXT thing; announcements never show it", () => {
+  const venue = { audience: { all_followers: true }, eventLinkId: null, linkVenueId: 263 }
+  const perEvent = { audience: { event_id: 2177 }, eventLinkId: 2177, linkVenueId: undefined }
+  const none = { audience: { all_followers: true }, eventLinkId: null, linkVenueId: undefined }
+  assert.equal(showsAddEventLink({ channel: "sms", ...venue }), true)
+  assert.equal(showsAddEventLink({ channel: "sms", ...perEvent }), true)
+  assert.equal(showsAddEventLink({ channel: "sms", ...none }), false)
+  assert.equal(showsAddEventLink({ channel: "announcement", ...venue }), false)
+  assert.equal(showsAddEventLink({ channel: "announcement", ...perEvent }), false)
+})
+
+test("the deep-link event control is venue-wide / solo-host ANNOUNCEMENTS only", () => {
+  const venue = { audience: { all_followers: true }, eventLinkId: null, linkVenueId: 263 }
+  const allVenues = { audience: { all_followers: true }, eventLinkId: null, linkVenueId: null }
+  const perEvent = { audience: { event_id: 2177 }, eventLinkId: null, linkVenueId: 263 }
+  const none = { audience: { all_followers: true }, eventLinkId: null, linkVenueId: undefined }
+  assert.equal(showsLinkEventControl({ channel: "announcement", ...venue }), true)
+  assert.equal(showsLinkEventControl({ channel: "announcement", ...allVenues }), true)
+  assert.equal(showsLinkEventControl({ channel: "announcement", ...perEvent }), false, "the push already opens its event")
+  assert.equal(showsLinkEventControl({ channel: "announcement", ...none }), false)
+  assert.equal(showsLinkEventControl({ channel: "sms", ...venue }), false)
+  assert.equal(LINK_EVENT_LABEL, "Open an event when tapped")
+})
+
+test("the (i) copy says what a tap opens, with and without a pick", () => {
+  assert.equal(linkEventInfoCopy("venue"), LINK_EVENT_INFO_VENUE)
+  assert.equal(linkEventInfoCopy("account"), LINK_EVENT_INFO_ACCOUNT)
+  assert.match(LINK_EVENT_INFO_VENUE, /opens your venue page/)
+  assert.match(LINK_EVENT_INFO_ACCOUNT, /may not open a specific page/)
+})
+
+test("link_event_id rides the send only when picked on an announcement; the words stay clean", () => {
+  const base = { message: "Doors at 10", audience: { all_followers: true, venue_id: 263 }, idempotencyKey: "k1" }
+  assert.deepEqual(blastSendBody({ channel: "announcement", ...base, linkEventId: 501 }), {
+    channel: "announcement",
+    message: "Doors at 10",
+    audience: { all_followers: true, venue_id: 263 },
+    idempotency_key: "k1",
+    link_event_id: 501,
+  })
+  const noPick = blastSendBody({ channel: "announcement", ...base, linkEventId: null })
+  assert.equal("link_event_id" in noPick, false, "absent, not null")
+  const text = blastSendBody({ channel: "sms", ...base, linkEventId: 501 })
+  assert.equal("link_event_id" in text, false, "a text never carries a tap target")
+})
+
+test("the idempotency composition includes the tap target", () => {
+  assert.equal(compositionIdentity("Doors at 10 ", null), "Doors at 10|")
+  assert.equal(compositionIdentity("Doors at 10", 501), "Doors at 10|501")
+  assert.notEqual(compositionIdentity("Doors at 10", 501), compositionIdentity("Doors at 10", 502))
+})
+
 // ─── wiring (source contract) ────────────────────────────────────────────
 
 test("the per-event announcements page composes through the shared staged composer", () => {
@@ -189,14 +251,26 @@ test("the per-event announcements page composes through the shared staged compos
   )
   assert.ok(src.includes("BlastComposer"), "must render the shared BlastComposer")
   assert.ok(!src.includes("<Textarea"), "no one-shot textarea + Send dialog of its own")
-  assert.ok(src.includes("eventLinkId"), "event-scoped Add event link")
+  assert.ok(!src.includes("eventLinkId="), "per-event announce has NO Add event link (the push already opens its event)")
 })
 
 test("both venue composers ride the shared contract, and the legacy modal delegates", () => {
   const v2 = readFileSync(join(process.cwd(), "src/components/business/v2/marketing/BlastComposer.tsx"), "utf8")
-  for (const needle of ["composerTransition", "sanitizeMarketingInput", "insertMarketingLink", "charLimitFor", "newIdempotencyKey"]) {
+  for (const needle of [
+    "composerTransition",
+    "sanitizeMarketingInput",
+    "insertMarketingLink",
+    "charLimitFor",
+    "newIdempotencyKey",
+    "showsAddEventLink",
+    "showsLinkEventControl",
+    "blastSendBody",
+    "compositionIdentity",
+    "linkEventInfoCopy",
+  ]) {
     assert.ok(v2.includes(needle), `BlastComposer must use ${needle}`)
   }
+  assert.ok(!/link_event_id\s*:/.test(v2), "the composer never writes the wire key itself — blastSendBody owns it")
   const legacy = readFileSync(
     join(process.cwd(), "src/components/business/dashboard/marketing/BlastComposerModal.tsx"),
     "utf8",
