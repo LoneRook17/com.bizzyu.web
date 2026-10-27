@@ -4,7 +4,7 @@
 
 Marketing and business signup website for Bizzy (bizzyu.com). Built with **Next.js 16** (App Router), **React 19**, **Tailwind CSS v4**, and **TypeScript**. Deployed on **Vercel**.
 
-This is a mostly static marketing site with a few server-side API routes for contact forms and deal submissions. It does **not** connect to the shared MySQL database directly — it calls the Laravel admin API (`ADMIN_API_URL`) to forward deal submissions.
+This is a mostly static marketing site with a few server-side API routes for contact forms and deal submissions. It does **not** connect to the shared MySQL database directly — it calls the Laravel admin API (`DEAL_SUBMISSIONS_API_URL`, with `X-Deal-Submissions-Secret`) to forward deal submissions.
 
 ---
 
@@ -133,7 +133,7 @@ Uses **Next.js App Router** (not Pages Router). All routes are in `src/app/`.
 
 ### API Calls
 - **Outbound**: `trending-deals` route fetches from `https://bizzy-deals.com/api/home_deals` (production Laravel API)
-- **Submissions**: POST to `/api/submissions` → emails via Resend, uploads to S3, forwards to `ADMIN_API_URL`
+- **Submissions**: POST to `/api/submissions` → Turnstile check, uploads to S3, forwards to `DEAL_SUBMISSIONS_API_URL` with `X-Deal-Submissions-Secret` (audit A03), emails via Resend
 - **Contact forms**: POST to `/api/contact` or `/api/events-contact` → emails via Resend
 - No authentication on API routes (public forms)
 
@@ -155,7 +155,16 @@ AWS_SECRET_ACCESS_KEY=
 AWS_REGION=us-east-1        # default
 AWS_BUCKET=bizzy-dev         # default
 
-# Forwards deal submissions to Laravel admin backend
+# Deal-submission forward (src/app/api/submissions/route.ts → Laravel
+# POST /api/deal-submissions). The forwarder reads DEAL_SUBMISSIONS_API_URL,
+# NOT ADMIN_API_URL; unset = https://bizzy-deals.com (prod). Point it at a
+# DEV/local core when testing.
+DEAL_SUBMISSIONS_API_URL=http://127.0.0.1:8001
+# Shared secret sent as X-Deal-Submissions-Secret (audit A03). Must match
+# core's DEAL_SUBMISSIONS_SECRET. Server-only (never NEXT_PUBLIC_). Must NOT
+# equal ADMIN_API_SECRET. Unset = forward is skipped and the form returns 502.
+DEAL_SUBMISSIONS_SECRET=
+# Legacy name; not read by the submissions forwarder (see above).
 ADMIN_API_URL=http://127.0.0.1:8001
 
 # Cloudflare Turnstile (public forms: contact, request-school, brands, ...)

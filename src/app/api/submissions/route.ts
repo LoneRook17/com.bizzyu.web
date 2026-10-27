@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import {
-  DEAL_SUBMISSIONS_FORWARD_HEADERS,
   FORWARD_SAVE_ERROR,
+  dealSubmissionsForwardHeaders,
   dealSubmissionsForwardOrigin,
+  dealSubmissionsSecret,
   forwardFailureLog,
   submissionEmailSubject,
 } from "@/lib/deal-submission-forward";
@@ -90,9 +91,20 @@ export async function POST(request: Request) {
     // subject. The notification still goes out either way.
     // Host is https://bizzy-deals.com unless DEAL_SUBMISSIONS_API_URL is set.
     // The shared admin-host env var is not read here. TrustHosts 404s any other host.
+    // Audit A03: Laravel gates this hop on X-Deal-Submissions-Secret. With
+    // DEAL_SUBMISSIONS_SECRET unset we do NOT call Laravel unauthenticated and
+    // skip the S3 uploads too: the save is marked failed (502 to the browser,
+    // "[NOT SAVED]" email to the team) rather than leaving the hole open.
     const origin = dealSubmissionsForwardOrigin(process.env.DEAL_SUBMISSIONS_API_URL);
+    const secret = dealSubmissionsSecret(process.env.DEAL_SUBMISSIONS_SECRET);
     let forwardFailed = false;
-    {
+    if (!secret) {
+      forwardFailed = true;
+      console.error(
+        "Deal submission forward skipped",
+        forwardFailureLog(0, "DEAL_SUBMISSIONS_SECRET not configured"),
+      );
+    } else {
       let dealImageUrl = "";
       let logoUrl = "";
 
@@ -120,7 +132,7 @@ export async function POST(request: Request) {
       try {
         const forwardRes = await fetch(`${origin}/api/deal-submissions`, {
           method: "POST",
-          headers: DEAL_SUBMISSIONS_FORWARD_HEADERS,
+          headers: dealSubmissionsForwardHeaders(secret),
           body: JSON.stringify({ business, deal, media: { dealImageUrl, logoUrl } }),
         });
         if (!forwardRes.ok) {
