@@ -60,10 +60,10 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
   useEffect(() => { fetchMembers() }, [id])
 
   // #119 pattern: one event read decides the accent, nothing else. A WC night
-  // renders this page pink, with night-scoped copy and NO door-code reframe —
-  // a Weekly Cover night has no such code (its manage page hides
-  // DoorCodeCard), and team access granted here covers this night only
-  // (services enforces per-night visibility).
+  // renders this page pink, with night-scoped copy and NO door-staff reframe —
+  // a Weekly Cover door runs off the guest camera, not a scanner — and team
+  // access granted here covers this night only (services enforces per-night
+  // visibility).
   useEffect(() => {
     let cancelled = false
     apiClient
@@ -155,9 +155,11 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
         </div>
       ) : (
         /* Door-staff intent lands here by habit. Redirect it: door staff don't
-           need an account — they need the door code. This is the reframe. */
+           need a dashboard account — they need the scanner. This is the
+           reframe. (It pointed at the manage page's Door Code card until BETA
+           removed that card — Luke PRD 2026-10-29, change 4.) */
         <Link
-          href={`/business/events/${id}/manage`}
+          href={`/business/events/${id}/manage/scanner`}
           className="group flex items-start gap-3 rounded-xl border border-[#05EB54]/30 bg-green-50/50 p-4 transition-colors hover:border-[#05EB54]/60 dark:border-green-900/50 dark:bg-green-950/20"
         >
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#05EB54]/15 text-[#05EB54]">
@@ -168,7 +170,7 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
               Just need someone scanning tickets tonight?
             </p>
             <p className="mt-0.5 text-[13px] text-neutral-600 dark:text-neutral-400">
-              Door staff don’t need an account or an invite. Share your event’s <span className="font-medium text-neutral-800 dark:text-neutral-200">door code</span> instead. Add teammates here only if they need dashboard access.
+              Door staff don’t need a dashboard account or an invite. See the <span className="font-medium text-neutral-800 dark:text-neutral-200">Scan page</span> for how check-in works. Add teammates here only if they need dashboard access.
             </p>
           </div>
           <ArrowRight className="mt-1 size-4 shrink-0 text-[#05EB54] transition-transform group-hover:translate-x-0.5" />
@@ -183,7 +185,7 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
           title={pink ? "No managers or co-hosts on this night yet" : "No managers or co-hosts yet"}
           description={pink
             ? "Add a teammate who needs a Bizzy account and dashboard access to this night."
-            : "Add a teammate who needs a Bizzy account and dashboard access. For door staff who just scan tickets, use the door code instead."}
+            : "Add a teammate who needs a Bizzy account and dashboard access. Door staff who just scan tickets don’t need this. See the Scan page instead."}
         />
       ) : (
         <Card className="overflow-hidden">
@@ -220,7 +222,7 @@ export default function V2EventTeamPage({ params }: { params: Promise<{ id: stri
             <DialogTitle>{pink ? "Add a manager or co-host for this night" : "Add a manager or co-host"}</DialogTitle>
             <DialogDescription>{pink
               ? "For teammates who need dashboard access to this night. Search for an existing Bizzy user and assign a role. Access covers this night only, not the rest of your schedule."
-              : "For teammates who need dashboard access. Search for an existing Bizzy user and assign a role. (Door staff who only scan tickets don’t need this. Use the door code.)"}</DialogDescription>
+              : "For teammates who need dashboard access. Search for an existing Bizzy user and assign a role. (Door staff who only scan tickets don’t need this. See the Scan page.)"}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -106,12 +106,12 @@ test("HostDashList and the events page no longer carry card-cancel plumbing", ()
 
 // ── Manage page doubles as the WC instance manage ───────────────────────────
 
-test("WC night manage: no door code, Scan tile stays, redemption list is view-only", () => {
+test("manage page: no door code for any kind, Scan tile stays, redemption list is view-only", () => {
   const src = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
-  // Round 2 (Luke, 2026-08-29): WC nights have NO door codes. The card is an
-  // events-only credential again.
-  assert.ok(src.includes("{!isDoorAccess && ("), "door code is WC-gated")
-  assert.ok(src.includes("<DoorCodeCard"), "door code card still renders for events")
+  // Round 2 (Luke, 2026-08-29): WC nights have NO door codes. BETA (Luke PRD
+  // 2026-10-29, change 4) removed the card for events too — the manage page
+  // renders it for nobody; the door-code routes themselves are untouched.
+  assert.ok(!src.includes("DoorCodeCard"), "no door code card on the manage page")
   const scanTile = src.indexOf('title: "Scan"')
   assert.ok(scanTile >= 0)
   const tileSlice = src.slice(scanTile, scanTile + 200)
@@ -211,18 +211,19 @@ test("team page: a WC night renders pink via the #119 read-then-accent pattern",
   assert.ok(src.includes("loading || !ready"), "skeleton holds until the accent is known")
 })
 
-test("team page: the door-code banner cannot render on the WC path", () => {
+test("team page: the door-staff banner cannot render on the WC path", () => {
   const src = read("src/app/business/(dashboard)/events/[id]/manage/team/page.tsx")
-  // The banner slot is a pink ternary; the door-code reframe lives in the
-  // NOT-pink branch. WC nights have no door codes — their manage page hides
-  // DoorCodeCard — so the old banner sent WC hosts to a dead end.
+  // The banner slot is a pink ternary; the door-staff reframe lives in the
+  // NOT-pink branch. WC nights have no scanner-first door — the guest camera
+  // runs it — so the old banner sent WC hosts to a dead end. (BETA 2026-10-29:
+  // the reframe now points at the Scan page, since the Door Code card is gone.)
   const cond = src.indexOf("{pink ? (")
   const elseAt = src.indexOf(") : (", cond)
   assert.ok(cond >= 0 && elseAt > cond, "the banner slot is a pink ternary")
   const banner = src.indexOf("Just need someone scanning tickets tonight?")
   assert.ok(banner > elseAt, "the door-code banner lives behind the not-pink branch")
-  const doorCopy = src.indexOf("door code")
-  assert.ok(doorCopy > elseAt, "no door-code copy before the not-pink branch")
+  const doorCopy = src.indexOf("Scan page")
+  assert.ok(doorCopy > elseAt, "no door-staff reframe copy before the not-pink branch")
   // Bizzy-green hex literals appear ONLY inside the not-pink banner branch.
   assert.ok(src.indexOf("#05EB54") > elseAt, "no unguarded green hex on the pink path")
   const bannerEnd = src.indexOf("</Link>", elseAt)
@@ -242,11 +243,13 @@ test("team page: WC copy is night-scoped; green copy is untouched", () => {
   // empty state — the WC description never mentions the door code
   assert.ok(src.includes("No managers or co-hosts on this night yet"))
   assert.ok(src.includes("Add a teammate who needs a Bizzy account and dashboard access to this night."))
-  assert.ok(src.includes("For door staff who just scan tickets, use the door code instead."), "green empty state unchanged")
+  // BETA (Luke PRD 2026-10-29, change 4): the green copy points at the Scan
+  // page now that the Door Code card is gone from the manage page.
+  assert.ok(src.includes("Door staff who just scan tickets don’t need this. See the Scan page instead."), "green empty state points at the Scan page")
   // add dialog
   assert.ok(src.includes("Add a manager or co-host for this night"))
   assert.ok(src.includes("Access covers this night only"))
-  assert.ok(src.includes("(Door staff who only scan tickets don’t need this. Use the door code.)"), "green dialog unchanged")
+  assert.ok(src.includes("(Door staff who only scan tickets don’t need this. See the Scan page.)"), "green dialog points at the Scan page")
   // remove confirm
   assert.ok(src.includes('pink ? "will lose access to this night." : "will lose access to this event."'))
   // no green success badge on the WC path: crew (and owner, green's brand

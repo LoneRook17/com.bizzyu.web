@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
-  Plus, ArrowUpRight, CalendarDays, TrendingUp, Ticket, Sparkles, ChevronRight, Tag, Zap,
+  Plus, ArrowUpRight, CalendarDays, Sparkles, ChevronRight, Tag,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { isVenueScopeNotFound } from "@/lib/business/venue-selection"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { apiClient } from "@/lib/business/api-client"
-import { nextUpcomingGreenEvent } from "@/lib/business/next-event-tile"
 import type {
   DashboardSummary, QuickStats, ActivityFeedItem, EventListItem, DealListItem,
 } from "@/lib/business/types"
@@ -23,21 +22,15 @@ import {
   easternToday,
   fetchDoorAccessProgramsSafe,
   fmtShortDate,
-  isWeeklyCoverProduct,
   loadProgramsUpcomingNights,
   programHref,
   type DoorAccessProgramSummary,
 } from "@/lib/business/door-access"
 import { canViewRevenue } from "@/lib/business/analytics-access"
 import { homeUpcoming, nextAccessNight, type OneOffUpcomingNight } from "@/lib/business/home-upcoming"
-import { hostUpcomingShowsGreenNight } from "@/lib/business/series-nights-window"
 import { oneOffNightsFromSeries } from "@/lib/business/wc-upcoming"
 import { inactiveWeeklyCoverSeriesIds } from "@/lib/business/events-list"
 import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
-import {
-  isApprovedCanceledStatus,
-  weeklyCoverNightNeedsPendingCancel,
-} from "@/lib/business/weekly-cover-visibility"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Card, CardContent } from "@/components/business/v2/ui/card"
@@ -69,6 +62,15 @@ function eventBadge(status: string): { variant: "success" | "neutral" | "warning
   if (s?.includes("pending")) return { variant: "warning", label: "In review" }
   if (s === "cancelled" || s === "rejected") return { variant: "danger", label: s === "cancelled" ? "Cancelled" : "Rejected" }
   return { variant: "neutral", label: status || "-" }
+}
+
+// Top-row columns at lg+. Five tiles (hybrid mode, owner) go 3 + 2 at lg and
+// a single row at xl, so a $171,782.00 figure keeps its room.
+function tileColumns(count: number) {
+  if (count >= 5) return "lg:grid-cols-3 xl:grid-cols-5"
+  if (count === 4) return "lg:grid-cols-4"
+  if (count === 3) return "lg:grid-cols-3"
+  return "lg:grid-cols-2"
 }
 
 function MetricTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -183,23 +185,32 @@ export default function V2HomePage() {
   })
   const showEventsSection = sections.events
   const showLineSkipSection = sections.lineSkips
+  // While loading, the skeleton row mirrors the owner's tile count for the mode
+  // so the grid does not jump when the figures land.
+  const skeletonTiles = homeSections({
+    totalEvents: 1,
+    hasLineSkipNights: false,
+    showEvents: config.showEvents,
+    showLineSkips: config.showLineSkips,
+    showDeals: config.showDeals,
+    canViewRevenue: canViewRevenue(user?.business_role),
+  }).tileCount
   // Line-skip money is owner/manager only (the server omits the field for
   // staff) — `null` renders as "-" through usd(), same as event revenue does.
   const lineSkipRevenue =
     stats?.line_skip_revenue_cents == null ? null : stats.line_skip_revenue_cents / 100
 
   // D2-6. Door Access is a TYPE on this page, not a section of its own: it
-  // feeds the same upcoming list, the same tiles and the same attention hub the
-  // events do. Presence-gated exactly like every other product here — a
-  // business with no programs sees no trace of them.
+  // feeds the same upcoming list and the same tiles the events do.
+  // Presence-gated exactly like every other product here — a business with
+  // no programs sees no trace of them.
   const activePrograms = config.showLineSkips ? programs.filter((p) => p.is_active) : []
   const inactiveWcIds = [
     ...new Set([...inactiveWeeklyCoverSeriesIds(programs, [], events), ...probedInactiveIds]),
   ]
   const showAccessSection = activePrograms.length > 0
   // One "today" (US/Eastern) for every lower bound on this page: a stale/past
-  // next_night_date from the API must never surface as Next / Upcoming /
-  // Needs-attention.
+  // next_night_date from the API must never surface as Next / Upcoming.
   const today = easternToday()
   const nextNights = activePrograms
     .map((p) => nextAccessNight(p, today))
@@ -224,49 +235,6 @@ export default function V2HomePage() {
   const nextAccessDate = [stats?.next_line_skip_date, soonestNight?.date]
     .filter((d): d is string => !!d)
     .sort((a, b) => a.localeCompare(b))[0] ?? null
-
-  // Attention items derived from real data
-  const attention: { icon: React.ElementType; tint: string; title: string; sub: string; href: string; cta: string }[] = []
-  // WC-SMEAR follow-up (2026-08-29): "next event" must be the next start
-  // >= now ET, never a past occurrence. hostUpcomingShowsGreenNight alone
-  // let a finished standalone one-off (Aug 28 at 9pm, viewed Saturday the
-  // 29th) stay "coming up" forever — its one-off/Custom arms skip the date
-  // window on purpose for the LIST; the tile needs the future filter too.
-  const nextEvent = showEventsSection
-    ? nextUpcomingGreenEvent(events, (event) => {
-        if (isApprovedCanceledStatus(event.status) || isWeeklyCoverProduct(event)) return false
-        const seriesId = Number(event.recurring_series_id)
-        if (inactiveWcIds.includes(seriesId) && !weeklyCoverNightNeedsPendingCancel(event, false)) {
-          return false
-        }
-        if (!hostUpcomingShowsGreenNight(event, today)) return false
-        return true
-      })
-    : undefined
-  if (nextEvent) {
-    attention.push({
-      icon: TrendingUp, tint: "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400",
-      title: `${nextEvent.name} is coming up`,
-      sub: `${fmtShortDate(nextEvent.start_date_time)} · ${nextEvent.ticket_sales_count} sold`,
-      href: `/business/events/${nextEvent.event_id}/manage`, cta: "Manage",
-    })
-  }
-  if (soonestNight) {
-    attention.push({
-      icon: Zap, tint: "bg-pink-50 dark:bg-pink-950/40 text-[#FF3ED1]",
-      title: `${soonestNight.program.name} runs ${fmtShortDate(soonestNight.date)}`,
-      sub: `${soonestNight.program.upcoming_night_count} nights scheduled · ${soonestNight.program.tier_count} tiers`,
-      href: programHref(soonestNight.program.id), cta: "Manage",
-    })
-  }
-  if (config.showDeals && (stats?.active_deals_count ?? 0) > 0) {
-    attention.push({
-      icon: Ticket, tint: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
-      title: `${stats!.active_deals_count} deals live right now`,
-      sub: `${stats?.claims_this_week ?? 0} claims this week`,
-      href: "/business/deals", cta: "View",
-    })
-  }
 
   return (
     <>
@@ -305,17 +273,20 @@ export default function V2HomePage() {
 
       {/* metric tiles - filtered by dashboard mode AND by what this business runs */}
       {(loading || sections.tileCount > 0) && (
-        <div className={cn("grid grid-cols-2 gap-4", loading
-          ? (config.showDeals && config.showEvents ? "lg:grid-cols-4" : "lg:grid-cols-3")
-          : sections.tileCount >= 4 ? "lg:grid-cols-4" : sections.tileCount === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2")}>
+        <div className={cn("grid grid-cols-2 gap-4", tileColumns(loading ? skeletonTiles : sections.tileCount))}>
           {loading ? (
-            [0, 1, 2, 3].slice(0, config.showDeals && config.showEvents ? 4 : 3).map((i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
+            Array.from({ length: skeletonTiles }, (_, i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
           ) : (
             <>
               {/* This is the EVENT revenue figure. It is never blended with the
                   line-skip take below — Backroads is $171,782 of events against
                   $12 of skip the line tickets, and one total would erase the $12. */}
               {sections.revenueTile && <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />}
+              {/* BETA (Luke PRD 2026-10-29, change 2): the week-to-date host take,
+                  same owner gate and same units as all-time. The server defines
+                  the week (Monday 00:00 America/New_York → now); an older build
+                  that omits the field renders "—" exactly like a manager's view. */}
+              {sections.revenueTile && <MetricTile label="Revenue this week" value={usd(summary?.revenue_this_week)} sub="Since Monday" />}
               {config.showDeals && (
                 <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
               )}
@@ -372,35 +343,6 @@ export default function V2HomePage() {
             />
           </div>
         </section>
-      )}
-
-      {/* attention hub */}
-      {!loading && attention.length > 0 && (
-        <Card className="overflow-hidden">
-          <div className="flex items-center gap-2 px-5 py-4">
-            <Sparkles className="size-4 text-[#05EB54]" />
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Needs your attention</h2>
-            <Badge variant="brand" className="ml-1">{attention.length}</Badge>
-          </div>
-          <div className="border-t border-neutral-100 dark:border-neutral-800">
-            {attention.map((a, i) => (
-              <Link
-                key={i}
-                href={a.href}
-                className={cn("flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}
-              >
-                <span className={cn("flex size-9 items-center justify-center rounded-lg", a.tint)}>
-                  <a.icon className="size-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-neutral-900 dark:text-neutral-100">{a.title}</span>
-                  <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{a.sub}</span>
-                </span>
-                <Button variant="secondary" size="sm" asChild><span>{a.cta}</span></Button>
-              </Link>
-            ))}
-          </div>
-        </Card>
       )}
 
       {/* bento - first card follows the dashboard mode */}
@@ -464,7 +406,11 @@ export default function V2HomePage() {
                       {showAccessSection && <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full bg-[#05EB54]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
-                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                        {/* BETA (Luke PRD 2026-10-29, change 3): the venue leads the
+                            subtitle ("Fifth Quarter · Oct 31 · 166 sold") so an
+                            All-venues list reads where each event is. An older row
+                            without a venue_name keeps the date-first line. */}
+                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{e.venue_name ? `${e.venue_name} · ` : ""}{fmtShortDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
                       </span>
                       <Badge variant={b.variant}>{b.label}</Badge>
                       <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />

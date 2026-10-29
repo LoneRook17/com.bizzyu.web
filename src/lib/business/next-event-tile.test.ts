@@ -6,8 +6,6 @@
 // occurrence.
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
-import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
 import {
   easternNowStamp,
   eventStartsAtOrAfter,
@@ -67,10 +65,7 @@ test("an event with no start never passes", () => {
   assert.equal(eventStartsAtOrAfter({}, stamp), false)
 })
 
-test("the dashboard tile routes through nextUpcomingGreenEvent", () => {
-  const src = readFileSync(
-    fileURLToPath(new URL("../../app/business/(dashboard)/page.tsx", import.meta.url)),
-    "utf8",
-  )
-  assert.ok(src.includes("nextUpcomingGreenEvent(events"), "the tile must refuse past occurrences")
-})
+// (The Home "Needs your attention" tile that routed through
+// nextUpcomingGreenEvent was removed in BETA — Luke PRD 2026-10-29, change 1 —
+// so there is no page-source pin here any more; the helper's own cases above
+// still hold for any future caller.)

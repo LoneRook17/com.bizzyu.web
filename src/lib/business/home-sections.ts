@@ -44,7 +44,8 @@ export type HomeSections = {
   /** The "Skip the Line" figure row. */
   lineSkips: boolean
   /**
-   * The event revenue tile. NOT simply `events`: this tile rendered in EVERY
+   * The event revenue TILES — all-time and, since BETA (2026-10-29), this
+   * week; both follow this one flag. NOT simply `events`: this tile rendered in EVERY
    * mode before LSK-19, so gating it on events alone would quietly take it off
    * a deals-only business's page — a change nobody asked for. It goes only in
    * the case that motivated LSK-19, a venue with neither events nor deals,
@@ -66,10 +67,11 @@ export function homeSections(input: HomeSectionsInput): HomeSections {
   const revenueTile = (events || showDeals) && canViewRevenue
   const dealsCard = !events && showDeals
 
-  // Mirrors the tiles page.tsx renders: revenue, active deals, claims
-  // (deals-mode only), then attendees + upcoming as a pair.
+  // Mirrors the tiles page.tsx renders: revenue (all-time + this week, a
+  // pair), active deals, claims (deals-mode only), then attendees + upcoming
+  // as a pair.
   const tileCount =
-    (revenueTile ? 1 : 0) +
+    (revenueTile ? 2 : 0) +
     (showDeals ? 1 : 0) +
     (showDeals && !showEvents ? 1 : 0) +
     (events ? 2 : 0)

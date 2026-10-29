@@ -1903,7 +1903,9 @@ test("Events list keeps GET /business/door-access and routes dated nights to the
   assert.ok(programPage.includes("parseProgramPathId"), "missing/NaN id is not a 404")
   assert.ok(programPage.includes("MISSING_PROGRAM_ID_TITLE"))
   assert.ok(!programPage.includes("fetchDoorAccessProgramsSafe"), "program page must not swallow 404s as []")
-  assert.ok(home.includes("programHref(soonestNight.program.id)"))
+  // (The "Needs your attention" row that hrefed programHref(soonestNight…)
+  // left Home in BETA — Luke PRD 2026-10-29, change 1. The upcoming list row
+  // below is the remaining program link.)
   assert.ok(home.includes("programHref(p.id)"))
   assert.ok(home.includes("probeInactiveSeriesIds"), "Home also probes leftover nights of a host-ended series")
 })
