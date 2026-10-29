@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { ImagePlus, Loader2, X } from "lucide-react"
+import { Camera, ImagePlus, Loader2, X } from "lucide-react"
 import { apiClient } from "@/lib/business/api-client"
 import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
 import { cn } from "@/lib/v2/utils"
@@ -65,14 +65,36 @@ export function ImageUpload({
   return (
     <div className={className}>
       {value ? (
-        <div className="relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900">
+        <div className="group relative overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900">
           {/* Show the whole flyer (object-contain) at its natural ratio so portrait
               or landscape art isn't cropped; cap the height so it's not oversized. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={value} alt="Upload preview" className="mx-auto block max-h-[520px] w-auto max-w-full object-contain" />
+          {/* BETA (Luke PRD 2026-10-29, change 6): Replace sits left of the X and
+              reuses the hidden file input, so a new pick goes through handleFile
+              and the current flyer stays on screen until the upload succeeds
+              (onChange only fires on success). Hover-reveal on a fine pointer;
+              a touch screen has no hover, so coarse pointers always see it. */}
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            aria-label="Replace image"
+            title="Replace image"
+            className={cn(
+              "absolute right-11 top-2 inline-flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-neutral-900/90 px-2.5 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-200 shadow-sm transition-opacity hover:bg-white dark:hover:bg-neutral-900",
+              "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100",
+              uploading && "opacity-100",
+            )}
+          >
+            {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+            {uploading ? "Uploading…" : "Replace"}
+          </button>
           <button
             type="button"
             onClick={() => onChange("")}
+            aria-label="Remove image"
+            title="Remove image"
             className="absolute right-2 top-2 rounded-full bg-white/90 dark:bg-neutral-900/90 p-1.5 text-neutral-600 dark:text-neutral-400 shadow-sm transition-colors hover:bg-white dark:hover:bg-neutral-900 hover:text-red-500 dark:hover:text-red-400"
           >
             <X className="size-4" />

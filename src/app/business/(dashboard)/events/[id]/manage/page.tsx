@@ -30,7 +30,6 @@ import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import ShareLinkRow from "@/components/business/v2/ShareLinkRow"
 import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
-import { DoorCodeCard } from "@/components/business/v2/events/DoorCodeCard"
 import { EventVenuePayoutBanner } from "@/components/business/v2/settings/VenuePayoutPaused"
 import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
 import { WeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
@@ -60,11 +59,12 @@ const TILE_HOVER: Record<ManageAccent, { card: string; icon: string; title: stri
   },
 }
 
-// 5.0 F11 / PRD 12.1 — the management page follows the app's control order:
-//   Share Link + Door Code → At the Door → Event Setup → Insights → Promote
-// Every destination below already existed; this is the app's sequence imposed
-// on them, not new surfaces. Door Access programs (DASH-A) get the same order
-// on their own series page.
+// BETA (Luke PRD 2026-10-29, changes 4 + 5) — the management page order is:
+//   Share Link → Event Setup → Insights → Promote → At the Door (last)
+// The Door Code card is gone from this page (UI only — the door-code routes
+// and the app's flow are untouched). Every destination below already existed;
+// this is the PRD's sequence imposed on them, not new surfaces. Door Access
+// programs (DASH-A) keep their own order on their series page.
 function ManageSection({
   title,
   blurb,
@@ -203,7 +203,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
   // follows the event's KIND, but a door-access pass is no longer scanner-
   // refused: services utils/redemptionGuard accepts camera_tap AND native_scan
   // for Weekly Cover, so a WC night's manage page carries the same Scan tile
-  // and door code an event's does. The camera stays the guest-facing default
+  // an event's does. The camera stays the guest-facing default
   // (the reminder card below); the redemption list stays the WC-primary CTA.
   // product_kind is the stamp when services sends it; an older payload falls
   // back to access_kind. Never a raw access_kind test, never the name.
@@ -321,25 +321,11 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
           be unmissable on the manage surface. */}
       <EventVenuePayoutBanner venueId={event.venue_id} />
 
-      {/* 1 — Share Link + Door Code. First, because handing out the link and
-          putting a staffer on the door are what a host does most. */}
+      {/* Share Link. First, because handing out the link is what a host does
+          most. (The Door Code card that used to follow it was removed in BETA —
+          Luke PRD 2026-10-29, change 4. The scanner tile under At the Door is
+          the check-in surface now.) */}
       {isLive && <ShareLinkRow url={eventCheckoutUrl(id)} title={event.name} label="Event link" accent={accent} />}
-
-      {/* Door code — the PRIMARY way to put a staffer on the door tonight.
-          Owners used to fall back to the (broken) email-invite path because the
-          dashboard had no way to hand out a scan credential; this is that way.
-          Email invite is demoted to the "Managers & co-hosts" tile below. */}
-      {/* WC nights have NO door codes (Luke, 2026-08-29 round 2) — the guest
-          camera + redemption list run a Weekly Cover door. The door code stays
-          an events-only credential. */}
-      {!isDoorAccess && (
-        <DoorCodeCard
-          eventId={id}
-          eventName={event.name}
-          isLive={isLive}
-          canManage={canEdit}
-        />
-      )}
 
       {/* §5 — the camera reminder, the app's counterpart copy. A door-access
           host's staff need to know the phone camera IS the scanner; without this
@@ -364,15 +350,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         </Card>
       )}
 
-      {/* 2 — At the Door */}
-      <ManageSection
-        title="At the door"
-        blurb="Tonight's tools. Check guests in and see who has arrived."
-        tiles={atTheDoorTiles}
-        accent={accent}
-      />
-
-      {/* 3 — Event Setup */}
+      {/* 1 — Event Setup */}
       <ManageSection
         title="Event setup"
         blurb="Details, what you're selling, and who can help run it."
@@ -380,7 +358,7 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         accent={accent}
       />
 
-      {/* 4 — Insights */}
+      {/* 2 — Insights */}
       <ManageSection
         title="Insights"
         blurb="How the event is performing."
@@ -388,11 +366,19 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
         accent={accent}
       />
 
-      {/* 5 — Promote */}
+      {/* 3 — Promote */}
       <ManageSection
         title="Promote"
         blurb="Reach more people and reward the ones who bring them."
         tiles={promoteTiles}
+        accent={accent}
+      />
+
+      {/* 4 — At the Door (last, per the PRD) */}
+      <ManageSection
+        title="At the door"
+        blurb="Tonight's tools. Check guests in and see who has arrived."
+        tiles={atTheDoorTiles}
         accent={accent}
       />
 

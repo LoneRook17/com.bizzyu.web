@@ -24,7 +24,7 @@ test("events only — exactly what it sees today, in events mode", () => {
   assert.equal(s.lineSkips, false)
   assert.equal(s.revenueTile, true)
   assert.equal(s.dealsCard, false)
-  assert.equal(s.tileCount, 3) // revenue + attendees + upcoming, as before
+  assert.equal(s.tileCount, 4) // revenue all-time + this week + attendees + upcoming
 })
 
 test("events only — unchanged in hybrid mode too", () => {
@@ -32,7 +32,7 @@ test("events only — unchanged in hybrid mode too", () => {
   assert.equal(s.events, true)
   assert.equal(s.revenueTile, true)
   assert.equal(s.dealsCard, false) // the deals card never rendered beside events
-  assert.equal(s.tileCount, 4) // revenue + active deals + attendees + upcoming
+  assert.equal(s.tileCount, 5) // revenue ×2 + active deals + attendees + upcoming
 })
 
 test("a business with events but ZERO revenue still sees the events section", () => {
@@ -60,7 +60,7 @@ test("both — event tiles as today, PLUS the Skip the Line section", () => {
   assert.equal(s.events, true)
   assert.equal(s.lineSkips, true)
   assert.equal(s.revenueTile, true)
-  assert.equal(s.tileCount, 3)
+  assert.equal(s.tileCount, 4)
 })
 
 test("both — the two figures are separate SECTIONS, so neither can absorb the other", () => {
@@ -97,7 +97,7 @@ test("a deals-only business is untouched — it keeps its revenue tile", () => {
   assert.equal(s.lineSkips, false)
   assert.equal(s.dealsCard, true)
   assert.equal(s.revenueTile, true) // rendered in every mode before LSK-19; still does
-  assert.equal(s.tileCount, 3) // revenue + active deals + claims, as before
+  assert.equal(s.tileCount, 4) // revenue ×2 + active deals + claims
 })
 
 test("a hybrid business with no events keeps deals and drops the two event tiles", () => {
@@ -105,7 +105,7 @@ test("a hybrid business with no events keeps deals and drops the two event tiles
   assert.equal(s.events, false)
   assert.equal(s.dealsCard, true)
   assert.equal(s.revenueTile, true)
-  assert.equal(s.tileCount, 2) // the row shrinks to fit rather than leaving holes
+  assert.equal(s.tileCount, 3) // the row shrinks to fit rather than leaving holes
 })
 
 // ── MODE IS STILL THE OPERATOR'S SWITCH ─────────────────────────────────────
@@ -131,7 +131,8 @@ test("a manager's Home hides the revenue tile and the column count follows", () 
   const manager = homeSections(shape({ totalEvents: 9, showEvents: true, showDeals: true, canViewRevenue: false }))
   assert.equal(owner.revenueTile, true)
   assert.equal(manager.revenueTile, false)
-  assert.equal(manager.tileCount, owner.tileCount - 1)
+  // Both money tiles (all-time + this week) go together.
+  assert.equal(manager.tileCount, owner.tileCount - 2)
 })
 
 test("callers that do not state a role keep today's shapes (absent = owner)", () => {

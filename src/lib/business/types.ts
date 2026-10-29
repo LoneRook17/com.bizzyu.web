@@ -86,6 +86,10 @@ export interface DashboardSummary {
   total_events: number
   total_attendees: number
   total_revenue: number | null
+  /** Host take since Monday 00:00 America/New_York, same units and owner gate
+   *  as total_revenue. Optional: a services build older than PR #221 omits it
+   *  and the Home tile renders "—". (BETA biz-dash, 2026-10-29.) */
+  revenue_this_week?: number | null
 }
 
 export interface QuickStats {
@@ -277,7 +281,8 @@ export interface EventDetail extends EventListItem {
   lowstock_notify_business_team?: boolean | number
   // NOTE: the door code is intentionally NOT on this payload. It's a credential,
   // so services keeps it off the broadly-fetched event and serves it from a
-  // dedicated GET /business/events/:id/door-code — DoorCodeCard fetches it there.
+  // dedicated GET /business/events/:id/door-code (the app reads it there; the
+  // web manage page stopped showing it in BETA — Luke PRD 2026-10-29).
   // Recurring series linkage (#5): set when this event is one night of a
   // recurring series. series_customized_at marks a hand-edited night that
   // template edits will never overwrite.
