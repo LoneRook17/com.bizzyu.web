@@ -52,7 +52,8 @@ test("old unclear empty copy is gone", () => {
 })
 
 test("manage hub Promoters tile names referral links", () => {
-  const hub = read("../../app/business/(dashboard)/events/[id]/manage/page.tsx")
+  // BETA shell (2026-10-29): the Promote tiles live on the Promo & tracking tab.
+  const hub = read("../../app/business/(dashboard)/events/[id]/manage/promote/page.tsx")
   assert.ok(hub.includes('subtitle: "Referral links and what they earn"'))
   assert.ok(!hub.includes('subtitle: "Stats and payouts"'))
 })

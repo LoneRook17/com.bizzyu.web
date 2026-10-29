@@ -19,6 +19,9 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params)
   const router = useRouter()
   const [initialData, setInitialData] = useState<Partial<EventFormData> | null>(null)
+  // BETA shell: the editor's Publish step offers Publish on a draft (the
+  // hybrid create lands here with a fresh draft), so it needs the status.
+  const [eventStatus, setEventStatus] = useState<string | undefined>(undefined)
   const [seriesInfo, setSeriesInfo] = useState<SeriesNightBannerEvent | null>(null)
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -44,6 +47,7 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
           product_kind: event.product_kind ?? null,
           access_kind: event.access_kind ?? null,
         })
+        setEventStatus(event.status)
         setInitialData({
           name: event.name,
           description: event.description,
@@ -55,7 +59,11 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
           type: event.type,
           is_21_plus: event.is_21_plus,
           flyer_image_url: event.flyer_image_url || "",
-          tickets: event.tickets || [],
+          // A draft from the create modal has no tiers yet: leave the list
+          // undefined so the form seeds its default General Admission tier
+          // (the editor requires at least one on a Ticketed event). An event
+          // that has tiers keeps exactly those.
+          tickets: event.tickets && event.tickets.length > 0 ? event.tickets : undefined,
           promotion_enabled: isPromotionEnabled(event.promotion_enabled),
           promotion_commission_type: event.promotion_commission_type ?? undefined,
           promotion_commission_value: event.promotion_commission_value ?? null,
@@ -104,7 +112,7 @@ export default function V2EditEventPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="flex flex-col gap-5">
       {seriesInfo?.recurring_series_id != null && <SeriesNightBanner event={seriesInfo} />}
-      <EventForm initialData={initialData} eventId={Number(id)} stripeOnboarded={stripeOnboarded} />
+      <EventForm initialData={initialData} eventId={Number(id)} stripeOnboarded={stripeOnboarded} eventStatus={eventStatus} />
     </div>
   )
 }

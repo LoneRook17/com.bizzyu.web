@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CalendarDays, ScanLine } from "lucide-react"
+import { Copy, ExternalLink, Pencil, ScanLine, Settings2 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
 import {
@@ -11,29 +11,29 @@ import {
   type ListedProgramRef,
 } from "@/lib/business/events-list"
 import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-links"
+import { createFromTemplateHref } from "@/lib/business/create-from-template"
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
-import { Button } from "@/components/business/v2/ui/button"
-import {
-  HostCardThumbnail,
-  HostListCard,
-  type HostCardChip,
-} from "@/components/business/v2/host/HostListCard"
-import { eventStatusBadge, fmtDate, fmtTime } from "./eventStatus"
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/business/v2/ui/dropdown-menu"
+import { HostListCard, type HostCardChip } from "@/components/business/v2/host/HostListCard"
+import { eventStatusBadge, fmtTime } from "./eventStatus"
 import { isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 
 /**
- * A green EVENT row on the combined list (F9).
+ * A green EVENT row on the combined list (F9), re-cut as a table row in the
+ * BETA shell: date block · title · venue · sold / revenue · status · ⋯ menu.
  *
  * Built on HostListCard so an event row and a WEEKLY ACCESS row are literally
  * the same anatomy — one component, two accents. They sit in the same list, so
  * two lookalike implementations would drift into two subtly different rows,
  * which is exactly the seam F9 exists to close.
  *
- * What this card kept from its pre-F9 form: the View / Manage / Scan footer.
+ * What the ⋯ menu kept from the pre-shell footer: View / Manage / Scan.
  * View = guest checkout when the event is live; otherwise View is hidden.
- * Manage (and the card body) stay on the host side — never overload View.
+ * Manage (and the row title) stay on the host side — never overload View.
+ * Edit and Use as template are the same links the detail/manage pages carry
+ * (the template flow is create-from-template, an existing client route).
  */
 export function EventCard({
   event,
@@ -48,6 +48,7 @@ export function EventCard({
 }) {
   const { user } = useAuth()
   const canScan = user?.business_role !== "promoter"
+  const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
   const badge =
     isWeeklyCoverProduct(event) && isWeeklyCoverHoldStatus(event.status)
       ? { variant: "neutral" as const, label: WC_DRAFT_CHIP_LABEL }
@@ -76,16 +77,11 @@ export function EventCard({
     chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "custom" })
   }
 
-  // The F9 metadata line: when first — this list's whole job is what's coming
-  // up — then where.
-  const meta = [
-    `${fmtDate(event.start_date_time)} at ${fmtTime(event.start_date_time)}`,
-    event.venue_name,
-  ]
-    .filter(Boolean)
-    .join(" · ")
+  // The row's meta line: the date block carries the day, so this is the time
+  // and the venue — the two things the block has no room for.
+  const meta = [fmtTime(event.start_date_time), event.venue_name].filter(Boolean).join(" · ")
 
-  // Click = manage (2026-08 instance-manage pass): the card body opens the full
+  // Click = manage (2026-08 instance-manage pass): the row title opens the full
   // manage page directly. View is always the guest checkout when live — never
   // a second host detail/pre-manage page under the same label.
   const bodyHref = eventCardBodyHref(event, programs, wcSeriesIds, inactiveWcSeriesIds)
@@ -100,40 +96,44 @@ export function EventCard({
     <HostListCard
       kind="event"
       href={bodyHref}
+      date={event.start_date_time}
       title={event.name}
       meta={meta}
-      secondary={event.type === "Free" ? "Free entry" : "Presale + door tickets"}
+      secondary={event.type === "Free" ? "Free entry" : undefined}
       chips={chips}
-      thumbnail={
-        <HostCardThumbnail
-          kind="event"
-          src={event.flyer_image_url}
-          alt={event.name}
-          icon={CalendarDays}
-        />
-      }
-      /* D2-C: sold · revenue · when, all from fields this list already fetched.
-         The date is a STAT rather than only a line of prose because "when is
-         this" is the question the row exists to answer, and prose doesn't scan
-         down a column. It stays in the meta line too — with the time, which the
-         stat has no room for. */
-      stats={eventRowStats(event)}
-      actions={
+      /* D2-C: sold · (checked in) · revenue, from fields this list already
+         fetched. The trailing date stat is dropped on the row because the date
+         block already answers "when is this". */
+      stats={eventRowStats(event).slice(0, -1)}
+      menu={
         <>
-          {guestViewUrl && (
-            <Button variant="ghost" size="sm" asChild>
-              <a href={guestViewUrl} target="_blank" rel="noopener noreferrer">View</a>
-            </Button>
+          <DropdownMenuItem asChild>
+            <Link href={`/business/events/${event.event_id}/manage`}><Settings2 />Manage</Link>
+          </DropdownMenuItem>
+          {canEdit && !isWcRow && (
+            <DropdownMenuItem asChild>
+              <Link href={`/business/events/${event.event_id}/edit`}><Pencil />Edit</Link>
+            </DropdownMenuItem>
           )}
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/business/events/${event.event_id}/manage`}>Manage</Link>
-          </Button>
           {canScan && !isSeriesNight && !isWcRow && (
-            <Button variant="ghost" size="sm" asChild>
+            <DropdownMenuItem asChild>
               <Link href={`/business/events/${event.event_id}/manage/scanner`}>
-                <ScanLine /> Scan
+                <ScanLine />Scan
               </Link>
-            </Button>
+            </DropdownMenuItem>
+          )}
+          {guestViewUrl && (
+            <DropdownMenuItem asChild>
+              <a href={guestViewUrl} target="_blank" rel="noopener noreferrer"><ExternalLink />View</a>
+            </DropdownMenuItem>
+          )}
+          {canEdit && !isWcRow && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={createFromTemplateHref(event)}><Copy />Use as template</Link>
+              </DropdownMenuItem>
+            </>
           )}
         </>
       }

@@ -12,12 +12,15 @@ function read(rel: string) {
   return readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
 }
 
-test("event hub and tickets editor say Manage Tickets", () => {
-  const hub = read("../../app/business/(dashboard)/events/[id]/manage/page.tsx")
+test("event manage tabs and tickets editor say Tickets / Manage Tickets, never Manage sales", () => {
+  // BETA shell (2026-10-29): the hub tile became the Tickets TAB; the page it
+  // lands on is still titled Manage Tickets.
+  const tabs = read("./manage-tabs.ts")
+  const overview = read("../../app/business/(dashboard)/events/[id]/manage/page.tsx")
   const ticketsPage = read("../../app/business/(dashboard)/events/[id]/manage/tickets/page.tsx")
 
-  assert.ok(hub.includes('title: "Manage Tickets"'), "EVENT SETUP tile must be Manage Tickets")
-  assert.ok(!hub.includes('title: "Manage sales"'), "do not keep the Manage sales tile label")
+  assert.ok(tabs.includes('label: "Tickets"') && tabs.includes("`${base}/tickets`"), "the Tickets tab opens the tickets page")
+  assert.ok(!tabs.includes("Manage sales") && !overview.includes("Manage sales"), "do not keep the Manage sales label")
   assert.ok(ticketsPage.includes('title="Manage Tickets"'), "tickets page title must be Manage Tickets")
   assert.ok(!ticketsPage.includes("Manage sales"), "tickets page must not say Manage sales")
 })

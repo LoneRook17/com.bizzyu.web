@@ -1,168 +1,54 @@
 "use client"
 
-import { Fragment, useState, useEffect, use } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import {
-  ArrowLeft, BarChart3, CalendarOff, CircleCheck, MessageSquare, Megaphone,
-  Camera, Link2, ListChecks, Pencil, QrCode, ScanLine, Ticket, Users, Tag, ChevronRight,
+  BarChart3, CalendarOff, Camera, CircleCheck, ListChecks, Loader2, Pencil, QrCode, Rocket, ScanLine,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
 import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-links"
-import {
-  ACCESS_ACCENT,
-  isWeeklyCoverProduct,
-  programIdFromOwnedEvent,
-  weeklyCoverNightEditHref,
-} from "@/lib/business/door-access"
-import {
-  seriesActiveFromRecurringResponse,
-  weeklyCoverNightHasSales,
-  weeklyCoverNightNeedsPendingCancel,
-} from "@/lib/business/weekly-cover-visibility"
-import type { EventDetail } from "@/lib/business/types"
-import { cn } from "@/lib/v2/utils"
-import { Card } from "@/components/business/v2/ui/card"
+import { ACCESS_ACCENT, isWeeklyCoverProduct } from "@/lib/business/door-access"
+import { weeklyCoverNightHasSales, weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
+import { manageBase } from "@/lib/business/manage-tabs"
+import { useManageEvent } from "@/lib/business/manage-event-context"
+import { browserStorage, removeShellDraftId } from "@/lib/business/shell-drafts"
+import { usd } from "@/lib/v2/utils"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import { MetricStrip } from "@/components/business/v2/MetricStrip"
+import { ActionList, ActionRow } from "@/components/business/v2/ManageActionList"
 import ShareLinkRow from "@/components/business/v2/ShareLinkRow"
-import { CancelEventModal } from "@/components/business/v2/events/CancelEventModal"
-import { EventVenuePayoutBanner } from "@/components/business/v2/settings/VenuePayoutPaused"
-import { eventStatusBadge, fmtDate } from "@/components/business/v2/events/eventStatus"
-import { WeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCoverAccent"
+import { eventStatusBadge } from "@/components/business/v2/events/eventStatus"
 
-type Tile = {
-  href: string
-  icon: React.ElementType
-  title: string
-  subtitle: string
-  show: boolean
-}
-
-type ManageAccent = "event" | "access"
-
-// Weekly Cover is pink end to end (Luke, 2026-08-29 round 2): the tile hover,
-// like every other accent on a WC surface, follows ACCESS, never Bizzy green.
-const TILE_HOVER: Record<ManageAccent, { card: string; icon: string; title: string }> = {
-  event: {
-    card: "hover:border-[#05EB54]/40",
-    icon: "group-hover:bg-green-50 dark:group-hover:bg-green-950/40 group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]",
-    title: "group-hover:text-[#05EB54] dark:group-hover:text-[#05EB54]",
-  },
-  access: {
-    card: "hover:border-access/40",
-    icon: "group-hover:bg-access/10 group-hover:text-access dark:group-hover:text-access",
-    title: "group-hover:text-access dark:group-hover:text-access",
-  },
-}
-
-// BETA (Luke PRD 2026-10-29, changes 4 + 5) — the management page order is:
-//   Share Link → Event Setup → Insights → Promote → At the Door (last)
-// The Door Code card is gone from this page (UI only — the door-code routes
-// and the app's flow are untouched). Every destination below already existed;
-// this is the PRD's sequence imposed on them, not new surfaces. Door Access
-// programs (DASH-A) keep their own order on their series page.
-function ManageSection({
-  title,
-  blurb,
-  tiles,
-  accent = "event",
-}: {
-  title: string
-  blurb: string
-  tiles: Tile[]
-  accent?: ManageAccent
-}) {
-  const visible = tiles.filter((t) => t.show)
-  if (visible.length === 0) return null
-  return (
-    <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{title}</h2>
-        <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{blurb}</p>
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {visible.map((t) => (
-          <ManageTile key={t.href} href={t.href} icon={t.icon} title={t.title} subtitle={t.subtitle} accent={accent} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function ManageTile({ href, icon: Icon, title, subtitle, accent = "event" }: Omit<Tile, "show"> & { accent?: ManageAccent }) {
-  const hover = TILE_HOVER[accent]
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group flex items-start gap-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 shadow-sm transition-all hover:shadow-md",
-        hover.card,
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors",
-          hover.icon,
-        )}
-      >
-        <Icon className="size-5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={cn("block text-sm font-semibold text-neutral-900 dark:text-neutral-100 transition-colors", hover.title)}>{title}</span>
-        <span className="mt-0.5 block text-[13px] text-neutral-500 dark:text-neutral-400">{subtitle}</span>
-      </span>
-      <ChevronRight className="mt-0.5 size-4 shrink-0 text-neutral-300 dark:text-neutral-600" />
-    </Link>
-  )
-}
-
-export default function V2ManageEventPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const router = useRouter()
-  const { user } = useAuth()
-  const [event, setEvent] = useState<EventDetail | null>(null)
-  const [seriesActive, setSeriesActive] = useState(true)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [showCancel, setShowCancel] = useState(false)
+/**
+ * BETA biz-dash shell, slice 1: Manage lands on OVERVIEW.
+ *
+ * Key stats · the next useful action · publish status · a short Insights
+ * summary with the link out · the share link · tonight's door tools. The
+ * equal-tile mall is gone; the rest of the old hub lives in the tabs above
+ * (lib/business/manage-tabs.ts maps every old tile to its tab). Nothing was
+ * rebuilt — every link below already existed.
+ *
+ * Door Code stays removed (BETA, Luke PRD 2026-10-29, change 4).
+ */
+export default function V2ManageOverviewPage() {
+  const { id, event, seriesActive, loading, error, refresh } = useManageEvent()
+  const { user, isPending, business } = useAuth()
+  const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState("")
 
   const canEdit = user?.business_role === "owner" || user?.business_role === "manager"
 
-  useEffect(() => {
-    apiClient
-      .get<EventDetail>(`/business/events/${id}`)
-      .then(async (row) => {
-        setEvent(row)
-        const fromStamp = programIdFromOwnedEvent(row)
-        const fromFk = row.recurring_series_id != null ? Number(row.recurring_series_id) : NaN
-        const seriesId = fromStamp ?? (Number.isFinite(fromFk) && fromFk > 0 ? fromFk : null)
-        if (seriesId == null) {
-          setSeriesActive(true)
-          return
-        }
-        try {
-          const data = await apiClient.get<unknown>(`/business/recurring-series/${seriesId}`)
-          setSeriesActive(seriesActiveFromRecurringResponse(data) !== false)
-        } catch {
-          setSeriesActive(true)
-        }
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Failed to load event"))
-      .finally(() => setLoading(false))
-  }, [id])
-
-  if (loading) {
+  if (loading && !event) {
     return (
-      <div className="flex flex-col gap-5">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-9 w-64" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-[88px] rounded-xl" />)}
-        </div>
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-20 rounded-[10px]" />
+        <Skeleton className="h-24 rounded-[10px]" />
+        <Skeleton className="h-40 rounded-[10px]" />
       </div>
     )
   }
@@ -177,14 +63,11 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  const base = `/business/events/${id}/manage`
-  const isPastEvent = new Date(event.end_date_time) < new Date()
-  const cancellationStatus = event.cancellation_status || "none"
+  const base = manageBase(id)
   const badge = eventStatusBadge(event.status)
-  // Only hand out the public link once the event is live — a draft/pending
-  // event's checkout page dead-ends (same rule as venue page links). DASH2-D
-  // moved this predicate into public-links so Door Access nights apply it too.
   const pendingCancel = weeklyCoverNightNeedsPendingCancel(event, seriesActive)
+  // Only hand out the public link once the event is live — a draft/pending
+  // event's checkout page dead-ends (same rule as venue page links).
   const isLive = isPubliclyLinkable(event.status) && seriesActive && !pendingCancel
   const endedUnsold = !seriesActive && !weeklyCoverNightHasSales(event) && !pendingCancel
 
@@ -199,18 +82,36 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     )
   }
 
-  // V5 REDEMPTION §5, updated for the instance-manage pass — the door surface
-  // follows the event's KIND, but a door-access pass is no longer scanner-
-  // refused: services utils/redemptionGuard accepts camera_tap AND native_scan
-  // for Weekly Cover, so a WC night's manage page carries the same Scan tile
-  // an event's does. The camera stays the guest-facing default
-  // (the reminder card below); the redemption list stays the WC-primary CTA.
-  // product_kind is the stamp when services sends it; an older payload falls
-  // back to access_kind. Never a raw access_kind test, never the name.
+  // V5 REDEMPTION §5 — the door surface follows the event's KIND. A WC night
+  // runs on the redemption list first (guests scan with a phone camera); an
+  // event runs on the Bizzy scanner. product_kind is the stamp when services
+  // sends it; an older payload falls back to access_kind. Never the name.
   const isDoorAccess = isWeeklyCoverProduct(event)
+  const accent = isDoorAccess ? "access" : "event"
+  const isPast = new Date(event.end_date_time) < new Date()
+  const isDraft = event.status === "draft"
+  const canPublish = isDraft && canEdit && !isDoorAccess
+  const sold = event.sales?.total_attendees ?? event.ticket_sales_count ?? 0
+  const checkedIn = Number(event.checked_in_count ?? 0)
+  const rate = event.sales?.checkin_rate ?? event.checkin_rate ?? 0
 
-  // At the Door — everything you touch on the night itself.
-  const atTheDoorTiles: Tile[] = [
+  const handlePublish = async () => {
+    setPublishing(true)
+    setPublishError("")
+    try {
+      await apiClient.post(`/business/events/${id}/publish`)
+      removeShellDraftId(browserStorage(), business?.business_id, Number(id))
+      await refresh()
+    } catch (err) {
+      setPublishError(err instanceof ApiError ? err.message : "Failed to publish event")
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  // At the door — everything you touch on the night itself. Same two
+  // destinations the old hub listed last; they also live on the Guests tab.
+  const atTheDoorRows = [
     {
       href: `${base}/scanner`,
       icon: QrCode,
@@ -229,109 +130,79 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
     },
   ]
 
-  // WC FLAW 3 — the generic-edit fork. "Edit event" and "Manage Tickets" write
-  // through PUT /business/events/:id and the event ticket PUTs. WC night
-  // setup tiles stay on the WC path: the night-override editor (Custom for
-  // this date; series save leaves it alone) and the program editor for the
-  // weekday template. BINDING: that includes a night already stamped
-  // customized — never a green named-Event editor. Only a WC night with no
-  // resolvable program keeps the generic tiles (there is no series to protect).
-  const wcProgramId = programIdFromOwnedEvent(event)
-  const wcNightEdit = weeklyCoverNightEditHref(event)
-
-  // Event Setup — the things you configure before the doors open. "Manage
-  // Tickets" is the tickets page, which owns tiers, the group sellout toggle and
-  // (5.0) stock alerts, per F11's "Manage Tickets absorbs …".
-  // Luke (2026-08-29): the WC night manage mirrors green's setup row, so
-  // "Manage Tickets" replaces "Edit program" here. Program/weekday editing
-  // lives on the program page. Manage Tickets is the SAME tickets page as
-  // green, rendered pink and tickets-only; the services ticket-manage
-  // routes stamp the WC night Custom themselves, so edits there touch
-  // this night only. Edit night keeps door hours and closing.
-  const setupTiles: Tile[] =
-    wcNightEdit != null && wcProgramId != null
-      ? [
-          { href: wcNightEdit, icon: Pencil, title: "Edit night", subtitle: "Door hours, or close this night only", show: canEdit && seriesActive },
-          { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit && seriesActive },
-          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account for this night", show: true },
-        ]
-      : [
-          { href: `/business/events/${id}/edit`, icon: Pencil, title: "Edit event", subtitle: "Details, date, location, and artwork", show: canEdit },
-          { href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets", subtitle: "Tiers, availability, sellout, and stock alerts", show: canEdit },
-          { href: `${base}/team`, icon: Users, title: "Managers & co-hosts", subtitle: "Add a teammate with a Bizzy account", show: true },
-        ]
-
-  const insightsTiles: Tile[] = [
-    { href: `${base}/analytics`, icon: BarChart3, title: "Event analytics", subtitle: "Revenue and check-ins", show: true },
-  ]
-
-  // Promo codes leads the section, matching the app's manage screen — the two
-  // surfaces are the same control panel and should list it in the same place.
-  // (The app had it buried inside Manage sales until 2026-08-23; the web never
-  // did, so only the ordering needed to change here.)
-  const promoteTiles: Tile[] = [
-    { href: `${base}/promo-codes`, icon: Tag, title: "Promo codes", subtitle: "Create discount codes", show: canEdit && seriesActive },
-    { href: `${base}/promoters`, icon: Megaphone, title: "Promoters", subtitle: "Referral links and what they earn", show: true },
-    // Wave 2B — host tracking links (W1 services). Owners/managers only: the
-    // services gate is requireBusinessRole(owner, manager), so staff would
-    // land on a 403. Sits right after Promoters: same attribution, no payout.
-    { href: `${base}/tracking-links`, icon: Link2, title: "Tracking links", subtitle: "Flyer and bio links, with clicks and sales", show: canEdit },
-    { href: `${base}/announcements`, icon: MessageSquare, title: "Announcements", subtitle: "Notify ticket holders", show: true },
-  ]
-
-  // WC subtree renders pink end to end — the accent provider flips shared
-  // controls (Button primary, checkboxes) and the props below cover the rest.
-  const AccentScope = isDoorAccess ? WeeklyCoverAccent : Fragment
-  const accent: ManageAccent = isDoorAccess ? "access" : "event"
+  // The publish-status line and the ONE green CTA on this page. A draft's
+  // next action is publishing; a live event's is the door; a past event's is
+  // the recap. Everything else on Overview is secondary or a link.
+  const statusCopy = isDraft
+    ? isPending
+      ? "Draft. It goes live once Bizzy approves your business."
+      : "Draft. Guests cannot see it until you publish."
+    : event.status === "pending_review"
+      ? "Under review. It goes live once the content check clears."
+      : event.status === "cancelled"
+        ? "Cancelled."
+        : isPast
+          ? "This event has ended."
+          : isDoorAccess
+            ? "On sale. Guests scan with any phone camera at the door."
+            : "Live. Guests can buy, and the link below is ready to share."
 
   return (
-    <AccentScope>
-      {/* Round 3 (Luke, 2026-08-29): a WC night's manage IS its page — backing
-          into the event detail half-page resurrects a surface WC shouldn't
-          have. WC goes back to the Events list; events keep their detail. */}
-      <Link
-        href={isDoorAccess ? "/business/events" : `/business/events/${id}`}
-        className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
-      >
-        <ArrowLeft className="size-3.5" /> {isDoorAccess ? "Back to events" : "Back to event"}
-      </Link>
+    <>
+      {/* Key stats. Revenue is owner/manager only (the server omits it for staff). */}
+      <MetricStrip
+        metrics={[
+          { label: "Sold", value: sold.toLocaleString("en-US") },
+          ...(canEdit ? [{ label: "Revenue", value: usd(event.sales?.total_revenue ?? event.total_revenue) }] : []),
+          { label: "Checked in", value: checkedIn.toLocaleString("en-US") },
+          { label: "Check-in rate", value: `${Number(rate).toFixed(0)}%` },
+        ]}
+      />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{event.name}</h1>
-            <Badge variant={isDoorAccess && badge.variant === "success" ? "access" : badge.variant}>{badge.label}</Badge>
-          </div>
-          <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">{fmtDate(event.start_date_time)} · {event.venue_name}</p>
+      {/* Publish status + next action */}
+      <section className="flex flex-col gap-3 rounded-[10px] border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={isDoorAccess && badge.variant === "success" ? "access" : badge.variant}>{badge.label}</Badge>
+          <p className="text-sm text-neutral-700 dark:text-neutral-300">{statusCopy}</p>
         </div>
-        {/* The header CTA is the loudest affordance on the page. A WC night's
-            door runs off the redemption list first (guests scan with a phone
-            camera), so it stays the primary; the scanner is one tile below. */}
-        <Button variant={isDoorAccess ? "access-secondary" : "secondary"} asChild>
-          {isDoorAccess ? (
-            <Link href={`/business/events/${id}/manage/checkins`}><ListChecks /> Open redemption list</Link>
+        {event.status === "pending_review" && event.moderation_reason && (
+          <p className="text-[13px] text-amber-700 dark:text-amber-400">{event.moderation_reason}</p>
+        )}
+        {publishError && <p className="text-xs text-red-600 dark:text-red-400">{publishError}</p>}
+        <div className="flex flex-wrap items-center gap-2">
+          {canPublish ? (
+            <>
+              <Button onClick={handlePublish} disabled={publishing || !shouldTreatDraftAsLive(isPending)}>
+                {publishing ? <Loader2 className="animate-spin" /> : <Rocket />} Publish event
+              </Button>
+              <Button variant="secondary" asChild>
+                <Link href={`/business/events/${id}/edit`}><Pencil /> Edit details</Link>
+              </Button>
+            </>
+          ) : isPast ? (
+            <Button asChild>
+              <Link href={`${base}/analytics`}><BarChart3 /> See how it went</Link>
+            </Button>
+          ) : isDoorAccess ? (
+            <Button asChild>
+              <Link href={`${base}/checkins`}><ListChecks /> Open redemption list</Link>
+            </Button>
           ) : (
-            <Link href={`/business/events/${id}/manage/scanner`}><ScanLine /> Open scanner</Link>
+            <Button asChild>
+              <Link href={`${base}/scanner`}><ScanLine /> Open scanner</Link>
+            </Button>
           )}
-        </Button>
-      </div>
+        </div>
+      </section>
 
-      {/* #9 venue-stripe (locked decision 2): if this event's venue is matched
-          to a not-ready payout account, every sale here is blocked — that must
-          be unmissable on the manage surface. */}
-      <EventVenuePayoutBanner venueId={event.venue_id} />
-
-      {/* Share Link. First, because handing out the link is what a host does
-          most. (The Door Code card that used to follow it was removed in BETA —
-          Luke PRD 2026-10-29, change 4. The scanner tile under At the Door is
-          the check-in surface now.) */}
+      {/* Share Link. Live only — handing out the link is what a host does most. */}
       {isLive && <ShareLinkRow url={eventCheckoutUrl(id)} title={event.name} label="Event link" accent={accent} />}
 
       {/* §5 — the camera reminder, the app's counterpart copy. A door-access
           host's staff need to know the phone camera IS the scanner; without this
           the page reads as though check-in tooling is simply missing. */}
       {isDoorAccess && (
-        <Card className="flex items-start gap-3 p-4">
+        <div className="flex items-start gap-3 rounded-[10px] border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <span
             className="flex size-9 shrink-0 items-center justify-center rounded-lg"
             style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
@@ -347,88 +218,34 @@ export default function V2ManageEventPage({ params }: { params: Promise<{ id: st
               see who&apos;s checked in.
             </p>
           </div>
-        </Card>
-      )}
-
-      {/* 1 — Event Setup */}
-      <ManageSection
-        title="Event setup"
-        blurb="Details, what you're selling, and who can help run it."
-        tiles={setupTiles}
-        accent={accent}
-      />
-
-      {/* 2 — Insights */}
-      <ManageSection
-        title="Insights"
-        blurb="How the event is performing."
-        tiles={insightsTiles}
-        accent={accent}
-      />
-
-      {/* 3 — Promote */}
-      <ManageSection
-        title="Promote"
-        blurb="Reach more people and reward the ones who bring them."
-        tiles={promoteTiles}
-        accent={accent}
-      />
-
-      {/* 4 — At the Door (last, per the PRD) */}
-      <ManageSection
-        title="At the door"
-        blurb="Tonight's tools. Check guests in and see who has arrived."
-        tiles={atTheDoorTiles}
-        accent={accent}
-      />
-
-      {/* cancellation banners */}
-      {(cancellationStatus === "pending" || pendingCancel) && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-4">
-          <div className="flex items-center gap-2">
-            <Badge variant="warning">Cancellation pending</Badge>
-            <span className="text-sm text-amber-700 dark:text-amber-400">
-              {cancellationStatus === "pending"
-                ? "Awaiting admin review"
-                : "This series was cancelled. This night stays until admin refunds complete."}
-            </span>
-          </div>
-          {event.cancellation_reason && <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">Reason: {event.cancellation_reason}</p>}
-        </div>
-      )}
-      {cancellationStatus === "denied" && (
-        <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-4">
-          <Badge variant="danger">Cancellation denied</Badge>
-          {event.cancellation_denial_reason && <p className="mt-2 text-xs text-red-600 dark:text-red-400">Reason: {event.cancellation_denial_reason}</p>}
         </div>
       )}
 
-      {/* danger zone */}
-      {canEdit && (
-        <Card className={cn("border-red-200 dark:border-red-900 bg-red-50/30 dark:bg-red-950/30")}>
-          <div className="p-5">
-            <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
-            <div className="mt-3">
-              {event.status !== "cancelled" && cancellationStatus === "none" && !pendingCancel && !isPastEvent && (
-                <Button variant="secondary" className="border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={() => setShowCancel(true)}>
-                  Cancel event
-                </Button>
-              )}
-              {isPastEvent && event.status !== "cancelled" && (
-                <p className="text-xs text-neutral-400 dark:text-neutral-500">Cannot cancel. Event has already ended.</p>
-              )}
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* Insights — the summary is the strip above; this is the way in. */}
+      <ActionList label="Insights" description="How the event is performing.">
+        <ActionRow
+          href={`${base}/analytics`}
+          icon={BarChart3}
+          title="Event analytics"
+          subtitle="Revenue, ticket access, and check-in rates"
+          accent={accent}
+        />
+      </ActionList>
 
-      <CancelEventModal
-        open={showCancel}
-        onOpenChange={setShowCancel}
-        eventId={Number(id)}
-        eventName={event.name}
-        onCancelled={() => router.push("/business/events")}
-      />
-    </AccentScope>
+      {/* At the door — tonight's tools. */}
+      <ActionList label="At the door" description="Check guests in and see who has arrived.">
+        {atTheDoorRows.filter((r) => r.show).map((r) => (
+          <ActionRow key={r.href} href={r.href} icon={r.icon} title={r.title} subtitle={r.subtitle} accent={accent} />
+        ))}
+      </ActionList>
+
+      {/* cancellation state, surfaced here too since Overview is where a host
+          looks first; the full banners and the cancel action are on Settings */}
+      {(event.cancellation_status === "pending" || pendingCancel) && (
+        <p className="text-[13px] text-amber-700 dark:text-amber-400">
+          Cancellation pending. See Settings for details.
+        </p>
+      )}
+    </>
   )
 }

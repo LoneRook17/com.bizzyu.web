@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { CalendarDays, Loader2, Plus, Sparkles, X, Zap } from "lucide-react"
+import { CalendarDays, Loader2, Plus, Search, Sparkles, X, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { useDashboardMode } from "@/lib/v2/mode"
@@ -41,11 +40,10 @@ import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { Button } from "@/components/business/v2/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/business/v2/ui/tabs"
+import { Input } from "@/components/business/v2/ui/input"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/business/v2/ui/dialog"
+import { CreateEventModal } from "@/components/business/v2/events/CreateEventModal"
 import { EventCard } from "@/components/business/v2/events/EventCard"
 import { SeriesGroupRow } from "@/components/business/v2/events/SeriesGroupRow"
 import { Pagination } from "@/components/business/v2/events/Pagination"
@@ -68,6 +66,7 @@ import { eventsForHostUpcomingList } from "@/lib/business/series-nights-window"
 import {
   HostCardThumbnail,
   HostListCard,
+  HostListGroup,
 } from "@/components/business/v2/host/HostListCard"
 
 /**
@@ -92,8 +91,7 @@ import {
  */
 export default function V2EventsPage() {
   const { user, business, isPending } = useAuth()
-  const router = useRouter()
-  const { venues, isAllVenues, selectedVenue, selectedVenueId, setSelectedVenue } = useVenue()
+  const { selectedVenue, selectedVenueId } = useVenue()
   const venueParam = useVenueParam()
   // Matches useVenueParam: All venues / unknown selection omits venue_id so
   // every owned series stays visible. A concrete id scopes both fetches.
@@ -129,7 +127,12 @@ export default function V2EventsPage() {
   // stays active (series-23 fallback).
   const [probedInactiveIds, setProbedInactiveIds] = useState<number[]>([])
 
-  const [showVenueModal, setShowVenueModal] = useState(false)
+  // BETA shell: Create event is the hybrid modal (name · when · venue →
+  // draft → editor). The venue picker that used to run first is inside it.
+  const [showCreate, setShowCreate] = useState(false)
+  // Search stub (BETA shell): a client-side name filter over the rows this
+  // page already fetched. Not a server query — the window is what it was.
+  const [query, setQuery] = useState("")
   const [stripeOnboarded, setStripeOnboarded] = useState(true)
   const [stripeBannerDismissed, setStripeBannerDismissed] = useState(false)
   const [stripeConnecting, setStripeConnecting] = useState(false)
@@ -153,18 +156,10 @@ export default function V2EventsPage() {
     }
   }
 
-  // D2-1: ONE create funnel. This button no longer knows what is being created
-  // — /business/create asks (Event / Weekly Cover–Skip the Line) and routes.
-  // The venue picker still runs first, because BOTH paths need a venue and
-  // asking after the type choice would be a second interruption.
-  const handleCreate = () => {
-    if (isAllVenues && venues.length > 1) {
-      setShowVenueModal(true)
-    } else {
-      if (isAllVenues && venues.length === 1) setSelectedVenue(venues[0].id)
-      router.push("/business/create")
-    }
-  }
+  // BETA shell (locked 2026-10-29): Create event opens the modal. Weekly Cover
+  // keeps its own entry (the ghost button beside it, and a link inside the
+  // modal) — /business/create still exists as the type chooser.
+  const handleCreate = () => setShowCreate(true)
 
   useEffect(() => {
     if (canCreate) {
@@ -280,9 +275,13 @@ export default function V2EventsPage() {
   const showAccessNights = shouldShowWeeklyCoverOneOffsOnEventsTab(tab, isPending, effectiveType)
   const showAccessSchedules = shouldShowWeeklyCoverOnEventsTab(tab, isPending, effectiveType)
 
+  // The search stub filters what this page already holds, by name.
+  const q = query.trim().toLowerCase()
+  const visibleEvents = q ? events.filter((e) => (e.name ?? "").toLowerCase().includes(q)) : events
+
   const hostSections = useHostLayout
     ? hostDashSections({
-        events,
+        events: visibleEvents,
         programs: visiblePrograms,
         programNights,
         series: venueSeries,
@@ -298,7 +297,7 @@ export default function V2EventsPage() {
 
   const rows = !useHostLayout && showsEvents(effectiveType)
     ? groupEventRows(
-        tab === "upcoming" ? eventsForHostUpcomingList(events, easternToday()) : events,
+        tab === "upcoming" ? eventsForHostUpcomingList(visibleEvents, easternToday()) : visibleEvents,
         venueSeries,
         wcSeriesIds,
         inactiveWcIds,
@@ -348,7 +347,14 @@ export default function V2EventsPage() {
         }
         actions={
           canCreate ? (
-            <Button onClick={handleCreate}><Plus /> Create</Button>
+            <div className="flex items-center gap-2">
+              {accessEnabled && (
+                <Button variant="ghost" asChild>
+                  <Link href="/business/door-access/new">New Weekly Cover</Link>
+                </Button>
+              )}
+              <Button onClick={handleCreate}><Plus /> Create event</Button>
+            </div>
           ) : undefined
         }
       />
@@ -359,7 +365,7 @@ export default function V2EventsPage() {
 
       {/* Stripe Connect prompt */}
       {canCreate && !stripeOnboarded && !stripeBannerDismissed && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-3 rounded-[10px] border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3">
           <div className="flex-1">
             <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
               {isPending ? "Stripe Connect not linked" : "Connect Stripe to receive payments instantly"}
@@ -408,6 +414,21 @@ export default function V2EventsPage() {
             </TabsList>
           </Tabs>
         )}
+
+        {/* Search stub (BETA shell): filters the loaded rows by name. */}
+        {showsEvents(effectiveType) && (
+          <div className="relative w-full sm:ml-auto sm:w-56">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search events"
+              aria-label="Search events"
+              className="h-8 pl-8 text-[13px]"
+            />
+          </div>
+        )}
       </div>
 
       {/* Each half owns its own spinner: the access view must not read "no
@@ -417,21 +438,36 @@ export default function V2EventsPage() {
         ? ((showsEvents(effectiveType) && loading) || (showsAccess(effectiveType) && programsLoading))
         : (showsEvents(effectiveType) ? loading : programsLoading)
       ) ? (
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-[124px] rounded-xl" />)}
+        <div className="flex flex-col gap-1.5">
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-[10px]" />)}
         </div>
       ) : isEmpty ? (
         <EmptyState
           icon={effectiveType === "access" ? Sparkles : CalendarDays}
-          title={effectiveType === "access" ? `No ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs yet` : "No events yet"}
+          title={
+            q
+              ? "No events match that search"
+              : effectiveType === "access"
+                ? `No ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs yet`
+                : "No events yet"
+          }
           description={
-            effectiveType === "access"
-              ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs. Set the nights once and each one is generated for you.`
-              : tab === "upcoming" ? "Create your first event to start selling tickets." : `No ${tab} events found.`
+            q
+              ? "Try a different name, or clear the search."
+              : effectiveType === "access"
+                ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs. Set the nights once and each one is generated for you.`
+                : tab === "upcoming" ? "Create your first event to start selling tickets." : `No ${tab} events found.`
           }
           action={
-            canCreate && (effectiveType === "access" || tab === "upcoming") ? (
-              <Button variant={effectiveType === "access" ? "access" : "primary"} onClick={handleCreate}><Plus /> Create</Button>
+            q ? (
+              <Button variant="secondary" onClick={() => setQuery("")}>Clear search</Button>
+            ) : canCreate && effectiveType === "access" ? (
+              <Button variant="access" asChild>
+                <Link href="/business/door-access/new"><Plus /> Create</Link>
+              </Button>
+            ) : canCreate && tab === "upcoming" ? (
+              // Secondary: the header already carries this view's one green CTA.
+              <Button variant="secondary" onClick={handleCreate}><Plus /> Create event</Button>
             ) : undefined
           }
         />
@@ -443,7 +479,8 @@ export default function V2EventsPage() {
           inactiveWcIds={inactiveWcIds}
         />
       ) : (
-        <div className="flex flex-col gap-3">
+        // BETA shell: one bordered table, rows divided by hairlines.
+        <HostListGroup>
           {visiblePrograms.map((program) => (
             <AccessProgramRow key={`program-${program.id}`} program={program} />
           ))}
@@ -498,7 +535,7 @@ export default function V2EventsPage() {
                 />
               )
           )}
-        </div>
+        </HostListGroup>
       )}
 
       {/* Host Upcoming is one window, not a pager of generated nights. */}
@@ -524,37 +561,11 @@ export default function V2EventsPage() {
         </p>
       )}
 
-      {/* Venue picker (all-venues create flow) */}
-      <Dialog open={showVenueModal} onOpenChange={setShowVenueModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Which venue?</DialogTitle>
-            <DialogDescription>Pick the venue this belongs to.</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-1.5">
-            {venues.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => {
-                  setSelectedVenue(v.id)
-                  setShowVenueModal(false)
-                  router.push("/business/create")
-                }}
-                className="flex items-center gap-2.5 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 text-left text-sm font-medium text-neutral-700 dark:text-neutral-300 transition-colors hover:border-[#05EB54]/40 hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
-              >
-                <CalendarDays className="size-4 text-neutral-400 dark:text-neutral-500" />
-                <span className="min-w-0">
-                  <span className="block truncate">{v.name}</span>
-                  {v.address && <span className="block truncate text-xs font-normal text-neutral-500 dark:text-neutral-400">{v.address}</span>}
-                </span>
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Create event (hybrid): essentials → real draft → editor */}
+      <CreateEventModal open={showCreate} onOpenChange={setShowCreate} />
 
       <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-        Need a hand? Visit <Link href="/business/help" className="font-medium text-[#05EB54] hover:underline">Help &amp; tutorials</Link>.
+        Need a hand? Visit <Link href="/business/help" className="font-medium text-[#0A8038] hover:underline dark:text-[#05EB54]">Help &amp; tutorials</Link>.
       </p>
     </>
   )

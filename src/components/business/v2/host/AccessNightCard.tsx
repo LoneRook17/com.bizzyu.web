@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Zap } from "lucide-react"
+import { ExternalLink, Settings2, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import type { EventListItem } from "@/lib/business/types"
 import {
@@ -9,7 +9,6 @@ import {
   type ListedProgramRef,
 } from "@/lib/business/events-list"
 import {
-  fmtNightDate,
   nightHref,
   WEEKLY_ACCESS_SECTION_LABEL,
   type DoorAccessNight,
@@ -19,7 +18,7 @@ import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-link
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
-import { Button } from "@/components/business/v2/ui/button"
+import { DropdownMenuItem } from "@/components/business/v2/ui/dropdown-menu"
 import {
   HostCardThumbnail,
   HostListCard,
@@ -32,13 +31,13 @@ import {
  * Pink WEEKLY COVER chip (D12). Custom only when the Host voter says so —
  * weekday templates do not chip.
  *
- * 2026-08 instance-manage pass: the card matches the green EventCard's anatomy
- * — body click opens the night's full /manage page, and the footer is View
+ * 2026-08 instance-manage pass: the row matches the green EventCard's anatomy
+ * — the title opens the night's full /manage page, and the ⋯ menu is View
  * (the guest checkout page for THAT night) + Manage. No Scan (scan lives
- * inside manage and behind the door code) and no Cancel (cancel lives inside
- * manage's danger zone — the flow itself is unchanged, only the list-card
- * shortcut is gone). A night core has not stamped yet has no event id, so its
- * body falls back to the night editor page, which materialises it.
+ * inside manage) and no Cancel (cancel lives inside manage's settings — the
+ * flow itself is unchanged, only the list shortcut is gone). A night core has
+ * not stamped yet has no event id, so its title falls back to the night
+ * editor page, which materialises it.
  */
 export function AccessNightCard({
   program,
@@ -125,26 +124,27 @@ export function AccessNightCard({
     <HostListCard
       kind="access"
       href={href}
+      date={date || null}
       title={title}
-      meta={[date ? fmtNightDate(date) : null, venue].filter(Boolean).join(" · ")}
+      meta={[venue].filter(Boolean).join(" · ")}
       secondary={customTone ? "Custom night" : "Weekly Cover night"}
       chips={chips}
       thumbnail={
         <HostCardThumbnail kind="access" src={flyer} alt={title} icon={Zap} />
       }
-      actions={
+      menu={
         manageEventId != null ? (
           <>
+            <DropdownMenuItem asChild>
+              <Link href={`/business/events/${manageEventId}/manage`}><Settings2 />Manage</Link>
+            </DropdownMenuItem>
             {viewUrl && (
-              <Button variant="ghost" size="sm" asChild>
+              <DropdownMenuItem asChild>
                 <a href={viewUrl} target="_blank" rel="noopener noreferrer">
-                  View
+                  <ExternalLink />View
                 </a>
-              </Button>
+              </DropdownMenuItem>
             )}
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={`/business/events/${manageEventId}/manage`}>Manage</Link>
-            </Button>
           </>
         ) : undefined
       }

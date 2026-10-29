@@ -32,7 +32,7 @@ import {
 import { shouldAutoPublishCreatedDraft } from "@/lib/business/live-after-approve"
 import { DateField, DateTimeField } from "@/components/business/v2/ui/date-time-field"
 import { ArtworkSection } from "./ArtworkSection"
-import { EventStepNav, EVENT_CREATE_STEPS } from "./EventStepNav"
+import { EDITOR_STEPS, EditorStepRail, editorSectionId, useActiveEditorSection } from "./EditorStepRail"
 import { fmtDateTime, fmtTime } from "./eventStatus"
 import { RecurringEventWizard } from "@/components/business/v2/recurring/RecurringEventWizard"
 import { RepeatsOnDays } from "@/components/business/v2/recurring/RepeatsOnDays"
@@ -40,13 +40,21 @@ import { todayIsoDate } from "@/lib/business/recurring-event-create"
 import { splitDateTimeLocal } from "@/lib/business/datetime-value"
 import { artworkTemplateForSave, resolvedCreateFlyerUrl } from "@/lib/business/venue-photo-flyer"
 import { StockAlertsFields } from "./StockAlertsFields"
-import { TicketTierForm } from "./TicketTierForm"
+import { TicketsDrawer } from "./TicketsDrawer"
 import { tierSurgeToWire, tierWithSurgeDrafts, validateTierSurge } from "@/lib/business/event-tier-surge"
+import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
+import { browserStorage, removeShellDraftId } from "@/lib/business/shell-drafts"
 
 interface EventFormProps {
   initialData?: Partial<EventFormData>
   eventId?: number
   stripeOnboarded?: boolean
+  /**
+   * Edit only: the event's current status. A draft's Publish step offers
+   * "Publish event" (PUT the edits, then POST /publish — the same two calls
+   * the detail page makes) beside "Save changes". Anything else saves only.
+   */
+  eventStatus?: string
 }
 
 const NAME_MAX_LENGTH = 100
@@ -116,11 +124,15 @@ export function lowstockInputToStored(
   return { value: num, error: null }
 }
 
-export function EventForm({ initialData, eventId, stripeOnboarded = true }: EventFormProps) {
+export function EventForm({ initialData, eventId, stripeOnboarded = true, eventStatus }: EventFormProps) {
   const router = useRouter()
   const isEditing = !!eventId
-  const { isPending } = useAuth()
+  const isDraftEdit = isEditing && eventStatus === "draft"
+  const { isPending, business } = useAuth()
   const { venues, selectedVenue, setSelectedVenue } = useVenue()
+  // BETA shell: on edit every section is on one page and the rail follows the
+  // viewport; on create the rail is the wizard (see `step` below).
+  const activeSection = useActiveEditorSection(isEditing)
 
   const [form, setForm] = useState<EventFormData>({
     name: initialData?.name || "",
@@ -152,11 +164,16 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     artwork_accent: initialData?.artwork_accent ?? null,
   })
 
-  // 5.0 F10: creation walks Details → Tickets & access → Review. EDITING does
-  // not — an operator fixing a typo should not re-walk a wizard, so edit keeps
-  // the single-page form it has always been.
+  // 5.0 F10: creation walks Details → Tickets → Publish. EDITING does not —
+  // an operator fixing a typo should not re-walk a wizard, so edit keeps the
+  // single-page form; the BETA rail scrolls between its sections instead.
   const [step, setStep] = useState(0)
   const [furthestStep, setFurthestStep] = useState(0)
+
+  const jumpToSection = (i: number) => {
+    if (typeof document === "undefined") return
+    document.getElementById(editorSectionId(EDITOR_STEPS[i].key))?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
 
   const [promotionValueInput, setPromotionValueInput] = useState<string>(
     commissionValueToInput(initialData?.promotion_commission_type || "percent", initialData?.promotion_commission_value)
@@ -363,7 +380,10 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     await submitCreateOrEdit(false)
   }
 
-  const submitCreateOrEdit = async (saveAsDraft: boolean) => {
+  // `publishAfterSave` (edit of a draft only): PUT the edits, then POST
+  // /business/events/:id/publish — the same publish call the detail page and
+  // the manage Overview make. Never on create (create publishes by default).
+  const submitCreateOrEdit = async (saveAsDraft: boolean, publishAfterSave = false) => {
     if (!validate()) {
       // Send the user back to the step that owns the failure — on the Review
       // step the offending field is otherwise off-screen entirely.
@@ -471,7 +491,13 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
       if (isEditing) {
         await apiClient.put(`/business/events/${eventId}`, body)
-        router.push(`/business/events/${eventId}`)
+        if (publishAfterSave && isDraftEdit) {
+          await apiClient.post(`/business/events/${eventId}/publish`)
+          removeShellDraftId(browserStorage(), business?.business_id, eventId)
+          router.push(`/business/events/${eventId}/manage`)
+        } else {
+          router.push(`/business/events/${eventId}`)
+        }
       } else {
         const data = await apiClient.post<{
           event_id: number
@@ -551,21 +577,21 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   const detailsStep = (
     <>
       {/* Basic info */}
-      <Card>
-        <CardHeader><CardTitle>Basics</CardTitle></CardHeader>
-        <CardContent className="space-y-4 pt-0">
+      <Card className="rounded-[10px]">
+        <CardHeader className="px-4 pb-2 pt-3"><CardTitle>Basics</CardTitle></CardHeader>
+        <CardContent className="space-y-3 px-4 pb-4 pt-0">
           <div>
-            <Label htmlFor="name" className="mb-1.5 block">Event name</Label>
+            <Label htmlFor="name" className="mb-2 block">Event name</Label>
             <Input id="name" name="name" value={form.name} onChange={handleChange} placeholder="e.g. Spring Bash 2026" maxLength={100} />
             {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
           </div>
           <div>
-            <Label htmlFor="description" className="mb-1.5 block">Description</Label>
+            <Label htmlFor="description" className="mb-2 block">Description</Label>
             <Textarea id="description" name="description" value={form.description} onChange={handleChange} rows={4} placeholder="Tell people about your event…" />
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor="type" className="mb-1.5 block">Event type</Label>
+              <Label htmlFor="type" className="mb-2 block">Event type</Label>
               <Select id="type" name="type" value={form.type} onChange={handleChange}>
                 {EVENT_TYPES.map((t) => (
                   <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>
@@ -612,9 +638,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       </Card>
 
       {/* Date & time / Flutter When */}
-      <Card>
-        <CardHeader><CardTitle>{!isEditing ? "When" : "Date and time"}</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 pt-0">
+      <Card className="rounded-[10px]">
+        <CardHeader className="px-4 pb-2 pt-3"><CardTitle>{!isEditing ? "When" : "Date and time"}</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 gap-3 px-4 pb-4 pt-0">
           {!isEditing && (
             <div>
               <label className="flex cursor-pointer items-center gap-2">
@@ -650,9 +676,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                 }}
                 error={errors.days_of_week}
               />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <Label htmlFor="series_starts" className="mb-1.5 block">Starts</Label>
+                  <Label htmlFor="series_starts" className="mb-2 block">Starts</Label>
                   <DateField
                     id="series_starts"
                     value={seriesStarts}
@@ -664,7 +690,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   {errors.date_range_start && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.date_range_start}</p>}
                 </div>
                 <div>
-                  <Label htmlFor="series_ends" className="mb-1.5 block">Ends</Label>
+                  <Label htmlFor="series_ends" className="mb-2 block">Ends</Label>
                   <DateField
                     id="series_ends"
                     value={seriesEnds}
@@ -682,7 +708,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           {!form.is_recurring && (
           <>
           <div>
-            <Label htmlFor="start_date_time" className="mb-1.5 block">Starts</Label>
+            <Label htmlFor="start_date_time" className="mb-2 block">Starts</Label>
             <DateTimeField
               id="start_date_time"
               name="start_date_time"
@@ -696,7 +722,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             {errors.start_date_time && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.start_date_time}</p>}
           </div>
           <div>
-            <Label htmlFor="end_date_time" className="mb-1.5 block">Ends</Label>
+            <Label htmlFor="end_date_time" className="mb-2 block">Ends</Label>
             <DateTimeField
               id="end_date_time"
               name="end_date_time"
@@ -716,12 +742,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       </Card>
 
       {/* Location */}
-      <Card>
-        <CardHeader><CardTitle>Location</CardTitle></CardHeader>
-        <CardContent className="space-y-4 pt-0">
+      <Card className="rounded-[10px]">
+        <CardHeader className="px-4 pb-2 pt-3"><CardTitle>Location</CardTitle></CardHeader>
+        <CardContent className="space-y-3 px-4 pb-4 pt-0">
           {venues.length > 0 && (
             <div>
-              <Label htmlFor="venue_select" className="mb-1.5 block">Venue</Label>
+              <Label htmlFor="venue_select" className="mb-2 block">Venue</Label>
               <Select
                 id="venue_select"
                 value={form.venue_id ?? ""}
@@ -750,7 +776,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             </div>
           )}
           <div>
-            <Label htmlFor="venue_name" className="mb-1.5 block">Location name</Label>
+            <Label htmlFor="venue_name" className="mb-2 block">Location name</Label>
             <Input
               id="venue_name"
               name="venue_name"
@@ -762,7 +788,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
             {!currentVenue && errors.venue_name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.venue_name}</p>}
           </div>
           <div className="relative" ref={addressWrapperRef}>
-            <Label htmlFor="venue_address" className="mb-1.5 block">Address</Label>
+            <Label htmlFor="venue_address" className="mb-2 block">Address</Label>
             <Input
               id="venue_address"
               name="venue_address"
@@ -805,8 +831,8 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
       </Card>
 
       {/* Artwork — flyer upload. Create does not ask for a template. Venue photo is the empty-state default. */}
-      <Card>
-        <CardHeader className="flex-col items-start gap-1">
+      <Card className="rounded-[10px]">
+        <CardHeader className="flex-col items-start gap-0.5 px-4 pb-2 pt-3">
           <CardTitle>Artwork</CardTitle>
           <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
             {isEditing
@@ -814,7 +840,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               : "Optional flyer. Skip it and we use your venue photo."}
           </p>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="px-4 pb-4 pt-0">
           <ArtworkSection
             flyerUrl={form.flyer_image_url}
             onFlyerChange={(url) => setForm((prev) => ({ ...prev, flyer_image_url: url }))}
@@ -834,18 +860,26 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     <>
       {/* Tickets */}
       {form.type === "Ticketed" && (
-        <Card>
-          <CardHeader><CardTitle>Tickets</CardTitle></CardHeader>
-          <CardContent className="pt-0">
-            <TicketTierForm tiers={form.tickets} onChange={(tiers) => setForm((prev) => ({ ...prev, tickets: tiers }))} eventIs21Plus={form.is_21_plus} />
-            {errors.tickets && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errors.tickets}</p>}
+        <Card className="rounded-[10px]">
+          <CardHeader className="flex-col items-start gap-0.5 px-4 pb-2 pt-3">
+            <CardTitle>Tickets</CardTitle>
+            <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Tiers open in a side panel. Prices, quantities, scan windows, and surge live there.</p>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            {/* BETA shell: drawer chrome around the existing TicketTierForm. */}
+            <TicketsDrawer
+              tiers={form.tickets}
+              onChange={(tiers) => setForm((prev) => ({ ...prev, tickets: tiers }))}
+              eventIs21Plus={form.is_21_plus}
+              error={errors.tickets}
+            />
           </CardContent>
         </Card>
       )}
 
       {form.type === "Free" && (
-        <Card>
-          <CardHeader className="flex-col items-start gap-1">
+        <Card className="rounded-[10px]">
+          <CardHeader className="flex-col items-start gap-0.5 px-4 pb-2 pt-3">
             <CardTitle>Free entry</CardTitle>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
               Guests claim a real ticket at no charge. Same wallet pass, same scan at the door. Nothing to price.
@@ -865,14 +899,14 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
       {/* Promoter program */}
       {form.type === "Ticketed" && (
-        <Card>
-          <CardHeader className="flex-col items-start gap-1">
+        <Card className="rounded-[10px]">
+          <CardHeader className="flex-col items-start gap-0.5 px-4 pb-2 pt-3">
             <CardTitle>Promoter program</CardTitle>
             {showPromoterExtras && (
               <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Promoters share your event link and earn this on each sale.</p>
             )}
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="px-4 pb-4 pt-0">
             <label
               className={cn("flex items-center gap-2", promoToggleDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer")}
               title={promoToggleDisabled ? promoDisabledReason : undefined}
@@ -927,7 +961,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="promotion_commission_value" className="mb-1.5 block">
+                  <Label htmlFor="promotion_commission_value" className="mb-2 block">
                     Commission {commissionType === "percent" ? "(%)" : "($)"}
                   </Label>
                   <Input
@@ -956,12 +990,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
 
       {/* Stock alerts - operator low-stock notifications (ticketed only) */}
       {form.type === "Ticketed" && (
-        <Card>
-          <CardHeader className="flex-col items-start gap-1">
+        <Card className="rounded-[10px]">
+          <CardHeader className="flex-col items-start gap-0.5 px-4 pb-2 pt-3">
             <CardTitle>Stock alerts</CardTitle>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Get notified when a ticket tier sells out, and optionally before it does.</p>
           </CardHeader>
-          <CardContent className="pt-0">
+          <CardContent className="px-4 pb-4 pt-0">
             <StockAlertsFields
               enabled={!!form.lowstock_alerts_enabled}
               onEnabledChange={(enabled) => {
@@ -992,9 +1026,9 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   // show what you're about to publish. Editing already shows every field.
   const reviewSummary = (
     <>
-      <Card>
-        <CardHeader><CardTitle>Review</CardTitle></CardHeader>
-        <CardContent className="pt-0">
+      <Card className="rounded-[10px]">
+        <CardHeader className="px-4 pb-2 pt-3"><CardTitle>Review</CardTitle></CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
           <dl className="divide-y divide-neutral-200 dark:divide-neutral-800">
             <ReviewRow label="Name" value={form.name || "-"} />
             <ReviewRow label="Type" value={EVENT_TYPE_LABELS[form.type]} />
@@ -1026,12 +1060,12 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
   // on BOTH create (step 3) and edit, exactly as before 5.0.
   const publishCard = (
     <>
-      <Card>
-        <CardHeader className="flex-col items-start gap-1">
+      <Card className="rounded-[10px]">
+        <CardHeader className="flex-col items-start gap-0.5 px-4 pb-2 pt-3">
           <CardTitle>{isEditing ? "Notify followers" : "When this goes live"}</CardTitle>
           <p className="text-[13px] text-neutral-500 dark:text-neutral-400">Send a push to followers of this venue when the event goes live.</p>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent className="px-4 pb-4 pt-0">
           <label className="flex cursor-pointer items-center gap-2">
             <input
               type="checkbox"
@@ -1043,11 +1077,27 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
           </label>
 
           {/* D-F10.4: an approved business publishes instantly — free or paid.
-              Create-only: on edit the event already has a status. */}
+              Create-only: on edit the event already has a status. A draft
+              being edited gets its own line, since the Publish button below
+              is what takes it live. */}
+          {isDraftEdit && (
+            <div
+              className={cn(
+                "mt-4 rounded-[10px] border px-4 py-3 text-sm",
+                willDraft
+                  ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+                  : "border-neutral-200 bg-neutral-50 text-neutral-700 dark:border-neutral-800 dark:bg-neutral-800/50 dark:text-neutral-300"
+              )}
+            >
+              {willDraft
+                ? "This is a draft. It goes live once Bizzy approves your business. Save changes any time."
+                : "This is a draft. Guests cannot see it until you publish."}
+            </div>
+          )}
           {!isEditing && (
             <div
               className={cn(
-                "mt-4 rounded-xl border px-4 py-3 text-sm",
+                "mt-3 rounded-[10px] border px-4 py-3 text-sm",
                 willDraft
                   ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
                   : "border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300"
@@ -1069,7 +1119,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     <>
       {/* Submit */}
       {serverError && (
-        <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+        <div className="rounded-[10px] border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-400">
           <p>{serverError}</p>
           {shouldOfferStripeConnectForError(serverError) && (
             <Button type="button" variant="primary" size="sm" className="mt-2" disabled={stripeConnecting} onClick={handleConnectStripe}>
@@ -1094,10 +1144,30 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
               Save as draft
             </Button>
           )}
-          <Button type="submit" size="lg" disabled={loading}>
-            {loading && <Loader2 className="animate-spin" />}
-            {isEditing ? "Save changes" : "Publish event"}
-          </Button>
+          {/* Green is reserved for the step's primary CTA: Publish on create
+              and on a draft edit; Save changes on a live event's edit. */}
+          {isDraftEdit ? (
+            <>
+              <Button type="submit" variant="secondary" size="lg" disabled={loading}>
+                {loading && <Loader2 className="animate-spin" />}
+                Save changes
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                disabled={loading || !shouldTreatDraftAsLive(isPending)}
+                onClick={() => submitCreateOrEdit(false, true)}
+              >
+                {loading && <Loader2 className="animate-spin" />}
+                Publish event
+              </Button>
+            </>
+          ) : (
+            <Button type="submit" size="lg" disabled={loading}>
+              {loading && <Loader2 className="animate-spin" />}
+              {isEditing ? "Save changes" : "Publish event"}
+            </Button>
+          )}
         </div>
       </div>
     </>
@@ -1125,57 +1195,99 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true }: Even
     )
   }
 
+  // BETA shell: on edit, each section carries its own heading so the rail
+  // (anchors mode) has something to land on; on create the page header says
+  // which step this is.
+  const sectionHeading = (i: number) =>
+    isEditing ? (
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{EDITOR_STEPS[i].label}</h2>
+        <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{EDITOR_STEPS[i].hint}</p>
+      </div>
+    ) : null
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Link
-        href="/business/events"
+        href={isEditing ? `/business/events/${eventId}/manage` : "/business/events"}
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100"
       >
-        <ArrowLeft className="size-3.5" /> Back to events
+        <ArrowLeft className="size-3.5" /> {isEditing ? "Back to manage" : "Back to events"}
       </Link>
 
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
-          {isEditing ? "Edit event" : "Create event"}
+          {isEditing ? (form.name || "Edit event") : "Create event"}
         </h1>
         <p className="mt-1 text-[15px] text-neutral-600 dark:text-neutral-400">
           {isEditing
-            ? "Update details, tickets, and settings."
-            : `Step ${step + 1} of ${EVENT_CREATE_STEPS.length}. ${EVENT_CREATE_STEPS[step].label}.`}
+            ? isDraftEdit
+              ? "Draft. Fill in the details, add tickets, then publish."
+              : "Update details, tickets, and settings."
+            : `Step ${step + 1} of ${EDITOR_STEPS.length}. ${EDITOR_STEPS[step].label}.`}
         </p>
       </div>
 
-      {!isEditing && <EventStepNav current={step} furthest={furthestStep} onJump={goToStep} />}
-
       {moderationNotice && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+        <div className="rounded-[10px] border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           {moderationNotice}
         </div>
       )}
 
-      {onStep(0) && detailsStep}
-      {onStep(1) && ticketsStep}
-      {!isEditing && step === 2 && reviewSummary}
-      {onStep(2) && publishCard}
-
-      {/* Steps 1 and 2 advance; only the last step submits. Editing always
-          submits, since it renders every section at once. */}
-      {!isEditing && step < EVENT_CREATE_STEPS.length - 1 ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            {step > 0 && (
-              <Button type="button" variant="secondary" onClick={() => goToStep(step - 1)}>
-                Back
-              </Button>
-            )}
-          </div>
-          <Button type="button" size="lg" onClick={() => goToStep(step + 1)}>
-            Continue
-          </Button>
+      {/* BETA shell: the step rail (sticky left on desktop, pill row on
+          mobile) beside the sections. Create: the rail is the wizard. Edit:
+          the rail scrolls to the section and follows the viewport. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-8">
+        <div className="lg:pt-1">
+          <EditorStepRail
+            mode={isEditing ? "anchors" : "steps"}
+            current={isEditing ? activeSection : step}
+            furthest={furthestStep}
+            onJump={isEditing ? jumpToSection : goToStep}
+          />
         </div>
-      ) : (
-        submitRow
-      )}
+
+        <div className="flex min-w-0 max-w-3xl flex-col gap-6">
+          {onStep(0) && (
+            <section id={editorSectionId("details")} className="flex scroll-mt-24 flex-col gap-4">
+              {sectionHeading(0)}
+              {detailsStep}
+            </section>
+          )}
+          {onStep(1) && (
+            <section id={editorSectionId("tickets")} className="flex scroll-mt-24 flex-col gap-4">
+              {sectionHeading(1)}
+              {ticketsStep}
+            </section>
+          )}
+          {!isEditing && step === 2 && reviewSummary}
+          {onStep(2) && (
+            <section id={editorSectionId("publish")} className="flex scroll-mt-24 flex-col gap-4">
+              {sectionHeading(2)}
+              {publishCard}
+            </section>
+          )}
+
+          {/* Steps 1 and 2 advance; only the last step submits. Editing always
+              submits, since it renders every section at once. */}
+          {!isEditing && step < EDITOR_STEPS.length - 1 ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                {step > 0 && (
+                  <Button type="button" variant="secondary" onClick={() => goToStep(step - 1)}>
+                    Back
+                  </Button>
+                )}
+              </div>
+              <Button type="button" size="lg" onClick={() => goToStep(step + 1)}>
+                Continue
+              </Button>
+            </div>
+          ) : (
+            submitRow
+          )}
+        </div>
+      </div>
     </form>
   )
 }

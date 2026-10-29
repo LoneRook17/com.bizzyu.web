@@ -153,31 +153,44 @@ test("WC Access extras hide the door check-in blurb; the manage page keeps its t
   }
 
   // Out of scope and must survive: the operational check-in tools on a night.
+  // BETA shell (2026-10-29): the manage page is the OVERVIEW; "At the door"
+  // is its action list, not a tile section.
   const manage = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
-  assert.ok(manage.includes('title="At the door"'), "manage page keeps its At the door section")
+  assert.ok(manage.includes('label="At the door"'), "manage overview keeps its At the door list")
   assert.ok(manage.includes("Guests scan with any phone camera"), "manage page keeps the camera reminder")
 })
 
 test("WC night manage is pink end to end — never Bizzy green", () => {
+  // BETA shell: the accent provider moved up into the manage LAYOUT so the
+  // header, the tabs and every tab's page render pink for a WC night.
+  const layout = read("src/app/business/(dashboard)/events/[id]/manage/layout.tsx")
+  assert.ok(layout.includes("WeeklyCoverAccent"), "the WC subtree gets the access accent provider")
+  assert.ok(layout.includes("isDoorAccess ? WeeklyCoverAccent : Fragment"))
+  assert.ok(
+    layout.includes('isDoorAccess && badge.variant === "success" ? "access"'),
+    "a live WC night's header badge is pink, not green",
+  )
+  assert.ok(layout.includes("border-access text-access"), "the active tab underline is pink on a WC night")
   const src = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
-  assert.ok(src.includes("WeeklyCoverAccent"), "the WC subtree gets the access accent provider")
-  assert.ok(src.includes("isDoorAccess ? WeeklyCoverAccent : Fragment"))
-  assert.ok(src.includes('isDoorAccess ? "access" : "event"'), "tiles + share row follow the accent")
-  assert.ok(src.includes("hover:border-access/40"), "WC tile hover is pink")
+  assert.ok(src.includes('isDoorAccess ? "access" : "event"'), "rows + share row follow the accent")
   assert.ok(
     src.includes('isDoorAccess && badge.variant === "success" ? "access"'),
-    "a live WC night's badge is pink, not green",
+    "a live WC night's status badge is pink, not green",
   )
-  assert.ok(
-    src.includes('isDoorAccess ? "access-secondary" : "secondary"'),
-    "the WC header CTA is in the pink family",
-  )
+  // The door CTA is the page's one primary; inside WeeklyCoverAccent the
+  // primary Button resolves to the pink `access` variant, so the Overview
+  // must not pin green on it.
+  assert.ok(src.includes("Open redemption list"), "WC keeps the redemption-list CTA")
+  assert.ok(!src.includes("#05EB54"), "no Bizzy-green hex on the manage overview")
+  const list = read("src/components/business/v2/ManageActionList.tsx")
+  assert.ok(list.includes("hover:border-access/40"), "WC row hover is pink")
   const share = read("src/components/business/v2/ShareLinkRow.tsx")
   assert.ok(share.includes('accent === "access" ? "text-access"'), "share row can render pink")
 })
 
 test("round 3: WC manage backs to the events LIST; the WC detail page is pink", () => {
-  const manage = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
+  // BETA shell: the back link lives in the manage layout now.
+  const manage = read("src/app/business/(dashboard)/events/[id]/manage/layout.tsx")
   assert.ok(
     manage.includes('isDoorAccess ? "/business/events" : `/business/events/${id}`'),
     "a WC night's manage never backs into the event detail half-page",
@@ -259,8 +272,9 @@ test("team page: WC copy is night-scoped; green copy is untouched", () => {
   const wcMapSlice = src.slice(wcMap, wcMap + 200)
   assert.ok(/owner: "access", cohost: "info", crew: "access", promoter: "warning"/.test(wcMapSlice))
   assert.ok(src.includes('owner: "brand", cohost: "info", crew: "success", promoter: "warning"'), "green role map unchanged")
-  // the WC manage tile matches: night-scoped subtitle on the WC branch only
-  const manage = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
+  // the WC manage row matches: night-scoped subtitle on the WC branch only.
+  // BETA shell: the setup rows live on the Settings tab now.
+  const manage = read("src/app/business/(dashboard)/events/[id]/manage/settings/page.tsx")
   assert.ok(manage.includes("Add a teammate with a Bizzy account for this night"))
-  assert.ok(manage.includes('subtitle: "Add a teammate with a Bizzy account", show: true'), "green tile unchanged")
+  assert.ok(manage.includes('subtitle: "Add a teammate with a Bizzy account", show: true'), "green row unchanged")
 })
