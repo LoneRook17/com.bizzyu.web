@@ -12,6 +12,7 @@ import {
   fetchDoorAccessProgramsSafe,
   publishDraftNightsForProgram,
 } from "@/lib/business/door-access"
+import { browserStorage, excludeShellDrafts, readShellDraftIds } from "@/lib/business/shell-drafts"
 import type { EventListItem } from "@/lib/business/types"
 
 /**
@@ -53,7 +54,12 @@ export default function LiveAfterApprove() {
           "/business/events?tab=drafts&page=1&limit=50",
         )
         if (cancelled) return
-        const ids = draftIdsToPublish(data.events ?? [])
+        // BETA shell: a draft the host just made in the Create event modal is
+        // theirs to publish (editor / Overview), not this sweep's.
+        const ids = excludeShellDrafts(
+          draftIdsToPublish(data.events ?? []),
+          readShellDraftIds(browserStorage(), businessId),
+        )
         if (cancelled) return
         for (const eventId of ids) {
           try {

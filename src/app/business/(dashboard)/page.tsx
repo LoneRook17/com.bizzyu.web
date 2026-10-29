@@ -33,11 +33,12 @@ import { inactiveWeeklyCoverSeriesIds } from "@/lib/business/events-list"
 import { probeInactiveSeriesIds } from "@/lib/business/inactive-series-probe"
 import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
-import { Card, CardContent } from "@/components/business/v2/ui/card"
+import { MetricStrip, type Metric } from "@/components/business/v2/MetricStrip"
 import { Badge } from "@/components/business/v2/ui/badge"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
+import { CreateEventModal } from "@/components/business/v2/events/CreateEventModal"
 import TrialHome from "@/components/business/v2/TrialHome"
 import EscrowPanel from "@/components/business/v2/EscrowPanel"
 import HomeStripeConnectPrompt from "@/components/business/v2/HomeStripeConnectPrompt"
@@ -64,24 +65,39 @@ function eventBadge(status: string): { variant: "success" | "neutral" | "warning
   return { variant: "neutral", label: status || "-" }
 }
 
-// Top-row columns at lg+. Five tiles (hybrid mode, owner) go 3 + 2 at lg and
-// a single row at xl, so a $171,782.00 figure keeps its room.
-function tileColumns(count: number) {
-  if (count >= 5) return "lg:grid-cols-3 xl:grid-cols-5"
-  if (count === 4) return "lg:grid-cols-4"
-  if (count === 3) return "lg:grid-cols-3"
-  return "lg:grid-cols-2"
-}
-
-function MetricTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+/**
+ * BETA shell: a Home section is a sentence-case label plus one bordered list
+ * (hairlines between rows). No card-in-card: the empty state renders inside
+ * the same container, borderless.
+ */
+function HomeSection({
+  title,
+  viewAllHref,
+  children,
+}: {
+  title: string
+  viewAllHref?: string
+  children: React.ReactNode
+}) {
   return (
-    <Card className="p-5">
-      <p className="text-sm font-medium text-neutral-600 dark:text-neutral-400">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{value}</p>
-      {sub && <p className="mt-1.5 text-[13px] text-neutral-500 dark:text-neutral-400">{sub}</p>}
-    </Card>
+    <section className="flex min-w-0 flex-col gap-2">
+      <div className="flex items-center">
+        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
+        {viewAllHref && (
+          <Link href={viewAllHref} className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+            View all <ArrowUpRight className="size-3.5" />
+          </Link>
+        )}
+      </div>
+      <div className="divide-y divide-neutral-100 overflow-hidden rounded-[10px] border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
+        {children}
+      </div>
+    </section>
   )
 }
+
+const ROW_CLASS = "flex min-h-12 items-center gap-3 px-3 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+const EMPTY_CLASS = "border-0 bg-transparent py-8 dark:bg-transparent"
 
 export default function V2HomePage() {
   const { user, isPending } = useAuth()
@@ -105,6 +121,8 @@ export default function V2HomePage() {
   const [oneOffNights, setOneOffNights] = useState<OneOffUpcomingNight[]>([])
   const [probedInactiveIds, setProbedInactiveIds] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
+  // BETA shell: Create event is the single green CTA and opens the hybrid modal.
+  const [showCreate, setShowCreate] = useState(false)
 
   useEffect(() => {
     if (needsSetup || venuesLoading) return
@@ -169,6 +187,7 @@ export default function V2HomePage() {
 
   const firstName = user?.full_name?.split(" ")[0]
   const venueLabel = isAllVenues ? "all your venues" : selectedVenue?.name ?? "your venue"
+  const canCreate = user?.business_role === "owner" || user?.business_role === "manager"
 
   // LSK-19 — each product section appears only if this business actually RUNS
   // that product. The decision itself lives in home-sections.ts, as a pure
@@ -185,16 +204,6 @@ export default function V2HomePage() {
   })
   const showEventsSection = sections.events
   const showLineSkipSection = sections.lineSkips
-  // While loading, the skeleton row mirrors the owner's tile count for the mode
-  // so the grid does not jump when the figures land.
-  const skeletonTiles = homeSections({
-    totalEvents: 1,
-    hasLineSkipNights: false,
-    showEvents: config.showEvents,
-    showLineSkips: config.showLineSkips,
-    showDeals: config.showDeals,
-    canViewRevenue: canViewRevenue(user?.business_role),
-  }).tileCount
   // Line-skip money is owner/manager only (the server omits the field for
   // staff) — `null` renders as "-" through usd(), same as event revenue does.
   const lineSkipRevenue =
@@ -218,7 +227,7 @@ export default function V2HomePage() {
     .sort((a, b) => a.date.localeCompare(b.date))
   const soonestNight = nextNights[0] ?? null
 
-  // The interleaved list (green events + pink nights) this card now shows.
+  // The interleaved list (green events + pink nights) this section now shows.
   const upcoming = homeUpcoming(
     showEventsSection ? events : [],
     activePrograms,
@@ -236,6 +245,54 @@ export default function V2HomePage() {
     .filter((d): d is string => !!d)
     .sort((a, b) => a.localeCompare(b))[0] ?? null
 
+  // BETA shell: the metric row is one compact strip. Same figures, same gates
+  // (home-sections.ts decides presence; the server decides who sees revenue).
+  const metrics: Metric[] = []
+  // This is the EVENT revenue figure. It is never blended with the line-skip
+  // take below — Backroads is $171,782 of events against $12 of skip the line
+  // tickets, and one total would erase the $12.
+  if (sections.revenueTile) metrics.push({ label: "Revenue (all-time)", value: usd(summary?.total_revenue) })
+  // BETA (Luke PRD 2026-10-29, change 2): the week-to-date host take, same
+  // owner gate and same units as all-time. The server defines the week
+  // (Monday 00:00 America/New_York → now); an older build that omits the
+  // field renders "—" exactly like a manager's view.
+  if (sections.revenueTile) metrics.push({ label: "Revenue this week", value: usd(summary?.revenue_this_week), sub: "Since Monday" })
+  if (config.showDeals) {
+    metrics.push({ label: "Active deals", value: stats?.active_deals_count ?? 0, sub: `${stats?.claims_this_week ?? 0} claims this week` })
+  }
+  if (config.showDeals && !config.showEvents) {
+    metrics.push({ label: "Claims this week", value: stats?.claims_this_week ?? 0, sub: "Across all live deals" })
+  }
+  if (showEventsSection) {
+    metrics.push({ label: "Total attendees", value: (summary?.total_attendees ?? 0).toLocaleString() })
+    metrics.push({ label: "Upcoming events", value: stats?.upcoming_events_count ?? 0, sub: stats?.next_event_date ? `Next ${fmtShortDate(stats.next_event_date)}` : "None scheduled" })
+  }
+
+  // LSK-19 — the door-side figures, as their OWN labelled row so they can
+  // never be read as part of (or blended into) the event totals above.
+  // D2-6 widened it from skip the line tickets to WEEKLY COVER: the same row
+  // now covers programs and the legacy nights side by side, because a venue
+  // mid-F15 genuinely runs both and needs to see both.
+  const accessMetrics: Metric[] = []
+  if (showLineSkipSection && canViewRevenue(user?.business_role)) {
+    accessMetrics.push({ label: "Revenue (all-time)", value: usd(lineSkipRevenue) })
+  }
+  if (showLineSkipSection) {
+    accessMetrics.push({ label: "Passes sold", value: (stats?.line_skip_passes_sold ?? 0).toLocaleString() })
+  }
+  if (showAccessSection) {
+    accessMetrics.push({
+      label: "Active programs",
+      value: activePrograms.length,
+      sub: `${activePrograms.reduce((n, p) => n + (p.upcoming_night_count ?? 0), 0)} nights scheduled`,
+    })
+  }
+  accessMetrics.push({
+    label: "Next night",
+    value: nextAccessDate ? fmtShortDate(nextAccessDate) : "-",
+    sub: nextAccessDate ? undefined : "None scheduled",
+  })
+
   return (
     <>
       {/* BE-D2: money Bizzy is holding is the single most important thing on
@@ -249,15 +306,16 @@ export default function V2HomePage() {
         description={`Here's what's happening at ${venueLabel}.`}
         actions={
           <div className="flex items-center gap-2">
-            {config.showEvents && (
-              <Button variant={config.showDeals ? "secondary" : "primary"} asChild>
-                <Link href="/business/create"><Plus /> Create</Link>
-              </Button>
-            )}
+            {/* BETA shell (locked 2026-10-29): Create event is the one green
+                CTA on Home. New deal is secondary. The Weekly Cover path stays
+                reachable from inside the modal. */}
             {config.showDeals && (
-              <Button asChild>
+              <Button variant="secondary" asChild>
                 <Link href="/business/deals/new"><Plus /> New deal</Link>
               </Button>
+            )}
+            {config.showEvents && canCreate && (
+              <Button onClick={() => setShowCreate(true)}><Plus /> Create event</Button>
             )}
           </div>
         }
@@ -271,83 +329,31 @@ export default function V2HomePage() {
           purpose: a nudge, not an alarm. */}
       <HomeStripeConnectPrompt />
 
-      {/* metric tiles - filtered by dashboard mode AND by what this business runs */}
+      {/* metric strip - filtered by dashboard mode AND by what this business runs */}
       {(loading || sections.tileCount > 0) && (
-        <div className={cn("grid grid-cols-2 gap-4", tileColumns(loading ? skeletonTiles : sections.tileCount))}>
-          {loading ? (
-            Array.from({ length: skeletonTiles }, (_, i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)
-          ) : (
-            <>
-              {/* This is the EVENT revenue figure. It is never blended with the
-                  line-skip take below — Backroads is $171,782 of events against
-                  $12 of skip the line tickets, and one total would erase the $12. */}
-              {sections.revenueTile && <MetricTile label="Revenue (all-time)" value={usd(summary?.total_revenue)} />}
-              {/* BETA (Luke PRD 2026-10-29, change 2): the week-to-date host take,
-                  same owner gate and same units as all-time. The server defines
-                  the week (Monday 00:00 America/New_York → now); an older build
-                  that omits the field renders "—" exactly like a manager's view. */}
-              {sections.revenueTile && <MetricTile label="Revenue this week" value={usd(summary?.revenue_this_week)} sub="Since Monday" />}
-              {config.showDeals && (
-                <MetricTile label="Active deals" value={stats?.active_deals_count ?? 0} sub={`${stats?.claims_this_week ?? 0} claims this week`} />
-              )}
-              {config.showDeals && !config.showEvents && (
-                <MetricTile label="Claims this week" value={stats?.claims_this_week ?? 0} sub="Across all live deals" />
-              )}
-              {showEventsSection && (
-                <MetricTile label="Total attendees" value={(summary?.total_attendees ?? 0).toLocaleString()} />
-              )}
-              {showEventsSection && (
-                <MetricTile label="Upcoming events" value={stats?.upcoming_events_count ?? 0} sub={stats?.next_event_date ? `Next ${fmtShortDate(stats.next_event_date)}` : "None scheduled"} />
-              )}
-            </>
-          )}
-        </div>
+        loading ? <Skeleton className="h-[76px] rounded-[10px]" /> : <MetricStrip metrics={metrics} />
       )}
 
-      {/* LSK-19 — the door-side figures, as their OWN labelled row so they can
-          never be read as part of (or blended into) the event totals above.
-          D2-6 widened it from skip the line tickets to WEEKLY ACCESS: the same row now
-          covers programs and the legacy nights side by side, because a venue
-          mid-F15 genuinely runs both and needs to see both. "View all" points
-          at the Events page, where Weekly Access now lives — never at the
-          retired nav route. */}
+      {/* "View all" points at the Events page, where Weekly Cover now lives —
+          never at the retired nav route. */}
       {!loading && (showLineSkipSection || showAccessSection) && (
-        <section data-testid="line-skip-section">
+        <section data-testid="line-skip-section" className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: ACCESS_ACCENT }} />
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
               {showAccessSection ? WEEKLY_ACCESS_SECTION_LABEL : LINE_SKIP_LABEL}
             </h2>
-            <Link href="/business/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
+            <Link href="/business/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
               View all <ArrowUpRight className="size-3.5" />
             </Link>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
-            {showLineSkipSection && canViewRevenue(user?.business_role) && (
-              <MetricTile label="Revenue (all-time)" value={usd(lineSkipRevenue)} />
-            )}
-            {showLineSkipSection && (
-              <MetricTile label="Passes sold" value={(stats?.line_skip_passes_sold ?? 0).toLocaleString()} />
-            )}
-            {showAccessSection && (
-              <MetricTile
-                label="Active programs"
-                value={activePrograms.length}
-                sub={`${activePrograms.reduce((n, p) => n + (p.upcoming_night_count ?? 0), 0)} nights scheduled`}
-              />
-            )}
-            <MetricTile
-              label="Next night"
-              value={nextAccessDate ? fmtShortDate(nextAccessDate) : "-"}
-              sub={nextAccessDate ? undefined : "None scheduled"}
-            />
-          </div>
+          <MetricStrip metrics={accessMetrics} />
         </section>
       )}
 
-      {/* bento - first card follows the dashboard mode */}
+      {/* two lists - first one follows the dashboard mode */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* LSK-19: the events card follows PRESENCE now, not just the mode — a
+        {/* LSK-19: the events list follows PRESENCE now, not just the mode — a
             venue with no events never posted one, so neither the tiles nor the
             "Create an event" empty state belong on its Home. The deals branch
             stays exactly where it was (it only ever rendered when the events
@@ -355,124 +361,108 @@ export default function V2HomePage() {
             deals switched off: that venue gets no product card here at all, and
             its Skip the Line row above carries the page. */}
         {showUpcomingCard ? (
-          <Card className="overflow-hidden">
-            <div className="flex items-center px-5 py-4">
-              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-                {showAccessSection ? "Upcoming" : "Upcoming events"}
-              </h2>
-              <Link href="/business/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-                View all <ArrowUpRight className="size-3.5" />
-              </Link>
-            </div>
-            <div className="border-t border-neutral-100 dark:border-neutral-800">
-              {loading ? (
-                [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
-              ) : upcoming.length === 0 ? (
-                // D2-B's emptiness test (the interleaved list, not just events)
-                // over D2-A's destination (the funnel, not the event form).
-                <div className="p-5"><EmptyState icon={CalendarDays} title="Nothing coming up" description={`Create an event or a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program to start selling.`} action={<Button asChild size="sm"><Link href="/business/create"><Plus /> Create</Link></Button>} /></div>
-              ) : (
-                // Interleaved (D2-6). A pink 2px spine is the whole type marker:
-                // the row shapes are otherwise identical, which is the point —
-                // one list, one reading order, two kinds.
-                upcoming.map((entry, i) => {
-                  const rowClass = cn(
-                    "flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60",
-                    i > 0 && "border-t border-neutral-100 dark:border-neutral-800",
-                  )
-                  if (entry.kind === "access") {
-                    const p = entry.program
-                    return (
-                      <Link key={entry.key} href={programHref(p.id)} className={rowClass}>
-                        <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full" style={{ backgroundColor: ACCESS_ACCENT }} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{p.name}</span>
-                          <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(entry.date)} · {p.venue_name}</span>
-                        </span>
-                        <span
-                          className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-[0.06em]"
-                          style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
-                        >
-                          {WEEKLY_ACCESS_TYPE_LABEL}
-                        </span>
-                        <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
-                      </Link>
-                    )
-                  }
-                  const e = entry.event
-                  const b = eventBadge(e.status)
+          <HomeSection title={showAccessSection ? "Upcoming" : "Upcoming events"} viewAllHref="/business/events">
+            {loading ? (
+              [0, 1, 2].map((i) => <div key={i} className="px-3 py-3.5"><Skeleton className="h-5 w-40" /></div>)
+            ) : upcoming.length === 0 ? (
+              // D2-B's emptiness test (the interleaved list, not just events)
+              // over D2-A's destination (the funnel, not the event form).
+              <EmptyState
+                className={EMPTY_CLASS}
+                icon={CalendarDays}
+                title="Nothing coming up"
+                description={`Create an event or a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program to start selling.`}
+                action={canCreate ? <Button asChild variant="secondary" size="sm"><Link href="/business/create"><Plus /> Create</Link></Button> : undefined}
+              />
+            ) : (
+              // Interleaved (D2-6). The pink type chip is the whole type marker:
+              // the row shapes are otherwise identical, which is the point —
+              // one list, one reading order, two kinds.
+              upcoming.map((entry) => {
+                if (entry.kind === "access") {
+                  const p = entry.program
                   return (
-                    <Link key={entry.key} href={`/business/events/${e.event_id}/manage`} className={rowClass}>
-                      {showAccessSection && <span aria-hidden className="h-8 w-[2px] shrink-0 rounded-full bg-[#05EB54]" />}
+                    <Link key={entry.key} href={programHref(p.id)} className={ROW_CLASS}>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
-                        {/* BETA (Luke PRD 2026-10-29, change 3): the venue leads the
-                            subtitle ("Fifth Quarter · Oct 31 · 166 sold") so an
-                            All-venues list reads where each event is. An older row
-                            without a venue_name keeps the date-first line. */}
-                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{e.venue_name ? `${e.venue_name} · ` : ""}{fmtShortDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
+                        <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{p.name}</span>
+                        <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(entry.date)} · {p.venue_name}</span>
                       </span>
-                      <Badge variant={b.variant}>{b.label}</Badge>
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                        style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
+                      >
+                        {WEEKLY_ACCESS_TYPE_LABEL.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </span>
                       <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
                     </Link>
                   )
-                })
-              )}
-            </div>
-          </Card>
-        ) : sections.dealsCard ? (
-          <Card className="overflow-hidden">
-            <div className="flex items-center px-5 py-4">
-              <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Live deals</h2>
-              <Link href="/business/deals" className="ml-auto inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-                View all <ArrowUpRight className="size-3.5" />
-              </Link>
-            </div>
-            <div className="border-t border-neutral-100 dark:border-neutral-800">
-              {loading ? (
-                [0, 1, 2].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-40" /></div>)
-              ) : deals.length === 0 ? (
-                <div className="p-5"><EmptyState icon={Tag} title="No live deals" description="Create a deal to start reaching students." action={<Button asChild size="sm"><Link href="/business/deals/new"><Plus /> Create deal</Link></Button>} /></div>
-              ) : (
-                deals.map((d, i) => (
-                  <Link key={d.id} href={`/business/deals/${d.id}`} className={cn("flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
+                }
+                const e = entry.event
+                const b = eventBadge(e.status)
+                return (
+                  <Link key={entry.key} href={`/business/events/${e.event_id}/manage`} className={ROW_CLASS}>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{d.deal_title}</span>
-                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtShortDate(d.expired_date)}</span>
+                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{e.name}</span>
+                      {/* BETA (Luke PRD 2026-10-29, change 3): the venue leads the
+                          subtitle ("Fifth Quarter · Oct 31 · 166 sold") so an
+                          All-venues list reads where each event is. An older row
+                          without a venue_name keeps the date-first line. */}
+                      <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{e.venue_name ? `${e.venue_name} · ` : ""}{fmtShortDate(e.start_date_time)} · {e.ticket_sales_count} sold</span>
                     </span>
-                    <Badge variant="success">Live</Badge>
+                    <Badge variant={b.variant}>{b.label}</Badge>
                     <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
                   </Link>
-                ))
-              )}
-            </div>
-          </Card>
-        ) : null}
-
-        {/* recent activity */}
-        <Card className="overflow-hidden">
-          <div className="flex items-center px-5 py-4">
-            <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">Recent activity</h2>
-          </div>
-          <div className="border-t border-neutral-100 dark:border-neutral-800">
+                )
+              })
+            )}
+          </HomeSection>
+        ) : sections.dealsCard ? (
+          <HomeSection title="Live deals" viewAllHref="/business/deals">
             {loading ? (
-              [0, 1, 2, 3].map((i) => <div key={i} className="border-t border-neutral-100 dark:border-neutral-800 px-5 py-3.5 first:border-t-0"><Skeleton className="h-5 w-48" /></div>)
-            ) : activity.length === 0 ? (
-              <div className="p-5"><EmptyState icon={Sparkles} title="No activity yet" description="Sales, claims, and check-ins will show up here." /></div>
+              [0, 1, 2].map((i) => <div key={i} className="px-3 py-3.5"><Skeleton className="h-5 w-40" /></div>)
+            ) : deals.length === 0 ? (
+              <EmptyState
+                className={EMPTY_CLASS}
+                icon={Tag}
+                title="No live deals"
+                description="Create a deal to start reaching students."
+                action={<Button asChild variant="secondary" size="sm"><Link href="/business/deals/new"><Plus /> Create deal</Link></Button>}
+              />
             ) : (
-              activity.map((a, i) => (
-                <div key={i} className={cn("flex items-start gap-3 px-5 py-3.5", i > 0 && "border-t border-neutral-100 dark:border-neutral-800")}>
-                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[#05EB54]" />
+              deals.map((d) => (
+                <Link key={d.id} href={`/business/deals/${d.id}`} className={ROW_CLASS}>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-neutral-800 dark:text-neutral-200">{a.message}</span>
-                    <span className="block text-xs text-neutral-400 dark:text-neutral-500">{fmtRelative(a.timestamp)} ago</span>
+                    <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{d.deal_title}</span>
+                    <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{d.deal_category} · expires {fmtShortDate(d.expired_date)}</span>
                   </span>
-                </div>
+                  <Badge variant="success">Live</Badge>
+                  <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
+                </Link>
               ))
             )}
-          </div>
-        </Card>
+          </HomeSection>
+        ) : null}
+
+        {/* recent activity - plain rows, no decorative dots (BETA shell) */}
+        <HomeSection title="Recent activity">
+          {loading ? (
+            [0, 1, 2, 3].map((i) => <div key={i} className="px-3 py-3.5"><Skeleton className="h-5 w-48" /></div>)
+          ) : activity.length === 0 ? (
+            <EmptyState className={EMPTY_CLASS} icon={Sparkles} title="No activity yet" description="Sales, claims, and check-ins will show up here." />
+          ) : (
+            activity.map((a, i) => (
+              <div key={i} className={cn("flex min-h-12 items-start gap-3 px-3 py-2")}>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-neutral-800 dark:text-neutral-200">{a.message}</span>
+                </span>
+                <span className="shrink-0 text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500">{fmtRelative(a.timestamp)} ago</span>
+              </div>
+            ))
+          )}
+        </HomeSection>
       </div>
+
+      <CreateEventModal open={showCreate} onOpenChange={setShowCreate} />
     </>
   )
 }

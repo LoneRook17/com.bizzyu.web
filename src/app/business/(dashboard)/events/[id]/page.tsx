@@ -26,11 +26,12 @@ import { WeeklyCoverAccent } from "@/components/business/v2/door-access/WeeklyCo
 import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { shouldTreatDraftAsLive } from "@/lib/business/live-after-approve"
+import { browserStorage, isShellDraft, removeShellDraftId } from "@/lib/business/shell-drafts"
 
 export default function V2EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { user, isPending } = useAuth()
+  const { user, isPending, business } = useAuth()
   const [event, setEvent] = useState<EventDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -62,6 +63,9 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (!event || event.status !== "draft" || !canEdit) return
     if (!shouldTreatDraftAsLive(isPending)) return
+    // BETA shell: a draft the host made in the Create event modal publishes
+    // when THEY press Publish, never on landing here.
+    if (isShellDraft(browserStorage(), business?.business_id, Number(id))) return
     let cancelled = false
     setPublishing(true)
     apiClient
@@ -76,7 +80,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
     return () => {
       cancelled = true
     }
-  }, [canEdit, event?.event_id, event?.status, fetchEvent, id, isPending])
+  }, [business?.business_id, canEdit, event?.event_id, event?.status, fetchEvent, id, isPending])
 
   const openPriceEdit = (ticket: TicketTier) => {
     setEditingTicketId(ticket.ticket_id ?? null)
@@ -110,6 +114,7 @@ export default function V2EventDetailPage({ params }: { params: Promise<{ id: st
       await apiClient.post<{ event_id: number; status: string; moderation_status: string | null }>(
         `/business/events/${id}/publish`
       )
+      removeShellDraftId(browserStorage(), business?.business_id, Number(id))
       // Re-fetch so the status badge + banners reflect published / pending_review.
       await fetchEvent()
     } catch (err) {

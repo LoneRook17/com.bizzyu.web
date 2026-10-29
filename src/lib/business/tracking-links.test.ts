@@ -93,8 +93,9 @@ test("page wires the tooltip, the owner/manager gate and the real endpoints", ()
   assert.match(page, /`\$\{base\}\/\$\{.*\.id\}`/)
   assert.match(page, /maxLength=\{TRACKING_LABEL_MAX\}/)
 
-  // The manage hub lists the tile next to Promoters, owners/managers only.
-  const hub = read("../../app/business/(dashboard)/events/[id]/manage/page.tsx")
+  // The Promo & tracking tab lists the row next to Promoters, owners/managers
+  // only (BETA shell 2026-10-29: the hub's Promote tiles became this tab).
+  const hub = read("../../app/business/(dashboard)/events/[id]/manage/promote/page.tsx")
   const promoters = hub.indexOf('title: "Promoters"')
   const tracking = hub.indexOf('title: "Tracking links"')
   assert.ok(promoters > -1 && tracking > -1, "both tiles present")

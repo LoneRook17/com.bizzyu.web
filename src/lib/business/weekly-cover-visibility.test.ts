@@ -109,11 +109,17 @@ test("lookahead does not resurrect a leftover published night of an ended series
 })
 
 test("manage hub fail-closes an ended unsold series instead of a live editor", () => {
+  // BETA shell (2026-10-29): the series read moved into the manage layout's
+  // shared context; the Overview page still fail-closes on it.
+  const ctx = readFileSync(
+    fileURLToPath(new URL("./manage-event-context.tsx", import.meta.url)),
+    "utf8",
+  )
+  assert.ok(ctx.includes("seriesActiveFromRecurringResponse"))
   const hub = readFileSync(
     fileURLToPath(new URL("../../app/business/(dashboard)/events/[id]/manage/page.tsx", import.meta.url)),
     "utf8",
   )
-  assert.ok(hub.includes("seriesActiveFromRecurringResponse"))
   assert.ok(hub.includes("endedUnsold"))
   assert.ok(hub.includes("This series has ended"))
 })

@@ -24,7 +24,7 @@ import { AccessProgramRow } from "@/components/business/v2/door-access/AccessPro
 import { AccessEventGroupRow } from "@/components/business/v2/door-access/AccessEventGroupRow"
 import { EventCard } from "@/components/business/v2/events/EventCard"
 import { Button } from "@/components/business/v2/ui/button"
-import { HostCardThumbnail, HostListCard } from "@/components/business/v2/host/HostListCard"
+import { HostCardThumbnail, HostListCard, HostListGroup } from "@/components/business/v2/host/HostListCard"
 import { AccessNightCard } from "@/components/business/v2/host/AccessNightCard"
 
 function OccurrenceCard({
@@ -111,21 +111,24 @@ function OccurrenceDateGroups({
   inactiveWcIds: readonly number[]
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       {groupOccurrencesByDate(rows).map((group) => (
-        <div key={group.date} className="flex flex-col gap-3">
-          <h3 className="text-[13px] font-semibold text-neutral-600 dark:text-neutral-400">
+        <div key={group.date} className="flex flex-col gap-1.5">
+          <h3 className="px-0.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
             {group.label}
           </h3>
-          {group.rows.map((row) => (
-            <OccurrenceCard
-              key={row.key}
-              row={row}
-              programs={programs}
-              wcSeriesIds={wcSeriesIds}
-              inactiveWcIds={inactiveWcIds}
-            />
-          ))}
+          {/* BETA shell: one bordered table per day, rows divided by hairlines. */}
+          <HostListGroup>
+            {group.rows.map((row) => (
+              <OccurrenceCard
+                key={row.key}
+                row={row}
+                programs={programs}
+                wcSeriesIds={wcSeriesIds}
+                inactiveWcIds={inactiveWcIds}
+              />
+            ))}
+          </HostListGroup>
         </div>
       ))}
     </div>
@@ -156,12 +159,15 @@ function Section({
 
 /**
  * Flutter Host tab IA on the business Events list: Tonight, expandable
- * Upcoming, then Schedules. Occurrence cards stay pink WC / green Event.
+ * Upcoming, then Schedules. Occurrence rows stay pink WC / green Event.
  *
- * 2026-08 instance-manage pass: night cards carry View / Manage like
+ * 2026-08 instance-manage pass: night rows carry View / Manage like
  * EventCard — the per-card Cancel (and its modal here) is gone. Cancel is
  * unchanged as a flow; it lives inside the night's manage page and on the
  * program / night pages.
+ *
+ * BETA shell (2026-10-29): the cards became table rows inside HostListGroup
+ * containers — one border per day group, hairlines between rows.
  */
 export function HostDashList({
   sections,
@@ -178,7 +184,7 @@ export function HostDashList({
   const upcomingRows = visibleHostUpcoming(sections, expanded)
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       {sections.tonight.length > 0 && (
         <Section title={HOST_DASH_TONIGHT}>
           <OccurrenceDateGroups
@@ -199,7 +205,7 @@ export function HostDashList({
             inactiveWcIds={inactiveWcIds}
           />
           {sections.upcomingRestCount > 0 && (
-            <Button type="button" variant="secondary" size="sm" onClick={() => setExpanded((v) => !v)}>
+            <Button type="button" variant="secondary" size="sm" className="self-start" onClick={() => setExpanded((v) => !v)}>
               {expanded
                 ? "Show less"
                 : `Show ${sections.upcomingRestCount} more in this window`}
@@ -210,11 +216,11 @@ export function HostDashList({
 
       {sections.schedules.length > 0 && (
         <Section title={HOST_DASH_SCHEDULES} helper={HOST_DASH_SCHEDULES_HELPER}>
-          <div className="flex flex-col gap-3">
+          <HostListGroup>
             {sections.schedules.map((row) => (
               <ScheduleRow key={row.key} row={row} />
             ))}
-          </div>
+          </HostListGroup>
         </Section>
       )}
     </div>

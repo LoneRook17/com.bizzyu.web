@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronDown, Repeat } from "lucide-react"
+import { ChevronDown, Repeat, Settings2 } from "lucide-react"
 import {
   fmtRowDate,
   relativeDayLabel,
@@ -13,9 +13,11 @@ import {
   type ListedProgramRef,
 } from "@/lib/business/events-list"
 import { Button } from "@/components/business/v2/ui/button"
+import { DropdownMenuItem } from "@/components/business/v2/ui/dropdown-menu"
 import {
   HostCardThumbnail,
   HostListCard,
+  HostListGroup,
   type HostCardChip,
 } from "@/components/business/v2/host/HostListCard"
 import { EventCard } from "./EventCard"
@@ -28,14 +30,14 @@ import { EventCard } from "./EventCard"
  * than "events, plus a different thing that is also events".
  *
  * Two affordances, deliberately both:
- *   • the row itself OPENS the series (/business/recurring/:id) — the existing
+ *   • the row title OPENS the series (/business/recurring/:id) — the existing
  *     detail page, reused, now reached from here instead of from a nav item;
  *   • the disclosure EXPANDS the nights in place, because the most common
  *     question about a series is "what about next Tuesday specifically", and
  *     each night still opens its own manage page exactly as before.
  *
  * Expanded nights render the real EventCard rather than a slimmed-down night
- * row: a night IS an event, and giving it a lesser card here would mean the
+ * row: a night IS an event, and giving it a lesser row here would mean the
  * same event looks like two different things on two tabs of the same page.
  */
 export function SeriesGroupRow({
@@ -75,7 +77,7 @@ export function SeriesGroupRow({
       : `${stats.nights} ${stats.nights === 1 ? "night" : "nights"}`
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
       <HostListCard
         kind="event"
         href={seriesRowHref(row, programs, wcSeriesIds)}
@@ -94,19 +96,24 @@ export function SeriesGroupRow({
         }
         stats={numbers.stats}
         actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+          >
+            <ChevronDown className={open ? "rotate-180 transition-transform" : "transition-transform"} />
+            {open ? "Hide nights" : `${stats.nights} ${stats.nights === 1 ? "night" : "nights"}`}
+          </Button>
+        }
+        menu={
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setOpen((v) => !v)}
-              aria-expanded={open}
-            >
-              <ChevronDown className={open ? "rotate-180 transition-transform" : "transition-transform"} />
-              {open ? "Hide nights" : `Show ${stats.nights} ${stats.nights === 1 ? "night" : "nights"}`}
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={seriesRowHref(row, programs, wcSeriesIds)}>Manage series</Link>
-            </Button>
+            <DropdownMenuItem asChild>
+              <Link href={seriesRowHref(row, programs, wcSeriesIds)}><Settings2 />Manage series</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setOpen((v) => !v)}>
+              <ChevronDown />{open ? "Hide nights" : `Show ${stats.nights} ${stats.nights === 1 ? "night" : "nights"}`}
+            </DropdownMenuItem>
           </>
         }
       />
@@ -114,16 +121,18 @@ export function SeriesGroupRow({
       {open && (
         // Indented so an expanded series still reads as ONE row's contents and
         // not as the list having suddenly grown a dozen new top-level entries.
-        <div className="flex flex-col gap-2 border-l-2 border-neutral-200 pl-4 dark:border-neutral-800">
-          {row.events.map((event) => (
-            <EventCard
-              key={event.event_id}
-              event={event}
-              programs={programs}
-              wcSeriesIds={wcSeriesIds}
-              inactiveWcSeriesIds={inactiveWcSeriesIds}
-            />
-          ))}
+        <div className="border-t border-neutral-100 bg-neutral-50/60 py-2 pl-6 pr-2 dark:border-neutral-800 dark:bg-neutral-800/30">
+          <HostListGroup>
+            {row.events.map((event) => (
+              <EventCard
+                key={event.event_id}
+                event={event}
+                programs={programs}
+                wcSeriesIds={wcSeriesIds}
+                inactiveWcSeriesIds={inactiveWcSeriesIds}
+              />
+            ))}
+          </HostListGroup>
         </div>
       )}
     </div>

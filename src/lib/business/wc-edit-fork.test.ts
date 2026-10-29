@@ -29,7 +29,11 @@ function read(rel: string) {
   return readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8")
 }
 
-const HUB = "../../app/business/(dashboard)/events/[id]/manage/page.tsx"
+// BETA shell (2026-10-29): the hub's setup tiles became the Settings tab's
+// action list; the manage page itself is the Overview. Both are checked.
+const HUB = "../../app/business/(dashboard)/events/[id]/manage/settings/page.tsx"
+const OVERVIEW = "../../app/business/(dashboard)/events/[id]/manage/page.tsx"
+const TABS = "./manage-tabs.ts"
 const EDIT_PAGE = "../../app/business/(dashboard)/events/[id]/edit/page.tsx"
 const TICKETS_PAGE = "../../app/business/(dashboard)/events/[id]/manage/tickets/page.tsx"
 const DETAIL_PAGE = "../../app/business/(dashboard)/events/[id]/page.tsx"
@@ -169,23 +173,24 @@ test("Manage Tickets page mounts the shared editor for WC nights, in pink", () =
   assert.ok(!src.includes("weeklyCoverNightEditHref"), "the tickets page stays a tickets page")
 })
 
-test("manage hub setup tiles fork to the WC path for an uncustomized night", () => {
+test("manage settings rows fork to the WC path for an uncustomized night", () => {
   const src = read(HUB)
   assert.ok(src.includes("weeklyCoverNightEditHref"), "the fork must use the shared helper")
   assert.ok(src.includes('title: "Edit night"'), "WC branch edits the night override")
-  // Luke (2026-08-29): the WC setup row mirrors green — Manage Tickets
-  // replaces Edit program and opens the shared tickets page (rendered
-  // pink there); the services ticket-manage routes stamp the night
-  // Custom, so those writes touch that night only.
-  assert.ok(
-    src.includes('href: `${base}/tickets`, icon: Ticket, title: "Manage Tickets"'),
-    "WC Manage Tickets is the shared tickets page",
-  )
-  assert.ok(!src.includes('title: "Edit program"'), "the program editor tile left the night manage")
-  assert.ok(!src.includes("programEditHref("), "no hub route to the program editor remains")
+  // Luke (2026-08-29): the WC setup row mirrors green — the shared tickets
+  // page (rendered pink there) is the Tickets TAB for both kinds; the
+  // services ticket-manage routes stamp the night Custom, so those writes
+  // touch that night only.
+  const tabs = read(TABS)
+  assert.ok(tabs.includes("`${base}/tickets`"), "the Tickets tab is the shared tickets page")
+  assert.ok(tabs.includes('label: "Tickets"'))
+  for (const rel of [HUB, OVERVIEW]) {
+    const page = read(rel)
+    assert.ok(!page.includes('title: "Edit program"'), `${rel}: the program editor tile left the night manage`)
+    assert.ok(!page.includes("programEditHref("), `${rel}: no hub route to the program editor remains`)
+  }
   // The generic branch survives for named events and customized nights.
   assert.ok(src.includes('title: "Edit event"'))
-  assert.ok(src.includes('title: "Manage Tickets"'))
   assert.ok(src.includes("`/business/events/${id}/edit`"))
 })
 
@@ -285,7 +290,7 @@ test("a WC-stamped row with NO series id stays green — there is no program to 
 })
 
 test("no touched surface resurrects the Weekly Cover name regex", () => {
-  for (const rel of [HUB, EDIT_PAGE, TICKETS_PAGE, DETAIL_PAGE, BANNER, NIGHT_PAGE, WIZARD]) {
+  for (const rel of [HUB, OVERVIEW, EDIT_PAGE, TICKETS_PAGE, DETAIL_PAGE, BANNER, NIGHT_PAGE, WIZARD]) {
     const src = read(rel)
     assert.ok(!src.includes("looksLikeWeeklyCoverName"), `${rel} must not use the name signal`)
     assert.ok(!/weekly\\s\*cover/i.test(src), `${rel} must not inline a name regex`)
