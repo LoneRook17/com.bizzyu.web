@@ -1,7 +1,7 @@
 "use client"
 
 import * as SwitchPrimitive from "@radix-ui/react-switch"
-import { Info, Loader2 } from "lucide-react"
+import { Info, Loader2, Lock } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/business/v2/ui/tooltip"
 import { PAYOUTS_ACCESS_TOGGLE, type PayoutsToggleState } from "@/lib/business/team-payouts-access"
@@ -21,12 +21,45 @@ export default function PayoutsAccessControl({
   state,
   saving,
   onChange,
+  compact = false,
 }: {
   state: PayoutsToggleState
   saving?: boolean
   onChange?: (enabled: boolean) => void
+  /** Table cell: the switch alone (the column header carries the label + info).
+   *  The owner's inherent access reads as a locked, on switch. */
+  compact?: boolean
 }) {
   if (state === "hidden") return null
+
+  if (compact) {
+    const on = state === "owner" || state === "on"
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <SwitchPrimitive.Root
+          checked={on}
+          disabled={state === "owner" || saving}
+          onCheckedChange={(v) => onChange?.(v)}
+          aria-label={state === "owner" ? `${PAYOUTS_ACCESS_TOGGLE.label}: ${PAYOUTS_ACCESS_TOGGLE.ownerLabel}` : PAYOUTS_ACCESS_TOGGLE.label}
+          title={state === "owner" ? PAYOUTS_ACCESS_TOGGLE.ownerLabel : undefined}
+          className={cn(
+            "peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#05EB54] focus-visible:ring-offset-1 disabled:cursor-not-allowed",
+            on ? "bg-[#05EB54]" : "bg-neutral-200 dark:bg-neutral-700",
+            saving && "opacity-50",
+          )}
+        >
+          <SwitchPrimitive.Thumb
+            className={cn(
+              "pointer-events-none block size-4 rounded-full bg-white shadow-sm ring-0 transition-transform",
+              on ? "translate-x-4" : "translate-x-0",
+            )}
+          />
+        </SwitchPrimitive.Root>
+        {state === "owner" && <Lock aria-hidden className="size-3.5 text-neutral-400 dark:text-neutral-500" />}
+        {saving && <Loader2 className="size-3.5 animate-spin text-neutral-400" aria-hidden />}
+      </span>
+    )
+  }
 
   return (
     <div className="flex items-center gap-1.5">
@@ -65,7 +98,7 @@ export default function PayoutsAccessControl({
 /** The (i) affordance — Radix Tooltip, so it opens on BOTH hover and keyboard
  *  focus (the trigger is a real <button>, in the tab order). Self-contained
  *  provider so callers don't need to wrap the tree. */
-function PayoutsAccessInfo() {
+export function PayoutsAccessInfo() {
   return (
     <TooltipProvider delayDuration={150}>
       <Tooltip>

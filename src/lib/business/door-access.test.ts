@@ -2020,7 +2020,8 @@ test("Weekly Cover create/edit CTAs use the shared pink accent, not Bizzy green"
     "utf8",
   )
   assert.ok(button.includes("access:"), "Button must expose the Weekly Cover variant")
-  assert.ok(button.includes("from-access-deep to-access"), "access variant uses the shared tokens, not a one-off hex")
+  // BETA visual polish: buttons are flat fills (no gradients); still the token.
+  assert.ok(button.includes("bg-access text-[#33052A] hover:bg-access/90"), "access variant uses the shared tokens, not a one-off hex")
   assert.ok(button.includes("text-[#33052A]"), "ink on pink fill is #33052A")
   assert.ok(button.includes("access-secondary"), "Save as draft / Reset stay in the pink family")
   assert.ok(button.includes("useWeeklyCoverAccent"), "primary remaps to access under Weekly Cover")

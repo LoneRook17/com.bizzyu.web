@@ -1,17 +1,22 @@
 "use client"
 
-import { AlertCircle, Globe, MapPin } from "lucide-react"
+import { useState } from "react"
+import { AlertCircle, ChevronRight, Globe, Link2, MapPin, MoreHorizontal, Trash2 } from "lucide-react"
 import { cn } from "@/lib/v2/utils"
 import { ROLE_LABELS } from "@/lib/business/constants"
-import { memberDisplay, memberInitial } from "@/lib/team-invite/display"
+import { memberDisplay } from "@/lib/team-invite/display"
 import type { TeamMember, Venue } from "@/lib/business/types"
 import {
   memberVenueIds, venueScopeLabel, venueEditorModel,
   type EditorScope,
 } from "@/lib/business/team-venues"
 import { payoutsToggleState } from "@/lib/business/team-payouts-access"
-import { Avatar, AvatarFallback } from "@/components/business/v2/ui/avatar"
 import { Badge } from "@/components/business/v2/ui/badge"
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/business/v2/ui/dropdown-menu"
+import { Sheet, SheetContent } from "@/components/business/v2/ui/sheet"
+import { FramedAvatar } from "@/components/business/v2/Sidebar"
 import { Button } from "@/components/business/v2/ui/button"
 import { Select } from "@/components/business/v2/ui/input"
 import VenueMultiSelect from "./VenueMultiSelect"
@@ -37,13 +42,6 @@ interface TeamMemberRowProps {
   payoutsAccessSaving?: boolean
   /** Inline error for a failed Payouts-access flip (post-revert). */
   payoutsAccessError?: string
-}
-
-const ROLE_BADGE: Record<string, { className: string }> = {
-  owner: { className: "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400" },
-  manager: { className: "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400" },
-  staff: { className: "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400" },
-  promoter: { className: "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400" },
 }
 
 const ASSIGNABLE_ROLES = ["manager", "staff"]
@@ -82,10 +80,36 @@ function inviteBadge(member: TeamMember, isExpired: boolean): { label: string; v
   }
 }
 
+/**
+ * BETA visual polish (mock 03): the roster is ONE table. md and up, a member is
+ * a 50px row: Member · Role · Venue access · Payouts · Status · Joined · ⋯
+ * (Joined from xl). Below md the row is name + scope + role, and tapping it
+ * opens the member sheet with the same controls, so nothing a phone owner
+ * could do before is gone. The decisions (who may edit what, invite badge
+ * wording, payouts state) are unchanged; only where they render moved.
+ */
+export const TEAM_ROW_GRID =
+  "md:grid md:grid-cols-[minmax(0,1.5fr)_7rem_minmax(0,1.3fr)_4.5rem_8rem_2.25rem] md:items-center md:gap-x-3 xl:grid-cols-[minmax(0,1.5fr)_7.5rem_minmax(0,1.3fr)_5rem_8.5rem_5rem_2.25rem]"
+
+export function TeamTableHeader({ payoutsInfo }: { payoutsInfo?: React.ReactNode }) {
+  return (
+    <div role="row" className={cn("hidden h-11 px-4 text-[12px] font-medium text-neutral-500 md:grid dark:text-neutral-400", TEAM_ROW_GRID)}>
+      <span role="columnheader">Member</span>
+      <span role="columnheader">Role</span>
+      <span role="columnheader">Venue access</span>
+      <span role="columnheader" className="flex items-center gap-1">Payouts {payoutsInfo}</span>
+      <span role="columnheader">Status</span>
+      <span role="columnheader" className="hidden xl:block">Joined</span>
+      <span aria-hidden />
+    </div>
+  )
+}
+
 export default function TeamMemberRow({
   member, currentUserRole, editorScope, venues, onRemove, onRoleChange, onVenuesChange, onResend, venueError,
   onPayoutsAccessChange, payoutsAccessSaving, payoutsAccessError,
 }: TeamMemberRowProps) {
+  const [sheetOpen, setSheetOpen] = useState(false)
   const isOwnerViewing = currentUserRole === "owner"
   const isOwnerMember = member.role === "owner"
   const scopeIds = memberVenueIds(member)
@@ -110,10 +134,17 @@ export default function TeamMemberRow({
   // a scoped manager (no options, no locked chips); the server preserves them.
   const editor = venueEditorModel(editorScope, scopeIds, venues)
   // Role/remove stay owner-only; managers get the venue editor only.
-  const showActions = !isOwnerMember && (isOwnerViewing || editor.canEdit)
+  const canEditRole = isOwnerViewing && !isOwnerMember
+  const canEditVenues = !isOwnerMember && editor.canEdit
+  const canResend = isPending && !!onResend
+  const canRemove = isOwnerViewing && !isOwnerMember
+  const hasMenu = canResend || canRemove
 
   const joinedSource = member.invite_accepted_at ?? member.created_at
-  const joinedDate = joinedSource
+  const joinedShort = joinedSource
+    ? new Date(joinedSource).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "-"
+  const joinedLong = joinedSource
     ? new Date(joinedSource).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : "-"
 
@@ -123,102 +154,220 @@ export default function TeamMemberRow({
   // phone, then a floor — so a row is never blank. Legacy email-keyed rows
   // resolve to their email exactly as before.
   const display = memberDisplay(member)
+  const scopeLabel = venueScopeLabel(member, venues)
+  const roleLabel = ROLE_LABELS[member.role] ?? (member.role || "-")
+
+  const roleSelect = (className?: string) => (
+    <Select
+      value={member.role}
+      onChange={(e) => onRoleChange(member.id, e.target.value)}
+      title="Role"
+      aria-label={`Role for ${display.name}`}
+      className={className}
+    >
+      {ASSIGNABLE_ROLES.map((r) => (
+        <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+      ))}
+    </Select>
+  )
+
+  const statusCell = badge ? (
+    <Badge size="sm" variant={badge.variant} className="max-w-full truncate" title={badge.label}>{badge.label}</Badge>
+  ) : (
+    <span className="inline-flex items-center gap-1.5 text-[13px] text-neutral-600 dark:text-neutral-300">
+      <span aria-hidden className="size-1.5 rounded-full bg-neutral-400 dark:bg-neutral-500" /> Active
+    </span>
+  )
+
+  const errors = (
+    <>
+      {/* TM-B3 (#15b): inline scope error (no alert, no state corruption). */}
+      {venueError && (
+        <p className="flex items-center gap-1 text-xs text-red-600 dark:text-[#FF6B72]">
+          <AlertCircle className="size-3 shrink-0" />
+          <span>{venueError}</span>
+        </p>
+      )}
+      {/* PAYOUTS-PER-PERSON-ACCESS: inline error after a failed flip (reverted). */}
+      {payoutsAccessError && (
+        <p className="flex items-center gap-1 text-xs text-red-600 dark:text-[#FF6B72]">
+          <AlertCircle className="size-3 shrink-0" />
+          <span>{payoutsAccessError}</span>
+        </p>
+      )}
+    </>
+  )
+
+  const nameCell = (
+    <span className="flex min-w-0 items-center gap-3">
+      <FramedAvatar label={display.name} className="size-8 text-[11px]" />
+      <span className="min-w-0">
+        <span className={cn(
+          "block truncate text-sm font-medium",
+          display.isProvisional ? "text-neutral-500 dark:text-neutral-400" : "text-neutral-900 dark:text-neutral-100"
+        )}>{display.name}</span>
+      </span>
+    </span>
+  )
 
   return (
-    <div className="flex flex-col gap-3 border-b border-neutral-100 dark:border-neutral-800 py-3.5 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-      <div className="flex min-w-0 items-center gap-3">
-        <Avatar className="size-9">
-          <AvatarFallback className="bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">{memberInitial(member)}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className={cn(
-            "truncate text-sm font-medium",
-            display.isProvisional ? "text-neutral-500 dark:text-neutral-400" : "text-neutral-900 dark:text-neutral-100"
-          )}>{display.name}</p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-2">
-            <Badge size="sm" className={cn(ROLE_BADGE[member.role]?.className ?? "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400")}>
-              {ROLE_LABELS[member.role] ?? member.role}
-            </Badge>
-            {badge && <Badge size="sm" variant={badge.variant}>{badge.label}</Badge>}
-            <span className="text-xs text-neutral-400 dark:text-neutral-500">{joinedDate}</span>
-          </div>
-          {/* TM-B2 (#15): set-aware venue scope — "Global" / "1 venue: X" / "N venues: X, Y" */}
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-            {scopeIds.length === 0 ? (
-              <Globe className="size-3 text-neutral-400 dark:text-neutral-500" />
-            ) : (
-              <MapPin className="size-3 text-neutral-400 dark:text-neutral-500" />
-            )}
-            <span className="truncate">{venueScopeLabel(member, venues)}</span>
-          </p>
-          {/* TM-B3 (#15b): inline scope error (no alert, no state corruption). */}
-          {venueError && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
-              <AlertCircle className="size-3 shrink-0" />
-              <span>{venueError}</span>
-            </p>
+    <div className="flex flex-col">
+      {/* md and up: the table row */}
+      <div className={cn("hidden min-h-[50px] px-4 py-1.5 md:grid", TEAM_ROW_GRID)}>
+        {nameCell}
+        <span className="min-w-0">
+          {canEditRole
+            ? roleSelect("h-8 border-transparent bg-transparent px-1.5 text-[13px] hover:border-neutral-200 dark:border-transparent dark:bg-transparent dark:hover:border-neutral-800")
+            : <span className="px-1.5 text-[13px] text-neutral-700 dark:text-neutral-200">{roleLabel}</span>}
+        </span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          {canEditVenues ? (
+            <VenueMultiSelect
+              editor={editor}
+              value={scopeIds}
+              triggerLabel={scopeLabel}
+              onCommit={(venueIds) => onVenuesChange(member.id, venueIds)}
+              className="h-8 w-full border-transparent bg-transparent px-1.5 text-[13px] hover:border-neutral-200 sm:w-full dark:border-transparent dark:bg-transparent dark:hover:border-neutral-800"
+            />
+          ) : (
+            <span className="flex min-w-0 items-center gap-1.5 px-1.5 text-[13px] text-neutral-600 dark:text-neutral-300">
+              {scopeIds.length === 0 ? <Globe className="size-3.5 shrink-0 text-neutral-400" /> : <MapPin className="size-3.5 shrink-0 text-neutral-400" />}
+              <span className="truncate">{scopeLabel}</span>
+            </span>
           )}
-          {/* PAYOUTS-PER-PERSON-ACCESS: inline error after a failed flip (reverted). */}
-          {payoutsAccessError && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
-              <AlertCircle className="size-3 shrink-0" />
-              <span>{payoutsAccessError}</span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Actions — owner (role + venue + remove + payouts) or manager (venue only),
-          non-owner members. The payouts control ALSO shows on the owner's own row
-          (as a disabled "Owner" chip), which has no other actions. */}
-      {(showActions || showsPayouts) && (
-        <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:pl-0">
-          {showsPayouts && (
+        </span>
+        <span>
+          {showsPayouts ? (
             <PayoutsAccessControl
+              compact
               state={payoutsState}
               saving={payoutsAccessSaving}
               onChange={(enabled) => onPayoutsAccessChange?.(member.id, enabled)}
             />
+          ) : (
+            <span className="text-[13px] text-neutral-400 dark:text-neutral-600">-</span>
           )}
-          {editor.canEdit && (
-            <VenueMultiSelect
-              editor={editor}
-              value={scopeIds}
-              triggerLabel={venueScopeLabel(member, venues)}
-              onCommit={(venueIds) => onVenuesChange(member.id, venueIds)}
-            />
-          )}
+        </span>
+        <span className="min-w-0">{statusCell}</span>
+        <span className="hidden text-[13px] tabular-nums text-neutral-500 xl:block dark:text-neutral-400" title={joinedLong}>{joinedShort}</span>
+        <span className="justify-self-end">
+          {hasMenu ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label={`Actions for ${display.name}`}
+                className="flex size-9 items-center justify-center rounded-lg text-neutral-400 outline-none transition-colors hover:bg-neutral-100 hover:text-neutral-700 focus-visible:ring-2 focus-visible:ring-[#05EB54]/40 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              >
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {/* Was expired-only. Now on every unaccepted row, because under
+                    the #5 contract the link is the deliverable and this is the
+                    only way to get one. Mints a fresh invite; it never alters
+                    the membership. */}
+                {canResend && (
+                  <DropdownMenuItem onSelect={() => onResend?.(member)}><Link2 /> Send link</DropdownMenuItem>
+                )}
+                {canResend && canRemove && <DropdownMenuSeparator />}
+                {canRemove && (
+                  <DropdownMenuItem
+                    onSelect={() => onRemove(member)}
+                    className="text-red-600 focus:text-red-700 [&_svg]:text-red-600 dark:text-[#FF6B72] dark:[&_svg]:text-[#FF6B72]"
+                  >
+                    <Trash2 /> Remove
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </span>
+      </div>
+      {(venueError || payoutsAccessError) && <div className="hidden px-4 pb-2 pl-[3.75rem] md:block">{errors}</div>}
 
-          {isOwnerViewing && (
-            <Select
-              value={member.role}
-              onChange={(e) => onRoleChange(member.id, e.target.value)}
-              title="Role"
-              className="h-8 min-w-0 flex-1 px-2 text-xs sm:w-[120px] sm:flex-none"
-            >
-              {ASSIGNABLE_ROLES.map((r) => (
-                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
-              ))}
-            </Select>
-          )}
+      {/* Phone: name + scope (or invite state) + role; the row opens the sheet */}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
+        className="flex min-h-[52px] items-center gap-3 px-4 py-2 text-left outline-none transition-colors hover:bg-neutral-50 focus-visible:bg-neutral-50 md:hidden dark:hover:bg-neutral-800/40 dark:focus-visible:bg-neutral-800/40"
+      >
+        <FramedAvatar label={display.name} className="size-8 text-[11px]" />
+        <span className="min-w-0 flex-1">
+          <span className={cn("block truncate text-sm font-medium", display.isProvisional ? "text-neutral-500 dark:text-neutral-400" : "text-neutral-900 dark:text-neutral-100")}>{display.name}</span>
+          <span className={cn("block truncate text-[12px]", badge?.variant === "danger" ? "text-red-600 dark:text-[#FF6B72]" : "text-neutral-500 dark:text-neutral-400")}>
+            {badge ? badge.label : scopeLabel}
+          </span>
+        </span>
+        <span className="shrink-0 text-[13px] text-neutral-600 dark:text-neutral-300">{roleLabel}</span>
+        <ChevronRight className="size-4 shrink-0 text-neutral-400 dark:text-neutral-600" />
+      </button>
+      {(venueError || payoutsAccessError) && <div className="px-4 pb-2 md:hidden">{errors}</div>}
 
-          {/* Was expired-only. Now on every unaccepted row, because under the
-              #5 contract the link is the deliverable and this is the only way
-              to get one — including for the legacy rows that never went
-              through an accept flow and are stuck without it. Mints a fresh
-              invite; it never alters the membership. */}
-          {isPending && onResend && (
-            <Button variant="ghost" size="sm" onClick={() => onResend(member)} className="text-primary dark:text-primary hover:bg-primary/10">
-              Send link
-            </Button>
-          )}
-          {isOwnerViewing && (
-            <Button variant="ghost" size="sm" onClick={() => onRemove(member)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40">
-              Remove
-            </Button>
-          )}
-        </div>
-      )}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent
+          title={display.name}
+          description={member.email && member.email !== display.name ? member.email : roleLabel}
+          footer={
+            canResend || canRemove ? (
+              <>
+                {canRemove && (
+                  <Button variant="ghost" onClick={() => { setSheetOpen(false); onRemove(member) }} className="mr-auto text-red-600 hover:bg-red-50 dark:text-[#FF6B72] dark:hover:bg-[#FF6B72]/10">
+                    Remove
+                  </Button>
+                )}
+                {canResend && (
+                  <Button variant="secondary" onClick={() => { setSheetOpen(false); onResend?.(member) }}>
+                    Send link
+                  </Button>
+                )}
+              </>
+            ) : undefined
+          }
+        >
+          <dl className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
+            <div className="flex min-h-12 items-center justify-between gap-3 py-2">
+              <dt className="text-sm text-neutral-500 dark:text-neutral-400">Role</dt>
+              <dd className="min-w-0">{canEditRole ? roleSelect("h-10 w-36") : <span className="text-sm text-neutral-900 dark:text-neutral-100">{roleLabel}</span>}</dd>
+            </div>
+            <div className="flex min-h-12 items-center justify-between gap-3 py-2">
+              <dt className="shrink-0 text-sm text-neutral-500 dark:text-neutral-400">Venue access</dt>
+              <dd className="flex min-w-0 justify-end">
+                {canEditVenues ? (
+                  <VenueMultiSelect
+                    editor={editor}
+                    value={scopeIds}
+                    triggerLabel={scopeLabel}
+                    align="end"
+                    onCommit={(venueIds) => onVenuesChange(member.id, venueIds)}
+                    className="h-10 w-48 flex-none text-sm sm:w-48"
+                  />
+                ) : (
+                  <span className="truncate text-sm text-neutral-900 dark:text-neutral-100">{scopeLabel}</span>
+                )}
+              </dd>
+            </div>
+            {showsPayouts && (
+              <div className="flex min-h-12 items-center justify-between gap-3 py-2">
+                <dt className="sr-only">Payouts</dt>
+                <dd className="flex w-full justify-between">
+                  <PayoutsAccessControl
+                    state={payoutsState}
+                    saving={payoutsAccessSaving}
+                    onChange={(enabled) => onPayoutsAccessChange?.(member.id, enabled)}
+                  />
+                </dd>
+              </div>
+            )}
+            <div className="flex min-h-12 items-center justify-between gap-3 py-2">
+              <dt className="text-sm text-neutral-500 dark:text-neutral-400">Status</dt>
+              <dd>{statusCell}</dd>
+            </div>
+            <div className="flex min-h-12 items-center justify-between gap-3 py-2">
+              <dt className="text-sm text-neutral-500 dark:text-neutral-400">Joined</dt>
+              <dd className="text-sm tabular-nums text-neutral-900 dark:text-neutral-100">{joinedLong}</dd>
+            </div>
+          </dl>
+          <div className="mt-3 flex flex-col gap-1">{errors}</div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

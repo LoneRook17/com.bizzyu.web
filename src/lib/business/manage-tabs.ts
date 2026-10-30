@@ -42,7 +42,7 @@ export function manageTabs(eventId: string | number): ManageTab[] {
     { key: "tickets", label: "Tickets", href: `${base}/tickets`, matches: [`${base}/tickets`] },
     {
       key: "guests",
-      label: "Guests/Check-in",
+      label: "Guests",
       href: `${base}/checkins`,
       matches: [`${base}/checkins`, `${base}/scanner`],
     },

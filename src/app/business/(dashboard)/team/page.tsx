@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { Globe, Layers, MapPin, Plus, Users } from "lucide-react"
+import { Plus, Users } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import { apiClient, ApiError } from "@/lib/business/api-client"
@@ -14,11 +14,11 @@ import {
 } from "@/lib/business/team-venues"
 import { togglePayoutsAccess, PAYOUTS_ACCESS_TOGGLE } from "@/lib/business/team-payouts-access"
 import { PageHeader } from "@/components/business/v2/PageHeader"
-import { Card } from "@/components/business/v2/ui/card"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
-import TeamMemberRow from "@/components/business/v2/team/TeamMemberRow"
+import TeamMemberRow, { TeamTableHeader } from "@/components/business/v2/team/TeamMemberRow"
+import { PayoutsAccessInfo } from "@/components/business/v2/team/PayoutsAccessControl"
 import InviteDialog from "@/components/business/v2/team/InviteDialog"
 import RolePermissionsDialog from "@/components/business/v2/team/RolePermissionsDialog"
 import ConfirmDialog from "@/components/business/v2/ConfirmDialog"
@@ -176,6 +176,12 @@ export default function V2TeamPage() {
   )
 
   const visibleCount = venueGroups.reduce((sum, g) => sum + g.members.length, 0)
+  // BETA visual polish (mock 03): one table. The scope groups still decide
+  // the ORDER (owners, then global, then each venue, then multi-venue), and
+  // the summary keeps the global vs venue split the cards used to show.
+  const roster = venueGroups.flatMap((g) => g.members)
+  const globalCount = venueGroups.filter((g) => g.kind === "global").reduce((n, g) => n + g.members.length, 0)
+  const venueCount = visibleCount - globalCount
 
   return (
     <>
@@ -183,83 +189,72 @@ export default function V2TeamPage() {
         title="Team"
         description={loading ? "Loading team…" : `${visibleCount} member${visibleCount !== 1 ? "s" : ""} across your workspace.`}
         actions={
-          <div className="flex items-center gap-2">
-            <RolePermissionsDialog variant="business" />
-            {canInvite && (
-              <Button onClick={() => setInviteOpen(true)}>
-                <Plus /> Invite member
-              </Button>
-            )}
-          </div>
+          // Invite member is the one green CTA; on a phone it sits under the
+          // table instead (mobile mock), so the header stays quiet there.
+          canInvite ? (
+            <Button onClick={() => setInviteOpen(true)} className="hidden sm:inline-flex">
+              <Plus /> Invite member
+            </Button>
+          ) : undefined
         }
       />
 
+      {/* Role permissions: a quiet text action, not a second button. */}
+      <div className="-mt-1 flex flex-wrap items-center justify-between gap-2">
+        <RolePermissionsDialog variant="business" quiet />
+        {!loading && visibleCount > 0 && (
+          <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
+            {globalCount} global · {venueCount} venue {venueCount === 1 ? "member" : "members"}
+          </p>
+        )}
+      </div>
+
       {loading ? (
-        <Card className="p-5">
-          <div className="space-y-4">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="size-9 rounded-full" />
-                <div className="space-y-1.5">
-                  <Skeleton className="h-4 w-44" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
+        <div className="flex flex-col gap-4 rounded-[10px] border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Skeleton className="size-8 rounded-lg" />
+              <Skeleton className="h-4 w-44" />
+            </div>
+          ))}
+        </div>
       ) : venueGroups.length === 0 ? (
         <EmptyState
           icon={Users}
           title="No team members yet"
           description="Invite managers and staff to help run your events, deals, and check-ins."
-          action={canInvite ? <Button onClick={() => setInviteOpen(true)}><Plus /> Invite member</Button> : undefined}
         />
       ) : (
-        <div className="flex flex-col gap-5">
-          {venueGroups.map((group) => (
-            <Card key={group.key} className="overflow-hidden">
-              <div className="px-5 py-4">
-                <div className="flex items-center gap-2">
-                  {group.kind === "global" ? (
-                    <Globe className="size-4 text-neutral-400 dark:text-neutral-500" />
-                  ) : group.kind === "multi" ? (
-                    <Layers className="size-4 text-neutral-400 dark:text-neutral-500" />
-                  ) : (
-                    <MapPin className="size-4 text-neutral-400 dark:text-neutral-500" />
-                  )}
-                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{group.venueName}</h2>
-                  <span className="text-xs text-neutral-400 dark:text-neutral-500">{group.members.length}</span>
-                </div>
-                {group.kind === "global" && (
-                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">These members have access to all venues.</p>
-                )}
-                {group.kind === "multi" && (
-                  <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">These members are scoped to a specific set of venues.</p>
-                )}
-              </div>
-              <div className="border-t border-neutral-100 dark:border-neutral-800 px-5">
-                {group.members.map((member) => (
-                  <TeamMemberRow
-                    key={member.id}
-                    member={member}
-                    currentUserRole={user?.business_role || ""}
-                    editorScope={editorScope}
-                    venues={venues}
-                    onRemove={setRemoveTarget}
-                    onRoleChange={handleRoleChange}
-                    onVenuesChange={handleVenuesChange}
-                    onResend={isOwner ? handleResend : undefined}
-                    venueError={venueErrors[member.id]}
-                    onPayoutsAccessChange={isOwner ? handlePayoutsAccessChange : undefined}
-                    payoutsAccessSaving={accessSaving[member.id]}
-                    payoutsAccessError={accessErrors[member.id]}
-                  />
-                ))}
-              </div>
-            </Card>
+        <div className="divide-y divide-neutral-200 overflow-hidden rounded-[10px] border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
+          <TeamTableHeader payoutsInfo={isOwner ? <PayoutsAccessInfo /> : undefined} />
+          {roster.map((member) => (
+            <TeamMemberRow
+              key={member.id}
+              member={member}
+              currentUserRole={user?.business_role || ""}
+              editorScope={editorScope}
+              venues={venues}
+              onRemove={setRemoveTarget}
+              onRoleChange={handleRoleChange}
+              onVenuesChange={handleVenuesChange}
+              onResend={isOwner ? handleResend : undefined}
+              venueError={venueErrors[member.id]}
+              onPayoutsAccessChange={isOwner ? handlePayoutsAccessChange : undefined}
+              payoutsAccessSaving={accessSaving[member.id]}
+              payoutsAccessError={accessErrors[member.id]}
+            />
           ))}
+          <div className="flex min-h-11 items-center px-4 text-[13px] text-neutral-500 dark:text-neutral-400">
+            {visibleCount} {visibleCount === 1 ? "member" : "members"}
+          </div>
         </div>
+      )}
+
+      {/* Phone: the invite CTA sits under the roster, full width. */}
+      {canInvite && (
+        <Button onClick={() => setInviteOpen(true)} className="h-11 w-full sm:hidden">
+          <Plus /> Invite member
+        </Button>
       )}
 
       {/* Keyed so a resend remounts the dialog with its prefill — the form

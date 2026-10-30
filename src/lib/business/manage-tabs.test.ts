@@ -17,7 +17,7 @@ function read(rel: string) {
 test("five tabs, in the locked order, with the brief's labels", () => {
   assert.deepEqual(
     manageTabs(7).map((t) => t.label),
-    ["Overview", "Tickets", "Guests/Check-in", "Promo & tracking", "Settings"],
+    ["Overview", "Tickets", "Guests", "Promo & tracking", "Settings"],
   )
   assert.equal(manageTabs(7)[0].href, "/business/events/7/manage")
   assert.equal(manageBase("abc"), "/business/events/abc/manage")

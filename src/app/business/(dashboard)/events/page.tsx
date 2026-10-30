@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { CalendarDays, Loader2, Plus, Search, Sparkles, X, Zap } from "lucide-react"
+import { ArrowUpRight, CalendarDays, FilePen, Loader2, MoreHorizontal, Plus, Search, Sparkles, X, Zap } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
 import { useDashboardMode } from "@/lib/v2/mode"
@@ -46,13 +46,15 @@ import { EmptyState } from "@/components/business/v2/ui/empty-state"
 import { CreateEventModal } from "@/components/business/v2/events/CreateEventModal"
 import { EventCard } from "@/components/business/v2/events/EventCard"
 import { SeriesGroupRow } from "@/components/business/v2/events/SeriesGroupRow"
-import { Pagination } from "@/components/business/v2/events/Pagination"
+import { TablePager } from "@/components/business/v2/events/Pagination"
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/business/v2/ui/dropdown-menu"
 import { AccessEventGroupRow } from "@/components/business/v2/door-access/AccessEventGroupRow"
 import { AccessProgramRow } from "@/components/business/v2/door-access/AccessProgramRow"
 import {
   easternToday,
   fetchDoorAccessProgramsSafe,
-  fmtNightDate,
   loadProgramsUpcomingNights,
   nightHref,
   WEEKLY_ACCESS_CREATION_LABEL,
@@ -68,6 +70,14 @@ import {
   HostListCard,
   HostListGroup,
 } from "@/components/business/v2/host/HostListCard"
+
+/** The status tab as a noun for the table footer ("12 past events"). */
+const TAB_NOUN: Record<string, string> = {
+  upcoming: "upcoming",
+  past: "past",
+  drafts: "draft",
+  recurring: "recurring",
+}
 
 /**
  * THE manage surface (D2-4). One page, two types, one create funnel.
@@ -347,13 +357,15 @@ export default function V2EventsPage() {
         }
         actions={
           canCreate ? (
-            <div className="flex items-center gap-2">
+            // Two header actions at most (VISUAL-BRIEF): New Weekly Cover is
+            // secondary and folds into the filter row's overflow on a phone.
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               {accessEnabled && (
-                <Button variant="ghost" asChild>
+                <Button variant="secondary" asChild className="hidden sm:inline-flex">
                   <Link href="/business/door-access/new">New Weekly Cover</Link>
                 </Button>
               )}
-              <Button onClick={handleCreate}><Plus /> Create event</Button>
+              <Button onClick={handleCreate} className="h-11 flex-1 sm:h-10 sm:flex-none"><Plus /> Create event</Button>
             </div>
           ) : undefined
         }
@@ -390,42 +402,66 @@ export default function V2EventsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Filters. Desktop: type · status · search on one line. Phone: type
+          (+ overflow), search, then status, each on its own row. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
         {/* TYPE segment (D2-6). Only where there is a second type to switch to —
             a business with skip the line tickets off would be choosing between "All" and
             one thing. */}
         {accessEnabled && (
-          <Tabs value={effectiveType} onValueChange={handleTypeChange}>
-            <TabsList>
-              {EVENT_TYPE_FILTERS.map((t) => (
-                <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <Tabs value={effectiveType} onValueChange={handleTypeChange}>
+              <TabsList>
+                {EVENT_TYPE_FILTERS.map((t) => (
+                  <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+            {canCreate && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label="More create options"
+                  className="ml-auto flex size-9 items-center justify-center rounded-lg border border-neutral-200 text-neutral-500 outline-none transition-colors hover:bg-neutral-100 focus-visible:ring-2 focus-visible:ring-[#05EB54]/40 sm:hidden dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                >
+                  <MoreHorizontal className="size-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/business/door-access/new"><Plus /> New Weekly Cover</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {showsEvents(effectiveType) && (
+              <span aria-hidden className="mx-1 hidden h-6 w-px bg-neutral-200 sm:block dark:bg-neutral-800" />
+            )}
+          </div>
         )}
 
         {/* STATUS tabs — dated events only, so they leave with them. */}
         {showsEvents(effectiveType) && (
-          <Tabs value={tab} onValueChange={handleTabChange}>
-            <TabsList>
-              {EVENT_TABS.map((t) => (
-                <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <div className="order-last -mx-4 w-[calc(100%+2rem)] overflow-x-auto px-4 sm:order-none sm:mx-0 sm:w-auto sm:px-0">
+            <Tabs value={tab} onValueChange={handleTabChange}>
+              <TabsList>
+                {EVENT_TABS.map((t) => (
+                  <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
         )}
 
         {/* Search stub (BETA shell): filters the loaded rows by name. */}
         {showsEvents(effectiveType) && (
-          <div className="relative w-full sm:ml-auto sm:w-56">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
+          <div className="relative w-full sm:ml-auto sm:w-60">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400 dark:text-neutral-500" />
             <Input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search events"
               aria-label="Search events"
-              className="h-8 pl-8 text-[13px]"
+              className="h-9 pl-9 text-[13px]"
             />
           </div>
         )}
@@ -442,32 +478,41 @@ export default function V2EventsPage() {
           {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 rounded-[10px]" />)}
         </div>
       ) : isEmpty ? (
+        // Solid surface, short copy, no create button: the header owns create.
         <EmptyState
+          className="py-16"
           icon={effectiveType === "access" ? Sparkles : CalendarDays}
           title={
             q
               ? "No events match that search"
               : effectiveType === "access"
                 ? `No ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} programs yet`
-                : "No events yet"
+                : tab === "upcoming"
+                  ? "Your next event starts here"
+                  : `No ${TAB_NOUN[tab] ?? tab} events`
           }
           description={
             q
               ? "Try a different name, or clear the search."
               : effectiveType === "access"
                 ? `A ${WEEKLY_ACCESS_CREATION_LABEL} program sells cover and skip-the-line passes for every night it runs. Set the nights once and each one is generated for you.`
-                : tab === "upcoming" ? "Create your first event to start selling tickets." : `No ${tab} events found.`
+                : tab === "upcoming"
+                  ? (
+                    <>
+                      <p>Create an event to start selling tickets.</p>
+                      {canCreate && <p className="mt-1">Use Create event above. Add tickets and artwork next.</p>}
+                    </>
+                  )
+                  : `Nothing on the ${TAB_NOUN[tab] ?? tab} tab right now.`
           }
           action={
-            q ? (
-              <Button variant="secondary" onClick={() => setQuery("")}>Clear search</Button>
-            ) : canCreate && effectiveType === "access" ? (
-              <Button variant="access" asChild>
-                <Link href="/business/door-access/new"><Plus /> Create</Link>
-              </Button>
-            ) : canCreate && tab === "upcoming" ? (
-              // Secondary: the header already carries this view's one green CTA.
-              <Button variant="secondary" onClick={handleCreate}><Plus /> Create event</Button>
+            q ? <Button variant="secondary" onClick={() => setQuery("")}>Clear search</Button> : undefined
+          }
+          footnote={
+            !q && canCreate && effectiveType !== "access" && tab === "upcoming" ? (
+              <span className="inline-flex items-center gap-2">
+                <FilePen className="size-4 shrink-0" /> Start with a draft. Publish when you&apos;re ready.
+              </span>
             ) : undefined
           }
         />
@@ -479,8 +524,15 @@ export default function V2EventsPage() {
           inactiveWcIds={inactiveWcIds}
         />
       ) : (
-        // BETA shell: one bordered table, rows divided by hairlines.
-        <HostListGroup>
+        // One table: header, rows on hairlines, count + pager as the footer.
+        <HostListGroup
+          header
+          footer={
+            showsEvents(effectiveType) ? (
+              <TablePager page={page} total={total} limit={limit} onPageChange={setPage} noun={`${TAB_NOUN[tab] ?? ""} ${total === 1 ? "event" : "events"}`.trim()} />
+            ) : undefined
+          }
+        >
           {visiblePrograms.map((program) => (
             <AccessProgramRow key={`program-${program.id}`} program={program} />
           ))}
@@ -490,8 +542,10 @@ export default function V2EventsPage() {
               kind="access"
               href={nightHref(program.id, night.occurrence_date)}
               title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
-              meta={[fmtNightDate(night.occurrence_date), program.venue_name].filter(Boolean).join(" · ")}
+              date={night.occurrence_date}
+              meta={program.venue_name ?? ""}
               secondary="One-off night"
+              sold={{ label: "passes sold", value: (night.passes_sold ?? 0).toLocaleString("en-US") }}
               thumbnail={
                 <HostCardThumbnail
                   kind="access"
@@ -538,9 +592,10 @@ export default function V2EventsPage() {
         </HostListGroup>
       )}
 
-      {/* Host Upcoming is one window, not a pager of generated nights. */}
-      {showsEvents(effectiveType) && !useHostLayout && (
-        <Pagination page={page} total={total} limit={limit} onPageChange={setPage} />
+      {/* Host Upcoming is one window, not a pager of generated nights; the
+          flat tabs page inside the table footer above. */}
+      {!isEmpty && showsEvents(effectiveType) && (
+        <p className="-mt-2 text-[12px] text-neutral-500 dark:text-neutral-400">All times shown in America/New_York (ET).</p>
       )}
 
       {/* D2-3 / F15. The legacy line-skip schedules keep an entry point — here,
@@ -565,7 +620,10 @@ export default function V2EventsPage() {
       <CreateEventModal open={showCreate} onOpenChange={setShowCreate} />
 
       <p className="text-[13px] text-neutral-500 dark:text-neutral-400">
-        Need a hand? Visit <Link href="/business/help" className="font-medium text-[#0A8038] hover:underline dark:text-[#05EB54]">Help &amp; tutorials</Link>.
+        Need a hand?{" "}
+        <Link href="/business/help" className="inline-flex items-center gap-0.5 font-medium text-neutral-900 hover:underline dark:text-neutral-100">
+          Help &amp; tutorials <ArrowUpRight className="size-3.5" />
+        </Link>
       </p>
     </>
   )

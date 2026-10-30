@@ -6,7 +6,7 @@ import { VenueProvider } from "@/lib/business/venue-context"
 import { ThemeProvider } from "@/lib/v2/theme"
 import { useDashboardMode } from "@/lib/v2/mode"
 import { cn } from "@/lib/v2/utils"
-import Sidebar, { MobileTopBar } from "@/components/business/v2/Sidebar"
+import Sidebar, { DesktopTopBar, MobileTopBar } from "@/components/business/v2/Sidebar"
 import { CommandPaletteProvider } from "@/components/business/v2/CommandPalette"
 import OnboardingMode from "@/components/business/v2/OnboardingMode"
 import LiveAfterApprove from "@/components/business/v2/LiveAfterApprove"
@@ -45,6 +45,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col">
             <MobileTopBar />
+            <DesktopTopBar />
             <main className="min-w-0 flex-1 overflow-x-hidden">
               <LiveAfterApprove />
               <div className={cn("mx-auto flex flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8", wide ? "max-w-none" : "max-w-[1180px]")}>{children}</div>

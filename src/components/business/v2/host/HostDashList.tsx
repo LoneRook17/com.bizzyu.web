@@ -16,6 +16,7 @@ import {
 } from "@/lib/business/host-dash-sections"
 import {
   fmtRowDate,
+  fmtRowWhen,
   seriesHref,
   type ListedProgramRef,
 } from "@/lib/business/events-list"
@@ -24,7 +25,7 @@ import { AccessProgramRow } from "@/components/business/v2/door-access/AccessPro
 import { AccessEventGroupRow } from "@/components/business/v2/door-access/AccessEventGroupRow"
 import { EventCard } from "@/components/business/v2/events/EventCard"
 import { Button } from "@/components/business/v2/ui/button"
-import { HostCardThumbnail, HostListCard, HostListGroup } from "@/components/business/v2/host/HostListCard"
+import { HostCardThumbnail, HostListCard, HostListGroup, HostListSubhead } from "@/components/business/v2/host/HostListCard"
 import { AccessNightCard } from "@/components/business/v2/host/AccessNightCard"
 
 function OccurrenceCard({
@@ -81,12 +82,13 @@ function ScheduleRow({ row }: { row: HostDashSchedule }) {
   return (
     <HostListCard
       kind="event"
+      icon={Repeat}
       href={seriesHref(row.seriesId)}
-      typeLabel="SERIES"
       title={row.name}
+      when={next ? fmtRowWhen(next) : undefined}
       meta={next ? `Next night ${fmtRowDate(next)}` : "Recurring event"}
       secondary={row.series ? formatDays(row.series.days_of_week) : undefined}
-      chips={[{ label: "Series", variant: "info" }]}
+      status={{ label: "Series", variant: "info" }}
       thumbnail={
         <HostCardThumbnail
           kind="event"
@@ -110,28 +112,25 @@ function OccurrenceDateGroups({
   wcSeriesIds: readonly number[]
   inactiveWcIds: readonly number[]
 }) {
+  // BETA visual polish: ONE table per section. Day labels are quiet
+  // subheads inside it, so the columns line up across the whole window.
   return (
-    <div className="flex flex-col gap-4">
+    <HostListGroup header>
       {groupOccurrencesByDate(rows).map((group) => (
-        <div key={group.date} className="flex flex-col gap-1.5">
-          <h3 className="px-0.5 text-[13px] font-medium text-neutral-500 dark:text-neutral-400">
-            {group.label}
-          </h3>
-          {/* BETA shell: one bordered table per day, rows divided by hairlines. */}
-          <HostListGroup>
-            {group.rows.map((row) => (
-              <OccurrenceCard
-                key={row.key}
-                row={row}
-                programs={programs}
-                wcSeriesIds={wcSeriesIds}
-                inactiveWcIds={inactiveWcIds}
-              />
-            ))}
-          </HostListGroup>
+        <div key={group.date} className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          <HostListSubhead>{group.label}</HostListSubhead>
+          {group.rows.map((row) => (
+            <OccurrenceCard
+              key={row.key}
+              row={row}
+              programs={programs}
+              wcSeriesIds={wcSeriesIds}
+              inactiveWcIds={inactiveWcIds}
+            />
+          ))}
         </div>
       ))}
-    </div>
+    </HostListGroup>
   )
 }
 
@@ -147,7 +146,7 @@ function Section({
   return (
     <section className="flex flex-col gap-3">
       <div>
-        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
+        <h2 className="text-[17px] font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{title}</h2>
         {helper ? (
           <p className="mt-0.5 text-[13px] text-neutral-500 dark:text-neutral-400">{helper}</p>
         ) : null}
@@ -216,7 +215,7 @@ export function HostDashList({
 
       {sections.schedules.length > 0 && (
         <Section title={HOST_DASH_SCHEDULES} helper={HOST_DASH_SCHEDULES_HELPER}>
-          <HostListGroup>
+          <HostListGroup header>
             {sections.schedules.map((row) => (
               <ScheduleRow key={row.key} row={row} />
             ))}

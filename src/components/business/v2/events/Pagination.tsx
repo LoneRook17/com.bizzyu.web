@@ -30,3 +30,36 @@ export function Pagination({ page, total, limit, onPageChange }: PaginationProps
     </div>
   )
 }
+
+/**
+ * BETA visual polish: the pager as a table footer row ("1–10 of 14 ·
+ * Page 1 of 2 ‹ ›"). Renders the count even on a single page; the arrows
+ * only when there is somewhere to go.
+ */
+export function TablePager({
+  page,
+  total,
+  limit,
+  onPageChange,
+  noun,
+}: PaginationProps & { noun: string }) {
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+  return (
+    <>
+      <span className="tabular-nums">
+        {total.toLocaleString("en-US")} {noun}
+      </span>
+      {totalPages > 1 && (
+        <span className="ml-auto flex items-center gap-2">
+          <span className="tabular-nums">Page {page} of {totalPages}</span>
+          <Button variant="secondary" size="icon-sm" aria-label="Previous page" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            <ChevronLeft />
+          </Button>
+          <Button variant="secondary" size="icon-sm" aria-label="Next page" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+            <ChevronRight />
+          </Button>
+        </span>
+      )}
+    </>
+  )
+}

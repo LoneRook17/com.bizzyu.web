@@ -9,6 +9,8 @@ import { Button } from "@/components/business/v2/ui/button"
 interface RolePermissionsDialogProps {
   /** Which table to show: "event" for the event-level roles, "business" for business-level roles */
   variant: "event" | "business"
+  /** A quiet text trigger instead of a bordered button (Team page, mock 03). */
+  quiet?: boolean
 }
 
 /* Event-level permissions (Owner / Co-host / Crew) */
@@ -78,13 +80,22 @@ function CellValue({ value }: { value: string }) {
   return <span className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{value}</span>
 }
 
-export default function RolePermissionsDialog({ variant }: RolePermissionsDialogProps) {
+export default function RolePermissionsDialog({ variant, quiet = false }: RolePermissionsDialogProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="secondary" size="sm">
-          <Shield /> Role permissions
-        </Button>
+        {quiet ? (
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md text-sm font-medium text-neutral-700 outline-none transition-colors hover:text-neutral-900 focus-visible:ring-2 focus-visible:ring-[#05EB54]/40 dark:text-neutral-200 dark:hover:text-white"
+          >
+            <Shield className="size-4 text-neutral-400 dark:text-neutral-500" /> Role permissions
+          </button>
+        ) : (
+          <Button variant="secondary" size="sm">
+            <Shield /> Role permissions
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>

@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/business/auth-context"
 import { useVenue } from "@/lib/business/venue-context"
 import {
   accessRowStats,
+  formatDays,
   programHref,
   programMetaLine,
   programScheduleLine,
@@ -28,29 +29,35 @@ import { WC_DRAFT_CHIP_LABEL } from "@/lib/business/wc-draft-hold"
 export function AccessProgramRow({ program }: { program: DoorAccessProgramSummary }) {
   const { venues } = useVenue()
   const { isPending } = useAuth()
-  const chips: Array<{ label: string; variant: "neutral" | "info" | "warning" }> = []
-  if (isPending) chips.push({ label: WC_DRAFT_CHIP_LABEL, variant: "neutral" })
-  if (!program.is_active) chips.push({ label: "Ended", variant: "neutral" })
+  // Status column: Draft while the business is unapproved, Ended for a
+  // stopped program, Active otherwise. Promoted rides beside the title.
+  const status: { label: string; variant: "neutral" | "success" } = isPending
+    ? { label: WC_DRAFT_CHIP_LABEL, variant: "neutral" }
+    : !program.is_active
+      ? { label: "Ended", variant: "neutral" }
+      : { label: "Active", variant: "success" }
+  const chips: Array<{ label: string; variant: "info" }> = []
   if (program.promotion_enabled) chips.push({ label: "Promoted", variant: "info" })
   const imageUrl = resolveProgramImageUrl(program, venues)
+  /* D2-C. An access row's at-a-glance question is "how is this week going",
+     so the week leads. Its sold figure is STUBBED — see accessRowStats and
+     MISSING_ROW_AGGREGATES; the nights-left half rides on the meta line. */
+  const [soldThisWeek, nightsLeft] = accessRowStats(program)
 
   return (
     <HostListCard
       kind="access"
       href={programHref(program.id)}
       title={program.name || WEEKLY_ACCESS_SECTION_LABEL}
+      when={formatDays(program.days_of_week)}
       meta={programMetaLine(program)}
-      secondary={programScheduleLine(program)}
+      secondary={nightsLeft ? `${nightsLeft.value} ${nightsLeft.label}` : programScheduleLine(program)}
+      status={status}
       chips={chips}
+      sold={soldThisWeek}
       thumbnail={
         <HostCardThumbnail kind="access" src={imageUrl} alt={program.name} icon={Zap} />
       }
-      /* D2-C. An access row's at-a-glance question is "how is this week going",
-         so the week leads. Its sold figure is STUBBED — see accessRowStats and
-         MISSING_ROW_AGGREGATES; the nights-left half beside it is real. The
-         check-in mode moved off the row to make space: it is a setting, not a
-         number, and it never changes between two glances at this list. */
-      stats={accessRowStats(program)}
     />
   )
 }

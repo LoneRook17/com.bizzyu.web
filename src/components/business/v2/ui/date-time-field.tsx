@@ -22,6 +22,7 @@ import {
 } from "@/lib/business/datetime-value"
 import { Button } from "@/components/business/v2/ui/button"
 import { Input } from "@/components/business/v2/ui/input"
+import { ClockField, DatePickerField } from "@/components/business/v2/ui/clock-field"
 import { cn } from "@/lib/v2/utils"
 
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"]
@@ -103,6 +104,7 @@ export function DateTimeField({
   className,
   datePlaceholder,
   timePlaceholder,
+  variant = "typed",
 }: {
   id?: string
   name?: string
@@ -112,6 +114,13 @@ export function DateTimeField({
   /** Empty-field hints only ("Day of", "Next day") — never a value. */
   datePlaceholder?: string
   timePlaceholder?: string
+  /**
+   * "typed" (default): the M/D/YYYY box + calendar button and the 12-hour box
+   * + wheel picker every other form uses. "clock" (BETA visual polish, event
+   * create/edit only): the centered date button with an anchored calendar and
+   * the typed HH:MM + AM/PM clock. Same value either way.
+   */
+  variant?: "typed" | "clock"
 }) {
   const parts = splitDateTimeLocal(value)
   const [date, setDate] = useState(parts.date)
@@ -141,6 +150,22 @@ export function DateTimeField({
       lastEmitted.current = emitted
       onChange(emitted)
     }
+  }
+
+  if (variant === "clock") {
+    return (
+      <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2", className)}>
+        {name ? <input type="hidden" name={name} value={value} /> : null}
+        <div>
+          <p className="mb-1.5 text-xs text-neutral-500 dark:text-neutral-400">Date</p>
+          <DatePickerField id={id} label="Date" placeholder={datePlaceholder} value={date} onChange={(next) => commit(next, time)} />
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs text-neutral-500 dark:text-neutral-400">Time</p>
+          <ClockField id={id ? `${id}_time` : undefined} label="Time" value={time} onChange={(next) => commit(date, next)} />
+        </div>
+      </div>
+    )
   }
 
   return (

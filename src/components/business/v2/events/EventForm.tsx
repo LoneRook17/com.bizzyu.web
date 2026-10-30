@@ -710,6 +710,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true, eventS
           <div>
             <Label htmlFor="start_date_time" className="mb-2 block">Starts</Label>
             <DateTimeField
+              variant="clock"
               id="start_date_time"
               name="start_date_time"
               datePlaceholder="Day of"
@@ -724,6 +725,7 @@ export function EventForm({ initialData, eventId, stripeOnboarded = true, eventS
           <div>
             <Label htmlFor="end_date_time" className="mb-2 block">Ends</Label>
             <DateTimeField
+              variant="clock"
               id="end_date_time"
               name="end_date_time"
               datePlaceholder="Next day"

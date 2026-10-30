@@ -170,7 +170,9 @@ test("WC night manage is pink end to end — never Bizzy green", () => {
     layout.includes('isDoorAccess && badge.variant === "success" ? "access"'),
     "a live WC night's header badge is pink, not green",
   )
-  assert.ok(layout.includes("border-access text-access"), "the active tab underline is pink on a WC night")
+  // BETA visual polish: tabs are filled segments now; a WC night inks the
+  // active one pink (was a pink underline).
+  assert.ok(layout.includes("bg-access/12 text-access-deep dark:bg-access/15 dark:text-access"), "the active tab is pink on a WC night")
   const src = read("src/app/business/(dashboard)/events/[id]/manage/page.tsx")
   assert.ok(src.includes('isDoorAccess ? "access" : "event"'), "rows + share row follow the accent")
   assert.ok(
