@@ -93,13 +93,15 @@ export const TEAM_ROW_GRID =
 
 export function TeamTableHeader({ payoutsInfo }: { payoutsInfo?: React.ReactNode }) {
   return (
-    <div role="row" className={cn("hidden h-11 px-4 text-[12px] font-medium text-neutral-500 md:grid dark:text-neutral-400", TEAM_ROW_GRID)}>
-      <span role="columnheader">Member</span>
-      <span role="columnheader">Role</span>
-      <span role="columnheader">Venue access</span>
-      <span role="columnheader" className="flex items-center gap-1">Payouts {payoutsInfo}</span>
-      <span role="columnheader">Status</span>
-      <span role="columnheader" className="hidden xl:block">Joined</span>
+    // Visual column labels only (rows are controls, not an ARIA grid). The
+    // payouts info button stays reachable: it is the one focusable child.
+    <div className={cn("hidden h-11 px-4 text-[12px] font-medium text-neutral-500 md:grid dark:text-neutral-400", TEAM_ROW_GRID)}>
+      <span>Member</span>
+      <span>Role</span>
+      <span>Venue access</span>
+      <span className="flex items-center gap-1">Payouts {payoutsInfo}</span>
+      <span>Status</span>
+      <span className="hidden xl:block">Joined</span>
       <span aria-hidden />
     </div>
   )

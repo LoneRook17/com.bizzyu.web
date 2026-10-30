@@ -97,18 +97,20 @@ export function HostListGroup({
 
 export function HostListHeader() {
   return (
+    // Visual column labels only: rows are links / controls, not an ARIA grid,
+    // so the header stays out of the accessibility tree.
     <div
-      role="row"
+      aria-hidden
       className={cn(
         "hidden h-11 px-4 text-[12px] font-medium text-neutral-500 md:grid dark:text-neutral-400",
         ROW_GRID,
       )}
     >
-      <span role="columnheader">Event</span>
-      <span role="columnheader">Date &amp; time</span>
-      <span role="columnheader">Status</span>
-      <span role="columnheader" className="text-right">Tickets sold</span>
-      <span role="columnheader" className="text-right">Revenue</span>
+      <span>Event</span>
+      <span>Date &amp; time</span>
+      <span>Status</span>
+      <span className="text-right">Tickets sold</span>
+      <span className="text-right">Revenue</span>
       <span aria-hidden />
     </div>
   )
