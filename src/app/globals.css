@@ -39,6 +39,30 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* BETA biz-dash visual polish (VISUAL-BRIEF v1, mocks locked 2026-10-29).
+   The dashboard's dark mode is written as dark:*-neutral-* utilities across
+   every page, so the mock tokens land by re-pointing the neutral ramp INSIDE
+   .v2-dark only: canvas #0B0F0E (950), surface #141A18 (900), border #2A3330
+   (800), text #F3F7F4 (100). The steps between are the same green-tinted
+   grays. Unlayered, so it outranks Tailwind's @layer theme :root values; the
+   marketing site never carries .v2-dark and keeps the stock ramp. Light mode
+   is untouched (ink #030303 / muted #717171 stay). */
+.v2-dark {
+  --background: #0B0F0E;
+  --foreground: #F3F7F4;
+  --color-neutral-50: #F7FAF8;
+  --color-neutral-100: #F3F7F4;
+  --color-neutral-200: #DCE3DF;
+  --color-neutral-300: #BAC4BF;
+  --color-neutral-400: #919D97;
+  --color-neutral-500: #6E7A74;
+  --color-neutral-600: #4D5853;
+  --color-neutral-700: #36403C;
+  --color-neutral-800: #2A3330;
+  --color-neutral-900: #141A18;
+  --color-neutral-950: #0B0F0E;
+}
+
 /* In-page anchors (e.g. "See how it works" -> #how-it-works) glide instead of
    teleporting. scroll-padding keeps the target clear of the sticky navbar. */
 html {

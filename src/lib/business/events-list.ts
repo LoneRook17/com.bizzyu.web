@@ -762,6 +762,28 @@ export function fmtRowDate(value: string | null | undefined, now: Date = new Dat
   return parts.y === now.getFullYear() ? base : `${base}, ${parts.y}`
 }
 
+const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+/**
+ * "Fri, Oct 30 · 7:00 PM" — the Events table's Date & time cell (BETA visual
+ * polish). A date-only value ("2026-10-30", a Weekly Cover night) reads
+ * "Fri, Oct 30". Year only when it isn't this one. The clock is read off the
+ * same wall-clock the rest of the list parses, so it agrees with the date.
+ */
+export function fmtRowWhen(value: string | null | undefined, now: Date = new Date()): string {
+  const parts = dayParts(value)
+  if (!parts) return "-"
+  const weekday = WEEKDAYS_SHORT[new Date(parts.y, parts.m - 1, parts.d).getDay()]
+  const day = `${weekday}, ${MONTHS[parts.m - 1]} ${parts.d}${parts.y === now.getFullYear() ? "" : `, ${parts.y}`}`
+  const raw = (value ?? "").trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return day
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) return day
+  const h = parsed.getHours()
+  const time = `${h % 12 === 0 ? 12 : h % 12}:${String(parsed.getMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`
+  return `${day} · ${time}`
+}
+
 /**
  * "tonight" / "tomorrow" / "in 5 days" / "12 days ago" — the small line under
  * the date. Whole calendar days apart, computed from local midnights so an
@@ -855,7 +877,7 @@ export function seriesRowNumbers(
 }
 
 /** Local money format — `usd()` lives behind the `@/` alias the runner can't load. */
-function money(n: number | string | null | undefined): string {
+export function money(n: number | string | null | undefined): string {
   const v = typeof n === "string" ? Number(n) : n
   if (v == null || !Number.isFinite(v)) return "$0"
   // Whole dollars when the amount IS whole; cents otherwise. Rounding a list

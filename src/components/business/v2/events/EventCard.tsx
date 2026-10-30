@@ -16,7 +16,7 @@ import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/business/v2/ui/dropdown-menu"
 import { HostListCard, type HostCardChip } from "@/components/business/v2/host/HostListCard"
-import { eventStatusBadge, fmtTime } from "./eventStatus"
+import { eventStatusBadge } from "./eventStatus"
 import { isWeeklyCoverProduct } from "@/lib/business/door-access"
 import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
 
@@ -56,7 +56,8 @@ export function EventCard({
   const programId = listedWeeklyCoverProgramId(event, wcSeriesIds)
   const seriesActive = programId == null || !inactiveWcSeriesIds.includes(programId)
 
-  const chips: HostCardChip[] = [{ label: badge.label, variant: badge.variant }]
+  // The status chip owns the Status column; anything else rides beside the title.
+  const chips: HostCardChip[] = []
   if (weeklyCoverNightNeedsPendingCancel(event, seriesActive)) {
     chips.push({ label: "Cancellation pending", variant: "warning" })
   }
@@ -77,9 +78,11 @@ export function EventCard({
     chips.push({ label: HOST_CUSTOM_CHIP_LABEL, variant: "custom" })
   }
 
-  // The row's meta line: the date block carries the day, so this is the time
-  // and the venue — the two things the block has no room for.
-  const meta = [fmtTime(event.start_date_time), event.venue_name].filter(Boolean).join(" · ")
+  // The Date & time column carries the when; the line under the title is the
+  // venue, so an All-venues list still reads where each row is.
+  const meta = event.venue_name || ""
+  // D2-C: sold and revenue, from fields this list already fetched.
+  const rowStats = eventRowStats(event)
 
   // Click = manage (2026-08 instance-manage pass): the row title opens the full
   // manage page directly. View is always the guest checkout when live — never
@@ -94,17 +97,17 @@ export function EventCard({
 
   return (
     <HostListCard
-      kind="event"
+      // A Weekly Cover night gets the pink tile + chip; nothing else changes.
+      kind={isWcRow ? "access" : "event"}
       href={bodyHref}
       date={event.start_date_time}
       title={event.name}
       meta={meta}
       secondary={event.type === "Free" ? "Free entry" : undefined}
+      status={badge}
       chips={chips}
-      /* D2-C: sold · (checked in) · revenue, from fields this list already
-         fetched. The trailing date stat is dropped on the row because the date
-         block already answers "when is this". */
-      stats={eventRowStats(event).slice(0, -1)}
+      sold={rowStats.find((stat) => stat.label === "sold")}
+      revenue={rowStats.find((stat) => stat.label === "revenue")}
       menu={
         <>
           <DropdownMenuItem asChild>

@@ -1,6 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
+  fmtRowWhen,
   EVENT_TYPE_FILTERS,
   MISSING_ROW_AGGREGATES,
   doorAccessGroupsFromEvents,
@@ -897,4 +898,14 @@ test("the missing aggregates are registered, not just commented", () => {
   for (const gap of MISSING_ROW_AGGREGATES) {
     assert.ok(gap.needs.length > 0, `${gap.key} must say what would fill it in`)
   }
+})
+
+test("fmtRowWhen: the Events table's Date & time cell reads the wall clock", () => {
+  const now = new Date(2026, 9, 29, 12, 0)
+  assert.equal(fmtRowWhen("2026-10-30 19:00:00", now), "Fri, Oct 30 · 7:00 PM")
+  assert.equal(fmtRowWhen("2026-10-31 00:30:00", now), "Sat, Oct 31 · 12:30 AM")
+  assert.equal(fmtRowWhen("2026-10-29", now), "Thu, Oct 29", "a WC night date has no clock")
+  assert.equal(fmtRowWhen("2025-08-20 20:00:00", now), "Wed, Aug 20, 2025 · 8:00 PM", "other years say so")
+  assert.equal(fmtRowWhen(null, now), "-")
+  assert.equal(fmtRowWhen("nope", now), "-")
 })

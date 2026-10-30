@@ -13,14 +13,15 @@ import { cn } from "@/lib/v2/utils"
  *   • "anchors" — edit. Every section renders on one page; the rail scrolls
  *                 to the section and follows the viewport (IntersectionObserver).
  *
- * Desktop: sticky left column. Mobile: a horizontal pill row above the form.
- * Green is reserved for the step's primary CTA, so the rail itself uses the
- * brand's green TEXT token (#0A8038) for the active item, never a green fill.
+ * Desktop: a sticky vertical rail, numbered circles on one connecting line
+ * (mock 04). Mobile: the same three steps in a row, joined by short rules.
+ * Green is reserved for the step's primary CTA, so the active circle is the
+ * pale mint the Live chip uses, never a solid green fill.
  */
 export const EDITOR_STEPS = [
-  { key: "details", label: "Details", hint: "Name, when, where, artwork" },
-  { key: "tickets", label: "Tickets", hint: "Tiers, promoters, stock alerts" },
-  { key: "publish", label: "Publish", hint: "Followers, go live" },
+  { key: "details", label: "Details", hint: "Event information" },
+  { key: "tickets", label: "Tickets", hint: "Pricing & capacity" },
+  { key: "publish", label: "Publish", hint: "Review & go live" },
 ] as const
 
 export type EditorStepKey = (typeof EDITOR_STEPS)[number]["key"]
@@ -77,7 +78,7 @@ export function EditorStepRail({
   return (
     <ol
       className={cn(
-        "flex gap-1 overflow-x-auto lg:sticky lg:top-6 lg:flex-col lg:gap-0.5 lg:overflow-visible",
+        "flex items-center gap-2 overflow-x-auto lg:sticky lg:top-20 lg:flex-col lg:items-stretch lg:gap-0 lg:overflow-visible",
         className,
       )}
       aria-label="Editor steps"
@@ -86,39 +87,49 @@ export function EditorStepRail({
         const active = i === current
         const done = mode === "steps" ? i < current : false
         const reachable = mode === "anchors" || i <= (furthest ?? 0)
+        const last = i === EDITOR_STEPS.length - 1
         return (
-          <li key={step.key} className="shrink-0">
+          <li key={step.key} className="relative flex shrink-0 items-center gap-2 lg:block lg:pb-6 lg:last:pb-0">
+            {/* Desktop connector: from under this circle down to the next. */}
+            {!last && (
+              <span aria-hidden className="absolute left-[15px] top-8 hidden h-[calc(100%-2rem)] w-px bg-neutral-200 lg:block dark:bg-neutral-800" />
+            )}
             <button
               type="button"
               disabled={!reachable}
               aria-current={active ? "step" : undefined}
               onClick={() => reachable && onJump(i)}
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left text-sm transition-colors",
-                active
-                  ? "bg-[#0A8038]/10 text-[#0A8038] dark:bg-[#05EB54]/10 dark:text-[#05EB54]"
-                  : reachable
-                    ? "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                    : "cursor-not-allowed text-neutral-400 dark:text-neutral-600",
+                "flex items-center gap-2.5 rounded-lg py-0.5 pr-1 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#05EB54]/40 lg:items-start lg:gap-3",
+                reachable ? "cursor-pointer" : "cursor-not-allowed",
               )}
             >
               <span
                 className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-[12px] font-semibold tabular-nums lg:size-8",
                   active
-                    ? "bg-[#0A8038] text-white dark:bg-[#05EB54] dark:text-neutral-950"
+                    ? "border-[#0A8038]/30 bg-[#DDF7E6] text-[#0A8038] dark:border-[#05EB54]/40"
                     : done
-                      ? "bg-[#0A8038]/15 text-[#0A8038] dark:bg-[#05EB54]/20 dark:text-[#05EB54]"
-                      : "bg-neutral-200 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400",
+                      ? "border-[#0A8038]/30 bg-transparent text-[#0A8038] dark:border-[#05EB54]/40 dark:text-[#05EB54]"
+                      : "border-neutral-300 bg-white text-neutral-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-400",
                 )}
               >
-                {done ? <Check className="size-3" /> : i + 1}
+                {done ? <Check className="size-3.5" /> : i + 1}
               </span>
-              <span className="min-w-0">
-                <span className={cn("block whitespace-nowrap", active && "font-semibold")}>{step.label}</span>
+              <span className="min-w-0 lg:pt-1">
+                <span
+                  className={cn(
+                    "block whitespace-nowrap text-[13px] lg:text-sm",
+                    active ? "font-semibold text-neutral-900 dark:text-neutral-100" : reachable ? "font-medium text-neutral-600 dark:text-neutral-300" : "text-neutral-400 dark:text-neutral-600",
+                  )}
+                >
+                  {step.label}
+                </span>
                 <span className="hidden text-[12px] text-neutral-500 dark:text-neutral-400 lg:block">{step.hint}</span>
               </span>
             </button>
+            {/* Phone connector between steps. */}
+            {!last && <span aria-hidden className="h-px w-5 bg-neutral-300 lg:hidden dark:bg-neutral-700" />}
           </li>
         )
       })}

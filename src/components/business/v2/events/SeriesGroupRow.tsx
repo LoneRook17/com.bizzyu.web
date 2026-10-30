@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ChevronDown, Repeat, Settings2 } from "lucide-react"
 import {
   fmtRowDate,
+  fmtRowWhen,
   relativeDayLabel,
   seriesRowHref,
   seriesRowNumbers,
@@ -80,12 +81,17 @@ export function SeriesGroupRow({
     <div className="flex flex-col">
       <HostListCard
         kind="event"
+        icon={Repeat}
         href={seriesRowHref(row, programs, wcSeriesIds)}
-        typeLabel="SERIES"
         title={row.name}
+        when={nextDate ? fmtRowWhen(nextDate) : undefined}
         meta={meta}
         secondary={secondary}
-        chips={chips}
+        // "Series" owns the Status column; Suspended rides beside the title.
+        status={chips[0]}
+        chips={chips.slice(1)}
+        sold={numbers.stats[0]}
+        revenue={numbers.stats[1]}
         thumbnail={
           <HostCardThumbnail
             kind="event"
@@ -94,7 +100,6 @@ export function SeriesGroupRow({
             icon={Repeat}
           />
         }
-        stats={numbers.stats}
         actions={
           <Button
             variant="ghost"
@@ -121,7 +126,7 @@ export function SeriesGroupRow({
       {open && (
         // Indented so an expanded series still reads as ONE row's contents and
         // not as the list having suddenly grown a dozen new top-level entries.
-        <div className="border-t border-neutral-100 bg-neutral-50/60 py-2 pl-6 pr-2 dark:border-neutral-800 dark:bg-neutral-800/30">
+        <div className="border-t border-neutral-200 bg-neutral-50/60 py-2 pl-6 pr-2 dark:border-neutral-800 dark:bg-neutral-950/30">
           <HostListGroup>
             {row.events.map((event) => (
               <EventCard

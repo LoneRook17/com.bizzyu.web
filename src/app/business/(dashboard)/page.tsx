@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
-  Plus, ArrowUpRight, CalendarDays, Sparkles, ChevronRight, Tag,
+  Plus, ArrowUpRight, CalendarDays, Sparkles, ChevronRight, Tag, Ticket, UserPlus,
 } from "lucide-react"
 import { useAuth } from "@/lib/business/auth-context"
 import { useVenue, useVenueParam } from "@/lib/business/venue-context"
@@ -18,7 +18,6 @@ import { homeSections } from "@/lib/business/home-sections"
 import {
   ACCESS_ACCENT,
   WEEKLY_ACCESS_SECTION_LABEL,
-  WEEKLY_ACCESS_TYPE_LABEL,
   easternToday,
   fetchDoorAccessProgramsSafe,
   fmtShortDate,
@@ -35,6 +34,7 @@ import { cn, usd } from "@/lib/v2/utils"
 import { PageHeader } from "@/components/business/v2/PageHeader"
 import { MetricStrip, type Metric } from "@/components/business/v2/MetricStrip"
 import { Badge } from "@/components/business/v2/ui/badge"
+import { WeeklyCoverChip } from "@/components/business/v2/WeeklyCoverChip"
 import { Button } from "@/components/business/v2/ui/button"
 import { Skeleton } from "@/components/business/v2/ui/skeleton"
 import { EmptyState } from "@/components/business/v2/ui/empty-state"
@@ -56,6 +56,14 @@ function fmtRelative(s: string) {
   if (h < 24) return `${h}h`
   return `${Math.round(h / 24)}d`
 }
+/** The leading glyph on an activity row, by feed type. */
+const ACTIVITY_ICONS: Record<ActivityFeedItem["type"], React.ElementType> = {
+  ticket_purchase: Ticket,
+  deal_claim: Tag,
+  team_join: UserPlus,
+  event_milestone: Sparkles,
+}
+
 function eventBadge(status: string): { variant: "success" | "neutral" | "warning" | "danger"; label: string } {
   const s = status?.toLowerCase()
   if (s === "published" || s === "approved" || s === "active") return { variant: "success", label: "Live" }
@@ -80,23 +88,27 @@ function HomeSection({
   children: React.ReactNode
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-2">
+    <section className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center">
-        <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{title}</h2>
-        {viewAllHref && (
-          <Link href={viewAllHref} className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-            View all <ArrowUpRight className="size-3.5" />
-          </Link>
-        )}
+        <h2 className="text-[17px] font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">{title}</h2>
+        {viewAllHref && <ViewAllLink href={viewAllHref} />}
       </div>
-      <div className="divide-y divide-neutral-100 overflow-hidden rounded-[10px] border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="divide-y divide-neutral-200 overflow-hidden rounded-[10px] border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
         {children}
       </div>
     </section>
   )
 }
 
-const ROW_CLASS = "flex min-h-12 items-center gap-3 px-3 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+function ViewAllLink({ href }: { href: string }) {
+  return (
+    <Link href={href} className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100">
+      View all <ArrowUpRight className="size-3.5" />
+    </Link>
+  )
+}
+
+const ROW_CLASS = "flex min-h-[52px] items-center gap-3 px-4 py-2.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
 const EMPTY_CLASS = "border-0 bg-transparent py-8 dark:bg-transparent"
 
 export default function V2HomePage() {
@@ -251,7 +263,7 @@ export default function V2HomePage() {
   // This is the EVENT revenue figure. It is never blended with the line-skip
   // take below — Backroads is $171,782 of events against $12 of skip the line
   // tickets, and one total would erase the $12.
-  if (sections.revenueTile) metrics.push({ label: "Revenue (all-time)", value: usd(summary?.total_revenue) })
+  if (sections.revenueTile) metrics.push({ label: "Revenue · all time", value: usd(summary?.total_revenue) })
   // BETA (Luke PRD 2026-10-29, change 2): the week-to-date host take, same
   // owner gate and same units as all-time. The server defines the week
   // (Monday 00:00 America/New_York → now); an older build that omits the
@@ -275,7 +287,7 @@ export default function V2HomePage() {
   // mid-F15 genuinely runs both and needs to see both.
   const accessMetrics: Metric[] = []
   if (showLineSkipSection && canViewRevenue(user?.business_role)) {
-    accessMetrics.push({ label: "Revenue (all-time)", value: usd(lineSkipRevenue) })
+    accessMetrics.push({ label: "Revenue · all time", value: usd(lineSkipRevenue) })
   }
   if (showLineSkipSection) {
     accessMetrics.push({ label: "Passes sold", value: (stats?.line_skip_passes_sold ?? 0).toLocaleString() })
@@ -291,6 +303,7 @@ export default function V2HomePage() {
     label: "Next night",
     value: nextAccessDate ? fmtShortDate(nextAccessDate) : "-",
     sub: nextAccessDate ? undefined : "None scheduled",
+    aside: nextAccessDate && showAccessSection ? <WeeklyCoverChip /> : undefined,
   })
 
   return (
@@ -305,17 +318,18 @@ export default function V2HomePage() {
         title={`Good to see you${firstName ? `, ${firstName}` : ""}`}
         description={`Here's what's happening at ${venueLabel}.`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             {/* BETA shell (locked 2026-10-29): Create event is the one green
                 CTA on Home. New deal is secondary. The Weekly Cover path stays
-                reachable from inside the modal. */}
+                reachable from inside the modal. On a phone Create event leads
+                and takes the wider half (mobile mock). */}
             {config.showDeals && (
-              <Button variant="secondary" asChild>
+              <Button variant="secondary" asChild className="h-11 flex-1 sm:h-10 sm:flex-none">
                 <Link href="/business/deals/new"><Plus /> New deal</Link>
               </Button>
             )}
             {config.showEvents && canCreate && (
-              <Button onClick={() => setShowCreate(true)}><Plus /> Create event</Button>
+              <Button onClick={() => setShowCreate(true)} className="order-first h-11 flex-[1.4] sm:order-none sm:h-10 sm:flex-none"><Plus /> Create event</Button>
             )}
           </div>
         }
@@ -337,22 +351,20 @@ export default function V2HomePage() {
       {/* "View all" points at the Events page, where Weekly Cover now lives —
           never at the retired nav route. */}
       {!loading && (showLineSkipSection || showAccessSection) && (
-        <section data-testid="line-skip-section" className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
+        <section data-testid="line-skip-section" className="flex flex-col gap-3">
+          <div className="flex items-center gap-2.5">
             <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: ACCESS_ACCENT }} />
-            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+            <h2 className="text-[17px] font-semibold tracking-tight text-neutral-900 dark:text-neutral-100">
               {showAccessSection ? WEEKLY_ACCESS_SECTION_LABEL : LINE_SKIP_LABEL}
             </h2>
-            <Link href="/business/events" className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">
-              View all <ArrowUpRight className="size-3.5" />
-            </Link>
+            <ViewAllLink href="/business/events" />
           </div>
           <MetricStrip metrics={accessMetrics} />
         </section>
       )}
 
       {/* two lists - first one follows the dashboard mode */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* LSK-19: the events list follows PRESENCE now, not just the mode — a
             venue with no events never posted one, so neither the tiles nor the
             "Create an event" empty state belong on its Home. The deals branch
@@ -372,7 +384,9 @@ export default function V2HomePage() {
                 icon={CalendarDays}
                 title="Nothing coming up"
                 description={`Create an event or a ${WEEKLY_ACCESS_SECTION_LABEL.toLowerCase()} program to start selling.`}
-                action={canCreate ? <Button asChild variant="secondary" size="sm"><Link href="/business/create"><Plus /> Create</Link></Button> : undefined}
+                // The header's Create event owns this; the chooser link only
+                // stands in when that button is hidden (events switched off).
+                action={canCreate && !config.showEvents ? <Button asChild variant="secondary" size="sm"><Link href="/business/create"><Plus /> Create</Link></Button> : undefined}
               />
             ) : (
               // Interleaved (D2-6). The pink type chip is the whole type marker:
@@ -387,12 +401,7 @@ export default function V2HomePage() {
                         <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{p.name}</span>
                         <span className="block text-[13px] text-neutral-500 dark:text-neutral-400">{fmtShortDate(entry.date)} · {p.venue_name}</span>
                       </span>
-                      <span
-                        className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                        style={{ backgroundColor: `${ACCESS_ACCENT}1A`, color: ACCESS_ACCENT }}
-                      >
-                        {WEEKLY_ACCESS_TYPE_LABEL.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
-                      </span>
+                      <WeeklyCoverChip />
                       <ChevronRight className="size-4 text-neutral-300 dark:text-neutral-600" />
                     </Link>
                   )
@@ -450,14 +459,16 @@ export default function V2HomePage() {
           ) : activity.length === 0 ? (
             <EmptyState className={EMPTY_CLASS} icon={Sparkles} title="No activity yet" description="Sales, claims, and check-ins will show up here." />
           ) : (
-            activity.map((a, i) => (
-              <div key={i} className={cn("flex min-h-12 items-start gap-3 px-3 py-2")}>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm text-neutral-800 dark:text-neutral-200">{a.message}</span>
-                </span>
-                <span className="shrink-0 text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500">{fmtRelative(a.timestamp)} ago</span>
-              </div>
-            ))
+            activity.map((a, i) => {
+              const Icon = ACTIVITY_ICONS[a.type] ?? Sparkles
+              return (
+                <div key={i} className={cn("flex min-h-[52px] items-center gap-3 px-4 py-2.5")}>
+                  <Icon aria-hidden strokeWidth={1.75} className="size-4 shrink-0 text-neutral-400 dark:text-neutral-500" />
+                  <span className="min-w-0 flex-1 text-sm text-neutral-800 dark:text-neutral-200">{a.message}</span>
+                  <span className="shrink-0 text-[12px] tabular-nums text-neutral-400 dark:text-neutral-500">{fmtRelative(a.timestamp)} ago</span>
+                </div>
+              )
+            })
           )}
         </HomeSection>
       </div>

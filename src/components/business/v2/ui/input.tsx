@@ -5,7 +5,7 @@ import { useWeeklyCoverAccent } from "@/components/business/v2/door-access/Weekl
 import { cn } from "@/lib/v2/utils"
 
 const inputChrome =
-  "flex w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm text-neutral-900 shadow-sm outline-none transition-colors placeholder:text-neutral-400 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-500"
+  "flex w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-950 dark:text-neutral-100 dark:placeholder:text-neutral-500"
 
 export const EVENT_INPUT_FOCUS_CLASS =
   "caret-[#05EB54] accent-[#05EB54] focus-visible:border-[#05EB54] focus-visible:ring-[#05EB54]/30 dark:focus-visible:border-[#05EB54] dark:focus-visible:ring-[#05EB54]/30"

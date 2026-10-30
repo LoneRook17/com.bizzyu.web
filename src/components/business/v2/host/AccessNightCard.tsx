@@ -18,6 +18,8 @@ import { eventCheckoutUrl, isPubliclyLinkable } from "@/lib/business/public-link
 import { HOST_CUSTOM_CHIP_LABEL, hostCustomChipTone } from "@/lib/business/host-custom-night"
 import { weeklyCoverNightNeedsPendingCancel } from "@/lib/business/weekly-cover-visibility"
 import { WC_DRAFT_CHIP_LABEL, isWeeklyCoverHoldStatus } from "@/lib/business/wc-draft-hold"
+import { eventRowStats } from "@/lib/business/events-list"
+import { eventStatusBadge } from "@/components/business/v2/events/eventStatus"
 import { DropdownMenuItem } from "@/components/business/v2/ui/dropdown-menu"
 import {
   HostCardThumbnail,
@@ -86,9 +88,22 @@ export function AccessNightCard({
     manageEventId != null && isPubliclyLinkable(status) ? eventCheckoutUrl(manageEventId) : null
 
   const chips: HostCardChip[] = []
-  if (isPending || isWeeklyCoverHoldStatus(status)) {
-    chips.push({ label: WC_DRAFT_CHIP_LABEL, variant: "neutral" })
-  }
+  // Status column: an unapproved / held night reads Draft, never Live.
+  const statusChip: HostCardChip | null =
+    isPending || isWeeklyCoverHoldStatus(status)
+      ? { label: WC_DRAFT_CHIP_LABEL, variant: "neutral" }
+      : status
+        ? eventStatusBadge(status)
+        : null
+  // Sold / revenue: the stamped night's own event row when the list has it;
+  // a program night only knows its passes.
+  const eventStats = event ? eventRowStats(event) : null
+  const sold = eventStats
+    ? eventStats.find((stat) => stat.label === "sold")
+    : night
+      ? { label: "passes sold", value: (night.passes_sold ?? 0).toLocaleString("en-US") }
+      : undefined
+  const revenue = eventStats?.find((stat) => stat.label === "revenue")
   const pendingCancel = weeklyCoverNightNeedsPendingCancel(
     {
       status,
@@ -128,7 +143,10 @@ export function AccessNightCard({
       title={title}
       meta={[venue].filter(Boolean).join(" · ")}
       secondary={customTone ? "Custom night" : "Weekly Cover night"}
+      status={statusChip}
       chips={chips}
+      sold={sold}
+      revenue={revenue}
       thumbnail={
         <HostCardThumbnail kind="access" src={flyer} alt={title} icon={Zap} />
       }
