@@ -1,7 +1,9 @@
 import { Metadata } from "next"
+import Link from "next/link"
 import { after } from "next/server"
 import { headers } from "next/headers"
 import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
+import { eventSaleState } from "@/lib/event-sale-state"
 import {
   buildCheckoutTarget,
   logPromoterClick,
@@ -18,6 +20,13 @@ interface EventPreview {
   name?: string
   description?: string | null
   flyer_image_url?: string | null
+  status?: string | null
+  cancellation_status?: string | null
+  start_date_time?: string | null
+  end_date_time?: string | null
+  timezone?: string | null
+  has_ended?: boolean | null
+  sale_refusal?: { code?: string | null; message?: string | null } | null
 }
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
@@ -88,6 +97,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function EventCheckoutRedirect({ params, searchParams }: PageProps) {
   const { id } = await params
   const sp = await searchParams
+
+  // ENDED / UNPUBLISHED EVENT — this is the Universal-Link landing every
+  // non-app visitor hits from an old promoter link. Fail closed BEFORE the
+  // click log and the Laravel bounce (same rule as /event/:id). An event the
+  // API cannot serve keeps today's behaviour (redirect; Laravel 404s).
+  const preview = await getEventPreview(id)
+  const saleClosed = eventSaleState(preview)
+  if (saleClosed) {
+    return (
+      <main className="min-h-screen bg-white text-ink flex items-center justify-center px-4">
+        <div className="text-center" data-sale-closed={saleClosed.code}>
+          <h1 className="text-2xl font-semibold mb-2">{saleClosed.headline}</h1>
+          {preview?.name ? <p className="text-sm text-gray-600 mb-1">{preview.name}</p> : null}
+          <p className="text-sm text-gray-600 mb-4">{saleClosed.message}</p>
+          <Link href="/" className="text-sm text-primary hover:underline">Go home</Link>
+        </div>
+      </main>
+    )
+  }
 
   // Log the promoter click (if this visit carries a ?ref code) AFTER the
   // response flushes, so it adds zero latency to the redirect. Read the UA

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { getApiBaseUrl } from "@/lib/api-url"
 import { formatEventClock } from "@/lib/event-time"
+import { eventHasEnded } from "@/lib/event-sale-state"
 import { WEEKLY_ACCESS_TYPE_LABEL } from "@/lib/business/weekly-cover-label"
 import { ACCESS, EVENT_FILL } from "@/lib/checkout/surfaces"
 import { KNIGHT_VENUE_APP_LINK, scheduleAppStoreFallback } from "@/lib/knight-app-link"
@@ -112,7 +113,7 @@ function venueInitials(name: string): string {
 }
 
 /** Blade: every calendar date is its own section, in order. */
-function groupByDay(events: VenueEvent[], todayKey: string | null) {
+function groupByDay(events: VenueEvent[], todayKey: string | null, nowMs: number | null) {
   const today = todayKey ? parseCalendarDay(todayKey) : null
   const byDay = new Map<string, VenueEvent[]>()
   for (const event of events) {
@@ -120,6 +121,11 @@ function groupByDay(events: VenueEvent[], todayKey: string | null) {
     const day = parseCalendarDay(event.start_date_time)
     if (!key || !day) continue
     if (today && day < today) continue
+    // A night whose END (in its own zone) has passed is no longer a buy row,
+    // even on its own calendar day — the server refuses the sale regardless
+    // (ended-event guard); this keeps the board honest. Client-only, like
+    // todayKey, so SSR and hydration render the same rows.
+    if (nowMs !== null && eventHasEnded(event, new Date(nowMs))) continue
     const list = byDay.get(key) ?? []
     list.push(event)
     byDay.set(key, list)
@@ -202,10 +208,12 @@ export default function VenuePageClient({
   const knight = brand === "knight"
   const [data, setData] = useState<VenueData | null>(initialData)
   const [todayKey, setTodayKey] = useState<string | null>(null)
+  const [nowMs, setNowMs] = useState<number | null>(null)
   const inFlight = useRef(false)
 
   useEffect(() => {
     setTodayKey(localDateKey(new Date()))
+    setNowMs(Date.now())
   }, [])
 
   useEffect(() => {
@@ -269,7 +277,7 @@ export default function VenuePageClient({
   const mapsUrl = mapQuery
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`
     : null
-  const days = groupByDay(events, todayKey)
+  const days = groupByDay(events, todayKey, nowMs)
 
   return (
     <div

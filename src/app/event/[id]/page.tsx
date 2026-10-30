@@ -14,6 +14,7 @@ import {
   refFromSearchParams,
 } from "@/lib/checkout/forward-query"
 import { laravelCheckoutBaseUrl } from "@/lib/laravel-checkout"
+import { eventSaleState } from "@/lib/event-sale-state"
 
 const API_URL = process.env.INTERNAL_API_URL || "http://localhost:3000"
 
@@ -33,6 +34,12 @@ interface EventResponse {
   product_kind?: string | null
   access_kind?: string | null
   recurring_series_id?: number | string | null
+  status?: string | null
+  cancellation_status?: string | null
+  timezone?: string | null
+  // Server-derived sale state (services utils/eventSaleGuard).
+  has_ended?: boolean | null
+  sale_refusal?: { code?: string | null; message?: string | null } | null
 }
 
 interface PageProps {
@@ -99,6 +106,24 @@ export default async function PublicEventPage({ params, searchParams }: PageProp
         <div className="text-center">
           <h1 className="text-2xl font-semibold mb-2">This night is no longer on sale</h1>
           <p className="text-sm text-gray-600 mb-4">Cover and Skip the Line are not available for this series.</p>
+          <Link href="/" className="text-sm text-primary hover:underline">Go home</Link>
+        </div>
+      </main>
+    )
+  }
+
+  // ENDED / UNPUBLISHED EVENT — fail closed here too, so a stale promoter
+  // link never bounces to a checkout for an event that is over. The server
+  // refuses the purchase anyway (services + core guards); this is the page
+  // the buyer actually sees. Same shell as the WC fail-closed above.
+  const saleClosed = eventSaleState(event)
+  if (saleClosed) {
+    return (
+      <main className="min-h-screen bg-white text-ink flex items-center justify-center px-4">
+        <div className="text-center" data-sale-closed={saleClosed.code}>
+          <h1 className="text-2xl font-semibold mb-2">{saleClosed.headline}</h1>
+          <p className="text-sm text-gray-600 mb-1">{event.name}</p>
+          <p className="text-sm text-gray-600 mb-4">{saleClosed.message}</p>
           <Link href="/" className="text-sm text-primary hover:underline">Go home</Link>
         </div>
       </main>
